@@ -102,8 +102,11 @@ export async function loadUserProfile(userId: string): Promise<{
   }
 
   // 4. Set up observability
+  // Sentry setUser honours `sendDefaultPii: false` + scrubbing config. PostHog
+  // MUST NOT receive email/IRD/bank — NZ Privacy Act 2020 IPP 3. Send only
+  // the opaque auth user id plus non-identifying dimensions.
   setSentryUser({ id: userId, email: userData?.email, role: roleEnum ?? undefined });
-  analytics.identify(userId, { role: roleEnum, orchard_id: orchardId, email: userData?.email });
+  analytics.identify(userId, { role: roleEnum, orchard_id: orchardId });
 
   // 5. Build state update
   const stateUpdate: Partial<AuthState> = {
