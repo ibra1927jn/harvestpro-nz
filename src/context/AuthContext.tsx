@@ -261,7 +261,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       // 🔧 U6: Kill realtime channels BEFORE clearing auth
       supabase.removeAllChannels();
-      await supabase.auth.signOut();
+      // Global scope invalidates every active session for this user
+      // across devices. Default 'local' leaves other tabs/devices signed
+      // in until JWT expires — a device-theft vector on shared tablets.
+      await supabase.auth.signOut({ scope: 'global' });
     } catch (error) {
       logger.error('Error signing out from Supabase:', error);
     } finally {

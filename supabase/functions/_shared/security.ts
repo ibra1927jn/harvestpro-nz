@@ -111,7 +111,7 @@ export function checkRateLimit(key: string, options: RateLimitOptions = DEFAULT_
 type AllowedRole = 'admin' | 'manager' | 'team_leader' | 'runner' | 'qc_inspector' | 'payroll_admin' | 'hr_admin' | 'logistics';
 
 interface AuthResult {
-  user: { id: string; email: string };
+  user: { id: string; email: string; role?: string };
   supabase: SupabaseClient;
 }
 
@@ -146,8 +146,37 @@ export async function requireRole(
     throw new AuthError('Invalid or expired token', 401);
   }
 
-  // Check role from user metadata
-  const userRole = user.user_metadata?.role as string | undefined;
+  // Role check: consult public.users as the source of truth, not
+  // `user.user_metadata`. JWT claims are frozen for the lifetime of
+  // the token (default 3600s). An admin that demotes a manager via
+  // manage-admin updates public.users.role synchronously, but the
+  // target's JWT keeps the old `role` claim until they refresh —
+  // checking metadata would let them keep calling manager-gated
+  // Edge Functions during that window. A DB-backed check closes
+  // that gap. Uses the service_role key (bypasses RLS) so the
+  // lookup cannot itself be foiled by a stale policy cache.
+  const adminUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  if (!adminUrl || !serviceKey) {
+    throw new AuthError('Server misconfigured: missing SUPABASE_SERVICE_ROLE_KEY', 500);
+  }
+  const adminClient = createClient(adminUrl, serviceKey);
+  const { data: profile, error: profileError } = await adminClient
+    .from('users')
+    .select('role, is_active')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new AuthError(`Role lookup failed: ${profileError.message}`, 500);
+  }
+  if (!profile) {
+    throw new AuthError('No user profile found — contact support', 403);
+  }
+  if (profile.is_active === false) {
+    throw new AuthError('Account is deactivated', 403);
+  }
+  const userRole = profile.role as string | undefined;
   if (!userRole || !roles.includes(userRole as AllowedRole)) {
     throw new AuthError(
       `Insufficient permissions. Required: ${roles.join('|')}. Got: ${userRole || 'none'}`,
@@ -156,7 +185,7 @@ export async function requireRole(
   }
 
   return {
-    user: { id: user.id, email: user.email ?? '' },
+    user: { id: user.id, email: user.email ?? '', role: userRole },
     supabase,
   };
 }
