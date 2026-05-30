@@ -119,7 +119,21 @@ serve(async (req: Request) => {
 
     const orchardId = orchard.id;
 
-    // ── Steps 3-5: Membership, settings, wage rates (con rollback) ───────
+    // ── Steps 3-4: Membership + harvest_settings (con rollback) ──────────
+    // Nota: la tabla canonica es `harvest_settings` (usada por calculate-payroll
+    // y api-v1). La antigua `orchard_settings` NO existe en el esquema — el
+    // INSERT anterior fallaba siempre y abortaba todo el signup (audit
+    // 2026-04-22 CRIT-C1 + H-1).
+    //
+    // El seed de `wage_rates` se retira intencionalmente:
+    //   - calculate-payroll NO lee de wage_rates (usa harvest_settings).
+    //   - src/services/wage-rates.service.ts tiene fallback a
+    //     NZ_DEFAULT_WAGE_RATES cuando la tabla esta vacia, por lo que la UI
+    //     de Admin funciona sin filas.
+    //   - El seed anterior incluia columnas inexistentes
+    //     (piece_rate_eligible, piece_rate_per_bin, effective_from,
+    //     updated_by) — habria fallado aun si el paso anterior no lo hiciese.
+    //   - Ver ERRORES.md:118 — la tabla estaba vacia en prod sin impacto.
     const { error: memberError } = await supabase.from('orchard_members').insert({
       orchard_id: orchardId,
       user_id: userId,
@@ -135,38 +149,26 @@ serve(async (req: Request) => {
       return err(500, 'Failed to set up orchard membership. Please try again.', headers);
     }
 
-    const { error: settingsError } = await supabase.from('orchard_settings').insert({
+    // harvest_settings: orchard_id es PK+FK, resto de columnas tienen DEFAULT
+    // (min_wage_rate=23.95, piece_rate=6.50, min_buckets_per_hour=3.6,
+    // target_tons=40.0, shift_start_time='07:00', shift_end_time='17:00',
+    // mfa_device_trust_ttl_hours=72). Pasamos explicitos los operacionales
+    // para dejar traza clara del signup; el resto queda en DEFAULT.
+    const { error: settingsError } = await supabase.from('harvest_settings').insert({
       orchard_id: orchardId,
+      min_wage_rate: 23.95, // NZ Minimum Wage Order 2026 floor
       piece_rate: 6.50,
       target_tons: 100,
       min_buckets_per_hour: 3,
     });
 
     if (settingsError) {
-      console.error('[provision-orchard] orchard_settings insert failed:', settingsError);
+      console.error('[provision-orchard] harvest_settings insert failed:', settingsError);
       // Rollback: eliminar membership, orchard y usuario
       await supabase.from('orchard_members').delete().eq('orchard_id', orchardId);
       await supabase.from('orchards').delete().eq('id', orchardId);
       await supabase.auth.admin.deleteUser(userId);
-      return err(500, 'Failed to create orchard settings. Please try again.', headers);
-    }
-
-    const effectiveDate = new Date().toISOString().split('T')[0];
-    const { error: wageError } = await supabase.from('wage_rates').insert([
-      { orchard_id: orchardId, job_type: 'picker',       hourly_rate: 23.95, piece_rate_eligible: true,  piece_rate_per_bin: 6.50, effective_from: effectiveDate, updated_by: userId },
-      { orchard_id: orchardId, job_type: 'team_leader',  hourly_rate: 26.00, piece_rate_eligible: true,  piece_rate_per_bin: 6.50, effective_from: effectiveDate, updated_by: userId },
-      { orchard_id: orchardId, job_type: 'runner',       hourly_rate: 24.00, piece_rate_eligible: false, piece_rate_per_bin: null,  effective_from: effectiveDate, updated_by: userId },
-      { orchard_id: orchardId, job_type: 'manager',      hourly_rate: 45.00, piece_rate_eligible: false, piece_rate_per_bin: null,  effective_from: effectiveDate, updated_by: userId },
-    ]);
-
-    if (wageError) {
-      console.error('[provision-orchard] wage_rates insert failed:', wageError);
-      // Rollback: eliminar settings, membership, orchard y usuario
-      await supabase.from('orchard_settings').delete().eq('orchard_id', orchardId);
-      await supabase.from('orchard_members').delete().eq('orchard_id', orchardId);
-      await supabase.from('orchards').delete().eq('id', orchardId);
-      await supabase.auth.admin.deleteUser(userId);
-      return err(500, 'Failed to create wage rates. Please try again.', headers);
+      return err(500, 'Failed to create harvest settings. Please try again.', headers);
     }
 
     // ── Step 6: Audit log (no-critico, no requiere rollback) ──────────────
