@@ -1,1 +1,43 @@
+#!/usr/bin/env bash
+set -e
+
+# ── Secret scan ────────────────────────────────────────────────────────────
+# Previene commitear claves hardcoded en código fuente y scripts.
+# Duplicado (con expansión) de la verificación de .github/workflows/security.yml
+# — ver audit 2026-04-22 CRITICAL-02 (regex previo era trivialmente bypasseable).
+#
+# Patrones:
+#   - JWT Supabase service_role (cualquier var asignada a "eyJ..." largo)
+#   - OpenAI sk-xxx
+#   - Anthropic sk-ant-xxx
+#   - Stripe sk_live_ / sk_test_
+#   - Slack xoxb- / xoxp-
+#   - AWS AKIA...
+#   - GitHub PAT ghp_
+#   - Genérico: *_PASSWORD|*_SECRET|*_KEY asignado a literal entre comillas (≥10 chars)
+
+STAGED="$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|js|jsx|cjs|mjs|sh|yml|yaml|json|md|sql)$' || true)"
+
+if [ -n "$STAGED" ]; then
+  PATTERNS='(eyJ[A-Za-z0-9_.-]{60,})|(sk-ant-[A-Za-z0-9-]{20,})|(sk-[A-Za-z0-9]{40,})|(sk_live_[A-Za-z0-9]{20,})|(sk_test_[A-Za-z0-9]{20,})|(xox[bpars]-[A-Za-z0-9-]{10,})|(AKIA[0-9A-Z]{16})|(ghp_[A-Za-z0-9]{30,})'
+  HITS="$(git diff --cached -U0 -- $STAGED | grep -E "^\+" | grep -vE "^\+\+\+" | grep -E "$PATTERNS" || true)"
+
+  # Segundo patrón: VAR_KEY|VAR_SECRET|VAR_PASSWORD = "literal-no-vacío" (excluye process.env / placeholders)
+  ASSIGN="$(git diff --cached -U0 -- $STAGED \
+    | grep -E "^\+" | grep -vE "^\+\+\+" \
+    | grep -E "[A-Z_]{3,}(KEY|SECRET|PASSWORD|TOKEN)[[:space:]]*[:=][[:space:]]*['\"][^'\"]{10,}['\"]" \
+    | grep -vE "process\.env\.|import\.meta\.env|PEGAR_AQUI|REPLACE_ME|YOUR_|CHANGE_?ME|\\.\\.\\.|tu-api-key|your-.*-key" || true)"
+
+  if [ -n "$HITS" ] || [ -n "$ASSIGN" ]; then
+    echo "❌ Posible secreto hardcoded detectado en el diff staged:"
+    [ -n "$HITS" ] && echo "$HITS"
+    [ -n "$ASSIGN" ] && echo "$ASSIGN"
+    echo ""
+    echo "Si es un falso positivo, revisa las reglas en .husky/pre-commit."
+    echo "Nunca uses --no-verify con secretos."
+    exit 1
+  fi
+fi
+
+# ── Lint ──────────────────────────────────────────────────────────────────
 npm run lint

@@ -4,8 +4,23 @@
  */
 const https = require('https');
 
-const PROJECT_REF = process.env.SUPABASE_PROJECT_REF || 'mcbtyaebetzvzvnxydpy';
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'PEGAR_AQUI_SERVICE_ROLE_KEY_DE_mcbtyaebetzvzvnxydpy';
+// SEGURIDAD: estas credenciales DEBEN venir por env. Fallo si faltan.
+const PROJECT_REF = process.env.SUPABASE_PROJECT_REF;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const missing = [];
+if (!PROJECT_REF) missing.push('SUPABASE_PROJECT_REF');
+if (!SERVICE_ROLE_KEY) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+if (missing.length > 0) {
+  console.error('❌ Faltan variables de entorno requeridas:');
+  missing.forEach((v) => console.error(`   - ${v}`));
+  process.exit(1);
+}
+if (!/^eyJ[A-Za-z0-9_.-]{20,}$/.test(SERVICE_ROLE_KEY)) {
+  console.error('❌ SUPABASE_SERVICE_ROLE_KEY no parece un JWT válido');
+  process.exit(1);
+}
+
 const BASE_URL = `https://${PROJECT_REF}.supabase.co`;
 
 const TEST_USERS = [
