@@ -101,16 +101,19 @@ describe('NZ Tax Rates — PAYE bracket structure', () => {
 });
 
 describe('NZ Tax Rates — KiwiSaver and ACC', () => {
-  it('all configs offer 5 KiwiSaver employee rates with 3% min', () => {
+  it('all configs offer 5 KiwiSaver employee rates', () => {
     NZ_TAX_YEARS.forEach(c => {
       expect(c.kiwisaverEmployeeRates).toHaveLength(5);
-      expect(c.kiwisaverEmployeeRates[0]).toBe(0.03);
     });
   });
 
-  it('employer KiwiSaver minimum is 3%', () => {
+  // KiwiSaver Amendment Act 2025: minimum rises 3% → 3.5% on 1 April 2026, and
+  // 3.5% → 4% on 1 April 2028. Check year-by-year rather than assuming uniform.
+  it('KiwiSaver minimum rate is year-specific (3% pre-2026, 3.5% from 2026-2027)', () => {
     NZ_TAX_YEARS.forEach(c => {
-      expect(c.kiwisaverEmployerMin).toBe(0.03);
+      const expected = new Date(c.effectiveFrom) >= new Date('2026-04-01') ? 0.035 : 0.03;
+      expect(c.kiwisaverEmployeeRates[0]).toBe(expected);
+      expect(c.kiwisaverEmployerMin).toBe(expected);
     });
   });
 

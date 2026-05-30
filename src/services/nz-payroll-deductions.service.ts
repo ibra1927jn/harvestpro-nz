@@ -23,7 +23,9 @@
 import { getCurrentTaxYear, getTaxYearConfig, type NZTaxYearConfig } from '@/config/nz-tax-rates';
 
 // ── Tipo exportado para compatibilidad ──────────────────
-export type KiwiSaverRate = 0.03 | 0.04 | 0.06 | 0.08 | 0.1;
+// 0.03 permanece válido para enrolments pre-2026-04-01 en transición hasta 2028-04-01
+// (KiwiSaver Amendment Act 2025). Nuevos enrolments desde 2026-04-01 parten de 0.035.
+export type KiwiSaverRate = 0.03 | 0.035 | 0.04 | 0.06 | 0.08 | 0.1;
 
 // ── Helper: obtener tasas vigentes (lazy, cacheado por dia) ──
 function rates(): NZTaxYearConfig {

@@ -110,8 +110,9 @@ const TAX_YEAR_2026_2027: NZTaxYearConfig = {
   accEarnerLevyRate: 0.016,
   accMaxLiableAnnual: 142_283,
 
-  kiwisaverEmployeeRates: [0.03, 0.04, 0.06, 0.08, 0.10],
-  kiwisaverEmployerMin: 0.03,
+  // KiwiSaver Amendment Act 2025: minimum 3% → 3.5% from 1 April 2026; 3.5% → 4% from 1 April 2028.
+  kiwisaverEmployeeRates: [0.035, 0.04, 0.06, 0.08, 0.10],
+  kiwisaverEmployerMin: 0.035,
 
   esctBrackets: ESCT_2026_27,
 

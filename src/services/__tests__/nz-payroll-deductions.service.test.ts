@@ -81,9 +81,13 @@ describe('nzPayrollDeductionsService', () => {
       expect(result.kiwisaverEmployee).toBeCloseTo(result.totalGross * 0.06, 2);
     });
 
-    it('KiwiSaver employer contribution is always 3%', () => {
+    it('KiwiSaver employer contribution matches current year minimum (3.5% from 1 April 2026)', () => {
       const result = nzPayrollDeductionsService.calculate(base);
-      expect(result.kiwisaverEmployer).toBeCloseTo(result.totalGross * 0.03, 2);
+      // KiwiSaver Amendment Act 2025: compulsory employer min rose 3% → 3.5% on 2026-04-01.
+      // Using the service's active tax-year config rather than hardcoding so the assertion
+      // tracks future changes (3.5% → 4% from 2028-04-01).
+      const expected = result.totalGross * nzPayrollDeductionsService.getCurrentRates().kiwisaverMin;
+      expect(result.kiwisaverEmployer).toBeCloseTo(expected, 2);
     });
 
     it('studentLoan is 0 when hasStudentLoan = false', () => {

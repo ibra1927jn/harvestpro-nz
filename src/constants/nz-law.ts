@@ -41,9 +41,15 @@ export const NZ_REST_BREAK_DURATION_MINUTES = 10;
 export const NZ_MEAL_BREAK_INTERVAL_HOURS = 4;
 export const NZ_MEAL_BREAK_DURATION_MINUTES = 30;
 
-/** KiwiSaver employee contribution rates available (3%, 4%, 6%, 8%, 10%) */
-export const NZ_KIWISAVER_RATES = [0.03, 0.04, 0.06, 0.08, 0.10] as const;
-export const NZ_KIWISAVER_EMPLOYER_MIN = 0.03;
+/**
+ * KiwiSaver employee contribution rates available for new enrolments.
+ * KiwiSaver Amendment Act 2025: min rose 3% → 3.5% from 1 April 2026,
+ * and will rise to 4% from 1 April 2028. Existing pre-2026 enrolments
+ * on 3% may remain until 2028-04-01 per transition provisions.
+ * Source of truth per tax-year is `src/config/nz-tax-rates.ts`.
+ */
+export const NZ_KIWISAVER_RATES = [0.035, 0.04, 0.06, 0.08, 0.10] as const;
+export const NZ_KIWISAVER_EMPLOYER_MIN = 0.035;
 
 /**
  * Default wage rates per job type — these are the DB fallback values

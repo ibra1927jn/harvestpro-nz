@@ -36,6 +36,14 @@ export interface AgreementInput {
   isRSE: boolean; // Recognised Seasonal Employer scheme worker
 }
 
+/** Format a KiwiSaver rate (e.g. 0.035) as a human-readable percentage with
+ * the minimum decimals required. 0.04 → "4%", 0.035 → "3.5%". */
+function formatKiwiSaverPct(rate: number): string {
+  const pct = rate * 100;
+  const text = Number.isInteger(pct) ? pct.toFixed(0) : pct.toFixed(1);
+  return `${text}%`;
+}
+
 export const employmentAgreementService = {
   /**
    * Generate a plain-text IEA from template + inputs.
@@ -92,8 +100,8 @@ ${input.isRSE ? 'Status:       RSE (Recognised Seasonal Employer Scheme)\n' : ''
 6. DEDUCTIONS
    - PAYE income tax (as per Tax Administration Act 1994)
    - ACC earner's levy (Accident Compensation Act 2001)
-   - KiwiSaver contribution: ${(input.kiwisaverRate * 100).toFixed(0)}% (employee contribution)
-   - Employer KiwiSaver contribution: 3% (compulsory)
+   - KiwiSaver contribution: ${formatKiwiSaverPct(input.kiwisaverRate)} (employee contribution)
+   - Employer KiwiSaver contribution: 3.5% (compulsory, KiwiSaver Amendment Act 2025, from 1 April 2026)
    ${input.isRSE ? '- Note: RSE workers may be exempt from KiwiSaver if visa < 12 months' : ''}
 
 7. LEAVE ENTITLEMENTS (Holidays Act 2003)
