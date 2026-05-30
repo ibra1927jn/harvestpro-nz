@@ -30,7 +30,7 @@ const NZ_CONSTANTS = {
     MAX_CONSECUTIVE_HOURS: 6,  // hours before mandatory longer break
     MAX_DAILY_HOURS: 13,       // recommended max daily hours
     HYDRATION_INTERVAL: 45,    // minutes between hydration reminders
-    PIECE_RATE: 3.50,          // NZD per bucket (default)
+    PIECE_RATE: 6.50,          // NZD per bucket (default fallback — matches NZ_DEFAULT_PIECE_RATE in src/constants/nz-law.ts)
 }
 
 interface ComplianceViolation {
@@ -74,15 +74,20 @@ serve(async (req) => {
 
         const { orchard_id, picker_ids } = ComplianceCheckSchema.parse(body)
 
-        // Get orchard settings for piece rate
-        const { data: orchard } = await supabase
-            .from('orchards')
-            .select('bucket_rate, min_wage_rate')
-            .eq('id', orchard_id)
+        // Get orchard settings for piece rate.
+        // Read from harvest_settings (canonical), not from `orchards` — the
+        // orchards table never had bucket_rate/min_wage_rate columns, so the
+        // prior read always returned undefined and fell back to stale
+        // NZ_CONSTANTS.PIECE_RATE (3.50 vs real 6.50), making the compliance
+        // shield display wrong numbers.
+        const { data: settings } = await supabase
+            .from('harvest_settings')
+            .select('piece_rate, min_wage_rate')
+            .eq('orchard_id', orchard_id)
             .single()
 
-        const pieceRate = orchard?.bucket_rate || NZ_CONSTANTS.PIECE_RATE
-        const minWage = orchard?.min_wage_rate || NZ_CONSTANTS.MINIMUM_WAGE
+        const pieceRate = settings?.piece_rate || NZ_CONSTANTS.PIECE_RATE
+        const minWage = Math.max(settings?.min_wage_rate || 0, NZ_CONSTANTS.MINIMUM_WAGE)
 
         // Get today in NZST
         const today = new Intl.DateTimeFormat('en-CA', {
