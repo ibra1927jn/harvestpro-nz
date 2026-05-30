@@ -135,6 +135,17 @@ describe('employmentAgreementService', () => {
       expect(text).toContain('RSE (Recognised Seasonal Employer Scheme)');
     });
 
+    it('default meal break is paid (Wages Protection Act 1983 s.5 fallback)', () => {
+      const text = employmentAgreementService.generate(base); // no mealBreakPaid set
+      expect(text).toContain('30-min paid meal break');
+      expect(text).not.toContain('30-min unpaid meal break');
+    });
+
+    it('meal break rendered as unpaid when mealBreakPaid = false', () => {
+      const text = employmentAgreementService.generate({ ...base, mealBreakPaid: false });
+      expect(text).toContain('30-min unpaid meal break');
+    });
+
     it('includes trial period clause when trialPeriodDays > 0', () => {
       const text = employmentAgreementService.generate({ ...base, trialPeriodDays: 30 });
       expect(text).toContain('Trial Period: 30 days');

@@ -122,7 +122,7 @@ serve(async (req) => {
         // Nota: bucket_rate = piece_rate en harvest_settings (mismo concepto, nombre legacy en código)
         const { data: settings, error: settingsError } = await supabase
             .from('harvest_settings')
-            .select('piece_rate, min_wage_rate')
+            .select('piece_rate, min_wage_rate, meal_break_paid')
             .eq('orchard_id', orchard_id)
             .single()
 
@@ -131,6 +131,9 @@ serve(async (req) => {
         }
 
         const { piece_rate: bucket_rate, min_wage_rate: stored_min_wage } = settings
+        // Wages Protection Act 1983 s.5: do not deduct unless configured false.
+        // Default true (paid break) when column is missing/null in pre-migration envs.
+        const meal_break_paid = settings.meal_break_paid !== false
 
         // Floor legal: Minimum Wage Order 2026, efectivo 1 April 2026
         // Garantía defensiva — la migración 20260412 ya lo corrige en DB,
@@ -171,8 +174,10 @@ serve(async (req) => {
             .gte('date', start_date)
             .lte('date', end_date)
 
-        // NZ Employment Relations Act 2000, s.69ZD:
-        // 30-minute paid meal break mandatory for shifts > 4 hours
+        // Employment Relations Act 2000 s.69ZD: 30-min meal break for shifts > 4h.
+        // Whether that break is paid or unpaid is set by the IEA; config in
+        // harvest_settings.meal_break_paid (default true per Wages Protection Act
+        // 1983 s.5 — no deduction without written consent).
         const MEAL_BREAK_HOURS = 0.5
         const MEAL_BREAK_THRESHOLD = 4 // hours
 
@@ -191,7 +196,7 @@ serve(async (req) => {
 
                 if (checkOut) {
                     const rawDayHours = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60)
-                    const dayHours = rawDayHours > MEAL_BREAK_THRESHOLD
+                    const dayHours = !meal_break_paid && rawDayHours > MEAL_BREAK_THRESHOLD
                         ? rawDayHours - MEAL_BREAK_HOURS
                         : rawDayHours
                     const prev = attendanceHoursMap.get(a.picker_id) || {

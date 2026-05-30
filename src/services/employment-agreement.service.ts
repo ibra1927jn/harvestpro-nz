@@ -34,6 +34,10 @@ export interface AgreementInput {
   kiwisaverRate: number;
   trialPeriodDays?: number; // Max 90 days
   isRSE: boolean; // Recognised Seasonal Employer scheme worker
+  /** Whether the 30-min meal break is paid. Mirrors harvest_settings.meal_break_paid.
+   * Defaults to true (paid) per Wages Protection Act 1983 s.5 — deductions require
+   * explicit IEA consent. */
+  mealBreakPaid?: boolean;
 }
 
 export const employmentAgreementService = {
@@ -105,7 +109,7 @@ ${input.isRSE ? 'Status:       RSE (Recognised Seasonal Employer Scheme)\n' : ''
 
 8. REST AND MEAL BREAKS (Employment Relations Act 2000, Part 6D)
    - 10-min paid rest break after every 2 hours worked
-   - 30-min unpaid meal break after every 4 hours worked
+   - 30-min ${input.mealBreakPaid === false ? 'unpaid' : 'paid'} meal break after every 4 hours worked
    - Breaks are not to be aggregated or taken at end of shift
 
 9. HEALTH AND SAFETY
