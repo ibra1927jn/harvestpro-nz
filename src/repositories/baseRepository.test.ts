@@ -130,15 +130,14 @@ describe('SupabaseRepository', () => {
     });
 
     describe('delete', () => {
-        it('soft-deletes by default', async () => {
+        // delete() was previously soft-delete by default via an
+        // `{ is_active: false } as unknown as Partial<T>` double-cast
+        // that compiled even for tables without `is_active`. It now
+        // always hard-deletes; callers that want soft semantics use
+        // `softDelete()` which is constrained to SoftDeletable rows.
+        it('hard-deletes by id', async () => {
             fromSpy.mockReturnValue(mockChain({ error: null }) as never);
             const result = await repo.delete('1');
-            expect(result.error).toBeNull();
-        });
-
-        it('hard-deletes when soft=false', async () => {
-            fromSpy.mockReturnValue(mockChain({ error: null }) as never);
-            const result = await repo.delete('1', 'id', false);
             expect(result.error).toBeNull();
         });
 
@@ -152,6 +151,21 @@ describe('SupabaseRepository', () => {
             fromSpy.mockImplementation(() => { throw new Error('Boom'); });
             const result = await repo.delete('1');
             expect(result.error).toBe('Boom');
+        });
+    });
+
+    describe('softDelete', () => {
+        it('updates is_active=false for soft-deletable rows', async () => {
+            fromSpy.mockReturnValue(mockChain({ error: null }) as never);
+            // TestRow has is_active, so the call compiles.
+            const result = await repo.softDelete('1');
+            expect(result.error).toBeNull();
+        });
+
+        it('returns error on failure', async () => {
+            fromSpy.mockReturnValue(mockChain({ error: { message: 'Soft delete error' } }) as never);
+            const result = await repo.softDelete('1');
+            expect(result.error).toBe('Soft delete error');
         });
     });
 

@@ -13,6 +13,11 @@ import { logger } from '@/utils/logger';
 import { supabase } from '@/services/supabase';
 import type { Tables } from '@/types/database.types';
 
+/** Rows that carry a soft-delete flag. Consumed by `softDelete()`. */
+export interface SoftDeletable {
+    is_active?: boolean | null;
+}
+
 export interface RepositoryResult<T> {
     data: T | null;
     error: string | null;
@@ -147,36 +152,67 @@ export class SupabaseRepository<T extends Record<string, unknown>> {
     }
 
     /**
-     * Soft-delete a row by setting is_active = false. Falls back to hard delete.
+     * Hard-delete a row by id. For soft-delete semantics, use `softDelete`
+     * — that path is typed against an `is_active` column on T so tables
+     * without that column cannot silently take the wrong write.
+     *
+     * Previously this method accepted a `soft = true` default and double-
+     * cast `{ is_active: false }` to `Partial<T>`, which compiled for
+     * every caller even when the table had no `is_active` column (the
+     * UPDATE then failed silently at runtime with an RLS-shaped error).
+     * CLAUDE.md strict mode forbids this double-cast pattern.
      */
-    async delete(id: string, idColumn = 'id', soft = true): Promise<{ error: string | null }> {
+    async delete(id: string, idColumn = 'id'): Promise<{ error: string | null }> {
         try {
-            if (soft) {
-                const { error } = await supabase
-                    .from(this.table)
-                    .update({ is_active: false } as unknown as Partial<T>)
-                    .eq(idColumn, id);
+            const { error } = await supabase
+                .from(this.table)
+                .delete()
+                .eq(idColumn, id);
 
-                if (error) {
-                    logger.error(`[Repository:${this.table}] soft-delete error:`, error);
-                    return { error: error.message };
-                }
-            } else {
-                const { error } = await supabase
-                    .from(this.table)
-                    .delete()
-                    .eq(idColumn, id);
-
-                if (error) {
-                    logger.error(`[Repository:${this.table}] hard-delete error:`, error);
-                    return { error: error.message };
-                }
+            if (error) {
+                logger.error(`[Repository:${this.table}] hard-delete error:`, error);
+                return { error: error.message };
             }
 
             return { error: null };
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Unknown error';
             logger.error(`[Repository:${this.table}] delete exception:`, message);
+            return { error: message };
+        }
+    }
+
+    /**
+     * Soft-delete a row by setting `is_active = false`. This method is only
+     * callable on repositories whose row type `T` declares an `is_active`
+     * column: the `this: SupabaseRepository<T & SoftDeletable>` parameter
+     * is a compile-time guard that rejects every other table at the call
+     * site rather than falling back to a double-cast that could silently
+     * misfire at runtime.
+     */
+    async softDelete(
+        this: SupabaseRepository<T & SoftDeletable>,
+        id: string,
+        idColumn = 'id',
+    ): Promise<{ error: string | null }> {
+        try {
+            // Cast is local to this one call and guarded by the `this`
+            // constraint above: the method cannot be invoked on a
+            // repository whose T lacks `is_active`, so the runtime UPDATE
+            // always targets a real column.
+            const { error } = await supabase
+                .from(this.table)
+                .update({ is_active: false } as Partial<T & SoftDeletable>)
+                .eq(idColumn, id);
+
+            if (error) {
+                logger.error(`[Repository:${this.table}] soft-delete error:`, error);
+                return { error: error.message };
+            }
+            return { error: null };
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Unknown error';
+            logger.error(`[Repository:${this.table}] softDelete exception:`, message);
             return { error: message };
         }
     }
