@@ -39,6 +39,7 @@ import { authContextRepository } from '@/repositories/auth-context.repository';
 import { loadUserProfile } from '@/hooks/useAuthSession';
 import { clearDeviceTrust } from '../services/deviceTrust.service';
 import { edgeFunctionWarmupService } from '../services/edgeFunctionWarmup.service';
+import { clearBrowserStateOnLogout } from '@/utils/clearBrowserState';
 
 // Types extracted to auth.types.ts for reuse
 import type { AuthState, AuthContextType } from './auth.types';
@@ -272,6 +273,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         logger.error('[Auth] Dexie wipe failed:', e);
       }
       localStorage.clear();
+      // Cross-user PII leak fix: previously Dexie + localStorage were cleared
+      // but the SW Cache Storage (Workbox precache + runtime API caches),
+      // react-query in-memory cache, and sessionStorage were left intact.
+      // On a shared/BYOD device the next user saw the previous session's
+      // dashboards until the caches expired. Privacy Act 2020 IPP 11.
+      await clearBrowserStateOnLogout();
       isSigningOutRef.current = false;
       // 🔧 V26: Force hard reload to re-instantiate Dexie engine
       // Without this, the JS db instance is a zombie pointing to deleted IndexedDB
