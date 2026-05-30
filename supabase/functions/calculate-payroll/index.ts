@@ -60,10 +60,12 @@ interface PickerBreakdown {
     total_earnings: number
     is_below_minimum: boolean
     // Holidays Act 2003 s.60: día alternativo en lieu por cada public holiday
-    // trabajado que habría sido un día hábil para el picker. Simplificación
-    // MVP: contamos fechas únicas con horas > 0; el flag "otherwise working
-    // day" lo asumimos true para pickers estacionales.
-    alternative_holidays_owed: number
+    // trabajado que habría sido un día hábil para el picker. Persistido en
+    // public.alternative_holidays con PK (picker_id, worked_on) — inserts
+    // idempotent via ON CONFLICT DO NOTHING, so re-running payroll or
+    // overlapping date ranges no longer double-count the same alt-day.
+    alternative_holidays_owed: number   // outstanding balance (taken_at IS NULL)
+    alternative_holidays_new: number    // rows actually inserted by this run
 }
 
 interface PayrollResult {
@@ -80,6 +82,8 @@ interface PayrollResult {
         total_earnings: number
         // Suma de alternative_holidays_owed across pickers (Holidays Act s.60).
         total_alternative_holidays_owed: number
+        // Rows inserted to public.alternative_holidays by this run only.
+        total_alternative_holidays_new: number
     }
     compliance: {
         workers_below_minimum: number
@@ -242,25 +246,31 @@ serve(async (req) => {
             }
         })
 
-        // 4. Calcular earnings y compliance
-        const picker_breakdown: PickerBreakdown[] = []
-        let total_buckets = 0
-        let total_hours = 0
-        let total_piece_rate_earnings = 0
-        let total_top_up = 0
-        let total_alternative_holidays_owed = 0
-        let workers_below_minimum = 0
+        // 4a. First pass — compute hours split and collect every (picker_id,
+        // worked_on) pair for the Holidays Act s.60 ledger. We persist
+        // alt-days rather than recompute per run: re-running payroll or an
+        // overlapping date range no longer double-counts.
+        interface PickerRowIntermediate {
+            picker_id: string
+            picker_name: string
+            buckets: number
+            hours_ordinary: number
+            hours_holiday: number
+            alt_dates: string[]
+        }
+        const rows: PickerRowIntermediate[] = []
+        const ledgerInserts: { picker_id: string; orchard_id: string; worked_on: string }[] = []
 
         for (const [/* key */, stats] of pickerStatsMap) {
             let hours_ordinary: number
             let hours_holiday: number
-            let alternative_holidays_owed: number
+            let alt_dates: string[]
             const attendanceSplit = attendanceHoursMap.get(stats.picker_id)
 
             if (attendanceSplit && (attendanceSplit.ordinary > 0 || attendanceSplit.holiday > 0)) {
                 hours_ordinary = attendanceSplit.ordinary
                 hours_holiday = attendanceSplit.holiday
-                alternative_holidays_owed = attendanceSplit.altDates.size
+                alt_dates = [...attendanceSplit.altDates]
             } else {
                 // Fallback por scan time — no hay forma robusta de split
                 // ordinary/holiday sin attendance records. Aplicamos al día del
@@ -273,24 +283,94 @@ serve(async (req) => {
                 if (isPublicHoliday(scanDateNZ)) {
                     hours_ordinary = 0
                     hours_holiday = Math.max(0, fallback_hours)
-                    alternative_holidays_owed = fallback_hours > 0 ? 1 : 0
+                    alt_dates = fallback_hours > 0 ? [scanDateNZ.slice(0, 10)] : []
                 } else {
                     hours_ordinary = Math.max(0, fallback_hours)
                     hours_holiday = 0
-                    alternative_holidays_owed = 0
+                    alt_dates = []
                 }
             }
 
-            const hours_worked = hours_ordinary + hours_holiday
-            const piece_rate_earnings = stats.buckets * bucket_rate
+            rows.push({
+                picker_id: stats.picker_id,
+                picker_name: stats.picker_name,
+                buckets: stats.buckets,
+                hours_ordinary,
+                hours_holiday,
+                alt_dates,
+            })
+            for (const d of alt_dates) {
+                ledgerInserts.push({ picker_id: stats.picker_id, orchard_id, worked_on: d })
+            }
+        }
+
+        // 4b. Upsert into alternative_holidays — idempotent by PK
+        // (picker_id, worked_on). With ignoreDuplicates: true, the returned
+        // rows are ONLY those newly inserted (Supabase skips conflicts), so
+        // we can attribute "new this run" per picker without a second query.
+        let newAltRowsThisRun = 0
+        const newAltByPicker = new Map<string, number>()
+        if (ledgerInserts.length > 0) {
+            const { data: inserted, error: ledgerErr } = await supabase
+                .from('alternative_holidays')
+                .upsert(ledgerInserts, {
+                    onConflict: 'picker_id,worked_on',
+                    ignoreDuplicates: true,
+                })
+                .select('picker_id')
+            if (ledgerErr) {
+                // Non-fatal: log and continue. Outstanding count below will be 0
+                // for this run in that case, but ordinary/holiday hours still
+                // compute correctly.
+                console.warn('[Payroll] alt-holiday ledger upsert failed — reporting 0 for new:', ledgerErr.message)
+            } else {
+                for (const row of inserted ?? []) {
+                    newAltByPicker.set(row.picker_id, (newAltByPicker.get(row.picker_id) ?? 0) + 1)
+                }
+                newAltRowsThisRun = inserted?.length ?? 0
+            }
+        }
+
+        // 4c. Read outstanding balance per picker (taken_at IS NULL) in one
+        // query — this is the number the payroll provider / UI wants to show.
+        const pickerIds = rows.map(r => r.picker_id)
+        const outstandingByPicker = new Map<string, number>()
+        if (pickerIds.length > 0) {
+            const { data: outstanding, error: outErr } = await supabase
+                .from('alternative_holidays')
+                .select('picker_id')
+                .eq('orchard_id', orchard_id)
+                .is('taken_at', null)
+                .in('picker_id', pickerIds)
+            if (outErr) {
+                console.warn('[Payroll] alt-holiday outstanding read failed:', outErr.message)
+            } else {
+                for (const r of outstanding ?? []) {
+                    outstandingByPicker.set(r.picker_id, (outstandingByPicker.get(r.picker_id) ?? 0) + 1)
+                }
+            }
+        }
+
+        // 4d. Second pass — finalize breakdown + compliance using the
+        // persisted outstanding count.
+        const picker_breakdown: PickerBreakdown[] = []
+        let total_buckets = 0
+        let total_hours = 0
+        let total_piece_rate_earnings = 0
+        let total_top_up = 0
+        let total_alternative_holidays_owed = 0
+        let workers_below_minimum = 0
+
+        for (const r of rows) {
+            const hours_worked = r.hours_ordinary + r.hours_holiday
+            const piece_rate_earnings = r.buckets * bucket_rate
             const hourly_rate = hours_worked > 0 ? piece_rate_earnings / hours_worked : 0
             // Holidays Act 2003 s.50: time-and-a-half para hours trabajadas en public holiday.
             const minimum_required =
-                hours_ordinary * min_wage_rate +
-                hours_holiday * min_wage_rate * NZ_PUBLIC_HOLIDAY_RATE
+                r.hours_ordinary * min_wage_rate +
+                r.hours_holiday * min_wage_rate * NZ_PUBLIC_HOLIDAY_RATE
             const top_up_required = Math.max(0, minimum_required - piece_rate_earnings)
             const total_earnings = piece_rate_earnings + top_up_required
-            // Effective floor según composición (ponderada por horas).
             const effective_floor = hours_worked > 0 ? minimum_required / hours_worked : min_wage_rate
             const is_below_minimum = hourly_rate < effective_floor && hours_worked > 0
 
@@ -298,27 +378,31 @@ serve(async (req) => {
                 workers_below_minimum++
             }
 
+            const outstanding_for_picker = outstandingByPicker.get(r.picker_id) ?? 0
+            const new_for_picker = newAltByPicker.get(r.picker_id) ?? 0
+
             picker_breakdown.push({
-                picker_id: stats.picker_id,
-                picker_name: stats.picker_name,
-                buckets: stats.buckets,
+                picker_id: r.picker_id,
+                picker_name: r.picker_name,
+                buckets: r.buckets,
                 hours_worked: parseFloat(hours_worked.toFixed(2)),
-                hours_ordinary: parseFloat(hours_ordinary.toFixed(2)),
-                hours_holiday: parseFloat(hours_holiday.toFixed(2)),
+                hours_ordinary: parseFloat(r.hours_ordinary.toFixed(2)),
+                hours_holiday: parseFloat(r.hours_holiday.toFixed(2)),
                 piece_rate_earnings: parseFloat(piece_rate_earnings.toFixed(2)),
                 hourly_rate: parseFloat(hourly_rate.toFixed(2)),
                 minimum_required: parseFloat(minimum_required.toFixed(2)),
                 top_up_required: parseFloat(top_up_required.toFixed(2)),
                 total_earnings: parseFloat(total_earnings.toFixed(2)),
                 is_below_minimum,
-                alternative_holidays_owed
+                alternative_holidays_owed: outstanding_for_picker,
+                alternative_holidays_new: new_for_picker,
             })
 
-            total_buckets += stats.buckets
+            total_buckets += r.buckets
             total_hours += hours_worked
             total_piece_rate_earnings += piece_rate_earnings
             total_top_up += top_up_required
-            total_alternative_holidays_owed += alternative_holidays_owed
+            total_alternative_holidays_owed += outstanding_for_picker
         }
 
         const total_earnings = total_piece_rate_earnings + total_top_up
@@ -336,7 +420,8 @@ serve(async (req) => {
                 total_piece_rate_earnings: parseFloat(total_piece_rate_earnings.toFixed(2)),
                 total_top_up: parseFloat(total_top_up.toFixed(2)),
                 total_earnings: parseFloat(total_earnings.toFixed(2)),
-                total_alternative_holidays_owed
+                total_alternative_holidays_owed,
+                total_alternative_holidays_new: newAltRowsThisRun,
             },
             compliance: {
                 workers_below_minimum,
