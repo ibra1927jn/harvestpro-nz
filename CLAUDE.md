@@ -70,7 +70,8 @@ Version: 9.9.0
 - Supabase RLS activo: NUNCA bypass de seguridad a nivel de row
 - NUNCA modificar migraciones existentes, solo crear nuevas
 - .env y .env.local NUNCA se commitean (hay .env.example como referencia)
-- Husky + lint-staged activo en pre-commit (lint + test)
+- Husky en pre-commit ejecuta `npm run lint` (ver .husky/pre-commit)
+- Verificacion completa antes de push: skill `/verify` (lint + test + build). Ver .claude/
 - Codigo en ingles, comentarios en espanol
 - Commits en ingles: tipo(scope): descripcion breve
 - Ver SECURITY_RULES.md para reglas de seguridad obligatorias
