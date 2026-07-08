@@ -18,9 +18,16 @@ case "$tool" in
 
     # 1) git push directo a main/master (solo se trabaja en ramas de feature).
     if printf '%s' "$cmd" | grep -qiE 'git[[:space:]]+.*push'; then
+      # 1a) main/master mencionado explicitamente en el comando.
       if printf '%s' "$cmd" | grep -qiE '(^|[[:space:]])(origin[[:space:]]+)?(main|master)([[:space:]:]|$)'; then
         block "git push a main/master no permitido. Usa la rama de feature designada."
       fi
+      # 1b) push "pelado" (sin destino) estando en main/master: cierra el hueco de 1a.
+      branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+      if printf '%s' "$branch" | grep -qiE '^(main|master)$'; then
+        block "estas en '$branch': git push empujaria a main/master. Cambia a una rama de feature."
+      fi
+      # 1c) --force / -f.
       if printf '%s' "$cmd" | grep -qiE '(--force([[:space:]=]|$)|(^|[[:space:]])-[a-zA-Z]*f)'; then
         block "git push --force no permitido desde el harness."
       fi
