@@ -45,8 +45,13 @@ mismas reglas. Basado en las best-practices de Anthropic y el concepto de
 
 - **`skills/new-migration/`, `skills/new-edge-function/`, `skills/rls-check/`** —
   Workflows de dominio Supabase (naming, RLS obligatorio, patron de seguridad de
-  edge functions, auditoria RLS). Las dos primeras son manuales
+  edge functions, auditoria RLS **estatica**). Las dos primeras son manuales
   (`disable-model-invocation`); `/rls-check` puede activarse sola.
+
+- **`skills/db-verify/`** — Loop de verificacion de base de datos: levanta un
+  Postgres real, aplica shim + las 60 migraciones y corre tests de comportamiento
+  RLS (`npm run test:rls`, ver `tests/rls/`). Cierra el hueco de que `npm test`
+  mockea Supabase y nunca ejerce una politica RLS real. Usar al tocar migraciones.
 
 - **`agents/`** — Subagentes especializados (contexto aislado, tools acotadas):
   - `security-reviewer` — vulnerabilidades, secretos, crypto, auth.

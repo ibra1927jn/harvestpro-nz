@@ -15,6 +15,7 @@ Version: 9.9.0
 - `npm run lint:fix` — ESLint autofix
 - `npm run format` — Prettier
 - `npm run test:e2e` — Playwright
+- `npm run test:rls` — Tests RLS contra Postgres real (skill /db-verify)
 - `npm run test:coverage` — Coverage (thresholds: 70/70/60/70)
 - `npx cap sync && npx cap run android` — Build nativo Android
 
@@ -42,7 +43,7 @@ Version: 9.9.0
 - `src/constants/` — nz-law.ts (compliance legal NZ)
 
 ### Supabase
-- `supabase/migrations/` — 9 activas (000_baseline + 8 incrementales)
+- `supabase/migrations/` — 60 activas (+ archive/ historico). Verificar cambios RLS con `npm run test:rls` (skill /db-verify)
 - `supabase/functions/` — 11 Edge Functions: approve-timesheet, calculate-payroll, check-compliance, detect-anomalies, manage-admin, manage-attendance, provision-orchard, record-bucket, send-push, submit-audit-log, api-v1
 - `supabase/functions/_shared/` — cors.ts, security.ts (rate limit, Zod validation, CORS allowlist)
 - `supabase/seeds/` — 6 seed files
