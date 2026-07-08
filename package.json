@@ -15,6 +15,7 @@
     "test": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vitest run",
     "test:watch": "vitest",
     "test:coverage": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vitest run --coverage",
+    "test:rls": "bash tests/rls/rls.test.sh",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test:e2e": "npx playwright test",

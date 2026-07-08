@@ -79,8 +79,10 @@ supabase/.temp/
 # Generated outputs (should not be tracked)
 tsc-errors.txt
 
-# Claude Code local config
-.claude/
+# Claude Code: se versiona la config de equipo (.claude/settings.json,
+# hooks, skills, agents); solo se ignora la config local/personal.
+.claude/settings.local.json
+.claude/*.local.json
 
 # Temporary analysis files
 .context.md
