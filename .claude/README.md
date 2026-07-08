@@ -27,23 +27,33 @@ mismas reglas. Basado en las best-practices de Anthropic y el concepto de
     (mismos valores que `.github/workflows/ci.yml`).
   - `hooks`: registra el SessionStart hook.
 
-- **`hooks/session-start.sh`** — Al iniciar sesion: instala deps si faltan
-  (`npm ci --ignore-scripts`), fija los env placeholders y recuerda los comandos
-  de verificacion. Idempotente.
+- **`hooks/session-start.sh`** (SessionStart) — Al iniciar sesion: instala deps
+  si faltan (`npm ci --ignore-scripts`), fija los env placeholders y recuerda los
+  comandos de verificacion. Idempotente.
+
+- **`hooks/pre-tool-use.sh`** (PreToolUse) — Guarda determinista que refuerza
+  SECURITY_RULES.md: bloquea `git push` a main/master, `git push --force`,
+  `rm -rf` sobre rutas peligrosas, escritura de `.env*`, y edicion de migraciones
+  existentes. Bloquea con exit 2 y explica el motivo.
+
+- **`hooks/post-edit-lint.sh`** (PostToolUse) — Corre `eslint --fix` sobre cada
+  archivo `.ts/.tsx` editado dentro de `src/`. No bloquea el flujo.
 
 - **`skills/verify/SKILL.md`** — El "definition of done": `npm run lint` -> `npm
   test` -> `npm run build`, mostrando evidencia real. Claude lo activa solo al
   terminar un cambio, o se invoca con `/verify`.
 
+- **`skills/new-migration/`, `skills/new-edge-function/`, `skills/rls-check/`** —
+  Workflows de dominio Supabase (naming, RLS obligatorio, patron de seguridad de
+  edge functions, auditoria RLS). Las dos primeras son manuales
+  (`disable-model-invocation`); `/rls-check` puede activarse sola.
+
+- **`agents/`** — Subagentes especializados (contexto aislado, tools acotadas):
+  - `security-reviewer` — vulnerabilidades, secretos, crypto, auth.
+  - `supabase-rls-reviewer` — cobertura RLS por rol, coherencia con edge functions.
+  - `test-writer` — tests Vitest siguiendo los patrones del repo.
+
 ## Config local (no versionada)
 
 Preferencias o secretos personales van en `settings.local.json` (ignorado por
 git). No commitees credenciales reales aqui.
-
-## Como ampliar (roadmap)
-
-Cuando haga falta mas control determinista, se pueden anadir:
-- `hooks/pre-tool-use.sh` (PreToolUse): bloquear push a main, `rm -rf`, secretos.
-- `hooks/post-edit-lint.sh` (PostToolUse): `eslint --fix` tras cada edicion.
-- `agents/` : subagentes (security-reviewer, supabase-rls-reviewer, test-writer).
-- `skills/` de dominio: `/new-migration`, `/new-edge-function`, `/rls-check`.
