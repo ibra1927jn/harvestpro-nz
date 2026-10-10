@@ -38,7 +38,7 @@ jobs:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.placeholder-key-for-ci-tests-only
 
-  build-deploy:
+  build:
     needs: [test]
     runs-on: ubuntu-latest
     if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name == 'push'
@@ -58,19 +58,12 @@ jobs:
 
       - name: Build
         run: npm run build --if-present
+        env:
+          VITE_SUPABASE_URL: https://placeholder.supabase.co
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.placeholder-key-for-ci-tests-only
 
-      - name: Deploy to Hetzner
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: root
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          script: |
-            cd /root/repos/${{ github.event.repository.name }}
-            git config pull.rebase true
-            git pull origin ${{ github.ref_name }} || git reset --hard origin/${{ github.ref_name }}
-            npm ci --ignore-scripts
-            npm run build --if-present
+      # Sin despliegue automático: el proyecto corre en Supabase local (Docker).
+      # Los antiguos deploys a Hetzner (SSH) y Vercel se retiraron el 2026-10-10.
 
       - name: Notify Telegram Success
         if: success()
@@ -78,7 +71,7 @@ jobs:
           curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
             -d parse_mode=HTML \
-            -d "text=✅ <b>${{ github.event.repository.name }}</b> CI/CD passed
+            -d "text=✅ <b>${{ github.event.repository.name }}</b> CI passed
           📝 ${{ github.event.head_commit.message }}
           🌿 Branch: ${{ github.ref_name }}"
 
@@ -88,6 +81,6 @@ jobs:
           curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
             -d parse_mode=HTML \
-            -d "text=❌ <b>${{ github.event.repository.name }}</b> CI/CD FAILED
+            -d "text=❌ <b>${{ github.event.repository.name }}</b> CI FAILED
           🌿 Branch: ${{ github.ref_name }}
           🔗 https://github.com/ibra1927jn/${{ github.event.repository.name }}/actions"

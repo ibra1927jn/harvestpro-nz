@@ -86,9 +86,10 @@ Version: 9.9.0
 8 roles: admin, manager, team_leader, runner, qc_inspector, hr_admin, payroll_admin, logistics
 
 ## CI/CD
-- 5 workflows en .github/workflows/: ci.yml, deploy-production.yml, deploy-staging.yml, security.yml, backup.yml
-- CI: lint → test → build → deploy (Hetzner via SSH)
-- Deploy production: test → build → Vercel
+- 2 workflows en .github/workflows/: ci.yml, security.yml
+- CI: lint → test (5 shards) → build. Sin despliegue automático.
+- Entorno real: Supabase local en Docker (`supabase start`) + `npm run dev`. Los deploys a Hetzner y Vercel se retiraron el 2026-10-10.
+- Seeds para local, en orden: seed_00_local_bootstrap → seed_2weeks_local → seed_role_users
 - Security: OWASP ZAP scan
 - Tests en CI necesitan VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY como env vars (placeholders OK)
 
