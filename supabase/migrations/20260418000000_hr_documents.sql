@@ -46,8 +46,21 @@ VALUES ('hr-documents', 'hr-documents', false)
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage RLS: HR/admin/manager full access
-DROP POLICY IF EXISTS "hr_docs_hr_manage" ON storage.objects;
-CREATE POLICY "hr_docs_hr_manage" ON storage.objects
-  USING (bucket_id = 'hr-documents' AND EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND u.role IN ('hr_admin','admin','manager')));
+-- storage.objects pertenece a supabase_storage_admin; en CLI local las migraciones no son owner.
+-- Se intenta como ese rol y, si no hay permiso, se avisa en vez de abortar (aplicar via Studio en ese caso).
+DO $$
+BEGIN
+  BEGIN
+    SET LOCAL ROLE supabase_storage_admin;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+  DROP POLICY IF EXISTS "hr_docs_hr_manage" ON storage.objects;
+  CREATE POLICY "hr_docs_hr_manage" ON storage.objects
+    USING (bucket_id = 'hr-documents' AND EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND u.role IN ('hr_admin','admin','manager')));
+  RESET ROLE;
+EXCEPTION WHEN insufficient_privilege THEN
+  RESET ROLE;
+  RAISE NOTICE 'hr_docs_hr_manage: sin permiso sobre storage.objects, crear la policy desde Studio';
+END $$;
 
 COMMENT ON TABLE public.hr_documents IS 'HR document uploads: contracts, visas, certs. Private storage bucket "hr-documents". RLS: hr_admin/admin/manager full, user self-read.';
