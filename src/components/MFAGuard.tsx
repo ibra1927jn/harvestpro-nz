@@ -28,7 +28,12 @@ interface MFAGuardProps {
 }
 
 // Roles que acceden a nómina, contratos, o configuración global — MFA obligatorio
-const MFA_REQUIRED_ROLES = new Set(['manager', 'admin', 'payroll_admin', 'hr_admin']);
+// Desactivable SOLO en desarrollo con VITE_MFA_ENFORCE=false en .env.local.
+// En build de produccion (import.meta.env.PROD) se ignora y el MFA siempre se exige.
+const MFA_ENFORCED = import.meta.env.PROD || import.meta.env.VITE_MFA_ENFORCE !== 'false';
+const MFA_REQUIRED_ROLES = new Set(
+  MFA_ENFORCED ? ['manager', 'admin', 'payroll_admin', 'hr_admin'] : []
+);
 
 export function MFAGuard({ children, deviceTrustTtlHours = DEFAULT_TTL_HOURS }: MFAGuardProps) {
   const { currentRole, isAuthenticated, user } = useAuth();
