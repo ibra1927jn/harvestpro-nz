@@ -15,10 +15,10 @@ describe('PayWeekDetail', () => {
             days: [{
                 date: '2026-10-12',
                 segments: [
-                    { orchardId: 'A', checkIn: '2026-10-11T18:00:00Z', checkOut: '2026-10-11T22:00:00Z', open: false, breakStart: null, grossHours: 4 },
-                    { orchardId: 'B', checkIn: '2026-10-11T22:30:00Z', checkOut: '2026-10-12T03:30:00Z', open: false, breakStart: null, grossHours: 5 },
+                    { orchardId: 'A', checkIn: '2026-10-11T18:00:00Z', checkOut: '2026-10-11T22:00:00Z', open: false, breakStart: null, grossHours: 4, travelHours: 0.25 },
+                    { orchardId: 'B', checkIn: '2026-10-11T22:30:00Z', checkOut: '2026-10-12T03:30:00Z', open: false, breakStart: null, grossHours: 5, travelHours: 0.25 },
                 ],
-                hours: 8.5, breakMinutes: 30, buckets: 30, bucketsByVariety: { 'Royal Gala': 20, Braeburn: 10 },
+                hours: 9, breakMinutes: 30, travelMinutes: 30, buckets: 30, bucketsByVariety: { 'Royal Gala': 20, Braeburn: 10 },
                 pieceEarnings: 210, topUp: 0, total: 210, belowMinimum: false, estimated: false, isPublicHoliday: false,
             }],
         }} />);
@@ -26,5 +26,7 @@ describe('PayWeekDetail', () => {
         expect(screen.getByText(/Mon, 12 Oct/)).toBeInTheDocument();
         expect(screen.getByText('11:30')).toBeInTheDocument();
         expect(screen.getByText('20 Royal Gala · 10 Braeburn')).toBeInTheDocument();
+        expect(screen.getByText(/Travel \(paid/)).toBeInTheDocument();
+        expect(screen.getAllByText('0.25')).toHaveLength(2);
     });
 });

@@ -58,24 +58,27 @@ export const PayWeekDetail: React.FC<{ picker: PickerBreakdown; onClose: () => v
                                             <th className="text-left font-bold py-1">Orchard</th>
                                             <th className="text-left font-bold py-1">In</th>
                                             <th className="text-left font-bold py-1">Out</th>
-                                            <th className="text-right font-bold py-1">Gross h</th>
+                                            <th className="text-right font-bold py-1">Worked h</th>
+                                            <th className="text-right font-bold py-1">Travel h</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {d.segments.length === 0 ? (
-                                            <tr><td colSpan={4} className="py-1 text-slate-500">No check-in · hours estimated from scans</td></tr>
+                                            <tr><td colSpan={5} className="py-1 text-slate-500">No check-in · hours estimated from scans</td></tr>
                                         ) : d.segments.map((s, i) => (
                                             <tr key={i} className="text-slate-700">
                                                 <td className="py-1 font-semibold">{s.orchardId ? (orchards[s.orchardId] ?? s.orchardId.slice(0, 8)) : '—'}</td>
                                                 <td className="py-1">{nzTime(s.checkIn)}</td>
                                                 <td className="py-1">{nzTime(s.checkOut)}{s.open && <span className="ml-1 text-amber-600 font-bold">(open)</span>}</td>
                                                 <td className="py-1 text-right">{s.grossHours.toFixed(2)}</td>
+                                                <td className="py-1 text-right">{(s.travelHours ?? 0) > 0 ? (s.travelHours ?? 0).toFixed(2) : '—'}</td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
                                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
                                     <span>Break (unpaid): <b>{d.breakMinutes} min</b></span>
+                                    {(d.travelMinutes ?? 0) > 0 && <span>Travel (paid, half to each orchard): <b>{d.travelMinutes} min</b></span>}
                                     <span>Paid hours: <b>{d.hours.toFixed(2)}</b></span>
                                     <span>Buckets: <b>{Object.entries(d.bucketsByVariety).map(([v, n]) => `${n} ${v}`).join(' · ') || '0'}</b></span>
                                     <span>Piece: <b>{money(d.pieceEarnings)}</b></span>

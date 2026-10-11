@@ -267,7 +267,7 @@ describe('payForRange — varios tramos y variedades', () => {
     const t = (hhmm: string) => `${d1}T${hhmm}:00+13:00`;
     const now = new Date('2026-10-07T12:00:00+13:00');
 
-    it('dos huertos el mismo día: suma tramos, descanso una vez, viaje no pagado, complemento del día entero', () => {
+    it('dos huertos el mismo día: suma tramos y trayecto, descanso una vez, complemento del día entero', () => {
         const attendance = [
             { pickerId: 'p1', date: d1, orchardId: 'A', checkIn: t('07:00'), checkOut: t('11:00') },
             { pickerId: 'p1', date: d1, orchardId: 'B', checkIn: t('11:30'), checkOut: t('16:30') },
@@ -278,17 +278,20 @@ describe('payForRange — varios tramos y variedades', () => {
             ...Array.from({ length: 10 }, () => ({ pickerId: 'p1', scannedAt: t('13:00'), orchardId: 'B', variety: 'Braeburn', pieceRate: 8 })),
         ];
         const [r] = payForRange({ attendance, buckets, pieceRate: 6.5, minWage: 23.95, now });
-        // 4 h + 5 h = 9 h brutas − 30 min = 8.5 h (los 30 min de viaje no cuentan)
-        expect(r.hours).toBe(8.5);
+        // 4 h + 30 min de trayecto + 5 h = 9.5 h brutas − 30 min = 9 h
+        expect(r.hours).toBe(9);
         expect(r.days).toBe(1);
         expect(r.pieceEarnings).toBe(210); // 130 + 80
-        // Mínimo del día: 8.5 × 23.95 = 203.58 → por cubetas ya lo supera
-        expect(r.topUp).toBe(0);
-        expect(r.total).toBe(210);
+        // Mínimo del día: 9 × 23.95 = 215.55 → complemento 5.55
+        expect(r.topUp).toBe(5.55);
+        expect(r.total).toBe(215.55);
         const day = r.dayDetails[0];
         expect(day.segments.map(s => s.orchardId)).toEqual(['A', 'B']);
         expect(day.bucketsByVariety).toEqual({ 'Royal Gala': 20, Braeburn: 10 });
         expect(day.breakMinutes).toBe(30);
+        expect(day.travelMinutes).toBe(30);
+        // El trayecto se reparte: 15 min a cada huerto
+        expect(day.segments.map(s => s.travelHours)).toEqual([0.25, 0.25]);
         expect(day.estimated).toBe(false);
     });
 
@@ -303,7 +306,7 @@ describe('payForRange — varios tramos y variedades', () => {
             { pickerId: 'p1', scannedAt: t('12:00'), orchardId: 'B', pieceRate: 6.5 },
         ];
         const [r] = payForRange({ attendance, buckets, pieceRate: 6.5, minWage: 23.95, now });
-        // 7.5 h × 23.95 = 179.63 < 31 × 6.5 = 201.5
+        // (8 h + 0.5 trayecto − 0.5) × 23.95 = 191.6 < 31 × 6.5 = 201.5
         expect(r.topUp).toBe(0);
     });
 
@@ -313,7 +316,8 @@ describe('payForRange — varios tramos y variedades', () => {
             { pickerId: 'p1', date: d1, orchardId: 'B', checkIn: t('10:30'), checkOut: t('15:30'), breakStart: t('12:00'), breakMinutes: 30 },
         ];
         const [r] = payForRange({ attendance, buckets: [], pieceRate: 6.5, minWage: 23.95, now });
-        expect(r.hours).toBe(7.5);
+        // 3 h + 30 min de trayecto + 5 h − 30 min de descanso
+        expect(r.hours).toBe(8);
     });
 
     it('cubeta sin precio propio usa el general', () => {
@@ -324,6 +328,20 @@ describe('payForRange — varios tramos y variedades', () => {
         const attendance = [{ pickerId: 'p1', date: d1, checkIn: t('08:00'), checkOut: t('10:00') }];
         const [r] = payForRange({ attendance, buckets, pieceRate: 6.5, minWage: 1, now });
         expect(r.pieceEarnings).toBe(16.5);
+    });
+});
+
+describe('payForRange — trayecto', () => {
+    const d1 = '2026-10-05';
+    const t = (hhmm: string) => `${d1}T${hhmm}:00+13:00`;
+    it('salir y volver al MISMO huerto no paga el hueco', () => {
+        const attendance = [
+            { pickerId: 'p1', date: d1, orchardId: 'A', checkIn: t('07:00'), checkOut: t('10:00') },
+            { pickerId: 'p1', date: d1, orchardId: 'A', checkIn: t('12:00'), checkOut: t('14:00') },
+        ];
+        const [r] = payForRange({ attendance, buckets: [], pieceRate: 6.5, minWage: 23.95, now: new Date('2026-10-07T12:00:00+13:00') });
+        expect(r.dayDetails[0].travelMinutes).toBe(0);
+        expect(r.hours).toBe(4.5); // 5 h − 30 min
     });
 });
 

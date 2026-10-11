@@ -306,6 +306,8 @@ export interface PaySegment {
     open: boolean;
     breakStart: string | null;
     grossHours: number;
+    /** Horas de trayecto que se cargan a este tramo (mitad de cada viaje) */
+    travelHours: number;
 }
 
 /** Detalle de un día de una persona: dónde, cuándo y cuánto */
@@ -315,6 +317,8 @@ export interface PayDay {
     /** Horas pagables del día (todos los tramos, un descanso no pagado) */
     hours: number;
     breakMinutes: number;
+    /** Minutos de trayecto entre huertos (pagados, mitad a cada huerto) */
+    travelMinutes: number;
     buckets: number;
     bucketsByVariety: Record<string, number>;
     pieceEarnings: number;
@@ -359,7 +363,9 @@ interface ScanForPay {
  * - Un solo descanso de comida al día (no pagado): si el team leader anotó su
  *   hora dentro de algún tramo, se descuenta (como mucho lo transcurrido); si
  *   no, se descuentan breakMinutes cuando el día supera mealBreakAfterHours.
- * - El tiempo entre tramos (viaje de un huerto a otro) no se paga.
+ * - Trayecto: el hueco entre un tramo y el siguiente en OTRO huerto se paga;
+ *   la mitad se carga al huerto de salida y la otra mitad al de llegada.
+ *   El hueco entre dos tramos del mismo huerto (salió y volvió) no se paga.
  * - Sin tramos: del primer al último escaneo (estimado).
  */
 function dayHours(
@@ -367,14 +373,14 @@ function dayHours(
     scans: ReadonlyArray<ScanForPay>,
     isToday: boolean,
     nowMs: number,
-): { hours: number; breakMinutes: number; segments: PaySegment[]; estimated: boolean } {
+): { hours: number; breakMinutes: number; travelMinutes: number; segments: PaySegment[]; estimated: boolean } {
     const sorted = [...rows]
         .filter(r => toMs(r.checkIn) !== null)
         .sort((a, b) => (toMs(a.checkIn) ?? 0) - (toMs(b.checkIn) ?? 0));
 
     if (sorted.length === 0) {
         const h = shiftHours({ scanTimes: scans.map(s => s.ts) });
-        return { hours: h.hours, breakMinutes: h.breakMinutes, segments: [], estimated: h.source !== 'none' };
+        return { hours: h.hours, breakMinutes: h.breakMinutes, travelMinutes: 0, segments: [], estimated: h.source !== 'none' };
     }
 
     let estimated = false;
@@ -401,7 +407,20 @@ function dayHours(
         ranges.push({ start, end, row: r });
     });
 
-    const grossMs = ranges.reduce((sum, x) => sum + (x.end - x.start), 0);
+    // Trayectos entre huertos distintos: mitad para cada tramo
+    const travelMs = ranges.map(() => 0);
+    let totalTravelMs = 0;
+    for (let i = 1; i < ranges.length; i++) {
+        const prev = ranges[i - 1], cur = ranges[i];
+        const a = prev.row.orchardId, b = cur.row.orchardId;
+        if (!a || !b || a === b) continue;
+        const gap = Math.max(0, cur.start - prev.end);
+        travelMs[i - 1] += gap / 2;
+        travelMs[i] += gap / 2;
+        totalTravelMs += gap;
+    }
+
+    const grossMs = ranges.reduce((sum, x) => sum + (x.end - x.start), 0) + totalTravelMs;
     const grossHours = grossMs / MS_PER_HOUR;
     const breakMinutesSetting = sorted.find(r => r.breakMinutes != null)?.breakMinutes ?? PAY_RULES.mealBreakMinutes;
 
@@ -417,18 +436,20 @@ function dayHours(
         deducted = breakMinutesSetting;
     }
 
-    const segments: PaySegment[] = ranges.map(x => ({
+    const segments: PaySegment[] = ranges.map((x, i) => ({
         orchardId: x.row.orchardId ?? null,
         checkIn: x.row.checkIn ?? null,
         checkOut: new Date(x.end).toISOString(),
         open: !x.row.checkOut,
         breakStart: x.row.breakStart ?? null,
         grossHours: round2((x.end - x.start) / MS_PER_HOUR),
+        travelHours: round2(travelMs[i] / MS_PER_HOUR),
     }));
 
     return {
         hours: round2(Math.max(0, grossHours - deducted / 60)),
         breakMinutes: Math.round(deducted),
+        travelMinutes: Math.round(totalTravelMs / 60_000),
         segments,
         estimated,
     };
@@ -526,6 +547,7 @@ export function payForRange(params: {
             segments: h.segments,
             hours: h.hours,
             breakMinutes: h.breakMinutes,
+            travelMinutes: h.travelMinutes,
             buckets: dayScans.length,
             bucketsByVariety,
             pieceEarnings: p.pieceEarnings,
