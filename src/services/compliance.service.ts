@@ -253,19 +253,30 @@ export function checkPickerCompliance(input: {
   lastMealBreakAt: Date | null;
   lastHydrationAt: Date | null;
   workStartTime: Date;
+  /** Resultado del cálculo único (harvestMetrics/pay.ts dayPay); si se pasa, manda */
+  pay?: { belowMinimum: boolean; pieceHourlyRate: number; minWageApplied: number; topUp: number };
 }): ComplianceStatus {
   // 🔧 L17: Use NZST, not UTC — violation timestamps must match NZST break checks
   const now = new Date(nowNZST());
   const violations: ComplianceViolation[] = [];
 
   // Check wage compliance
-  const wageCheck = checkWageCompliance(input.bucketCount, input.hoursWorked);
-  if (!wageCheck.isCompliant && input.hoursWorked >= 1) {
+  const legacy = checkWageCompliance(input.bucketCount, input.hoursWorked);
+  const wage = input.pay
+    ? {
+        below: input.pay.belowMinimum,
+        rate: input.pay.pieceHourlyRate,
+        min: input.pay.minWageApplied,
+        shortfall: Math.max(0, Math.round((input.pay.minWageApplied - input.pay.pieceHourlyRate) * 100) / 100),
+        topUp: input.pay.topUp,
+      }
+    : { below: !legacy.isCompliant, rate: legacy.effectiveHourlyRate, min: NZ_MINIMUM_WAGE, shortfall: legacy.shortfall, topUp: legacy.topUpRequired };
+  if (wage.below && input.hoursWorked >= 1) {
     violations.push({
       type: 'wage_below_minimum',
       severity: 'high',
-      message: `Effective rate $${wageCheck.effectiveHourlyRate}/hr is below minimum wage $${NZ_MINIMUM_WAGE}/hr`,
-      details: { shortfall: wageCheck.shortfall, topUpRequired: wageCheck.topUpRequired },
+      message: `Effective rate $${wage.rate}/hr is below minimum wage $${wage.min}/hr`,
+      details: { shortfall: wage.shortfall, topUpRequired: wage.topUp },
       occurredAt: now,
     });
   }
@@ -345,10 +356,10 @@ export function checkPickerCompliance(input: {
     violations,
     nextBreakDue,
     wageCompliance: {
-      isCompliant: wageCheck.isCompliant,
-      effectiveHourlyRate: wageCheck.effectiveHourlyRate,
-      minimumWage: NZ_MINIMUM_WAGE,
-      shortfall: wageCheck.shortfall,
+      isCompliant: !wage.below,
+      effectiveHourlyRate: wage.rate,
+      minimumWage: wage.min,
+      shortfall: wage.shortfall,
     },
     workHours: {
       consecutiveMinutes: input.consecutiveMinutesWorked,

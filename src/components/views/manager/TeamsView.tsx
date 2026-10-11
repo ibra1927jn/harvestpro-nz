@@ -3,14 +3,14 @@
  * REFACTORED: Uses crew prop from context with manual refresh + unlink support.
  */
 import React, { useState, useMemo, useCallback } from 'react';
-import { Picker, Role, HarvestSettings } from '../../../types';
+import { Picker, HarvestSettings } from '../../../types';
 import TeamLeaderCard from './TeamLeaderCard';
 import TeamLeaderSelectionModal from '../../modals/TeamLeaderSelectionModal';
 import ImportCSVModal from '../../modals/ImportCSVModal';
 import TeamsToolbar from './teams/TeamsToolbar';
 import RunnersSection from './teams/RunnersSection';
 import EmptyState from '@/components/ui/EmptyState';
-import { selectActiveCrew } from '@/services/harvestMetrics/roster';
+import { selectStaff, selectTeamLeaders, selectRunners, selectTeamOf, selectUnassigned } from '@/services/harvestMetrics/roster';
 import { useTranslation } from '@/i18n';
 
 interface TeamsViewProps {
@@ -41,19 +41,13 @@ const TeamsView: React.FC<TeamsViewProps> = ({
         onRefresh?.();
     }, [onRefresh]);
 
-    const { leaders, runners, groupedCrew } = useMemo(() => {
-        const activeCrew = selectActiveCrew(crew);
-        const leaders = activeCrew.filter(p => p.role === 'team_leader' || p.role === Role.TEAM_LEADER);
-        const runners = activeCrew.filter(p => p.role === 'runner' || p.role === Role.RUNNER);
+    // Mismas listas que el resto de pantallas (harvestMetrics/roster.ts)
+    const { leaders, runners, groupedCrew, unassigned } = useMemo(() => {
+        const leaders = selectTeamLeaders(crew);
+        const runners = selectRunners(crew);
         const grouped: Record<string, Picker[]> = {};
-
-        activeCrew.forEach(p => {
-            if (p.team_leader_id && p.role === 'picker') {
-                if (!grouped[p.team_leader_id]) grouped[p.team_leader_id] = [];
-                grouped[p.team_leader_id].push(p);
-            }
-        });
-        return { leaders, runners, groupedCrew: grouped };
+        leaders.forEach(l => { grouped[l.id] = selectTeamOf(crew, l.id); });
+        return { leaders, runners, groupedCrew: grouped, unassigned: selectUnassigned(crew) };
     }, [crew]);
 
     const filteredLeaders = leaders.filter(l => l.name?.toLowerCase().includes(search.toLowerCase()));
@@ -66,7 +60,7 @@ const TeamsView: React.FC<TeamsViewProps> = ({
         <div className="flex flex-col h-full">
             <TeamsToolbar
                 orchardId={orchardId}
-                usersCount={selectActiveCrew(crew).length}
+                usersCount={selectStaff(crew).length}
                 setIsAddTeamLeaderModalOpen={setIsAddTeamLeaderModalOpen}
                 setShowImportCSV={setShowImportCSV}
                 search={search}
@@ -137,6 +131,29 @@ const TeamsView: React.FC<TeamsViewProps> = ({
                                 />
                             )}
                         </section>
+
+                        {/* Pickers sin team leader: antes no salían en ninguna parte */}
+                        {unassigned.length > 0 && (
+                            <section className="glass-card p-5" data-testid="unassigned-pickers">
+                                <h3 className="text-lg font-black flex items-center gap-2 mb-3">
+                                    <span className="material-symbols-outlined text-amber-500">person_off</span>
+                                    Without team leader
+                                    <span className="text-xs bg-amber-50 text-amber-700 px-3 py-1 rounded-full font-bold">{unassigned.length}</span>
+                                </h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {unassigned.map(p => (
+                                        <button
+                                            key={p.id}
+                                            type="button"
+                                            onClick={() => setSelectedUser(p)}
+                                            className="px-3 py-1.5 rounded-xl bg-white border border-amber-200 text-sm font-bold text-text-main hover:bg-amber-50"
+                                        >
+                                            {p.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
                     </>
                 )}
             </div>

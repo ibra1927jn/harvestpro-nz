@@ -8,7 +8,8 @@ import { StateCreator } from 'zustand';
 import { complianceService, ComplianceViolation } from '@/services/compliance.service';
 import type { HarvestStoreState, IntelligenceSlice, HarvestStats } from '../storeTypes';
 import { nowNZST } from '@/utils/nzst';
-import { computePerPicker } from '@/services/harvestMetrics';
+import { computePerPicker, dayPay, shiftHours, nzDateOf, isNZPublicHoliday } from '@/services/harvestMetrics';
+import { selectPresentPickers } from '@/services/harvestMetrics/roster';
 import type { BucketRecord } from '@/types';
 
 // --- Default State ---
@@ -62,12 +63,23 @@ export const createIntelligenceSlice: StateCreator<
             finalTotal: Math.round((totalPiece + totalMinimum) * 100) / 100,
         };
 
-        // 2. Compliance Checks
+        // 2. Compliance: horas, cubetas y salario del cálculo único; descanso real
+        //    (break_start anotado por el team leader) e inicio real del turno.
         const alerts: ComplianceViolation[] = [];
         activeCrew.forEach(p => {
             const m = metricsById.get(p.id);
             const buckets = m?.bins ?? 0;
             const hours = m?.hoursWorked ?? 0;
+            const pay = m ? dayPay({
+                buckets,
+                hours,
+                pieceRate: settings.piece_rate || 6.5,
+                minWage: settings.min_wage_rate || 23.95,
+                isPublicHoliday: isNZPublicHoliday(nzDateOf(new Date())),
+            }) : undefined;
+            const startedAt = p.check_in
+                ? new Date(p.check_in)
+                : new Date(new Date(nowNZST()).getTime() - (hours * 3600000));
 
             const status = complianceService.checkPickerCompliance({
                 pickerId: p.id,
@@ -76,10 +88,10 @@ export const createIntelligenceSlice: StateCreator<
                 consecutiveMinutesWorked: 120, // Mock
                 totalMinutesToday: hours * 60,
                 lastRestBreakAt: null,
-                lastMealBreakAt: null,
+                lastMealBreakAt: p.break_start ? new Date(p.break_start) : null,
                 lastHydrationAt: null,
-                // 🔧 L33: Use NZST instead of UTC Date.now()
-                workStartTime: new Date(new Date(nowNZST()).getTime() - (hours * 3600000)),
+                workStartTime: startedAt,
+                pay,
             });
 
             if (status.violations.length > 0) {
@@ -95,11 +107,31 @@ export const createIntelligenceSlice: StateCreator<
         // 3. Sync stats — totalBuckets y presentCount se derivan aquí para que
         //    todo el estado de inteligencia quede en un único lugar consistente.
         //    bucketRecords = baldes del servidor (hoy); buckets = ScannedBucket del scanner local
-        const totalBuckets = state.bucketRecords.length + state.buckets.filter(b => b.quality_grade !== 'reject').length;
-        const presentCount = crew.filter(p => p.role === 'picker' && p.status !== 'inactive' && p.status !== 'archived').length;
+        // Cubetas = las mismas del panel (escaneos válidos, sin rechazos ni duplicar
+        // los escaneos locales ya sincronizados). Presentes = pickers fichados hoy.
+        const totalBuckets = perPicker.reduce((sum, m) => sum + m.bins, 0);
+        const presentCount = selectPresentPickers(crew).length;
         const tons = totalBuckets * 0.025; // ~25 kg por balde estándar NZ
 
+        // 4. Cubetas y horas de hoy de CADA persona, calculadas aquí una vez. Todas
+        //    las pantallas que leen picker.total_buckets_today / picker.hours ven
+        //    lo mismo que el panel y la nómina (antes: contador de BD siempre a 0).
+        const now = new Date();
+        let crewChanged = false;
+        const enrichedCrew = crew.map(p => {
+            const m = metricsById.get(p.id);
+            const bins = m?.bins ?? 0;
+            const hrs = m?.hoursWorked ?? shiftHours({
+                checkIn: p.check_in, checkOut: p.check_out,
+                breakStart: p.break_start, breakMinutes: p.break_minutes, now,
+            }).hours;
+            if (p.total_buckets_today === bins && p.hours === hrs) return p;
+            crewChanged = true;
+            return { ...p, total_buckets_today: bins, hours: hrs };
+        });
+
         set({
+            ...(crewChanged ? { crew: enrichedCrew } : {}),
             payroll,
             alerts,
             presentCount,

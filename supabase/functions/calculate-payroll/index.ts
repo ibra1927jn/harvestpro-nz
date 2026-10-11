@@ -91,7 +91,7 @@ serve(async (req) => {
 
     try {
         // ── Auth + RBAC ──────────────────────────────
-        const { user, supabase } = await requireRole(req, ['admin', 'manager', 'payroll_admin'])
+        const { user, supabase } = await requireRole(req, ['admin', 'manager', 'payroll_admin', 'hr_admin'])
         checkRateLimit(user.id, { maxRequests: 30, windowMs: 60_000 }) // Payroll is sensitive — low limit
 
         // ── Input Validation ─────────────────────────
@@ -104,97 +104,139 @@ serve(async (req) => {
 
         const { orchard_id, start_date, end_date } = PayrollInputSchema.parse(body)
 
-        console.info(`[Payroll] Calculating for orchard ${orchard_id} from ${start_date} to ${end_date}`)
+        console.info(`[Payroll] Calculating ${orchard_id ? 'orchard ' + orchard_id : 'company (all orchards)'} from ${start_date} to ${end_date}`)
 
-        // 1. Obtener configuración del orchard desde harvest_settings
-        // Nota: bucket_rate = piece_rate en harvest_settings (mismo concepto, nombre legacy en código)
-        const { data: settings, error: settingsError } = await supabase
-            .from('harvest_settings')
-            .select('piece_rate, min_wage_rate')
-            .eq('orchard_id', orchard_id)
-            .single()
+        // Cálculo de UN huerto con sus tarifas. La empresa = suma por persona de
+        // todos sus huertos (la gente rota: hoy en A, mañana en B). Como el
+        // complemento es por día y cada día se trabaja en un huerto, sumar
+        // huertos da lo mismo que calcular la semana entera.
+        const companyScope = !orchard_id
+        const computeForOrchard = async (orchard_id: string) => {
+            // 1. Obtener configuración del orchard desde harvest_settings
+            // Nota: bucket_rate = piece_rate en harvest_settings (mismo concepto, nombre legacy en código)
+            const { data: settings, error: settingsError } = await supabase
+                .from('harvest_settings')
+                .select('piece_rate, min_wage_rate')
+                .eq('orchard_id', orchard_id)
+                .maybeSingle()
 
-        if (settingsError || !settings) {
-            throw new Error(`Harvest settings not found for orchard ${orchard_id}: ${settingsError?.message}`)
+            if (settingsError || !settings) {
+                if (!companyScope) throw new Error(`Harvest settings not found for orchard ${orchard_id}: ${settingsError?.message}`)
+                console.warn(`[Payroll] No harvest_settings for orchard ${orchard_id}: using defaults`)
+            }
+
+            const bucket_rate = settings?.piece_rate ?? 6.5
+            const stored_min_wage = settings?.min_wage_rate ?? PAY_RULES.minWageFloor
+
+            // Floor legal: Minimum Wage Order 2026, efectivo 1 April 2026
+            // Garantía defensiva — la migración 20260412 ya lo corrige en DB,
+            // pero si la migración no se aplicó en algún entorno, esto evita sub-pagos ilegales.
+            const NZ_MIN_WAGE_FLOOR = PAY_RULES.minWageFloor
+            const min_wage_rate = Math.max(stored_min_wage, NZ_MIN_WAGE_FLOOR)
+
+            if (stored_min_wage < NZ_MIN_WAGE_FLOOR) {
+                console.warn(
+                    `[Payroll] COMPLIANCE WARNING: orchard ${orchard_id} has min_wage_rate=${stored_min_wage} < legal floor ${NZ_MIN_WAGE_FLOOR}. Using floor. Run migration 20260412_harvest_settings_min_wage_floor.sql.`
+                )
+            }
+
+            console.info(`[Payroll] Settings - Bucket rate: $${bucket_rate}, Min wage: $${min_wage_rate}/hr`)
+
+            // 2. Cubetas del rango (límites en hora NZ). Los rechazos de QC se
+            //    excluyen dentro del cálculo (pay-rules.ts).
+            // Por páginas: PostgREST corta en 1000 filas y una semana tiene más.
+            const events = await fetchAllRows((from, to) => supabase
+                .from('bucket_records')
+                .select('picker_id, scanned_at, quality_grade')
+                .eq('orchard_id', orchard_id)
+                .is('deleted_at', null)
+                .gte('scanned_at', toNZBoundary(start_date, '00:00:00'))
+                .lte('scanned_at', toNZBoundary(end_date, '23:59:59'))
+                .order('id')
+                .range(from, to))
+
+            // 2b. Fichajes del rango: entrada/salida y descanso que anota el team leader
+            const attendance = await fetchAllRows((from, to) => supabase
+                .from('daily_attendance')
+                .select('picker_id, date, check_in, check_out, break_start, break_minutes')
+                .eq('orchard_id', orchard_id)
+                .is('deleted_at', null)
+                .gte('date', start_date)
+                .lte('date', end_date)
+                .order('id')
+                .range(from, to))
+
+            // 3. Cálculo único (mismo código que la app, _shared/pay-rules.ts):
+            //    - horas = salida − entrada − descanso de 30 min NO pagado
+            //    - complemento al mínimo POR DÍA (un día bueno no tapa uno malo)
+            //    - festivos (Holidays Act 2003 s.50): mínimo × 1.5 ese día
+            type Att = { picker_id: string; date: string; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null }
+            type Ev = { picker_id: string; scanned_at: string; quality_grade: string | null }
+            const attRows = ((attendance ?? []) as Att[]).map(a => ({
+                pickerId: a.picker_id,
+                date: a.date.slice(0, 10),
+                checkIn: a.check_in,
+                checkOut: a.check_out,
+                breakStart: a.break_start,
+                breakMinutes: a.break_minutes,
+            }))
+            const bucketRows = ((events ?? []) as Ev[]).map(e => ({
+                pickerId: e.picker_id,
+                scannedAt: e.scanned_at,
+                qualityGrade: e.quality_grade,
+            }))
+
+            // Días normales y festivos por separado para devolver horas de cada tipo
+            // y los días alternativos (s.60). Como el cálculo es por día, sumar ambos
+            // da exactamente el mismo total que calcularlos juntos.
+            const holidayBucket = new Map(bucketRows.map(b => [b, isPublicHoliday(nzDateOf(b.scannedAt))]))
+            const ordinary = payForRange({
+                attendance: attRows.filter(a => !isPublicHoliday(a.date)),
+                buckets: bucketRows.filter(b => !holidayBucket.get(b)),
+                pieceRate: bucket_rate,
+                minWage: min_wage_rate,
+            })
+            const holiday = payForRange({
+                attendance: attRows.filter(a => isPublicHoliday(a.date)),
+                buckets: bucketRows.filter(b => holidayBucket.get(b)),
+                pieceRate: bucket_rate,
+                minWage: min_wage_rate,
+                isPublicHoliday: () => true,
+            })
+            return { ordinary, holiday, bucket_rate, min_wage_rate, stored_min_wage }
         }
 
-        const { piece_rate: bucket_rate, min_wage_rate: stored_min_wage } = settings
+        const orchardIds: string[] = orchard_id
+            ? [orchard_id]
+            : ((await supabase.from('orchards').select('id').is('deleted_at', null)).data ?? []).map((o: { id: string }) => o.id)
+        const perOrchard = await Promise.all(orchardIds.map(id => computeForOrchard(id)))
 
-        // Floor legal: Minimum Wage Order 2026, efectivo 1 April 2026
-        // Garantía defensiva — la migración 20260412 ya lo corrige en DB,
-        // pero si la migración no se aplicó en algún entorno, esto evita sub-pagos ilegales.
-        const NZ_MIN_WAGE_FLOOR = PAY_RULES.minWageFloor
-        const min_wage_rate = Math.max(stored_min_wage, NZ_MIN_WAGE_FLOOR)
-
-        if (stored_min_wage < NZ_MIN_WAGE_FLOOR) {
-            console.warn(
-                `[Payroll] COMPLIANCE WARNING: orchard ${orchard_id} has min_wage_rate=${stored_min_wage} < legal floor ${NZ_MIN_WAGE_FLOOR}. Using floor. Run migration 20260412_harvest_settings_min_wage_floor.sql.`
-            )
+        // Sumar por persona (cada huerto aporta sus días)
+        const mergeRows = (lists: PickerRangePay[][]): PickerRangePay[] => {
+            const acc = new Map<string, PickerRangePay>()
+            for (const list of lists) for (const r of list) {
+                const prev = acc.get(r.pickerId)
+                if (!prev) { acc.set(r.pickerId, { ...r }); continue }
+                const r2 = (n: number) => Math.round(n * 100) / 100
+                acc.set(r.pickerId, {
+                    pickerId: r.pickerId,
+                    buckets: prev.buckets + r.buckets,
+                    hours: r2(prev.hours + r.hours),
+                    pieceEarnings: r2(prev.pieceEarnings + r.pieceEarnings),
+                    topUp: r2(prev.topUp + r.topUp),
+                    total: r2(prev.total + r.total),
+                    days: prev.days + r.days,
+                    daysBelowMinimum: prev.daysBelowMinimum + r.daysBelowMinimum,
+                    estimatedDays: prev.estimatedDays + r.estimatedDays,
+                })
+            }
+            return [...acc.values()]
         }
-
-        console.info(`[Payroll] Settings - Bucket rate: $${bucket_rate}, Min wage: $${min_wage_rate}/hr`)
-
-        // 2. Cubetas del rango (límites en hora NZ). Los rechazos de QC se
-        //    excluyen dentro del cálculo (pay-rules.ts).
-        // Por páginas: PostgREST corta en 1000 filas y una semana tiene más.
-        const events = await fetchAllRows((from, to) => supabase
-            .from('bucket_records')
-            .select('picker_id, scanned_at, quality_grade')
-            .eq('orchard_id', orchard_id)
-            .is('deleted_at', null)
-            .gte('scanned_at', toNZBoundary(start_date, '00:00:00'))
-            .lte('scanned_at', toNZBoundary(end_date, '23:59:59'))
-            .order('id')
-            .range(from, to))
-
-        // 2b. Fichajes del rango: entrada/salida y descanso que anota el team leader
-        const attendance = await fetchAllRows((from, to) => supabase
-            .from('daily_attendance')
-            .select('picker_id, date, check_in, check_out, break_start, break_minutes')
-            .eq('orchard_id', orchard_id)
-            .is('deleted_at', null)
-            .gte('date', start_date)
-            .lte('date', end_date)
-            .order('id')
-            .range(from, to))
-
-        // 3. Cálculo único (mismo código que la app, _shared/pay-rules.ts):
-        //    - horas = salida − entrada − descanso de 30 min NO pagado
-        //    - complemento al mínimo POR DÍA (un día bueno no tapa uno malo)
-        //    - festivos (Holidays Act 2003 s.50): mínimo × 1.5 ese día
-        type Att = { picker_id: string; date: string; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null }
-        type Ev = { picker_id: string; scanned_at: string; quality_grade: string | null }
-        const attRows = ((attendance ?? []) as Att[]).map(a => ({
-            pickerId: a.picker_id,
-            date: a.date.slice(0, 10),
-            checkIn: a.check_in,
-            checkOut: a.check_out,
-            breakStart: a.break_start,
-            breakMinutes: a.break_minutes,
-        }))
-        const bucketRows = ((events ?? []) as Ev[]).map(e => ({
-            pickerId: e.picker_id,
-            scannedAt: e.scanned_at,
-            qualityGrade: e.quality_grade,
-        }))
-
-        // Días normales y festivos por separado para devolver horas de cada tipo
-        // y los días alternativos (s.60). Como el cálculo es por día, sumar ambos
-        // da exactamente el mismo total que calcularlos juntos.
-        const holidayBucket = new Map(bucketRows.map(b => [b, isPublicHoliday(nzDateOf(b.scannedAt))]))
-        const ordinary = payForRange({
-            attendance: attRows.filter(a => !isPublicHoliday(a.date)),
-            buckets: bucketRows.filter(b => !holidayBucket.get(b)),
-            pieceRate: bucket_rate,
-            minWage: min_wage_rate,
-        })
-        const holiday = payForRange({
-            attendance: attRows.filter(a => isPublicHoliday(a.date)),
-            buckets: bucketRows.filter(b => holidayBucket.get(b)),
-            pieceRate: bucket_rate,
-            minWage: min_wage_rate,
-            isPublicHoliday: () => true,
-        })
+        const ordinary = mergeRows(perOrchard.map(o => o.ordinary))
+        const holiday = mergeRows(perOrchard.map(o => o.holiday))
+        const bucket_rate = perOrchard[0]?.bucket_rate ?? 6.5
+        const min_wage_rate = perOrchard[0]?.min_wage_rate ?? PAY_RULES.minWageFloor
+        const stored_min_wage = perOrchard[0]?.stored_min_wage ?? PAY_RULES.minWageFloor
         const ordById = new Map(ordinary.map(r => [r.pickerId, r]))
         const holById = new Map(holiday.map(r => [r.pickerId, r]))
         const pickerIds = [...new Set([...ordById.keys(), ...holById.keys()])]
@@ -260,7 +302,8 @@ serve(async (req) => {
             : 100
 
         const result: PayrollResult = {
-            orchard_id,
+            // 'company' = todos los huertos de la empresa
+            orchard_id: orchard_id ?? 'company',
             date_range: { start: start_date, end: end_date },
             summary: {
                 total_buckets,

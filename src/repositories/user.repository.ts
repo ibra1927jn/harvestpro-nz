@@ -14,11 +14,18 @@ export const userRepository2 = {
     },
 
     /** Get active user count */
-    async getActiveCount(orchardId?: string) {
-        let query = supabase.from('users').select('id, is_active');
-        if (orchardId) query = query.eq('orchard_id', orchardId);
-        const { data } = await query;
-        return data?.filter(u => u.is_active).length || 0;
+    /**
+     * Plantilla activa de la empresa: personas de la lista única (pickers,
+     * team leaders, runners) que siguen en plantilla. Antes contaba cuentas de
+     * la app (users), sin pickers y con managers/admins.
+     */
+    async getActiveCount(_orchardId?: string) {
+        const { count } = await supabase
+            .from('pickers')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'active')
+            .is('deleted_at', null);
+        return count || 0;
     },
 
     /** Get user names by IDs */

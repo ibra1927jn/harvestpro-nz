@@ -1,11 +1,17 @@
 import { useMemo } from 'react';
 import { useHarvestStore as useHarvest } from '@/stores/useHarvestStore';
+import { useAuth } from '@/context/AuthContext';
+import { selectTeamOf, selectPresentPickers } from '@/services/harvestMetrics/roster';
 
 const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
-    const { currentUser, stats, crew, settings } = useHarvest();
+    const { stats, crew: orchardCrew, settings } = useHarvest();
+    const { appUser } = useAuth();
+    const currentUser = appUser ? { name: appUser.full_name, id: appUser.id } : null;
 
-    // 1. Crew Stats (Real)
-    const totalCrew = crew.length;
+    // 1. Mi equipo (misma regla que Equipos del manager) y quién está trabajando ahora
+    const crew = useMemo(() => selectTeamOf(orchardCrew, appUser?.id), [orchardCrew, appUser?.id]);
+    const totalCrew = selectPresentPickers(crew).length;
+    const teamBuckets = crew.reduce((sum, p) => sum + (p.total_buckets_today || 0), 0);
 
     // 2. Safety Status (Real Monitor)
     const safetyIssuePicker = crew.find(p => p.status === 'suspended' || p.status === 'issue');
@@ -13,11 +19,11 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
 
     // 3. Performance Analytics (Real Goal)
     const dailyGoalPerPicker = (settings?.min_buckets_per_hour || 3.6) * 8; 
-    const currentAvg = totalCrew > 0 ? (stats.totalBuckets / totalCrew) : 0;
+    const currentAvg = totalCrew > 0 ? (teamBuckets / totalCrew) : 0;
     const progressPercent = Math.min((currentAvg / dailyGoalPerPicker) * 100, 100);
 
     const cards = [
-        { label: 'Buckets', value: stats.totalBuckets, icon: 'shopping_basket', color: 'primary' },
+        { label: 'Buckets', value: teamBuckets, icon: 'shopping_basket', color: 'primary' },
         { label: 'Pay Est.', value: `$${stats.payEstimate.toFixed(0)}`, icon: 'payments', color: 'text-main' },
         { label: 'Tons', value: stats.tons.toFixed(1), icon: 'scale', color: 'text-main' },
     ];

@@ -67,13 +67,14 @@ const WageShieldPanel: React.FC<WageShieldPanelProps> = ({
             const baseStatus: 'safe' | 'at_risk' | 'below_minimum' =
                 percentage >= 100 ? 'safe' : percentage >= 80 ? 'at_risk' : 'below_minimum';
 
+            // El estado salarial sale SOLO del cálculo de pago; las alertas de
+            // descanso u horas se muestran aparte y no marcan "por debajo del mínimo".
             const pickerAlerts = alerts.filter(a => a.details?.pickerId === p.id);
-            const hasSevereAlert = pickerAlerts.some(a => a.severity === 'high');
             const teamLeader = teamLeaders.find(l => l.id === p.team_leader_id);
 
             return [{
                 picker: p,
-                status: (hasSevereAlert ? 'below_minimum' : baseStatus) as 'safe' | 'at_risk' | 'below_minimum',
+                status: baseStatus,
                 earnings,
                 minWageEarnings,
                 deficit: m.topUp,

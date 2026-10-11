@@ -14,6 +14,7 @@ const mockStore = {
       current_row: 3,
       total_buckets_today: 15,
       status: 'active',
+      check_in: '2026-10-12T07:00:00+13:00', // fichado hoy → cuenta como presente
     },
     {
       id: 'p2',
@@ -22,6 +23,27 @@ const mockStore = {
       current_row: 1,
       total_buckets_today: 8,
       status: 'active',
+      check_in: '2026-10-12T07:00:00+13:00',
+    },
+    {
+      id: 'p3',
+      name: 'Carl Gone',
+      avatar: 'CG',
+      current_row: 2,
+      total_buckets_today: 3,
+      status: 'active',
+      check_in: '2026-10-12T07:00:00+13:00',
+      check_out: '2026-10-12T11:00:00+13:00', // ya se fue → no cuenta
+    },
+    {
+      id: 'tl',
+      name: 'Team Leader',
+      avatar: 'TL',
+      current_row: 0,
+      total_buckets_today: 0,
+      status: 'active',
+      role: 'team_leader',
+      check_in: '2026-10-12T07:00:00+13:00', // no es picker → no cuenta
     },
   ],
   orchard: { name: 'Sunny Orchard' },

@@ -61,12 +61,8 @@ serve(async (req) => {
                 .maybeSingle()
 
             if (existing) {
-                // Already checked in — just ensure picker is active
-                await supabase
-                    .from('pickers')
-                    .update({ status: 'active' })
-                    .eq('id', picker_id)
-
+                // Ya fichado hoy. La presencia sale de daily_attendance: no se toca
+                // pickers.status (situación laboral), así no se reactiva a nadie archivado.
                 return jsonResponse({
                     picker_id,
                     status: 'present',
@@ -91,13 +87,7 @@ serve(async (req) => {
 
             if (insertErr) throw new Error(`Failed to create attendance: ${insertErr.message}`)
 
-            // Update picker status
-            const { error: statusErr } = await supabase
-                .from('pickers')
-                .update({ status: 'active' })
-                .eq('id', picker_id)
-
-            if (statusErr) console.warn(`[Attendance] Picker status update failed: ${statusErr.message}`)
+            // La presencia queda en daily_attendance; pickers.status no cambia al fichar
 
             console.info(`[Attendance] Check-in: picker=${picker_id}, orchard=${orchard_id}`)
 
@@ -148,13 +138,7 @@ serve(async (req) => {
 
             if (updateErr) throw new Error(`Failed to update attendance: ${updateErr.message}`)
 
-            // Update picker status to inactive
-            const { error: statusErr2 } = await supabase
-                .from('pickers')
-                .update({ status: 'inactive' })
-                .eq('id', record.picker_id)
-
-            if (statusErr2) console.warn(`[Attendance] Picker status update failed: ${statusErr2.message}`)
+            // Fichar la salida no da de baja a nadie: pickers.status no cambia
 
             console.info(`[Attendance] Check-out: picker=${record.picker_id}, hours=${hoursWorked}`)
 

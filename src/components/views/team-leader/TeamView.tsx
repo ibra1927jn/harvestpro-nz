@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useHarvestStore as useHarvest } from '@/stores/useHarvestStore';
 import { Picker } from '@/types';
+import { useAuth } from '@/context/AuthContext';
+import { selectTeamOf, isPresentToday } from '@/services/harvestMetrics/roster';
 import AddPickerModal from '../../modals/AddPickerModal';
 import PickerDetailsModal from '../../modals/PickerDetailsModal';
 
@@ -10,8 +12,9 @@ const TeamView = () => {
         addPicker,
         removePicker,
         updatePicker,
-        currentUser: appUser // Map currentUser to appUser as expected by component
     } = useHarvest();
+    // Usuario que ha iniciado sesión (store.currentUser no se rellena nunca)
+    const { appUser } = useAuth();
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [selectedPicker, setSelectedPicker] = useState<Picker | null>(null);
@@ -24,19 +27,14 @@ const TeamView = () => {
         // Option 1: Filter by current TL if we are in TL mode
         // Note: Managers see 'all leaders' in TeamsView, but TLs see 'their crew' in TeamView.
         // We filter context crew to show only what belongs to this appUser
-        return crew.filter(p => {
-            const isMe = p.id === appUser?.id;
-            const isMyCrew = p.team_leader_id === appUser?.id;
-            const isVisible = showInactive || p.status !== 'inactive';
-
-            // TL view usually shows themselves + their crew members
-            return isVisible && (isMe || isMyCrew);
-        });
+        // Mi equipo = mis pickers (misma regla que Equipos del manager)
+        const team = selectTeamOf(crew, appUser?.id);
+        return showInactive ? team : team.filter(p => isPresentToday(p) || !p.check_out);
     }, [crew, appUser?.id, showInactive]);
 
     // Calculate stats
     const totalCrew = displayedCrew.length;
-    const activeCrew = displayedCrew.filter(p => p.status === 'active').length;
+    const activeCrew = displayedCrew.filter(isPresentToday).length;
     const pendingCrew = displayedCrew.filter(p => !p.safety_verified).length;
 
     const handleDelete = async (e: React.MouseEvent, pickerId: string, pickerName: string) => {

@@ -18,7 +18,9 @@ export const pickerService = {
             logger.info('[getPickersByTeam] Registered Picker IDs:', data.map(p => p.picker_id).join(', '));
         }
 
-        const validPickers = safeParseArray(PickerSchema, data || []);
+        // Plantilla: los archivados no se pueden fichar (antes fichar los reactivaba)
+        const validPickers = safeParseArray(PickerSchema, data || [])
+            .filter(p => p.status !== 'archived' && p.id !== teamLeaderId);
         return validPickers.map((p) => {
             const perf = perfData?.find((stat: SupabasePerformanceStat) => stat.picker_id === p.id);
 
@@ -36,7 +38,7 @@ export const pickerService = {
                 harness_id: p.picker_id || undefined,
                 team_leader_id: p.team_leader_id || undefined,
                 orchard_id: p.orchard_id ?? undefined,
-                role: 'picker'
+                role: (p.role as Picker['role']) || 'picker'
             };
         });
     },

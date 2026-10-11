@@ -18,15 +18,20 @@ export const storeSyncRepository = {
         return data;
     },
 
-    /** Get pickers with attendance join — returns query builder for delta chaining */
-    getPickersQuery(orchardId: string, today: string) {
-        return supabase
+    /**
+     * Personas de la empresa con su fichaje de hoy en este huerto — query builder para el delta.
+     * La carga completa filtra la plantilla (status active, sin borrar); el delta
+     * NO filtra, para enterarse también de bajas y borrados y quitarlos del store.
+     */
+    getPickersQuery(orchardId: string, today: string, opts: { onlyStaff?: boolean } = { onlyStaff: true }) {
+        // Plantilla de TODA la empresa (la gente rota entre huertos); el fichaje
+        // unido es solo el de hoy EN ESTE huerto: presente aquí = fichado aquí.
+        const q = supabase
             .from('pickers')
-            .select(`*, daily_attendance!left(check_in, check_out, break_start, break_minutes)`)
-            .eq('orchard_id', orchardId)
-            .eq('status', 'active')
-            .is('deleted_at', null)
-            .eq('daily_attendance.date', today);
+            .select(`*, daily_attendance!left(check_in, check_out, break_start, break_minutes, orchard_id)`)
+            .eq('daily_attendance.date', today)
+            .eq('daily_attendance.orchard_id', orchardId);
+        return opts.onlyStaff ? q.eq('status', 'active').is('deleted_at', null) : q;
     },
 
     /** Get bucket records since a date — returns query builder for delta chaining */

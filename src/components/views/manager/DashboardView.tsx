@@ -18,7 +18,7 @@ import WageShieldPanel from './WageShieldPanel';
 import GoalProgress from './GoalProgress';
 import PerformanceFocus from './PerformanceFocus';
 import TeamLeadersSidebar from './TeamLeadersSidebar';
-import { selectActiveCrew } from '@/services/harvestMetrics/roster';
+import { selectPresentPickers } from '@/services/harvestMetrics/roster';
 import { SimulationBanner } from '../../SimulationBanner';
 import { TrustBadges } from '../../common/TrustBadges';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
@@ -97,8 +97,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({
   const alerts = useHarvestStore(state => state.alerts);
   // kpis.totalBins y kpis.totalLabour vienen del hook, calculados desde bucketRecords del store
 
-  // Crew activo — misma definición que OrchardMapView HUD (status === 'active')
-  const activeCrew = selectActiveCrew(crew).length;
+  // Pickers trabajando ahora (fichados hoy y sin salida) — misma definición en Mapa, Runner y Team Leader
+  const activeCrew = selectPresentPickers(crew).length;
 
   // Animated counters for stat cards (staggered delays)
   const animVelocity = useAnimatedCounter(velocity, 1000, 200);
@@ -298,7 +298,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
             <VelocityChart
               bucketRecords={bucketRecords}
               targetVelocity={Math.round(
-                ((settings.min_buckets_per_hour || 3.6) * crew.length) / 2
+                ((settings.min_buckets_per_hour || 3.6) * selectPresentPickers(crew).length) / 2
               )}
               shiftStart={shiftStart}
               shiftEnd={shiftEnd}

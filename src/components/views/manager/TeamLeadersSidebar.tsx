@@ -1,6 +1,7 @@
 /**
  * TeamLeadersSidebar — Quick access list of team leaders
  */
+import { selectTeamOf } from '@/services/harvestMetrics/roster';
 import React from 'react';
 import { useTranslation } from '@/i18n';
 import { Picker, Tab } from '../../../types';
@@ -27,7 +28,7 @@ const TeamLeadersSidebar: React.FC<TeamLeadersSidebarProps> = ({
         </h3>
         <div className="space-y-3">
             {teamLeaders.slice(0, 5).map(leader => {
-                const teamSize = crew.filter(p => p.team_leader_id === leader.id).length;
+                const teamSize = selectTeamOf(crew, leader.id).length;
                 return (
                     <div
                         key={leader.id}

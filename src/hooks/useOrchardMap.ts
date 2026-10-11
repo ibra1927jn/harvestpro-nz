@@ -6,7 +6,7 @@ import { Picker, BucketRecord, OrchardBlock, RowAssignment } from '@/types';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { getRowProgress } from '@/utils/orchardMapUtils';
 import { binsPerHourForRow } from '@/services/harvestMetrics/perRow';
-import { selectActiveCrew } from '@/services/harvestMetrics/roster';
+import { selectPresentPickers } from '@/services/harvestMetrics/roster';
 
 export interface RowData {
     rowNum: number;
@@ -148,7 +148,7 @@ export function useOrchardMap(
     }, [selectedBlock, bucketRecords, targetBucketsPerRow, rowTargets, pickersByRow]);
 
     // Global stats — misma definición que DashboardView (status === 'active')
-    const totalActivePickers = selectActiveCrew(crew).length;
+    const totalActivePickers = selectPresentPickers(crew).length;
     const totalBuckets = bucketRecords.length;
     const totalRows = orchardBlocks.reduce((s, b) => s + b.totalRows, 0);
 

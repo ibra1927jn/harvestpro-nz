@@ -44,7 +44,9 @@ export function usePayroll() {
             try {
                 setIsLoading(true);
                 setError(null);
-                const data = await payrollService.calculatePayroll(orchardId, week.start, week.end);
+                // Nómina de la EMPRESA: cada persona suma lo trabajado en todos los
+                // huertos esa semana (hoy en A, mañana en B...)
+                const data = await payrollService.calculatePayroll(undefined, week.start, week.end);
                 if (!cancelled) setPayrollData(data);
             } catch (err) {
                 logger.warn('[Payroll] Failed to load payroll data:', err);

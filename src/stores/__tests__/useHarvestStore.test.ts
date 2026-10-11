@@ -215,6 +215,18 @@ describe('useHarvestStore - Phase 9 Validations', () => {
                 };
             });
 
+            // Las cubetas salen de los escaneos (no del contador de la ficha)
+            act(() => {
+                const scan = (pickerId: string, i: number) => ({
+                    id: `${pickerId}-${i}`, picker_id: pickerId, bin_id: '', timestamp: new Date().toISOString(),
+                    scanned_at: new Date().toISOString(), quality_grade: 'A' as const,
+                });
+                result.current.bucketRecords = [
+                    ...Array.from({ length: 10 }, (_, i) => scan('picker-active', i)),
+                    ...Array.from({ length: 20 }, (_, i) => scan('picker-archived', i)),
+                ];
+            });
+
             // Recalculate payroll
             act(() => {
                 result.current.recalculateIntelligence();

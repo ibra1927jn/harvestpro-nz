@@ -1,3 +1,4 @@
+import { selectPresentPickers } from '@/services/harvestMetrics/roster';
 import React from 'react';
 import { useHarvestStore as useHarvest } from '@/stores/useHarvestStore';
 import EmptyState from '@/components/ui/EmptyState';
@@ -9,7 +10,8 @@ interface RunnersViewProps {
 const RunnersView: React.FC<RunnersViewProps> = ({ onBack }) => {
     const { crew, orchard } = useHarvest();
 
-    const activePickers = crew;
+    // Pickers trabajando ahora (fichados y sin salida) — misma regla que Panel y Mapa
+    const activePickers = selectPresentPickers(crew);
 
     return (
         <div className="flex flex-col h-full bg-slate-50 relative overflow-hidden">
