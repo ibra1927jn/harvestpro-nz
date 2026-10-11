@@ -31,6 +31,10 @@ vi.mock('@/services/offline.service', () => ({
 vi.mock('@/hooks/usePayroll', () => ({
     usePayroll: () => ({
         isLoading: false,
+        hasLoadedOnce: true,
+        error: null,
+        week: { start: '2026-10-05', end: '2026-10-11', closesOn: '2026-10-12' },
+        goToWeek: vi.fn(),
         orchardId: 'orch-1',
         summary: {
             total_buckets: 1500,

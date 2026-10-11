@@ -33,6 +33,9 @@ export const PickerBreakdownSchema = z.object({
     top_up_required: z.number().nonnegative(),
     total_earnings: z.number().nonnegative(),
     is_below_minimum: z.boolean(),
+    // Días con horas estimadas (turno sin cerrar): revisar la hoja de horas
+    // antes de pagar. Optional — versiones anteriores no lo devolvían.
+    estimated_days: z.number().int().nonnegative().optional(),
 });
 
 export const PayrollResultSchema = z.object({
@@ -50,6 +53,7 @@ export const PayrollResultSchema = z.object({
         // Suma across pickers (Holidays Act s.60). Optional — edge
         // function versions anteriores no lo devolvían.
         total_alternative_holidays_owed: z.number().int().nonnegative().optional(),
+        total_estimated_days: z.number().int().nonnegative().optional(),
     }),
     compliance: z.object({
         workers_below_minimum: z.number().int().nonnegative(),

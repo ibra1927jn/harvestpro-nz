@@ -30,6 +30,8 @@ export interface PickerBreakdown {
   minimum_required: number;
   top_up_required: number;
   total_earnings: number;
+  /** Días con horas estimadas (turno sin cerrar): revisar antes de pagar */
+  estimated_days?: number;
   is_below_minimum: boolean;
 }
 
@@ -47,6 +49,8 @@ export interface PayrollResult {
     total_earnings: number;
     /** Alternative days owed across all pickers (Holidays Act s.60). */
     total_alternative_holidays_owed?: number;
+    /** Días-picker con horas estimadas en el periodo */
+    total_estimated_days?: number;
   };
   compliance: {
     workers_below_minimum: number;

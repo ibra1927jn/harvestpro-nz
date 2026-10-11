@@ -34,7 +34,7 @@ const Payroll: React.FC = () => {
         badge: item.id === 'dashboard' && pay.compliance.workers_below_minimum > 0 ? pay.compliance.workers_below_minimum : undefined,
     }));
 
-    if (pay.isLoading) {
+    if (pay.isLoading && !pay.hasLoadedOnce) {
         return (
             <div className="min-h-screen bg-background-light p-6">
                 <div className="max-w-6xl mx-auto space-y-4">
@@ -47,6 +47,24 @@ const Payroll: React.FC = () => {
 
     return (
         <ResponsiveLayout navItems={navItems} mobileTabs={navItems} activeTab={activeTab} onTabChange={setActiveTab} title="Payroll Admin" subtitle="Wages & compliance" accentColor="orange" titleIcon="payments">
+            {/* Semana de pago: la nómina es semanal y se cierra el lunes siguiente */}
+            <div className="flex items-center justify-between gap-3 mb-4" data-testid="pay-week-selector">
+                <button type="button" onClick={() => pay.goToWeek(-1)} aria-label="Previous pay week" className="p-2 rounded-xl hover:bg-slate-100">
+                    <span className="material-symbols-outlined">chevron_left</span>
+                </button>
+                <div className="text-center">
+                    <p className="text-sm font-extrabold text-slate-800">Pay week {pay.week.start} → {pay.week.end}</p>
+                    <p className="text-[11px] uppercase tracking-widest font-bold text-slate-400">Closes Monday {pay.week.closesOn}</p>
+                </div>
+                <button type="button" onClick={() => pay.goToWeek(1)} aria-label="Next pay week" className="p-2 rounded-xl hover:bg-slate-100">
+                    <span className="material-symbols-outlined">chevron_right</span>
+                </button>
+            </div>
+
+            {pay.error && (
+                <div role="alert" className="bg-red-50 border border-red-200 rounded-2xl px-5 py-3 mb-4 text-sm font-bold text-red-700">{pay.error}</div>
+            )}
+
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
                 <SummaryCard icon="inventory_2" iconColor="text-indigo-500" label="Total Buckets" value={pay.summary.total_buckets.toLocaleString()} />
                 <SummaryCard icon="schedule" iconColor="text-sky-500" label="Total Hours" value={`${pay.summary.total_hours.toFixed(1)}h`} />
@@ -91,7 +109,7 @@ const Payroll: React.FC = () => {
                 {activeTab === 'dashboard' && <ComponentErrorBoundary componentName="Payroll Dashboard"><PayrollDashboard pickers={pay.pickers} settings={pay.settings} /></ComponentErrorBoundary>}
                 {activeTab === 'timesheets' && <ComponentErrorBoundary componentName="Timesheets"><TimesheetsTab orchardId={pay.orchardId} /></ComponentErrorBoundary>}
                 {activeTab === 'wages' && <ComponentErrorBoundary componentName="Wage Calculator"><WageCalculatorTab settings={pay.settings} /></ComponentErrorBoundary>}
-                {activeTab === 'export' && <ComponentErrorBoundary componentName="Export"><ExportTab /></ComponentErrorBoundary>}
+                {activeTab === 'export' && <ComponentErrorBoundary componentName="Export"><ExportTab pickers={pay.pickers} week={pay.week} isLoading={pay.isLoading} /></ComponentErrorBoundary>}
                 {activeTab === 'history' && <ComponentErrorBoundary componentName="Export History"><ExportHistoryTab /></ComponentErrorBoundary>}
             </div>
         </ResponsiveLayout>
