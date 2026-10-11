@@ -41,7 +41,6 @@ export const userService = {
                     name: user.full_name,
                     role: user.role,
                     orchard_id: orchardId,
-                    team_leader_id: user.role === 'team_leader' ? userId : null,
                     status: 'active',
                 });
 
@@ -57,7 +56,6 @@ export const userService = {
                     name: user.full_name,
                     role: user.role,
                     orchard_id: orchardId,
-                    team_leader_id: user.role === 'team_leader' ? userId : null,
                     status: 'active',
                     safety_verified: true
                 });
@@ -72,8 +70,7 @@ export const userService = {
                             name: user.full_name,
                             role: user.role,
                             orchard_id: orchardId,
-                            team_leader_id: user.role === 'team_leader' ? userId : null,
-                            status: 'active',
+                                    status: 'active',
                             safety_verified: true
                         });
                         if (retryError) logger.error("Failed to insert picker (retry):", retryError);
@@ -116,7 +113,7 @@ export const userService = {
         const { error: pickerError } = await userServiceRepository.updatePicker(userId, {
             orchard_id: null,
             team_leader_id: null,
-            status: 'inactive'
+            status: 'archived'
         });
 
         if (pickerError) {

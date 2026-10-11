@@ -19,6 +19,7 @@ import { logger } from '@/utils/logger';
 import { Picker } from '@/types';
 import { supabase } from '@/services/supabase';
 import { payForRange, PAY_RULES } from '@/services/harvestMetrics';
+import { findTeamLeader } from '@/services/harvestMetrics/roster';
 import { fetchAllRows } from '@/utils/fetchAllRows';
 
 export interface TeamRanking {
@@ -251,10 +252,9 @@ export function useWeeklyReport(): WeeklyReportData {
     const teamRankings = useMemo(() => {
         const teamMap = new Map<string, { buckets: number; hours: number; earnings: number; count: number }>();
         pickers.forEach(p => {
-            const crewMember = crew.find(c => c.picker_id === p.picker_id || c.name === p.picker_name);
-            const leaderId = crewMember?.team_leader_id || 'unassigned';
-            const leader = crew.find(c => c.id === leaderId);
-            const teamName = leader?.name || 'Unassigned';
+            // picker_breakdown.picker_id es el id de la persona (UUID), no su código
+            const crewMember = crew.find(c => c.id === p.picker_id);
+            const teamName = findTeamLeader(crew, crewMember)?.name || 'Unassigned';
             const entry = teamMap.get(teamName) ?? { buckets: 0, hours: 0, earnings: 0, count: 0 };
             const updated = {
                 buckets: entry.buckets + p.buckets,

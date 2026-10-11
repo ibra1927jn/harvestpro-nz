@@ -14,7 +14,7 @@ import { DEFAULT_START_TIME } from '../../types';
 export interface NewPickerData {
     name: string;
     avatar: string;
-    role: 'Picker';
+    role: 'picker';
     picker_id: string;
     harness_id: string;
     status: 'active';
@@ -67,10 +67,11 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
             const newPicker: NewPickerData = {
                 name: name,
                 avatar,
-                role: 'Picker',
+                role: 'picker', // en minúsculas: la BD solo acepta picker|runner|bucket_runner|team_leader
                 picker_id: idNumber,
                 harness_id: harnessNumber,
-                team_leader_id: appUser?.id, // Use appUser.id
+                // Si lo añade un team leader, va a su equipo; si es el manager, queda sin asignar
+                team_leader_id: appUser?.role === 'team_leader' ? appUser.id : undefined,
                 orchard_id: orchard?.id || undefined, // Allow undefined if not in orchard
                 status: 'active',
                 safety_verified: true,

@@ -10,9 +10,10 @@ import { edgeFunctionsRepository } from '@/repositories/edge-functions.repositor
 
 export const payrollRepository = {
     /** Invoke the calculate-payroll Edge Function with gateway resilience */
-    async invokeCalculatePayroll(orchardId: string, startDate: string, endDate: string) {
+    /** orchardId vacío = nómina de la empresa (todos los huertos, suma por persona) */
+    async invokeCalculatePayroll(orchardId: string | undefined, startDate: string, endDate: string) {
         const { data, error } = await edgeFunctionsRepository.invoke('calculate-payroll', {
-            orchard_id: orchardId,
+            ...(orchardId ? { orchard_id: orchardId } : {}),
             start_date: startDate,
             end_date: endDate,
         });

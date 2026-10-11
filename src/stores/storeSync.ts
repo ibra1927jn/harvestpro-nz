@@ -35,6 +35,9 @@ interface AttendanceRecord {
   picker_id: string;
   date: string;
   check_in: string | null;
+  check_out?: string | null;
+  break_start?: string | null;
+  break_minutes?: number | null;
   orchard_id: string;
 }
 
@@ -148,7 +151,7 @@ export async function fetchOrchardData(
     }) as Picker;
 
   try {
-    let pickersQuery = storeSyncRepository.getPickersQuery(activeOrchard?.id ?? '', today);
+    let pickersQuery = storeSyncRepository.getPickersQuery(activeOrchard?.id ?? '', today, { onlyStaff: !useDelta });
 
     let bucketsQuery = storeSyncRepository.getBucketRecordsQuery(
       activeOrchard?.id ?? '',
@@ -184,7 +187,8 @@ export async function fetchOrchardData(
     if (useDelta) {
       const crewMap = new Map(state.crew.map((p: Picker) => [p.id, p]));
       pickersRes.data.forEach((p: PickerWithAttendance) => {
-        if (p.deleted_at) crewMap.delete(p.id);
+        // Bajas y borrados también llegan por delta: salen de la lista en todos los dispositivos
+        if (p.deleted_at || p.status === 'archived') crewMap.delete(p.id);
         else crewMap.set(p.id, mapPickerWithAttendance(p));
       });
       const bucketsMap = new Map(state.bucketRecords.map((b: BucketRecord) => [b.id, b]));
@@ -339,10 +343,15 @@ export function setupRealtimeSubscriptions(
                     ...p,
                     checked_in_today: !!attendanceRecord.check_in,
                     check_in: attendanceRecord.check_in || undefined,
+                    check_out: attendanceRecord.check_out || undefined,
+                    break_start: attendanceRecord.break_start || undefined,
+                    break_minutes: attendanceRecord.break_minutes ?? undefined,
                   }
                 : p
             ),
           }));
+          // Horas y pago de hoy al instante (salida o descanso corregidos)
+          get().recalculateIntelligence();
         }
       }
     )

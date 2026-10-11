@@ -107,7 +107,8 @@ export const payrollService = {
    * @returns PayrollResult con cálculos completos
    */
   async calculatePayroll(
-    orchardId: string,
+    /** undefined = toda la empresa (la gente rota entre huertos) */
+    orchardId: string | undefined,
     startDate: string,
     endDate: string
   ): Promise<PayrollResult> {

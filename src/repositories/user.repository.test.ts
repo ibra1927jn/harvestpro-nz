@@ -7,7 +7,7 @@ import { userRepository2 } from './user.repository';
 
 function mockChain(result: { data?: unknown; error?: unknown; count?: number }) {
     const chain: Record<string, unknown> = {
-        select: vi.fn(() => chain), eq: vi.fn(() => chain), in: vi.fn(() => chain),
+        select: vi.fn(() => chain), eq: vi.fn(() => chain), is: vi.fn(() => chain), in: vi.fn(() => chain),
         order: vi.fn(() => chain), limit: vi.fn(() => chain),
         then: (onF?: (v: unknown) => unknown, onR?: (r: unknown) => unknown) =>
             Promise.resolve(result).then(onF, onR),
@@ -50,13 +50,11 @@ describe('userRepository2', () => {
     });
 
     describe('getActiveCount', () => {
-        it('counts active users', async () => {
-            fromSpy.mockReturnValue(mockChain({
-                data: [{ id: '1', is_active: true }, { id: '2', is_active: false }, { id: '3', is_active: true }],
-                error: null,
-            }) as never);
+        it('counts the active staff in the single people list (pickers), not app accounts', async () => {
+            fromSpy.mockReturnValue(mockChain({ data: null, error: null, count: 26 }) as never);
             const count = await userRepository2.getActiveCount();
-            expect(count).toBe(2);
+            expect(fromSpy).toHaveBeenCalledWith('pickers');
+            expect(count).toBe(26);
         });
 
         it('returns 0 when no data', async () => {

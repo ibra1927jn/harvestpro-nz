@@ -4,6 +4,7 @@
  * Merges CostAnalyticsView and WeeklyReportView behind a
  * clean inner toggle. Reduces Manager bottom-nav clutter.
  */
+import { selectPickers } from '@/services/harvestMetrics/roster';
 import React, { useState, Suspense } from 'react';
 import { useTranslation } from '@/i18n';
 
@@ -22,7 +23,7 @@ const InsightsView: React.FC = () => {
     const [activeTab, setActiveTab] = useState<InsightsTab>('analytics');
     const orchard = useHarvestStore(s => s.orchard);
     const crew = useHarvestStore(s => s.crew);
-    const pickerCount = crew.filter(c => c.role === 'picker').length;
+    const pickerCount = selectPickers(crew).length;
     const { t } = useTranslation();
 
     return (

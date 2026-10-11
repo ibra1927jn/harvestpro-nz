@@ -7,6 +7,7 @@
  *
  * The tactical map's selectedBlockId filters all 3 views.
  */
+import { selectPresentPickers } from '@/services/harvestMetrics/roster';
 import React, { useState } from 'react';
 import { Picker, BucketRecord, Tab } from '@/types';
 import OrchardMapView from './OrchardMapView';
@@ -43,7 +44,8 @@ const MapToggleView: React.FC<MapToggleViewProps> = ({
 }) => {
     const [mode, setMode] = useState<MapMode>('tactical');
 
-    const runners = crew.filter(p => p.role === 'runner' || p.role === 'bucket_runner');
+    // La vista de lista cuenta pickers por fila: pickers trabajando ahora (antes recibía los runners)
+    const runners = selectPresentPickers(crew);
 
     return (
         <div className="flex flex-col h-full">

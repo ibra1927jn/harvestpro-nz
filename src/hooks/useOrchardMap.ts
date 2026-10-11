@@ -6,7 +6,7 @@ import { Picker, BucketRecord, OrchardBlock, RowAssignment } from '@/types';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { getRowProgress } from '@/utils/orchardMapUtils';
 import { binsPerHourForRow } from '@/services/harvestMetrics/perRow';
-import { selectActiveCrew } from '@/services/harvestMetrics/roster';
+import { selectPresentPickers } from '@/services/harvestMetrics/roster';
 
 export interface RowData {
     rowNum: number;
@@ -66,18 +66,27 @@ export function useOrchardMap(
     const selectedBlock = orchardBlocks.find(b => b.id === selectedBlockId) || null;
 
     // Pickers-by-row lookup
+    // En el mapa, cada fila muestra a los pickers que están trabajando AHORA
+    // (fichados y sin salida) — misma regla que la cabecera y el panel.
+    // Cubetas válidas (sin rechazos de QC ni borradas): las mismas que el panel
+    const validBuckets = useMemo(
+        () => bucketRecords.filter(b => b.quality_grade !== 'reject' && !(b as { deleted_at?: string | null }).deleted_at),
+        [bucketRecords],
+    );
+
     const pickersByRow = useMemo(() => {
         const map: Record<number, Picker[]> = {};
+        const present = selectPresentPickers(crew);
         rowAssignments.forEach(ra => {
             if (!map[ra.row_number]) map[ra.row_number] = [];
             ra.assigned_pickers.forEach(pid => {
-                const p = crew.find(c => c.id === pid);
+                const p = present.find(c => c.id === pid);
                 if (p && !map[ra.row_number].find(x => x.id === p.id)) {
                     map[ra.row_number].push(p);
                 }
             });
         });
-        crew.forEach(p => {
+        present.forEach(p => {
             if (p.current_row > 0) {
                 if (!map[p.current_row]) map[p.current_row] = [];
                 if (!map[p.current_row].find(x => x.id === p.id)) {
@@ -112,7 +121,7 @@ export function useOrchardMap(
         orchardBlocks.forEach(block => {
             let blockBuckets = 0, blockPickers = 0, blockCompletedRows = 0;
             for (let row = block.startRow; row < block.startRow + block.totalRows; row++) {
-                const rowBuckets = bucketRecords.filter(br => br.row_number === row).length;
+                const rowBuckets = validBuckets.filter(br => br.row_number === row).length;
                 blockBuckets += rowBuckets;
                 blockPickers += (pickersByRow[row] || []).length;
                 const rowTarget = rowTargets[row] ?? targetBucketsPerRow;
@@ -126,18 +135,18 @@ export function useOrchardMap(
             };
         });
         return stats;
-    }, [orchardBlocks, bucketRecords, targetBucketsPerRow, rowTargets, pickersByRow]);
+    }, [orchardBlocks, validBuckets, targetBucketsPerRow, rowTargets, pickersByRow]);
 
     // Row data for selected block
     const rowData = useMemo(() => {
         if (!selectedBlock) return [];
         return Array.from({ length: selectedBlock.totalRows }, (_, i) => {
             const rowNum = selectedBlock.startRow + i;
-            const buckets = bucketRecords.filter(br => br.row_number === rowNum).length;
+            const buckets = validBuckets.filter(br => br.row_number === rowNum).length;
             const pickers = pickersByRow[rowNum] || [];
             const variety = selectedBlock.rowVarieties[rowNum] || 'Unknown';
             const rowTarget = rowTargets[rowNum] ?? targetBucketsPerRow;
-            const bph = binsPerHourForRow(rowNum, bucketRecords);
+            const bph = binsPerHourForRow(rowNum, validBuckets);
             return {
                 rowNum, buckets, pickers, variety,
                 progress: getRowProgress(buckets, rowTarget),
@@ -145,11 +154,11 @@ export function useOrchardMap(
                 rowTarget,
             };
         });
-    }, [selectedBlock, bucketRecords, targetBucketsPerRow, rowTargets, pickersByRow]);
+    }, [selectedBlock, validBuckets, targetBucketsPerRow, rowTargets, pickersByRow]);
 
     // Global stats — misma definición que DashboardView (status === 'active')
-    const totalActivePickers = selectActiveCrew(crew).length;
-    const totalBuckets = bucketRecords.length;
+    const totalActivePickers = selectPresentPickers(crew).length;
+    const totalBuckets = validBuckets.length;
     const totalRows = orchardBlocks.reduce((s, b) => s + b.totalRows, 0);
 
     return {

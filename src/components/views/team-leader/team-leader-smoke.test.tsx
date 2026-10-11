@@ -41,6 +41,10 @@ vi.mock('@/stores/useHarvestStore', () => ({
   }),
 }));
 
+vi.mock('@/hooks/useHarvestMetrics', () => ({
+  useHarvestMetrics: () => ({ perPicker: [{ pickerId: 'p1', earned: 80 }, { pickerId: 'p2', earned: 40 }] }),
+}));
+
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
     appUser: { id: 'u1', full_name: 'Test User', role: 'team_leader', orchard_id: 'o1' },

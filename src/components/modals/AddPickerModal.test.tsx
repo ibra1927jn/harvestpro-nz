@@ -8,7 +8,7 @@ import AddPickerModal from './AddPickerModal';
 
 // Mock dependencies
 vi.mock('../../context/AuthContext', () => ({
-    useAuth: () => ({ appUser: { id: 'tl-1', email: 'tl@test.com' } }),
+    useAuth: () => ({ appUser: { id: 'tl-1', email: 'tl@test.com', role: 'team_leader' } }),
 }));
 vi.mock('@/stores/useHarvestStore', () => ({
     useHarvestStore: () => ({ orchard: { id: 'o-1', name: 'Test Orchard' } }),
@@ -112,7 +112,7 @@ describe('AddPickerModal', () => {
                 name: 'Liam Test',
                 picker_id: '402',
                 harness_id: 'HN-402',
-                role: 'Picker',
+                role: 'picker', // la BD solo acepta minúsculas
                 status: 'active',
                 safety_verified: true,
             }));

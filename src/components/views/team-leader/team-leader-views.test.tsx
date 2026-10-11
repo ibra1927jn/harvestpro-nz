@@ -11,8 +11,11 @@ vi.mock('@/stores/useHarvestStore', () => ({
         currentUser: { id: 'tl1', name: 'Maria Garcia', role: 'team_leader' },
         stats: { totalBuckets: 35, payEstimate: 105, tons: 2.8 },
         crew: [
-            { id: 'p1', name: 'Picker A', total_buckets_today: 15, status: 'active', role: 'picker', orchard_id: 'o1', current_row: 2, qcStatus: [1, 1, 1] },
-            { id: 'p2', name: 'Picker B', total_buckets_today: 20, status: 'on_break', role: 'picker', orchard_id: 'o1', current_row: 5, qcStatus: [1, 0, 1] },
+            // Equipo de tl1, fichados hoy
+            { id: 'p1', name: 'Picker A', total_buckets_today: 15, status: 'active', role: 'picker', orchard_id: 'o1', current_row: 2, qcStatus: [1, 1, 1], team_leader_id: 'tl1', check_in: '2026-10-12T07:00:00+13:00' },
+            { id: 'p2', name: 'Picker B', total_buckets_today: 20, status: 'active', role: 'picker', orchard_id: 'o1', current_row: 5, qcStatus: [1, 0, 1], team_leader_id: 'tl1', check_in: '2026-10-12T07:00:00+13:00' },
+            // De otro team leader: no sale en "mi equipo"
+            { id: 'p9', name: 'Other Team', total_buckets_today: 40, status: 'active', role: 'picker', orchard_id: 'o1', current_row: 7, qcStatus: [], team_leader_id: 'tl2', check_in: '2026-10-12T07:00:00+13:00' },
         ],
         settings: { min_buckets_per_hour: 3.6 },
         bins: [],
@@ -20,6 +23,16 @@ vi.mock('@/stores/useHarvestStore', () => ({
         orchardId: 'orchard1',
         daySettings: { piece_rate_per_bucket: 3.0 },
     }),
+}));
+
+vi.mock('@/hooks/useHarvestMetrics', () => ({
+    useHarvestMetrics: () => ({ perPicker: [
+        { pickerId: 'p1', earned: 100 }, { pickerId: 'p2', earned: 50 }, { pickerId: 'p9', earned: 999 },
+    ] }),
+}));
+
+vi.mock('@/context/AuthContext', () => ({
+    useAuth: () => ({ appUser: { id: 'tl1', full_name: 'Maria Garcia', role: 'team_leader' } }),
 }));
 
 import HomeView from './HomeView';
@@ -39,9 +52,15 @@ describe('HomeView (TeamLeader)', () => {
         expect(screen.getByText('Tons')).toBeTruthy();
     });
 
-    it('renders total buckets value', () => {
+    it('renders the team buckets (only my team: 15 + 20)', () => {
         render(<HomeView />);
-        expect(screen.getByText('35')).toBeTruthy();
+        expect(screen.getAllByText('35').length).toBeGreaterThanOrEqual(1);
+        expect(screen.queryByText('Other Team')).toBeNull();
+    });
+
+    it('pay estimate is my team only (100 + 50)', () => {
+        render(<HomeView />);
+        expect(screen.getByText('$150')).toBeTruthy();
     });
 
     it('renders Morning Huddle when all safe', () => {

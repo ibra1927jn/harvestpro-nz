@@ -8,6 +8,7 @@
  *   Conflict Resolution: Last-write-wins (documented decision)
  */
 import { settingsRepository } from '@/repositories/settings.repository';
+import { payrollService } from '@/services/payroll.service';
 import { storeSyncRepository } from '@/repositories/store-sync.repository';
 import { syncService } from '@/services/sync.service';
 import { logger } from '@/utils/logger';
@@ -94,9 +95,17 @@ export async function fetchHRSummary(orchardId?: string): Promise<HRSummary> {
     const pending = await contractRepository2.getPending(orchardId);
     const alerts = await fetchComplianceAlerts(orchardId);
 
-    const week = await loadPayWeek(orchardId);
-    const payrollThisWeek =
-      Math.round(week.pay.reduce((sum, p) => sum + p.total, 0) * 100) / 100;
+    // Mismo total que la pantalla de Nómina (empresa, todos los huertos);
+    // si el servidor no responde, se calcula aquí con el mismo cálculo.
+    let payrollThisWeek: number;
+    try {
+      const week = payWeekOf(todayNZST());
+      const result = await payrollService.calculatePayroll(undefined, week.start, week.end);
+      payrollThisWeek = result.summary.total_earnings;
+    } catch {
+      const week = await loadPayWeek(orchardId);
+      payrollThisWeek = Math.round(week.pay.reduce((sum, p) => sum + p.total, 0) * 100) / 100;
+    }
 
     return {
       activeWorkers,

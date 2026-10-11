@@ -218,7 +218,8 @@ export function jsonResponse(data: unknown, origin: string | null, status = 200)
 
 // Payroll
 export const PayrollInputSchema = z.object({
-  orchard_id: z.string().uuid('orchard_id must be a valid UUID'),
+  // Sin orchard_id = nómina de la empresa (todos los huertos, suma por persona)
+  orchard_id: z.string().uuid('orchard_id must be a valid UUID').optional(),
   start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'start_date must be YYYY-MM-DD'),
   end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'end_date must be YYYY-MM-DD'),
 });
