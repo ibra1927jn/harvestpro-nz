@@ -19,6 +19,7 @@ import { logger } from '@/utils/logger';
 import { Picker } from '@/types';
 import { supabase } from '@/services/supabase';
 import { payForRange, PAY_RULES } from '@/services/harvestMetrics';
+import { fetchAllRows } from '@/utils/fetchAllRows';
 
 export interface TeamRanking {
     name: string;
@@ -170,25 +171,29 @@ export function useWeeklyReport(): WeeklyReportData {
                         const weekStart = startOfWeekNZ();
                         const nzOffset = toNZST(new Date()).slice(-6); // "+12:00" o "+13:00"
 
-                        const [bucketsRes, attendanceRes] = await Promise.all([
-                            supabase
+                        const [bucketRows, attendanceRows] = await Promise.all([
+                            fetchAllRows<WeekBucketRow>((from, to) => supabase
                                 .from('bucket_records')
                                 .select('picker_id, scanned_at, quality_grade')
                                 .eq('orchard_id', orchardId)
                                 .is('deleted_at', null)
                                 .gte('scanned_at', `${weekStart}T00:00:00${nzOffset}`)
-                                .lte('scanned_at', `${todayStr}T23:59:59${nzOffset}`),
-                            supabase
+                                .lte('scanned_at', `${todayStr}T23:59:59${nzOffset}`)
+                                .order('id')
+                                .range(from, to)),
+                            fetchAllRows<WeekAttendanceRow>((from, to) => supabase
                                 .from('daily_attendance')
                                 .select('picker_id, date, check_in, check_out, break_start, break_minutes')
                                 .eq('orchard_id', orchardId)
                                 .gte('date', weekStart)
-                                .lte('date', todayStr),
+                                .lte('date', todayStr)
+                                .order('id')
+                                .range(from, to)),
                         ]);
 
                         const breakdown = buildWeekBreakdown({
-                            attendance: (attendanceRes.data || []) as WeekAttendanceRow[],
-                            buckets: (bucketsRes.data || []) as WeekBucketRow[],
+                            attendance: attendanceRows,
+                            buckets: bucketRows,
                             crew,
                             pieceRate: settings?.piece_rate ?? 6.5,
                             minWage: settings?.min_wage_rate ?? PAY_RULES.minWageFloor,

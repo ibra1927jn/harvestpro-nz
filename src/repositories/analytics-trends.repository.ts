@@ -2,6 +2,7 @@
  * Analytics Trends Repository — Domain queries for day_closures, daily_attendance, bucket_records
  */
 import { supabase } from '@/services/supabase';
+import { fetchAllRows } from '@/utils/fetchAllRows';
 
 export interface DailyAggregate {
     /** Fecha en formato YYYY-MM-DD (fecha local NZ, no UTC) */
@@ -24,24 +25,26 @@ export const analyticsTrendsRepository = {
             new Intl.DateTimeFormat('en-US', { timeZone: 'Pacific/Auckland', timeZoneName: 'longOffset' })
                 .formatToParts(new Date(`${d}T12:00:00Z`))
                 .find(p => p.type === 'timeZoneName')?.value.replace('GMT', '') || '+13:00';
-        const [att, bkt] = await Promise.all([
-            supabase
+        const [attendance, buckets] = await Promise.all([
+            fetchAllRows<PayInputs['attendance'][number]>((from, to) => supabase
                 .from('daily_attendance')
                 .select('picker_id, date, check_in, check_out, break_start, break_minutes')
                 .eq('orchard_id', orchardId)
                 .gte('date', startDate)
-                .lte('date', endDate),
-            supabase
+                .lte('date', endDate)
+                .order('id')
+                .range(from, to)),
+            fetchAllRows<PayInputs['buckets'][number]>((from, to) => supabase
                 .from('bucket_records')
                 .select('picker_id, scanned_at, quality_grade')
                 .eq('orchard_id', orchardId)
                 .is('deleted_at', null)
                 .gte('scanned_at', `${startDate}T00:00:00${offset(startDate)}`)
-                .lte('scanned_at', `${endDate}T23:59:59${offset(endDate)}`),
+                .lte('scanned_at', `${endDate}T23:59:59${offset(endDate)}`)
+                .order('id')
+                .range(from, to)),
         ]);
-        if (att.error) throw att.error;
-        if (bkt.error) throw bkt.error;
-        return { attendance: att.data || [], buckets: (bkt.data || []) as PayInputs['buckets'] };
+        return { attendance, buckets };
     },
 
     /** Get bucket records for a date range grouped by row */

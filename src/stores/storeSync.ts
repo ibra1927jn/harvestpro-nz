@@ -9,6 +9,7 @@ import { supabase } from '@/services/supabase';
 import { offlineService } from '@/services/offline.service';
 import { logger } from '@/utils/logger';
 import { todayNZST, toNZST } from '@/utils/nzst';
+import { fetchAllRows } from '@/utils/fetchAllRows';
 import { BucketRecord, Picker } from '@/types';
 import type { HarvestStoreState, ScannedBucket } from './storeTypes';
 import { storeSyncRepository } from '@/repositories/store-sync.repository';
@@ -163,7 +164,18 @@ export async function fetchOrchardData(
       logger.info('[Sync] Full mode: downloading all active records');
     }
 
-    const [pickersRes, bucketsRes] = await Promise.all([pickersQuery, bucketsQuery]);
+    // Carga completa por páginas: un día con mucha cuadrilla pasa de las 1000
+    // filas que devuelve PostgREST por petición.
+    const bucketsPromise = useDelta
+      ? bucketsQuery
+      : fetchAllRows<BucketRecord>((from, to) =>
+          storeSyncRepository
+            .getBucketRecordsQuery(activeOrchard?.id ?? '', startOfDayNZ)
+            .is('deleted_at', null)
+            .order('id')
+            .range(from, to)
+        ).then(data => ({ data, error: null }));
+    const [pickersRes, bucketsRes] = await Promise.all([pickersQuery, bucketsPromise]);
     if (pickersRes.error) throw pickersRes.error;
     if (bucketsRes.error) throw bucketsRes.error;
 

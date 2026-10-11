@@ -5,6 +5,7 @@
  * attendance.service.ts has ZERO direct supabase imports.
  */
 import { supabase } from '@/services/supabase';
+import { fetchAllRows } from '@/utils/fetchAllRows';
 import { logger } from '@/utils/logger';
 
 export const attendanceRepository = {
@@ -100,13 +101,14 @@ export const attendanceRepository = {
 
     /** Get hours summary for period (for payroll calculations) */
     async getHoursSummary(orchardId: string | undefined, sinceDate: string) {
-        let query = supabase
-            .from('daily_attendance')
-            .select('picker_id, date, check_in, check_out, break_start, break_minutes')
-            .gte('date', sinceDate);
-        if (orchardId) query = query.eq('orchard_id', orchardId);
-        const { data } = await query;
-        return data || [];
+        return fetchAllRows<{ picker_id: string; date: string; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null }>((from, to) => {
+            let query = supabase
+                .from('daily_attendance')
+                .select('picker_id, date, check_in, check_out, break_start, break_minutes')
+                .gte('date', sinceDate);
+            if (orchardId) query = query.eq('orchard_id', orchardId);
+            return query.order('id').range(from, to);
+        }).catch(() => []);
     },
 
     /** Get attendance for timesheet export (payroll.service) */

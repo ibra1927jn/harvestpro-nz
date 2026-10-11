@@ -9,6 +9,7 @@ import {
     PayrollInputSchema,
 } from '../_shared/security.ts'
 import { payForRange, PAY_RULES, type PickerRangePay } from '../_shared/pay-rules.ts'
+import { fetchAllRows } from '../_shared/fetch-all-rows.ts'
 
 // FIX U3: Dynamic NZST offset — handles DST transitions correctly
 function getNZOffset(dateStr: string): string {
@@ -148,29 +149,26 @@ serve(async (req) => {
 
         // 2. Cubetas del rango (límites en hora NZ). Los rechazos de QC se
         //    excluyen dentro del cálculo (pay-rules.ts).
-        const { data: events, error: eventsError } = await supabase
+        // Por páginas: PostgREST corta en 1000 filas y una semana tiene más.
+        const events = await fetchAllRows((from, to) => supabase
             .from('bucket_records')
             .select('picker_id, scanned_at, quality_grade')
             .eq('orchard_id', orchard_id)
             .is('deleted_at', null)
             .gte('scanned_at', toNZBoundary(start_date, '00:00:00'))
             .lte('scanned_at', toNZBoundary(end_date, '23:59:59'))
-
-        if (eventsError) {
-            throw new Error(`Failed to fetch bucket records: ${eventsError.message}`)
-        }
+            .order('id')
+            .range(from, to))
 
         // 2b. Fichajes del rango: entrada/salida y descanso que anota el team leader
-        const { data: attendance, error: attendanceError } = await supabase
+        const attendance = await fetchAllRows((from, to) => supabase
             .from('daily_attendance')
             .select('picker_id, date, check_in, check_out, break_start, break_minutes')
             .eq('orchard_id', orchard_id)
             .gte('date', start_date)
             .lte('date', end_date)
-
-        if (attendanceError) {
-            throw new Error(`Failed to fetch attendance: ${attendanceError.message}`)
-        }
+            .order('id')
+            .range(from, to))
 
         // 3. Cálculo único (mismo código que la app, _shared/pay-rules.ts):
         //    - horas = salida − entrada − descanso de 30 min NO pagado

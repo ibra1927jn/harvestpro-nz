@@ -22,4 +22,11 @@ describe('pay rules parity (app ↔ Edge Functions)', () => {
         const app = readFileSync(resolve(root, 'src/services/harvestMetrics/pay.ts'), 'utf8');
         expect(app).not.toMatch(/^\s*import\s/m);
     });
+
+    it('supabase/functions/_shared/fetch-all-rows.ts es idéntico a src/utils/fetchAllRows.ts', () => {
+        const root = resolve(__dirname, '../../..');
+        const app = readFileSync(resolve(root, 'src/utils/fetchAllRows.ts'), 'utf8');
+        const edge = readFileSync(resolve(root, 'supabase/functions/_shared/fetch-all-rows.ts'), 'utf8');
+        expect(edge).toBe(app);
+    });
 });
