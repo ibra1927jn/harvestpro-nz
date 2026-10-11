@@ -206,6 +206,16 @@ describe('payForRange', () => {
         expect(r.estimatedDays).toBe(1);
     });
 
+    it('turno abierto de un día pasado: empieza en la entrada aunque haya escaneos antes', () => {
+        const attendance = [{ pickerId: 'p1', date: d1, checkIn: t(d1, '07:20') }];
+        const buckets = [
+            { pickerId: 'p1', scannedAt: t(d1, '07:16') },
+            { pickerId: 'p1', scannedAt: t(d1, '15:20') },
+        ];
+        const [r] = payForRange({ attendance, buckets, pieceRate: 6.5, minWage: 23.95, now: new Date(t(d2, '12:00')) });
+        expect(r.hours).toBe(7.5);
+    });
+
     it('turno abierto de un día pasado sin cubetas: no desaparece, queda a 0 h marcado', () => {
         const attendance = [{ pickerId: 'p1', date: d1, checkIn: t(d1, '07:00') }];
         const rows = payForRange({ attendance, buckets: [], pieceRate: 6.5, minWage: 23.95, now: new Date(t(d2, '12:00')) });

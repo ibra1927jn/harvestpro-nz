@@ -248,7 +248,8 @@ serve(async (req) => {
         }
         picker_breakdown.sort((a, b) => b.buckets - a.buckets)
 
-        const total_earnings = total_piece_rate_earnings + total_top_up
+        // Suma de los totales por picker (misma cifra que HR y el informe, sin descuadres de céntimos)
+        const total_earnings = picker_breakdown.reduce((s, p) => s + p.total_earnings, 0)
         const workers_total = pickerIds.length
         const compliance_rate = workers_total > 0
             ? ((workers_total - workers_below_minimum) / workers_total) * 100

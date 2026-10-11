@@ -334,13 +334,18 @@ export function payForRange(params: {
         // Un turno sin salida solo cuenta "hasta ahora" si es de hoy. Si quedó
         // abierto en un día pasado, se estima de la entrada al último escaneo y el
         // día queda marcado como estimado para que el team leader lo cierre.
+        // El turno empieza cuando ficha el team leader, aunque haya escaneos antes.
         const staleOpen = !!shift?.checkIn && !shift.checkOut && date < today;
+        const lastScanMs = dayScans.reduce((m, s) => Math.max(m, toMs(s) ?? 0), 0);
+        const checkInMs = toMs(shift?.checkIn) ?? 0;
         const h = shiftHours({
-            checkIn: staleOpen ? null : shift?.checkIn,
-            checkOut: shift?.checkOut,
+            checkIn: shift?.checkIn,
+            checkOut: staleOpen
+                ? new Date(Math.max(checkInMs, lastScanMs)).toISOString()
+                : shift?.checkOut,
             breakStart: shift?.breakStart,
             breakMinutes: shift?.breakMinutes,
-            scanTimes: staleOpen ? [shift?.checkIn, ...dayScans] : dayScans,
+            scanTimes: dayScans,
             now,
         });
         // Sin horas ni cubetas no hay nada que pagar, salvo un turno abierto de un
@@ -364,7 +369,7 @@ export function payForRange(params: {
         acc.total = round2(acc.total + p.total);
         acc.days += 1;
         if (p.belowMinimum) acc.daysBelowMinimum += 1;
-        if (h.source !== 'timesheet') acc.estimatedDays += 1;
+        if (staleOpen || h.source !== 'timesheet') acc.estimatedDays += 1;
         byPicker.set(pickerId, acc);
     }
 
