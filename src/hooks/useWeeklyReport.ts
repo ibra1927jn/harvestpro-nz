@@ -5,8 +5,8 @@
  * de weeklySeries → computePerPicker + computeKPIs para garantizar
  * paridad exacta con el tab Analytics (useHarvestMetrics).
  *
- * teamRankings y pickers (leaderboard) siguen usando payrollService.
- * Los trendings de 7 días siguen usando analyticsService.
+ * Pago y horas: Edge Function calculate-payroll; si falla, el mismo cálculo
+ * (pay.ts, complemento por día) en el cliente. Gráficos: analyticsService.
  */
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from '@/i18n';
@@ -18,6 +18,7 @@ import { TrendDataPoint, DayMeta } from '@/components/charts/TrendLineChart';
 import { logger } from '@/utils/logger';
 import { Picker } from '@/types';
 import { supabase } from '@/services/supabase';
+import { payForRange, PAY_RULES } from '@/services/harvestMetrics';
 
 export interface TeamRanking {
     name: string;
@@ -62,6 +63,79 @@ export interface WeeklyReportData {
     openProfile: (pickerId: string) => void;
 }
 
+interface WeekAttendanceRow {
+    picker_id: string;
+    date: string;
+    check_in: string | null;
+    check_out: string | null;
+    break_start?: string | null;
+    break_minutes?: number | null;
+}
+
+interface WeekBucketRow {
+    picker_id: string;
+    scanned_at: string;
+    quality_grade?: string | null;
+}
+
+/** Desglose semanal por picker con el cálculo único (complemento por día). */
+export function buildWeekBreakdown(params: {
+    attendance: ReadonlyArray<WeekAttendanceRow>;
+    buckets: ReadonlyArray<WeekBucketRow>;
+    crew: ReadonlyArray<Pick<Picker, 'id' | 'name'>>;
+    pieceRate: number;
+    minWage: number;
+    now?: Date;
+}): PickerBreakdown[] {
+    const minWage = Math.max(params.minWage, PAY_RULES.minWageFloor);
+    const rows = payForRange({
+        attendance: params.attendance.map(a => ({
+            pickerId: a.picker_id,
+            date: a.date,
+            checkIn: a.check_in,
+            checkOut: a.check_out,
+            breakStart: a.break_start,
+            breakMinutes: a.break_minutes,
+        })),
+        buckets: params.buckets.map(b => ({
+            pickerId: b.picker_id,
+            scannedAt: b.scanned_at,
+            qualityGrade: b.quality_grade,
+        })),
+        pieceRate: params.pieceRate,
+        minWage,
+        now: params.now,
+    });
+    return rows.map(r => ({
+        picker_id: r.pickerId,
+        picker_name: params.crew.find(c => c.id === r.pickerId)?.name || 'Unknown',
+        buckets: r.buckets,
+        hours_worked: r.hours,
+        piece_rate_earnings: r.pieceEarnings,
+        hourly_rate: r.hours > 0 ? Math.round((r.pieceEarnings / r.hours) * 100) / 100 : 0,
+        minimum_required: Math.round(r.hours * minWage * 100) / 100,
+        top_up_required: r.topUp,
+        total_earnings: r.total,
+        is_below_minimum: r.daysBelowMinimum > 0,
+    }));
+}
+
+/** Totales de la semana a partir del desglose por picker. */
+export function summarizeBreakdown(pickers: ReadonlyArray<PickerBreakdown>) {
+    let hours = 0, earnings = 0, buckets = 0;
+    for (const p of pickers) {
+        hours += p.hours_worked;
+        earnings += p.total_earnings;
+        buckets += p.buckets;
+    }
+    return {
+        totalHours: Math.round(hours * 100) / 100,
+        totalEarnings: Math.round(earnings * 100) / 100,
+        costPerBin: buckets > 0 ? Math.round((earnings / buckets) * 100) / 100 : 0,
+        avgBPA: hours > 0 ? Math.round((buckets / hours) * 10) / 10 : 0,
+    };
+}
+
 export function useWeeklyReport(): WeeklyReportData {
     const { locale } = useTranslation();
     const orchardId = useHarvestStore(s => s.orchard?.id);
@@ -78,7 +152,6 @@ export function useWeeklyReport(): WeeklyReportData {
     const [isLoading, setIsLoading] = useState(true);
     const [binsTrend, setBinsTrend] = useState<TrendDataPoint[]>([]);
     const [workforceTrend, setWorkforceTrend] = useState<TrendDataPoint[]>([]);
-    const [totalHours, setTotalHours] = useState(0);
     const [selectedDayMeta, setSelectedDayMeta] = useState<DayMeta | null>(null);
     const [showExportModal, setShowExportModal] = useState(false);
 
@@ -91,96 +164,35 @@ export function useWeeklyReport(): WeeklyReportData {
                 .catch(async (e) => {
                     logger.warn('[WeeklyReport] Payroll edge function failed — activating client-side fallback:', e);
                     try {
-                        // Fallback: compute picker_breakdown directly from bucket_records + attendance
-                        // Usa rango semanal para coincidir con los KPIs de binsTrend
+                        // Fallback: mismo cálculo que la Edge Function (pay.ts), día a día.
                         const nzFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' });
                         const todayStr = nzFmt.format(new Date());
                         const weekStart = startOfWeekNZ();
                         const nzOffset = toNZST(new Date()).slice(-6); // "+12:00" o "+13:00"
-                        const startOfWeekBoundary = `${weekStart}T00:00:00${nzOffset}`;
-                        const endOfWeekBoundary = `${todayStr}T23:59:59${nzOffset}`;
 
                         const [bucketsRes, attendanceRes] = await Promise.all([
                             supabase
                                 .from('bucket_records')
-                                .select('picker_id, scanned_at')
+                                .select('picker_id, scanned_at, quality_grade')
                                 .eq('orchard_id', orchardId)
                                 .is('deleted_at', null)
-                                .neq('quality_grade', 'reject')
-                                .gte('scanned_at', startOfWeekBoundary)
-                                .lte('scanned_at', endOfWeekBoundary),
+                                .gte('scanned_at', `${weekStart}T00:00:00${nzOffset}`)
+                                .lte('scanned_at', `${todayStr}T23:59:59${nzOffset}`),
                             supabase
                                 .from('daily_attendance')
-                                .select('picker_id, check_in, check_out')
+                                .select('picker_id, date, check_in, check_out, break_start, break_minutes')
                                 .eq('orchard_id', orchardId)
                                 .gte('date', weekStart)
                                 .lte('date', todayStr),
                         ]);
 
-                        const pieceRate = settings?.piece_rate ?? 6.5;
-                        const minWageRate = settings?.min_wage_rate ?? 23.5;
-                        // NZ Minimum Wage Order 2026 floor (same as edge function)
-                        const effectiveMinWage = Math.max(minWageRate, 23.95);
-                        const MEAL_BREAK_THRESHOLD = 4;
-
-                        // Build hours map from weekly attendance
-                        const hoursMap = new Map<string, number>();
-                        (attendanceRes.data || []).forEach((a: { picker_id: string; check_in: string | null; check_out: string | null }) => {
-                            if (a.check_in && a.check_out) {
-                                const raw = (new Date(a.check_out).getTime() - new Date(a.check_in).getTime()) / 3_600_000;
-                                const adjusted = raw > MEAL_BREAK_THRESHOLD ? raw - 0.5 : raw;
-                                hoursMap.set(a.picker_id, (hoursMap.get(a.picker_id) ?? 0) + Math.max(0, adjusted));
-                            }
+                        const breakdown = buildWeekBreakdown({
+                            attendance: (attendanceRes.data || []) as WeekAttendanceRow[],
+                            buckets: (bucketsRes.data || []) as WeekBucketRow[],
+                            crew,
+                            pieceRate: settings?.piece_rate ?? 6.5,
+                            minWage: settings?.min_wage_rate ?? PAY_RULES.minWageFloor,
                         });
-
-                        // Group bucket counts by picker
-                        const bucketsMap = new Map<string, { count: number; firstScan: Date; lastScan: Date }>();
-                        (bucketsRes.data || []).forEach((b: { picker_id: string; scanned_at: string }) => {
-                            const scanTime = new Date(b.scanned_at);
-                            const existing = bucketsMap.get(b.picker_id);
-                            if (!existing) {
-                                bucketsMap.set(b.picker_id, { count: 1, firstScan: scanTime, lastScan: scanTime });
-                            } else {
-                                existing.count++;
-                                if (scanTime < existing.firstScan) existing.firstScan = scanTime;
-                                if (scanTime > existing.lastScan) existing.lastScan = scanTime;
-                            }
-                        });
-
-                        // Build PickerBreakdown[] using crew store for names
-                        const breakdown: PickerBreakdown[] = [];
-                        for (const [pickerId, bucketData] of bucketsMap) {
-                            // bucket_records.picker_id references pickers.id (UUID)
-                            const crewMember = crew.find(c => c.id === pickerId);
-                            const pickerName = crewMember?.name || 'Unknown';
-
-                            let hoursWorked = hoursMap.get(pickerId) ?? 0;
-                            if (hoursWorked === 0) {
-                                // Estimate from scan span when attendance is unavailable
-                                const raw = (bucketData.lastScan.getTime() - bucketData.firstScan.getTime()) / 3_600_000;
-                                hoursWorked = raw > MEAL_BREAK_THRESHOLD ? raw - 0.5 : raw;
-                            }
-
-                            const pieceRateEarnings = bucketData.count * pieceRate;
-                            const hourlyRate = hoursWorked > 0 ? pieceRateEarnings / hoursWorked : 0;
-                            const minimumRequired = hoursWorked * effectiveMinWage;
-                            const topUpRequired = Math.max(0, minimumRequired - pieceRateEarnings);
-                            const totalEarnings = pieceRateEarnings + topUpRequired;
-
-                            breakdown.push({
-                                picker_id: pickerId,
-                                picker_name: pickerName,
-                                buckets: bucketData.count,
-                                hours_worked: parseFloat(hoursWorked.toFixed(2)),
-                                piece_rate_earnings: parseFloat(pieceRateEarnings.toFixed(2)),
-                                hourly_rate: parseFloat(hourlyRate.toFixed(2)),
-                                minimum_required: parseFloat(minimumRequired.toFixed(2)),
-                                top_up_required: parseFloat(topUpRequired.toFixed(2)),
-                                total_earnings: parseFloat(totalEarnings.toFixed(2)),
-                                is_below_minimum: hourlyRate < effectiveMinWage && hoursWorked > 0,
-                            });
-                        }
-                        breakdown.sort((a, b) => b.buckets - a.buckets);
                         setPickers(breakdown);
                         logger.info(`[WeeklyReport] Client-side fallback: ${breakdown.length} pickers computed`);
                     } catch (fallbackErr) {
@@ -198,33 +210,13 @@ export function useWeeklyReport(): WeeklyReportData {
                 const endDateNZ = nzFmt.format(new Date());
                 const startDateNZ = startOfWeekNZ();
 
-                const [trends, attendanceResult] = await Promise.all([
-                    analyticsService.getDailyTrendsV2(orchardId, startDateNZ, endDateNZ),
-                    supabase
-                        .from('daily_attendance')
-                        .select('check_in, check_out')
-                        .eq('orchard_id', orchardId)
-                        .gte('date', startDateNZ)
-                        .lte('date', endDateNZ),
-                ]);
+                const trends = await analyticsService.getDailyTrendsV2(orchardId, startDateNZ, endDateNZ);
 
                 const applyLabel = <T extends { label: string }>(pts: T[]) =>
                     pts.map(p => ({ ...p, label: weekdayFmt.format(new Date(p.label + 'T00:00:00Z')) }));
                 setBinsTrend(applyLabel(trends.totalBins));
                 setWorkforceTrend(applyLabel(trends.workforceSize));
 
-                // Horas semanales reales desde daily_attendance
-                // NZ Employment Relations Act: -30 min de meal break en turnos > 4h
-                const MEAL_BREAK_THRESHOLD = 4;
-                const weekHours = (attendanceResult.data || []).reduce((sum, a) => {
-                    if (a.check_in && a.check_out) {
-                        const raw = (new Date(a.check_out).getTime() - new Date(a.check_in).getTime()) / 3_600_000;
-                        const adjusted = raw > MEAL_BREAK_THRESHOLD ? raw - 0.5 : raw;
-                        return sum + Math.max(0, adjusted);
-                    }
-                    return sum;
-                }, 0);
-                setTotalHours(Math.round(weekHours * 100) / 100);
             })().catch(e => logger.warn('[WeeklyReport] Trends failed:', e));
             await Promise.allSettled([payrollPromise, trendsPromise]);
             setIsLoading(false);
@@ -236,21 +228,16 @@ export function useWeeklyReport(): WeeklyReportData {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [orchardId, locale]);
 
-    // KPIs semanales — misma fuente que los gráficos (binsTrend de getDailyTrendsV2).
-    // totalHours y avgBPA pendientes Paso 3 (daily_attendance + wage_rates).
+    // KPIs semanales. Cubetas: las del gráfico (getDailyTrendsV2).
+    // Horas, pago y coste por cubeta: suma del desglose por picker, calculado
+    // día a día con pay.ts (incluye el complemento al mínimo).
     const totalBuckets = useMemo(
         () => binsTrend.reduce((sum, pt) => sum + pt.value, 0),
         [binsTrend],
     );
-    const totalEarnings = useMemo(
-        () => totalBuckets * (settings?.piece_rate ?? 6.5),
-        [totalBuckets, settings?.piece_rate],
-    );
-    const costPerBin = settings?.piece_rate ?? 0;
-    // totalHours viene del estado — se calcula en trendsPromise desde daily_attendance
-    const avgBPA = useMemo(
-        () => totalHours > 0 ? Math.round((totalBuckets / totalHours) * 10) / 10 : 0,
-        [totalBuckets, totalHours],
+    const { totalHours, totalEarnings, costPerBin, avgBPA } = useMemo(
+        () => summarizeBreakdown(pickers),
+        [pickers],
     );
 
     // Team rankings — siguen derivándose desde payrollService para el leaderboard

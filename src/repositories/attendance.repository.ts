@@ -102,7 +102,7 @@ export const attendanceRepository = {
     async getHoursSummary(orchardId: string | undefined, sinceDate: string) {
         let query = supabase
             .from('daily_attendance')
-            .select('picker_id, check_in, check_out')
+            .select('picker_id, date, check_in, check_out, break_start, break_minutes')
             .gte('date', sinceDate);
         if (orchardId) query = query.eq('orchard_id', orchardId);
         const { data } = await query;

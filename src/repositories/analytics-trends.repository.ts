@@ -12,7 +12,38 @@ export interface DailyAggregate {
     workforce_count: number;
 }
 
+export interface PayInputs {
+    attendance: { picker_id: string; date: string; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null }[];
+    buckets: { picker_id: string; scanned_at: string; quality_grade: string | null }[];
+}
+
 export const analyticsTrendsRepository = {
+    /** Fichajes y cubetas de un rango de días NZ — entrada del cálculo único de pago */
+    async getPayInputs(orchardId: string, startDate: string, endDate: string): Promise<PayInputs> {
+        const offset = (d: string) =>
+            new Intl.DateTimeFormat('en-US', { timeZone: 'Pacific/Auckland', timeZoneName: 'longOffset' })
+                .formatToParts(new Date(`${d}T12:00:00Z`))
+                .find(p => p.type === 'timeZoneName')?.value.replace('GMT', '') || '+13:00';
+        const [att, bkt] = await Promise.all([
+            supabase
+                .from('daily_attendance')
+                .select('picker_id, date, check_in, check_out, break_start, break_minutes')
+                .eq('orchard_id', orchardId)
+                .gte('date', startDate)
+                .lte('date', endDate),
+            supabase
+                .from('bucket_records')
+                .select('picker_id, scanned_at, quality_grade')
+                .eq('orchard_id', orchardId)
+                .is('deleted_at', null)
+                .gte('scanned_at', `${startDate}T00:00:00${offset(startDate)}`)
+                .lte('scanned_at', `${endDate}T23:59:59${offset(endDate)}`),
+        ]);
+        if (att.error) throw att.error;
+        if (bkt.error) throw bkt.error;
+        return { attendance: att.data || [], buckets: (bkt.data || []) as PayInputs['buckets'] };
+    },
+
     /** Get bucket records for a date range grouped by row */
     async getBucketsByRowInRange(orchardId: string, startDate: string, endDate: string) {
         const { data, error } = await supabase

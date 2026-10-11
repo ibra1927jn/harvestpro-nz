@@ -8,6 +8,7 @@ import {
     checkRateLimit,
     PayrollInputSchema,
 } from '../_shared/security.ts'
+import { payForRange, PAY_RULES, type PickerRangePay } from '../_shared/pay-rules.ts'
 
 // FIX U3: Dynamic NZST offset — handles DST transitions correctly
 function getNZOffset(dateStr: string): string {
@@ -30,7 +31,6 @@ function toNZBoundary(dateStr: string, time: string): string {
 // for hours worked on a public holiday. Lista debe mantenerse en sync
 // con src/constants/nz-law.ts (NO shared import posible: src/ es TS web,
 // functions/ es Deno edge. Mantenimiento anual junto con nz-law.ts).
-const NZ_PUBLIC_HOLIDAY_RATE = 1.5;
 const NZ_PUBLIC_HOLIDAYS_SET = new Set<string>([
     // 2026 (Monday-ised)
     '2026-01-01', '2026-01-02', '2026-02-06', '2026-04-03', '2026-04-06',
@@ -55,10 +55,10 @@ interface PickerBreakdown {
     hours_holiday: number       // horas en public holidays (1.5x floor)
     piece_rate_earnings: number
     hourly_rate: number
-    minimum_required: number    // ya incluye premium 1.5x sobre hours_holiday
-    top_up_required: number
+    minimum_required: number    // incluye 1.5x sobre hours_holiday (informativo)
+    top_up_required: number     // suma de complementos diarios
     total_earnings: number
-    is_below_minimum: boolean
+    is_below_minimum: boolean   // algún día por debajo del mínimo
     // Holidays Act 2003 s.60: día alternativo en lieu por cada public holiday
     // trabajado que habría sido un día hábil para el picker. Simplificación
     // MVP: contamos fechas únicas con horas > 0; el flag "otherwise working
@@ -103,7 +103,7 @@ serve(async (req) => {
 
     try {
         // ── Auth + RBAC ──────────────────────────────
-        const { user, supabase } = await requireRole(req, ['admin', 'manager'])
+        const { user, supabase } = await requireRole(req, ['admin', 'manager', 'payroll_admin'])
         checkRateLimit(user.id, { maxRequests: 30, windowMs: 60_000 }) // Payroll is sensitive — low limit
 
         // ── Input Validation ─────────────────────────
@@ -135,7 +135,7 @@ serve(async (req) => {
         // Floor legal: Minimum Wage Order 2026, efectivo 1 April 2026
         // Garantía defensiva — la migración 20260412 ya lo corrige en DB,
         // pero si la migración no se aplicó en algún entorno, esto evita sub-pagos ilegales.
-        const NZ_MIN_WAGE_FLOOR = 23.95
+        const NZ_MIN_WAGE_FLOOR = PAY_RULES.minWageFloor
         const min_wage_rate = Math.max(stored_min_wage, NZ_MIN_WAGE_FLOOR)
 
         if (stored_min_wage < NZ_MIN_WAGE_FLOOR) {
@@ -146,14 +146,13 @@ serve(async (req) => {
 
         console.info(`[Payroll] Settings - Bucket rate: $${bucket_rate}, Min wage: $${min_wage_rate}/hr`)
 
-        // 2. Obtener bucket_records del rango (NZST boundaries)
-        // Excluir grade='reject' — buckets rechazados por QC no cuentan para piece-rate
+        // 2. Cubetas del rango (límites en hora NZ). Los rechazos de QC se
+        //    excluyen dentro del cálculo (pay-rules.ts).
         const { data: events, error: eventsError } = await supabase
             .from('bucket_records')
-            .select('picker_id, scanned_at, quality_grade, pickers:picker_id(name)')
+            .select('picker_id, scanned_at, quality_grade')
             .eq('orchard_id', orchard_id)
             .is('deleted_at', null)
-            .neq('quality_grade', 'reject')
             .gte('scanned_at', toNZBoundary(start_date, '00:00:00'))
             .lte('scanned_at', toNZBoundary(end_date, '23:59:59'))
 
@@ -161,88 +160,65 @@ serve(async (req) => {
             throw new Error(`Failed to fetch bucket records: ${eventsError.message}`)
         }
 
-        console.info(`[Payroll] Found ${events?.length || 0} bucket records (rejected excluded)`)
-
-        // 2b. Fetch attendance records for actual hours (ALL days in range)
-        const { data: attendance } = await supabase
+        // 2b. Fichajes del rango: entrada/salida y descanso que anota el team leader
+        const { data: attendance, error: attendanceError } = await supabase
             .from('daily_attendance')
-            .select('picker_id, date, check_in, check_out')
+            .select('picker_id, date, check_in, check_out, break_start, break_minutes')
             .eq('orchard_id', orchard_id)
             .gte('date', start_date)
             .lte('date', end_date)
 
-        // NZ Employment Relations Act 2000, s.69ZD:
-        // 30-minute paid meal break mandatory for shifts > 4 hours
-        const MEAL_BREAK_HOURS = 0.5
-        const MEAL_BREAK_THRESHOLD = 4 // hours
+        if (attendanceError) {
+            throw new Error(`Failed to fetch attendance: ${attendanceError.message}`)
+        }
 
-        // Build attendance map: picker_id -> { ordinary, holiday } hours.
-        // Split permite aplicar time-and-a-half (1.5x) a hours trabajadas en
-        // public holidays según Holidays Act 2003 s.50. También guardamos
-        // el set de fechas de public holiday trabajadas para s.60 (alt day).
-        const attendanceHoursMap = new Map<
-            string,
-            { ordinary: number; holiday: number; altDates: Set<string> }
-        >()
-        attendance?.forEach((a: { picker_id: string; date: string; check_in: string | null; check_out: string | null }) => {
-            if (a.check_in) {
-                const checkIn = new Date(a.check_in)
-                const checkOut = a.check_out ? new Date(a.check_out) : null
+        // 3. Cálculo único (mismo código que la app, _shared/pay-rules.ts):
+        //    - horas = salida − entrada − descanso de 30 min NO pagado
+        //    - complemento al mínimo POR DÍA (un día bueno no tapa uno malo)
+        //    - festivos (Holidays Act 2003 s.50): mínimo × 1.5 ese día
+        type Att = { picker_id: string; date: string; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null }
+        type Ev = { picker_id: string; scanned_at: string; quality_grade: string | null }
+        const attRows = ((attendance ?? []) as Att[]).map(a => ({
+            pickerId: a.picker_id,
+            date: a.date.slice(0, 10),
+            checkIn: a.check_in,
+            checkOut: a.check_out,
+            breakStart: a.break_start,
+            breakMinutes: a.break_minutes,
+        }))
+        const bucketRows = ((events ?? []) as Ev[]).map(e => ({
+            pickerId: e.picker_id,
+            scannedAt: e.scanned_at,
+            qualityGrade: e.quality_grade,
+        }))
+        const nzDate = (ts: string) => new Date(ts).toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' })
 
-                if (checkOut) {
-                    const rawDayHours = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60)
-                    const dayHours = rawDayHours > MEAL_BREAK_THRESHOLD
-                        ? rawDayHours - MEAL_BREAK_HOURS
-                        : rawDayHours
-                    const prev = attendanceHoursMap.get(a.picker_id) || {
-                        ordinary: 0,
-                        holiday: 0,
-                        altDates: new Set<string>(),
-                    }
-                    const clamped = Math.max(0, dayHours)
-                    if (isPublicHoliday(a.date)) {
-                        prev.holiday += clamped
-                        if (clamped > 0) prev.altDates.add(a.date.slice(0, 10))
-                    } else {
-                        prev.ordinary += clamped
-                    }
-                    attendanceHoursMap.set(a.picker_id, prev)
-                }
-            }
+        // Días normales y festivos por separado para devolver horas de cada tipo
+        // y los días alternativos (s.60). Como el cálculo es por día, sumar ambos
+        // da exactamente el mismo total que calcularlos juntos.
+        const ordinary = payForRange({
+            attendance: attRows.filter(a => !isPublicHoliday(a.date)),
+            buckets: bucketRows.filter(b => !isPublicHoliday(nzDate(b.scannedAt))),
+            pieceRate: bucket_rate,
+            minWage: min_wage_rate,
         })
-
-        // 3. Agrupar por picker y calcular stats
-        const pickerStatsMap = new Map<string, {
-            picker_id: string
-            picker_name: string
-            buckets: number
-            first_scan: Date
-            last_scan: Date
-        }>()
-
-        events?.forEach(event => {
-            const pickerId = event.picker_id
-            const scanTime = new Date(event.scanned_at)
-            const pickerName = (event.pickers as { name: string } | null)?.name || 'Unknown'
-
-            const existing = pickerStatsMap.get(pickerId)
-
-            if (!existing) {
-                pickerStatsMap.set(pickerId, {
-                    picker_id: pickerId,
-                    picker_name: pickerName,
-                    buckets: 1,
-                    first_scan: scanTime,
-                    last_scan: scanTime
-                })
-            } else {
-                existing.buckets++
-                if (scanTime < existing.first_scan) existing.first_scan = scanTime
-                if (scanTime > existing.last_scan) existing.last_scan = scanTime
-            }
+        const holiday = payForRange({
+            attendance: attRows.filter(a => isPublicHoliday(a.date)),
+            buckets: bucketRows.filter(b => isPublicHoliday(nzDate(b.scannedAt))),
+            pieceRate: bucket_rate,
+            minWage: min_wage_rate,
+            isPublicHoliday: () => true,
         })
+        const ordById = new Map(ordinary.map(r => [r.pickerId, r]))
+        const holById = new Map(holiday.map(r => [r.pickerId, r]))
+        const pickerIds = [...new Set([...ordById.keys(), ...holById.keys()])]
 
-        // 4. Calcular earnings y compliance
+        const { data: names } = pickerIds.length
+            ? await supabase.from('pickers').select('id, name').in('id', pickerIds)
+            : { data: [] as { id: string; name: string }[] }
+        const nameById = new Map((names ?? []).map((n: { id: string; name: string }) => [n.id, n.name]))
+
+        // 4. Desglose por picker
         const picker_breakdown: PickerBreakdown[] = []
         let total_buckets = 0
         let total_hours = 0
@@ -250,79 +226,47 @@ serve(async (req) => {
         let total_top_up = 0
         let total_alternative_holidays_owed = 0
         let workers_below_minimum = 0
+        const zero: PickerRangePay = { pickerId: '', buckets: 0, hours: 0, pieceEarnings: 0, topUp: 0, total: 0, days: 0, daysBelowMinimum: 0, estimatedDays: 0 }
+        const r2 = (n: number) => Math.round(n * 100) / 100
 
-        for (const [/* key */, stats] of pickerStatsMap) {
-            let hours_ordinary: number
-            let hours_holiday: number
-            let alternative_holidays_owed: number
-            const attendanceSplit = attendanceHoursMap.get(stats.picker_id)
-
-            if (attendanceSplit && (attendanceSplit.ordinary > 0 || attendanceSplit.holiday > 0)) {
-                hours_ordinary = attendanceSplit.ordinary
-                hours_holiday = attendanceSplit.holiday
-                alternative_holidays_owed = attendanceSplit.altDates.size
-            } else {
-                // Fallback por scan time — no hay forma robusta de split
-                // ordinary/holiday sin attendance records. Aplicamos al día del
-                // first_scan: si cae en public holiday, todas las horas son holiday.
-                const raw_hours = (stats.last_scan.getTime() - stats.first_scan.getTime()) / (1000 * 60 * 60)
-                const fallback_hours = raw_hours > MEAL_BREAK_THRESHOLD
-                    ? raw_hours - MEAL_BREAK_HOURS
-                    : raw_hours
-                const scanDateNZ = stats.first_scan.toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' })
-                if (isPublicHoliday(scanDateNZ)) {
-                    hours_ordinary = 0
-                    hours_holiday = Math.max(0, fallback_hours)
-                    alternative_holidays_owed = fallback_hours > 0 ? 1 : 0
-                } else {
-                    hours_ordinary = Math.max(0, fallback_hours)
-                    hours_holiday = 0
-                    alternative_holidays_owed = 0
-                }
-            }
-
-            const hours_worked = hours_ordinary + hours_holiday
-            const piece_rate_earnings = stats.buckets * bucket_rate
-            const hourly_rate = hours_worked > 0 ? piece_rate_earnings / hours_worked : 0
-            // Holidays Act 2003 s.50: time-and-a-half para hours trabajadas en public holiday.
-            const minimum_required =
-                hours_ordinary * min_wage_rate +
-                hours_holiday * min_wage_rate * NZ_PUBLIC_HOLIDAY_RATE
-            const top_up_required = Math.max(0, minimum_required - piece_rate_earnings)
-            const total_earnings = piece_rate_earnings + top_up_required
-            // Effective floor según composición (ponderada por horas).
-            const effective_floor = hours_worked > 0 ? minimum_required / hours_worked : min_wage_rate
-            const is_below_minimum = hourly_rate < effective_floor && hours_worked > 0
-
-            if (is_below_minimum) {
-                workers_below_minimum++
-            }
+        for (const id of pickerIds) {
+            const o = ordById.get(id) ?? zero
+            const h = holById.get(id) ?? zero
+            const hours_worked = r2(o.hours + h.hours)
+            const buckets = o.buckets + h.buckets
+            const piece_rate_earnings = r2(o.pieceEarnings + h.pieceEarnings)
+            const top_up_required = r2(o.topUp + h.topUp)
+            const total = r2(o.total + h.total)
+            const is_below_minimum = o.daysBelowMinimum + h.daysBelowMinimum > 0
+            if (is_below_minimum) workers_below_minimum++
 
             picker_breakdown.push({
-                picker_id: stats.picker_id,
-                picker_name: stats.picker_name,
-                buckets: stats.buckets,
-                hours_worked: parseFloat(hours_worked.toFixed(2)),
-                hours_ordinary: parseFloat(hours_ordinary.toFixed(2)),
-                hours_holiday: parseFloat(hours_holiday.toFixed(2)),
-                piece_rate_earnings: parseFloat(piece_rate_earnings.toFixed(2)),
-                hourly_rate: parseFloat(hourly_rate.toFixed(2)),
-                minimum_required: parseFloat(minimum_required.toFixed(2)),
-                top_up_required: parseFloat(top_up_required.toFixed(2)),
-                total_earnings: parseFloat(total_earnings.toFixed(2)),
+                picker_id: id,
+                picker_name: nameById.get(id) || 'Unknown',
+                buckets,
+                hours_worked,
+                hours_ordinary: o.hours,
+                hours_holiday: h.hours,
+                piece_rate_earnings,
+                hourly_rate: hours_worked > 0 ? r2(piece_rate_earnings / hours_worked) : 0,
+                minimum_required: r2(o.hours * min_wage_rate + h.hours * min_wage_rate * PAY_RULES.publicHolidayMultiplier),
+                top_up_required,
+                total_earnings: total,
                 is_below_minimum,
-                alternative_holidays_owed
+                // Holidays Act 2003 s.60: un día alternativo por festivo trabajado
+                alternative_holidays_owed: h.days,
             })
 
-            total_buckets += stats.buckets
+            total_buckets += buckets
             total_hours += hours_worked
             total_piece_rate_earnings += piece_rate_earnings
             total_top_up += top_up_required
-            total_alternative_holidays_owed += alternative_holidays_owed
+            total_alternative_holidays_owed += h.days
         }
+        picker_breakdown.sort((a, b) => b.buckets - a.buckets)
 
         const total_earnings = total_piece_rate_earnings + total_top_up
-        const workers_total = pickerStatsMap.size
+        const workers_total = pickerIds.length
         const compliance_rate = workers_total > 0
             ? ((workers_total - workers_below_minimum) / workers_total) * 100
             : 100

@@ -558,6 +558,8 @@ export type Database = {
       daily_attendance: {
         Row: {
           check_in: string | null
+          break_minutes: number
+          break_start: string | null
           check_out: string | null
           corrected_at: string | null
           corrected_by: string | null
@@ -581,6 +583,8 @@ export type Database = {
         }
         Insert: {
           check_in?: string | null
+          break_minutes?: number
+          break_start?: string | null
           check_out?: string | null
           corrected_at?: string | null
           corrected_by?: string | null
@@ -604,6 +608,8 @@ export type Database = {
         }
         Update: {
           check_in?: string | null
+          break_minutes?: number
+          break_start?: string | null
           check_out?: string | null
           corrected_at?: string | null
           corrected_by?: string | null

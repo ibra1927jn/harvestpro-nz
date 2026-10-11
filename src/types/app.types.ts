@@ -58,6 +58,9 @@ export interface Picker {
   // 🔴 FASE 9: Attendance cache for offline-first validation
   checked_in_today?: boolean; // Whether picker checked in today (cached from daily_attendance)
   check_in?: string; // ISO timestamp of check-in
+  check_out?: string; // ISO timestamp of check-out (hoja de horas)
+  break_start?: string; // Hora del descanso anotada por el team leader
+  break_minutes?: number; // Minutos de descanso no pagados (30 por defecto)
   archived_at?: string; // Timestamp when picker was archived (soft delete)
 }
 

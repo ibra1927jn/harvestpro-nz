@@ -11,11 +11,12 @@ import { settingsRepository } from '@/repositories/settings.repository';
 import { storeSyncRepository } from '@/repositories/store-sync.repository';
 import { syncService } from '@/services/sync.service';
 import { logger } from '@/utils/logger';
-import { todayNZST, nowNZST } from '@/utils/nzst';
+import { todayNZST } from '@/utils/nzst';
 import { userRepository2 } from '@/repositories/user.repository';
 import { contractRepository2 } from '@/repositories/contract.repository';
 import { attendanceRepository } from '@/repositories/attendance.repository';
 import { NZ_MINIMUM_WAGE_2026 } from '@/constants/nz-law';
+import { payForRange, payWeekOf, nzDateOf, PAY_RULES, type PickerRangePay } from '@/services/harvestMetrics';
 
 // ── Types ──────────────────────────────────────
 export interface Employee {
@@ -93,22 +94,14 @@ export async function fetchHRSummary(orchardId?: string): Promise<HRSummary> {
     const pending = await contractRepository2.getPending(orchardId);
     const alerts = await fetchComplianceAlerts(orchardId);
 
-    const sinceDate = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
-    const attendance = await attendanceRepository.getHoursSummary(orchardId, sinceDate);
-
-    let totalHours = 0;
-    attendance.forEach(a => {
-      if (a.check_in && a.check_out) {
-        const hrs =
-          (new Date(a.check_out).getTime() - new Date(a.check_in).getTime()) / 3600000;
-        totalHours += Math.max(0, Math.min(hrs, 12));
-      }
-    });
+    const week = await loadPayWeek(orchardId);
+    const payrollThisWeek =
+      Math.round(week.pay.reduce((sum, p) => sum + p.total, 0) * 100) / 100;
 
     return {
       activeWorkers,
       pendingContracts: pending.length,
-      payrollThisWeek: totalHours * NZ_MINIMUM_WAGE_2026,
+      payrollThisWeek,
       complianceAlerts: alerts.length,
     };
   } catch (error) {
@@ -200,69 +193,79 @@ export async function updateContract(
   );
 }
 
+/**
+ * Datos de la semana de pago en curso (lunes–domingo, NZ) y pago por persona
+ * con el cálculo único (pay.ts): descanso no pagado, complemento al mínimo por día.
+ */
+async function loadPayWeek(orchardId?: string, minWageFor?: (personId: string) => number) {
+  const week = payWeekOf(todayNZST());
+  const [attendance, buckets] = await Promise.all([
+    attendanceRepository.getHoursSummary(orchardId, week.start),
+    storeSyncRepository.getBucketCounts(orchardId, week.start),
+  ]);
+
+  let pieceRate = 6.5;
+  let orchardMinWage: number = PAY_RULES.minWageFloor;
+  if (orchardId) {
+    const settings = await settingsRepository.getByOrchardId(orchardId);
+    if (settings?.piece_rate) pieceRate = settings.piece_rate;
+    if (settings?.min_wage_rate) orchardMinWage = settings.min_wage_rate;
+  }
+
+  const attendanceRows = (attendance || [])
+    .filter(a => !a.date || a.date <= week.end)
+    .map(a => ({
+      pickerId: a.picker_id,
+      date: a.date ?? (a.check_in ? nzDateOf(a.check_in) : week.start),
+      checkIn: a.check_in,
+      checkOut: a.check_out,
+      breakStart: a.break_start,
+      breakMinutes: a.break_minutes,
+    }));
+  const bucketRows = (buckets || [])
+    .filter(b => !b.deleted_at && b.scanned_at)
+    .map(b => ({ pickerId: b.picker_id, scannedAt: b.scanned_at as string, qualityGrade: b.quality_grade }));
+
+  const people = new Set<string>([...attendanceRows.map(a => a.pickerId), ...bucketRows.map(b => b.pickerId)]);
+  const pay: PickerRangePay[] = [];
+  for (const id of people) {
+    const [row] = payForRange({
+      attendance: attendanceRows.filter(a => a.pickerId === id),
+      buckets: bucketRows.filter(b => b.pickerId === id),
+      pieceRate,
+      minWage: minWageFor?.(id) ?? orchardMinWage,
+    });
+    if (row) pay.push(row);
+  }
+  return { week, pay, pieceRate };
+}
+
 export async function fetchPayroll(orchardId?: string): Promise<PayrollEntry[]> {
   try {
-    const today = todayNZST();
-    const sevenDaysAgo = new Date(new Date(today).getTime() - 7 * 86400000);
-    const periodStart = sevenDaysAgo.toISOString().split('T')[0];
-    const periodEnd = nowNZST();
-
     const employees = await fetchEmployees(orchardId);
     const activeEmployees = employees.filter(e => e.status === 'active');
+    const rateById = new Map(activeEmployees.map(e => [e.id, e.hourly_rate]));
 
-    // Bucket counts via repo
-    const bucketsData = await storeSyncRepository.getBucketCounts(orchardId, periodStart);
-
-    const bucketCounts: Record<string, number> = {};
-    (bucketsData || []).forEach(b => {
-      bucketCounts[b.picker_id] = (bucketCounts[b.picker_id] || 0) + 1;
-    });
-
-    const attendance = await attendanceRepository.getHoursSummary(
-      orchardId,
-      periodStart.split('T')[0]
-    );
-    const hoursByPicker: Record<string, number> = {};
-    attendance.forEach(a => {
-      if (a.check_in && a.check_out) {
-        const hrs =
-          (new Date(a.check_out).getTime() - new Date(a.check_in).getTime()) / 3600000;
-        if (hrs > 12) {
-          logger.warn(
-            `[HHRR] Capping ${a.picker_id} hours from ${hrs.toFixed(1)} to 12 — review attendance record`
-          );
-        }
-        hoursByPicker[a.picker_id] =
-          (hoursByPicker[a.picker_id] || 0) + Math.max(0, Math.min(hrs, 12));
-      }
-    });
-
-    let pieceRateValue = 6.5;
-    if (orchardId) {
-      const settings = await settingsRepository.getByOrchardId(orchardId);
-      if (settings?.piece_rate) pieceRateValue = settings.piece_rate;
-    }
+    const { week, pay } = await loadPayWeek(orchardId, id => rateById.get(id) ?? PAY_RULES.minWageFloor);
+    const payById = new Map(pay.map(p => [p.pickerId, p]));
 
     return activeEmployees.map(emp => {
-      const hours = hoursByPicker[emp.id] || 0;
-      const bucketsCount = bucketCounts[emp.id] || 0;
-      const hourlyEarnings = hours * emp.hourly_rate;
-      const pieceEarnings = bucketsCount * pieceRateValue;
-      const totalPay = Math.max(hourlyEarnings, pieceEarnings);
-
+      const p = payById.get(emp.id);
+      const hours = p?.hours ?? 0;
+      const minWage = Math.max(emp.hourly_rate, PAY_RULES.minWageFloor);
       return {
         id: `payroll-${emp.id}`,
         employee_id: emp.id,
         employee_name: emp.full_name,
         role: emp.role,
-        hours_worked: Math.round(hours * 100) / 100,
-        buckets_picked: bucketsCount,
-        hourly_earnings: Math.round(hourlyEarnings * 100) / 100,
-        piece_earnings: Math.round(pieceEarnings * 100) / 100,
-        total_pay: Math.round(totalPay * 100) / 100,
-        wage_shield_applied: pieceEarnings < hourlyEarnings,
-        period_start: periodStart,
-        period_end: periodEnd,
+        hours_worked: hours,
+        buckets_picked: p?.buckets ?? 0,
+        hourly_earnings: Math.round(hours * minWage * 100) / 100,
+        piece_earnings: p?.pieceEarnings ?? 0,
+        total_pay: p?.total ?? 0,
+        wage_shield_applied: (p?.topUp ?? 0) > 0,
+        period_start: week.start,
+        period_end: week.end,
       };
     });
   } catch (error) {

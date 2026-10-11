@@ -8,6 +8,8 @@ import { StateCreator } from 'zustand';
 import { complianceService, ComplianceViolation } from '@/services/compliance.service';
 import type { HarvestStoreState, IntelligenceSlice, HarvestStats } from '../storeTypes';
 import { nowNZST } from '@/utils/nzst';
+import { computePerPicker } from '@/services/harvestMetrics';
+import type { BucketRecord } from '@/types';
 
 // --- Default State ---
 const defaultStats: HarvestStats = {
@@ -35,42 +37,37 @@ export const createIntelligenceSlice: StateCreator<
         const state = get();
         const { crew, settings } = state;
 
-        // 1. Calculate Payroll
-        // Excluir buckets rechazados por QC — no cuentan para piece-rate
-        const bucketCounts = new Map<string, number>();
-        state.buckets.forEach(b => {
-            if (b.quality_grade === 'reject') return;
-            bucketCounts.set(b.picker_id, (bucketCounts.get(b.picker_id) || 0) + 1);
-        });
-
-        // Filter out archived pickers
+        // 1. Pago estimado de hoy — MISMO cálculo que Análisis/Payroll (pay.ts):
+        //    horas del fichaje (descanso no pagado) y complemento al mínimo por día.
+        //    Cubetas: las del servidor + las escaneadas aquí que aún no se sincronizaron.
         const activeCrew = crew.filter(p => p.status !== 'archived');
+        const pendingLocal: BucketRecord[] = state.buckets
+            .filter(b => !b.synced)
+            .map(b => ({
+                id: b.id, picker_id: b.picker_id, bin_id: '', timestamp: b.timestamp,
+                scanned_at: b.timestamp, quality_grade: b.quality_grade, orchard_id: b.orchard_id,
+            }));
+        const perPicker = computePerPicker(activeCrew, [...state.bucketRecords, ...pendingLocal], settings);
+        const metricsById = new Map(perPicker.map(m => [m.pickerId, m]));
 
-        // Calculate payroll using local logic (same as Edge Function)
         let totalPiece = 0;
         let totalMinimum = 0;
-
-        activeCrew.forEach(p => {
-            const buckets = (bucketCounts.get(p.id) || 0) + (p.total_buckets_today || 0);
-            const hours = p.hours || 0; // 🔧 L32: Never fabricate hours — 0 is honest
-            const pieceEarnings = buckets * settings.piece_rate;
-            const minimumWageThreshold = hours * settings.min_wage_rate;
-            const minimumWageOwed = Math.max(0, minimumWageThreshold - pieceEarnings);
-            totalPiece += pieceEarnings;
-            totalMinimum += minimumWageOwed;
-        });
-
+        for (const m of perPicker) {
+            totalPiece += m.pieceRateEarnings;
+            totalMinimum += m.topUp;
+        }
         const payroll = {
-            totalPiece,
-            totalMinimum,
-            finalTotal: totalPiece + totalMinimum,
+            totalPiece: Math.round(totalPiece * 100) / 100,
+            totalMinimum: Math.round(totalMinimum * 100) / 100,
+            finalTotal: Math.round((totalPiece + totalMinimum) * 100) / 100,
         };
 
         // 2. Compliance Checks
         const alerts: ComplianceViolation[] = [];
         activeCrew.forEach(p => {
-            const buckets = (bucketCounts.get(p.id) || 0) + (p.total_buckets_today || 0);
-            const hours = p.hours || 0; // 🔧 L32: Never fabricate hours
+            const m = metricsById.get(p.id);
+            const buckets = m?.bins ?? 0;
+            const hours = m?.hoursWorked ?? 0;
 
             const status = complianceService.checkPickerCompliance({
                 pickerId: p.id,

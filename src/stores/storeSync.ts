@@ -20,7 +20,12 @@ export type StoreGetter = () => HarvestStoreState;
 
 /** Picker row extended with attendance join + soft-delete field from Supabase query */
 interface PickerWithAttendance extends Picker {
-  daily_attendance?: { check_in: string | null }[];
+  daily_attendance?: {
+    check_in: string | null;
+    check_out?: string | null;
+    break_start?: string | null;
+    break_minutes?: number | null;
+  }[];
   deleted_at?: string | null;
 }
 
@@ -125,6 +130,9 @@ export async function fetchOrchardData(
       ...p,
       checked_in_today: !!p.daily_attendance?.[0]?.check_in,
       check_in: p.daily_attendance?.[0]?.check_in || undefined,
+      check_out: p.daily_attendance?.[0]?.check_out || undefined,
+      break_start: p.daily_attendance?.[0]?.break_start || undefined,
+      break_minutes: p.daily_attendance?.[0]?.break_minutes ?? undefined,
       daily_attendance: undefined,
     }) as Picker;
 

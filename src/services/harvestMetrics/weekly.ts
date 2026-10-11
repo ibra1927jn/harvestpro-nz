@@ -8,6 +8,7 @@
 import type { BucketRecord, Picker, HarvestSettings } from '@/types';
 import { computePerPicker } from './perPicker';
 import { computeKPIs, type HarvestKPIs } from './kpis';
+import { nzDateOf } from './pay';
 
 export interface DayRollup {
     /** Fecha en formato "YYYY-MM-DD" (fecha local NZ) */
@@ -47,13 +48,12 @@ function buildDateRange(from: string, to: string): string[] {
 }
 
 /**
- * Extrae la fecha YYYY-MM-DD de un timestamp ISO.
- * Usa slice(0, 10) que es seguro para formatos "2026-04-14T09:00:00.000Z"
- * o "2026-04-14 09:00:00+12". Para scans en producción el timestamp
- * viene del cliente NZ y el slice es suficientemente preciso.
+ * Fecha NZ (YYYY-MM-DD) de un scan. Antes se cortaba el ISO en UTC, lo que
+ * asignaba al día anterior todo lo escaneado antes de las 12:00/13:00 NZ.
  */
 function extractDate(scan: BucketRecord): string {
-    return (scan.scanned_at ?? scan.created_at ?? scan.timestamp ?? '').slice(0, 10);
+    const ts = scan.scanned_at ?? scan.created_at ?? scan.timestamp;
+    return ts ? nzDateOf(ts) : '';
 }
 
 /**
