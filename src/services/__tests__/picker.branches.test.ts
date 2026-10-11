@@ -96,12 +96,13 @@ describe('pickerService — deep branch tests', () => {
       expect(result[0].avatar).toBe('??');
     });
 
-    it('maps archived status to inactive', async () => {
+    it('leaves out people who left (archived): they cannot be checked in', async () => {
       mockQuery.mockResolvedValueOnce([
         { id: 'p1', picker_id: 'P-001', name: 'Alice', status: 'archived', safety_verified: false },
+        { id: 'p2', picker_id: 'P-002', name: 'Bea', status: 'active', safety_verified: true },
       ]);
       const result = await pickerService.getPickersByTeam();
-      expect(result[0].status).toBe('inactive');
+      expect(result.map(p => p.name)).toEqual(['Bea']);
     });
   });
 
