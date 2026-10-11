@@ -63,12 +63,14 @@ serve(async (req) => {
 
         // Columnas reales de audit_logs: lo que no tiene columna propia va en new_values
         const enrichedEntries = entries.map(entry => ({
-            action: entry.action,
+            // action: CHECK INSERT/UPDATE/DELETE/CUSTOM → el evento va en new_values.event
+            action: ['INSERT', 'UPDATE', 'DELETE'].includes(entry.action) ? entry.action : 'CUSTOM',
             table_name: entry.entity_type || entry.event_type || 'app',
             record_id: entry.entity_id && UUID_RE.test(entry.entity_id) ? entry.entity_id : null,
             user_id: entry.user_id || user.id,
             user_email: entry.user_email || user.email,
             new_values: {
+                event: entry.action,
                 event_type: entry.event_type,
                 severity: entry.severity,
                 orchard_id: entry.orchard_id,

@@ -21,15 +21,19 @@ export interface AuditEntry {
 }
 
 export async function writeAudit(supabase: SupabaseLike, entry: AuditEntry): Promise<{ error: { message: string } | null }> {
+    // audit_logs.action solo admite INSERT/UPDATE/DELETE/CUSTOM (CHECK): los
+    // eventos de negocio van como CUSTOM y su nombre en new_values.event.
     const { error } = await supabase.from('audit_logs').insert({
-        action: entry.action,
+        action: 'CUSTOM',
         table_name: entry.table,
         record_id: entry.recordId,
         user_id: entry.userId,
         old_values: entry.oldValues ?? null,
-        new_values: entry.reason !== undefined
-            ? { ...(entry.newValues ?? {}), reason: entry.reason }
-            : (entry.newValues ?? null),
+        new_values: {
+            event: entry.action,
+            ...(entry.newValues ?? {}),
+            ...(entry.reason !== undefined ? { reason: entry.reason } : {}),
+        },
         created_at: new Date().toISOString(),
     })
     return { error }
