@@ -4,13 +4,15 @@
  * Sale del mismo cálculo que la nómina (calculate-payroll → days).
  */
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { PickerBreakdown } from '@/services/payroll.service';
 import { loadOrchardNames } from '@/repositories/pay-rates.repository';
 
 const nzTime = (iso: string | null) =>
     iso ? new Intl.DateTimeFormat('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso)) : '—';
+// La fecha ya es el día NZ: se formatea tal cual (en UTC), sin moverla de zona
 const nzDay = (ymd: string) =>
-    new Intl.DateTimeFormat('en-NZ', { timeZone: 'Pacific/Auckland', weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(`${ymd}T12:00:00Z`));
+    new Intl.DateTimeFormat('en-NZ', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(`${ymd}T12:00:00Z`));
 const money = (n: number) => `$${n.toFixed(2)}`;
 
 export const PayWeekDetail: React.FC<{ picker: PickerBreakdown; onClose: () => void }> = ({ picker, onClose }) => {
@@ -20,7 +22,8 @@ export const PayWeekDetail: React.FC<{ picker: PickerBreakdown; onClose: () => v
     }, []);
     const days = picker.days ?? [];
 
-    return (
+    // Portal al body: dentro del layout un contenedor con transform descolocaba el fixed
+    return createPortal(
         <div role="dialog" aria-modal="true" aria-label={`Week detail ${picker.picker_name}`} className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
             <div className="bg-white w-full sm:max-w-3xl max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl p-5 shadow-xl" onClick={e => e.stopPropagation()}>
                 <div className="flex items-start justify-between gap-3 mb-4">
@@ -83,7 +86,8 @@ export const PayWeekDetail: React.FC<{ picker: PickerBreakdown; onClose: () => v
                     </div>
                 )}
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 };
 
