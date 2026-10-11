@@ -157,7 +157,7 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
                         )}
                         <div className="flex items-center gap-2 text-[10px] text-slate-400 mb-4 relative z-10 font-medium">
                             <span className="material-symbols-outlined text-[14px]">schedule</span>
-                            {new Date(req.created_at).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })} — {new Date(req.created_at).toLocaleDateString('en-NZ')}
+                            {new Date(req.created_at).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })} — {new Date(req.created_at).toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland' })}
                         </div>
 
                         {/* Action Buttons — hidden in read-only mode */}

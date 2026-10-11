@@ -8,7 +8,7 @@ import { pickerHistoryRepository } from '@/repositories/picker-history.repositor
 import { logger } from '@/utils/logger';
 import { nzMidnight } from '@/utils/nzst';
 import { payForRange, pieceRateFor, nzDateOf, PAY_RULES } from '@/services/harvestMetrics/pay';
-import { payRatesRepository } from '@/repositories/pay-rates.repository';
+import { payRatesRepository, loadOrchardNames } from '@/repositories/pay-rates.repository';
 
 // --- Types ---
 export interface PickerProfile {
@@ -104,6 +104,7 @@ class PickerHistoryService {
       // 6. Get day setups for variety info
       const daySetups = await pickerHistoryRepository.getDaySetupsSince(orchardId, sinceStr);
       const rates = await payRatesRepository.load().catch(() => ({ varietyRates: [], orchardRates: {} }));
+      const orchardNames = await loadOrchardNames().catch(() => ({} as Record<string, string>));
 
       // --- Compute daily records ---
       // Horas y pago de cada día con el cálculo único (harvestMetrics/pay.ts):
@@ -151,9 +152,11 @@ class PickerHistoryService {
           earnings: pay.total,
           topUp: pay.topUp,
           estimated: pay.estimatedDays > 0,
-          variety: setup?.variety || null,
+          // Variedades recogidas ese día y huertos donde trabajó (puede ser más de uno)
+          variety: [...new Set(dayBuckets.map(b => b.variety).filter((v): v is string => !!v))].join(', ') || setup?.variety || null,
           team_leader_name: teamLeaderName,
-          orchard_name: orchardName ?? null,
+          orchard_name: [...new Set(shifts.map(s => s.orchard_id).filter((o): o is string => !!o))]
+            .map(o => orchardNames[o] ?? o.slice(0, 8)).join(' + ') || orchardName || null,
         });
       }
 

@@ -138,7 +138,7 @@ const FleetTab: React.FC<FleetTabProps> = ({ tractors, onUpdateTractor, readOnly
                                     {tractor.bins_loaded}/{tractor.max_capacity} bins — {tractor.load_status}
                                 </span>
                                 <span className="ml-auto text-text-muted">
-                                    {new Date(tractor.last_update).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })}
+                                    {new Date(tractor.last_update).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })}
                                 </span>
                             </div>
                         </div>

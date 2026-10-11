@@ -49,7 +49,7 @@ const AttendanceView = () => {
                     <div>
                         <h1 className="text-2xl font-black text-slate-900 tracking-tight">Daily Roll Call</h1>
                         <p className="text-slate-500 text-sm font-medium">
-                            {new Date().toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' })}
+                            {new Date().toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', weekday: 'long', day: 'numeric', month: 'long' })}
                         </p>
                     </div>
                     {loading && <span className="material-symbols-outlined animate-spin text-primary">sync</span>}
@@ -89,7 +89,7 @@ const AttendanceView = () => {
                                 </h3>
                                 <p className="text-xs font-semibold text-slate-400">
                                     {item.attendanceRecord?.check_in
-                                        ? `In: ${new Date(item.attendanceRecord.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                        ? `In: ${new Date(item.attendanceRecord.check_in).toLocaleTimeString([], { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })}`
                                         : 'Not checked in'
                                     }
                                 </p>

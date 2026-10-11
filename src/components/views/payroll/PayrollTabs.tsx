@@ -201,9 +201,9 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">
-                                    <span>{t.check_in ? new Date(t.check_in).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }) : '—'}</span>
+                                    <span>{t.check_in ? new Date(t.check_in).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' }) : '—'}</span>
                                     <span className="text-slate-300">→</span>
-                                    <span>{t.check_out ? new Date(t.check_out).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }) : 'Active'}</span>
+                                    <span>{t.check_out ? new Date(t.check_out).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' }) : 'Active'}</span>
                                 </div>
                                 <div className="flex gap-2">
                                     <button onClick={() => handleApprove(t.id, t.picker_name)} className="flex-1 py-2.5 rounded-xl bg-emerald-50 text-emerald-600 text-[11px] uppercase tracking-widest font-bold hover:bg-emerald-500 hover:text-white transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm">
@@ -236,7 +236,7 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                                     <span className="bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">{t.hours_worked.toFixed(1)} HRS</span>
                                     <span className="text-slate-300">•</span>
                                     <span>
-                                        {t.check_in ? new Date(t.check_in).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }) : '—'} → {t.check_out ? new Date(t.check_out).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }) : 'Active'}
+                                        {t.check_in ? new Date(t.check_in).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' }) : '—'} → {t.check_out ? new Date(t.check_out).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' }) : 'Active'}
                                     </span>
                                 </div>
                             </div>

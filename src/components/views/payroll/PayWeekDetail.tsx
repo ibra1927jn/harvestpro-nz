@@ -80,7 +80,7 @@ export const PayWeekDetail: React.FC<{ picker: PickerBreakdown; onClose: () => v
                                     <span>Break (unpaid): <b>{d.breakMinutes} min</b></span>
                                     {(d.travelMinutes ?? 0) > 0 && <span>Travel (paid, half to each orchard): <b>{d.travelMinutes} min</b></span>}
                                     <span>Paid hours: <b>{d.hours.toFixed(2)}</b></span>
-                                    <span>Buckets: <b>{Object.entries(d.bucketsByVariety).map(([v, n]) => `${n} ${v}`).join(' · ') || '0'}</b></span>
+                                    <span>Buckets: <b>{Object.entries(d.bucketsByVariety).map(([v, n]) => `${n} ${v === '—' ? '(no variety)' : v}`).join(' · ') || '0'}</b></span>
                                     <span>Piece: <b>{money(d.pieceEarnings)}</b></span>
                                     <span className={d.topUp > 0 ? 'text-amber-600' : ''}>Top-up: <b>{money(d.topUp)}</b></span>
                                 </div>

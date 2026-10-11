@@ -123,8 +123,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({
   const handleExport = useCallback(() => {
     const now = new Date();
     const metadata = {
-      generated_at: now.toLocaleString(),
-      last_sync: now.toLocaleString(),
+      generated_at: now.toLocaleString(undefined, { timeZone: 'Pacific/Auckland' }),
+      last_sync: now.toLocaleString(undefined, { timeZone: 'Pacific/Auckland' }),
       pending_queue_count: 0,
       orchard_name: orchard?.name || 'Orchard',
       is_offline_data: !navigator.onLine,

@@ -98,7 +98,7 @@ export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
                                         {insp.grade === 'reject' ? 'REJ' : insp.grade}
                                     </span>
                                     <span className="text-xs text-text-muted">
-                                        {new Date(insp.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {new Date(insp.created_at).toLocaleTimeString([], { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                 </div>
                             );

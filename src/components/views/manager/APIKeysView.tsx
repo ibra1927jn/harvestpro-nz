@@ -231,13 +231,13 @@ export default function APIKeysView() {
                 ))}
               </div>
               <div className="flex items-center gap-3 text-[10px] text-slate-400">
-                <span>Created {new Date(key.created_at).toLocaleDateString()}</span>
+                <span>Created {new Date(key.created_at).toLocaleDateString(undefined, { timeZone: 'Pacific/Auckland' })}</span>
                 <span>{key.request_count} requests</span>
                 {key.last_used_at && (
-                  <span>Last used {new Date(key.last_used_at).toLocaleDateString()}</span>
+                  <span>Last used {new Date(key.last_used_at).toLocaleDateString(undefined, { timeZone: 'Pacific/Auckland' })}</span>
                 )}
                 {key.expires_at && (
-                  <span>Expires {new Date(key.expires_at).toLocaleDateString()}</span>
+                  <span>Expires {new Date(key.expires_at).toLocaleDateString(undefined, { timeZone: 'Pacific/Auckland' })}</span>
                 )}
               </div>
             </div>

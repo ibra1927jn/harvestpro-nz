@@ -45,7 +45,7 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
             status: 'active',
             end_date: nextYear.toISOString().split('T')[0],
         });
-        showToast(`Contract renewed for ${empName} until ${nextYear.toLocaleDateString('en-NZ')}`);
+        showToast(`Contract renewed for ${empName} until ${nextYear.toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland' })}`);
         onRefresh?.();
     };
 
@@ -112,7 +112,7 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                         <div className="flex items-center gap-5 text-xs text-slate-500 font-bold mb-4 bg-slate-50/50 rounded-2xl p-3 border border-slate-100/50 relative z-10">
                             <span className="flex items-center gap-1.5">
                                 <span className="material-symbols-outlined text-[16px] text-slate-400">event</span>
-                                {new Date(emp.contract_start).toLocaleDateString('en-NZ', { month: 'short', year: 'numeric' })}
+                                {new Date(emp.contract_start).toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', month: 'short', year: 'numeric' })}
                                 {emp.contract_end && (
                                     <>
                                         <span className="text-slate-300 mx-1">→</span>

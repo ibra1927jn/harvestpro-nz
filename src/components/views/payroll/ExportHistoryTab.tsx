@@ -117,10 +117,10 @@ const ExportHistoryTab: React.FC = () => {
                             </div>
                             <div className="text-right">
                                 <p className="text-xs text-text-muted">
-                                    {new Date(record.timestamp).toLocaleDateString('en-NZ', { month: 'short', day: 'numeric' })}
+                                    {new Date(record.timestamp).toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', month: 'short', day: 'numeric' })}
                                 </p>
                                 <p className="text-[10px] text-text-muted">
-                                    {new Date(record.timestamp).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })}
+                                    {new Date(record.timestamp).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })}
                                 </p>
                             </div>
                             <button

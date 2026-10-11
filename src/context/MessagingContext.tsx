@@ -229,7 +229,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
         members: data.participant_ids,
         isGroup: true,
         lastMsg: 'Group created',
-        time: new Date().toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }),
+        time: new Date().toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' }),
       };
 
       setState(prev => ({
@@ -319,12 +319,12 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
 
         const lastMsg = lastMsgMap[c.id];
         const timeStr = lastMsg
-          ? new Date(lastMsg.created_at).toLocaleTimeString([], {
+          ? new Date(lastMsg.created_at).toLocaleTimeString([], { timeZone: 'Pacific/Auckland',
               hour: '2-digit',
               minute: '2-digit',
             })
           : c.updated_at
-            ? new Date(c.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            ? new Date(c.updated_at).toLocaleTimeString([], { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })
             : '';
 
         return {

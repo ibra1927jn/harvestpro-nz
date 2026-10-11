@@ -75,7 +75,7 @@ export function SyncStatusBadge() {
           : status.state === 'syncing'
           ? `Syncing ${status.pendingCount} items…`
           : status.lastSyncAt
-          ? `Last synced ${new Date(status.lastSyncAt).toLocaleTimeString('en-NZ')}`
+          ? `Last synced ${new Date(status.lastSyncAt).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland' })}`
           : 'All synced'
       }
       role="status"

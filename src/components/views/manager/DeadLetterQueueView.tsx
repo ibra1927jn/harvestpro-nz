@@ -166,7 +166,7 @@ const DeadLetterQueueView: React.FC = () => {
     };
 
     const formatTimestamp = (ts: number) => {
-        return new Date(ts).toLocaleString('en-NZ', {
+        return new Date(ts).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland',
             year: 'numeric',
             month: 'short',
             day: 'numeric',

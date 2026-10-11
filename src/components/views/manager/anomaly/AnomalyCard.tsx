@@ -34,7 +34,7 @@ const AnomalyCard: React.FC<AnomalyCardProps> = ({ anomaly, index, onViewProfile
                             </h4>
                             <p className="text-xs text-slate-400 font-mono mt-0.5 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-xs">schedule</span>
-                                {new Date(anomaly.timestamp).toLocaleTimeString([], {
+                                {new Date(anomaly.timestamp).toLocaleTimeString([], { timeZone: 'Pacific/Auckland',
                                     hour: '2-digit',
                                     minute: '2-digit',
                                 })}

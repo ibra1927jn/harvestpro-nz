@@ -42,7 +42,7 @@ export const InspectionHistoryModal: React.FC<InspectionHistoryModalProps> = ({
         if (diffHours < 1) return 'Just now';
         if (diffHours < 24) return `${diffHours}h ago`;
         if (diffDays === 1) return 'Yesterday';
-        return date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' });
+        return date.toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', day: 'numeric', month: 'short' });
     };
 
     const getScoreColor = (score: number): string => {

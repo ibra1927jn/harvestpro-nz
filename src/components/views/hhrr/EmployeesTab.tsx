@@ -119,7 +119,7 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
                                         </span>
                                         <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
                                             <span className="material-symbols-outlined text-[14px]">event</span>
-                                            Hired {new Date(emp.hire_date).toLocaleDateString('en-NZ', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            Hired {new Date(emp.hire_date).toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', month: 'short', day: 'numeric', year: 'numeric' })}
                                         </div>
                                     </div>
                                 </div>

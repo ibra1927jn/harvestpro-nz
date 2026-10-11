@@ -28,7 +28,7 @@ const EVENT_COLORS: Record<LogisticsEventFeedProps['events'][number]['type'], st
 
 function formatTime(at: string): string {
   try {
-    return new Date(at).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' });
+    return new Date(at).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' });
   } catch {
     return '—';
   }

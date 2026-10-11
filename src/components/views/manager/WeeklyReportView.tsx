@@ -84,7 +84,7 @@ const WeeklyReportView: React.FC = () => {
                 <div>
                     <h2 className="text-xl font-black text-text-main">{t('insights.weekly.title')}</h2>
                     <p className="text-xs text-text-muted">
-                        {report.orchard?.name || 'Orchard'} — {new Date().toLocaleDateString(locale === 'es' ? 'es-NZ' : 'en-NZ', { weekday: 'long', month: 'long', day: 'numeric' })}
+                        {report.orchard?.name || 'Orchard'} — {new Date().toLocaleDateString(locale === 'es' ? 'es-NZ' : 'en-NZ', { timeZone: 'Pacific/Auckland', weekday: 'long', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
                 <button

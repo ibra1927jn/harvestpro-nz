@@ -155,7 +155,7 @@ export const SimpleChat = ({ userId, userName, channelType, recipientId }: Simpl
 
     const formatTime = (dateStr: string) => {
         const date = new Date(dateStr);
-        return date.toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' });
     };
 
     // =============================================

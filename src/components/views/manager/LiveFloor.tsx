@@ -54,7 +54,7 @@ const LiveFloor: React.FC<LiveFloorProps> = ({ bucketRecords, onUserSelect }) =>
                                     Bucket +1
                                 </span>
                                 <p className="text-[10px] text-slate-400 mt-0.5">
-                                    {new Date(record.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {new Date(record.created_at || Date.now()).toLocaleTimeString([], { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })}
                                 </p>
                             </div>
                         </div>
