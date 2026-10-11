@@ -63,3 +63,11 @@ JOIN auth.users au ON au.id = u.id
 WHERE u.email LIKE '%@harvestpro.nz'
   AND u.email != 'manager@harvestpro.nz'
 ORDER BY u.role;
+
+-- Las Edge Functions autorizan con el rol del token (user_metadata.role), no con
+-- public.users.role. Copiarlo aquí evita el 403 "Got: none" en local.
+-- (Pendiente: una sola fuente de rol — fase 4 del plan.)
+UPDATE auth.users a
+SET raw_user_meta_data = COALESCE(a.raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('role', u.role)
+FROM public.users u
+WHERE u.id = a.id AND u.role IS NOT NULL;
