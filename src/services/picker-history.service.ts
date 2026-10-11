@@ -6,7 +6,8 @@
  */
 import { pickerHistoryRepository } from '@/repositories/picker-history.repository';
 import { logger } from '@/utils/logger';
-import { MINIMUM_WAGE } from '@/types';
+import { nzMidnight } from '@/utils/nzst';
+import { payForRange, nzDateOf, PAY_RULES } from '@/services/harvestMetrics/pay';
 
 // --- Types ---
 export interface PickerProfile {
@@ -22,8 +23,14 @@ export interface PickerProfile {
 export interface DailyRecord {
   date: string;
   buckets: number;
+  /** Horas pagables (descanso de 30 min no pagado ya descontado) */
   hours: number;
+  /** Pago total del día: cubetas + complemento al mínimo */
   earnings: number;
+  /** Complemento al mínimo del día */
+  topUp?: number;
+  /** Horas estimadas (turno sin cerrar) */
+  estimated?: boolean;
   variety: string | null;
   team_leader_name: string | null;
   orchard_name: string | null;
@@ -81,78 +88,63 @@ class PickerHistoryService {
       }
 
       // 3. Get attendance (last N days)
-      const since = new Date();
-      since.setDate(since.getDate() - days);
-      const sinceStr = since.toISOString().split('T')[0];
+      // Fechas en hora NZ (antes UTC: los escaneos de antes de las 13:00 caían en el día anterior)
+      const sinceStr = nzDateOf(new Date(Date.now() - days * 86_400_000));
+      const sinceIso = nzMidnight(sinceStr);
 
       const attendance = await pickerHistoryRepository.getAttendanceSince(pickerId, sinceStr);
 
       // 4. Get bucket records (last N days)
-      const buckets = await pickerHistoryRepository.getBucketRecordsSince(
-        pickerId,
-        since.toISOString()
-      );
+      const buckets = await pickerHistoryRepository.getBucketRecordsSince(pickerId, sinceIso);
 
       // 5. Get quality inspections
-      const inspections = await pickerHistoryRepository.getInspectionsSince(
-        pickerId,
-        since.toISOString()
-      );
+      const inspections = await pickerHistoryRepository.getInspectionsSince(pickerId, sinceIso);
 
       // 6. Get day setups for variety info
       const daySetups = await pickerHistoryRepository.getDaySetupsSince(orchardId, sinceStr);
 
       // --- Compute daily records ---
+      // Horas y pago de cada día con el cálculo único (harvestMetrics/pay.ts):
+      // descanso no pagado, complemento al mínimo del día, festivos ×1.5,
+      // rechazos de QC y registros borrados fuera, fechas NZ.
       const dailyMap = new Map<string, DailyRecord>();
-      const today = new Date().toISOString().split('T')[0];
+      const today = nzDateOf(new Date());
+      type AttRow = { date: string; check_in?: string | null; check_out?: string | null; break_start?: string | null; break_minutes?: number | null; deleted_at?: string | null };
+      type BktRow = { scanned_at: string; quality_grade?: string | null; deleted_at?: string | null };
 
-      // Initialize from attendance
-      const todayStr = new Date().toISOString().slice(0, 10);
-      attendance.forEach((a: { date: string; check_in?: string; check_out?: string }) => {
-        const isToday = a.date === todayStr;
-        const hours =
-          a.check_in && a.check_out
-            ? (new Date(a.check_out).getTime() - new Date(a.check_in).getTime()) / 3600000
-            : a.check_in && isToday
-              ? Math.max(0, (Date.now() - new Date(a.check_in).getTime()) / 3600000)
-              : 0;
-        const setup = daySetups.find((d: { date: string }) => d.date === a.date);
-        dailyMap.set(a.date, {
-          date: a.date,
-          buckets: 0,
-          hours: Math.round(hours * 10) / 10,
-          earnings: 0,
+      const attByDay = new Map<string, AttRow>();
+      (attendance as AttRow[]).filter(a => !a.deleted_at).forEach(a => attByDay.set(a.date, a));
+      const bktByDay = new Map<string, BktRow[]>();
+      (buckets as BktRow[]).filter(b => !b.deleted_at && b.scanned_at).forEach(b => {
+        const day = nzDateOf(b.scanned_at);
+        const list = bktByDay.get(day) ?? [];
+        list.push(b);
+        bktByDay.set(day, list);
+      });
+
+      for (const date of new Set([...attByDay.keys(), ...bktByDay.keys()])) {
+        const a = attByDay.get(date);
+        const dayBuckets = bktByDay.get(date) ?? [];
+        const setup = daySetups.find((d: { date: string }) => d.date === date);
+        const [pay] = payForRange({
+          attendance: a ? [{ pickerId, date, checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes }] : [],
+          buckets: dayBuckets.map(b => ({ pickerId, scannedAt: b.scanned_at, qualityGrade: b.quality_grade })),
+          pieceRate: setup?.piece_rate || 6.5,
+          minWage: setup?.min_wage_rate || PAY_RULES.minWageFloor,
+        });
+        if (!pay) continue;
+        dailyMap.set(date, {
+          date,
+          buckets: pay.buckets,
+          hours: pay.hours,
+          earnings: pay.total,
+          topUp: pay.topUp,
+          estimated: pay.estimatedDays > 0,
           variety: setup?.variety || null,
           team_leader_name: teamLeaderName,
           orchard_name: orchardName ?? null,
         });
-      });
-
-      // Count buckets per day
-      buckets.forEach((b: { scanned_at: string }) => {
-        const date = b.scanned_at.split('T')[0];
-        const record = dailyMap.get(date) || {
-          date,
-          buckets: 0,
-          hours: 0,
-          earnings: 0,
-          variety: null,
-          team_leader_name: teamLeaderName,
-          orchard_name: orchardName ?? null,
-        };
-        record.buckets++;
-        dailyMap.set(date, record);
-      });
-
-      // Calculate earnings per day
-      dailyMap.forEach((record, date) => {
-        const setup = daySetups.find((d: { date: string }) => d.date === date);
-        const pieceRate = setup?.piece_rate || 6.5;
-        const minWage = setup?.min_wage_rate || MINIMUM_WAGE;
-        const pieceEarnings = record.buckets * pieceRate;
-        const minWageEarnings = record.hours * minWage;
-        record.earnings = Math.max(pieceEarnings, minWageEarnings);
-      });
+      }
 
       const dailyRecords = Array.from(dailyMap.values()).sort((a, b) =>
         a.date.localeCompare(b.date)
@@ -160,7 +152,7 @@ class PickerHistoryService {
 
       // --- Today's stats ---
       const todayRecord = dailyMap.get(today);
-      const todayBuckets = todayRecord?.buckets || picker.total_buckets_today || 0;
+      const todayBuckets = todayRecord?.buckets ?? 0;
       const todayHours = todayRecord?.hours || 0;
       const todayEarnings = todayRecord?.earnings || 0;
 
@@ -228,7 +220,7 @@ class PickerHistoryService {
     attendance: Array<{ date: string; status: string }>,
     dailyRecords: DailyRecord[],
     quality: QualitySummary,
-    daySetups: Array<{ date: string; piece_rate: number; min_wage_rate: number }>
+    _daySetups?: Array<{ date: string; piece_rate: number; min_wage_rate: number }>
   ): RiskBadge[] {
     const badges: RiskBadge[] = [];
 
@@ -261,15 +253,8 @@ class PickerHistoryService {
 
     // 💸 Chronic Top-Up: needed min wage subsidy >60% of days
     if (dailyRecords.length >= 5) {
-      let topUpDays = 0;
-      dailyRecords.forEach(r => {
-        const setup = daySetups.find(d => d.date === r.date);
-        const pieceRate = setup?.piece_rate || 6.5;
-        const minWage = setup?.min_wage_rate || MINIMUM_WAGE;
-        const pieceEarnings = r.buckets * pieceRate;
-        const minWageEarnings = r.hours * minWage;
-        if (r.hours > 0 && pieceEarnings < minWageEarnings) topUpDays++;
-      });
+      // Días con complemento según el cálculo único
+      const topUpDays = dailyRecords.filter(r => (r.topUp ?? 0) > 0).length;
       const topUpRatio = topUpDays / dailyRecords.length;
       if (topUpRatio > 0.6) {
         badges.push({

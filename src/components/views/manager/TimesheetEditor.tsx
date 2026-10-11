@@ -19,6 +19,7 @@ import {
   formatTimeForInput,
   formatTime,
   calculateHours,
+  nzTimeToIso,
   isAbnormal,
 } from './timesheet-utils';
 
@@ -35,7 +36,7 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
   const [records, setRecords] = useState<AttendanceRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState({ checkIn: '', checkOut: '', reason: '' });
+  const [editValues, setEditValues] = useState({ checkIn: '', checkOut: '', breakStart: '', reason: '' });
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const { showToast } = useToast();
@@ -48,7 +49,8 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
     setLoading(true);
     try {
       const data = await attendanceService.getAttendanceByDate(orchardId, selectedDate);
-      setRecords(data as AttendanceRow[]);
+      // Los fichajes borrados no se muestran ni cuentan
+      setRecords((data as AttendanceRow[]).filter(r => !r.deleted_at));
     } catch (err) {
       logger.error('Failed to load attendance:', err);
     } finally {
@@ -69,13 +71,14 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
     setEditValues({
       checkIn: record.check_in ? formatTimeForInput(record.check_in) : '',
       checkOut: record.check_out ? formatTimeForInput(record.check_out) : '',
+      breakStart: record.break_start ? formatTimeForInput(record.break_start) : '',
       reason: '',
     });
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setEditValues({ checkIn: '', checkOut: '', reason: '' });
+    setEditValues({ checkIn: '', checkOut: '', breakStart: '', reason: '' });
   };
 
   const saveCorrection = async (record: AttendanceRow) => {
@@ -88,13 +91,18 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
 
     setSaving(true);
     try {
-      const updates: { check_in?: string; check_out?: string } = {};
+      // Horas NZ de ese día → instante UTC (desfase correcto en verano e invierno)
+      const updates: { check_in?: string; check_out?: string; break_start?: string | null } = {};
 
       if (editValues.checkIn) {
-        updates.check_in = `${record.date}T${editValues.checkIn}:00+13:00`;
+        updates.check_in = nzTimeToIso(record.date, editValues.checkIn);
       }
       if (editValues.checkOut) {
-        updates.check_out = `${record.date}T${editValues.checkOut}:00+13:00`;
+        updates.check_out = nzTimeToIso(record.date, editValues.checkOut);
+      }
+      const previousBreak = record.break_start ? formatTimeForInput(record.break_start) : '';
+      if (editValues.breakStart !== previousBreak) {
+        updates.break_start = editValues.breakStart ? nzTimeToIso(record.date, editValues.breakStart) : null;
       }
 
       await attendanceService.correctAttendance(
@@ -182,14 +190,16 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
                 <th className="text-left px-4 py-3 text-text-sub font-semibold">Picker</th>
                 <th className="text-left px-4 py-3 text-text-sub font-semibold">Check-In</th>
                 <th className="text-left px-4 py-3 text-text-sub font-semibold">Check-Out</th>
-                <th className="text-left px-4 py-3 text-text-sub font-semibold">Hours</th>
+                <th className="text-left px-4 py-3 text-text-sub font-semibold" title="30-min unpaid meal break">Break</th>
+                <th className="text-left px-4 py-3 text-text-sub font-semibold" title="Paid hours (unpaid break deducted)">Hours</th>
                 <th className="text-left px-4 py-3 text-text-sub font-semibold">Status</th>
                 <th className="text-right px-4 py-3 text-text-sub font-semibold">Action</th>
               </tr>
             </thead>
             <tbody>
               {records.map(record => {
-                const hours = calculateHours(record.check_in, record.check_out);
+                const hours = calculateHours(record);
+                const unclosed = !!record.check_in && !record.check_out && record.date < todayNZST();
                 const abnormal = isAbnormal(hours);
                 const isEditing = editingId === record.id;
 
@@ -245,12 +255,30 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
                       )}
                     </td>
 
+                    {/* Break (descanso de 30 min no pagado, lo anota el team leader) */}
+                    <td className="px-4 py-3">
+                      {isEditing ? (
+                        <input
+                          type="time"
+                          value={editValues.breakStart}
+                          onChange={e => setEditValues(v => ({ ...v, breakStart: e.target.value }))}
+                          title="Break start time"
+                          className="px-2 py-1 border border-amber-300 rounded-lg text-sm w-24 focus:ring-2 focus:ring-amber-500 outline-none"
+                        />
+                      ) : record.break_start ? (
+                        <span className="font-mono">{formatTime(record.break_start)}</span>
+                      ) : (
+                        <span className="text-xs text-text-muted" title="Not recorded: 30 min deducted on shifts over 4 h">auto</span>
+                      )}
+                    </td>
+
                     {/* Hours */}
                     <td className="px-4 py-3">
                       <span
-                        className={`font-mono font-bold ${abnormal ? 'text-red-600' : 'text-text-sub'}`}
+                        className={`font-mono font-bold ${abnormal || unclosed ? 'text-red-600' : 'text-text-sub'}`}
+                        title={unclosed ? 'Shift not closed — add the check-out time' : undefined}
                       >
-                        {hours !== null ? `${hours}h` : '—'}
+                        {hours !== null ? `${hours}h` : unclosed ? 'Not closed' : '—'}
                       </span>
                       {abnormal && (
                         <span className="material-symbols-outlined text-sm inline ml-1 text-red-500">

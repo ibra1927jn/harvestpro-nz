@@ -7,7 +7,7 @@ vi.mock('@/utils/logger', () => ({
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-import { formatTimeForInput, formatTime, calculateHours, isAbnormal } from './timesheet-utils';
+import { formatTimeForInput, formatTime, calculateHours, isAbnormal, nzTimeToIso } from './timesheet-utils';
 
 describe('timesheet-utils', () => {
     describe('formatTimeForInput', () => {
@@ -34,22 +34,50 @@ describe('timesheet-utils', () => {
         });
     });
 
-    describe('calculateHours', () => {
+    describe('calculateHours (cálculo único: descanso de 30 min no pagado)', () => {
+        const row = (check_in: string | null, check_out: string | null, extra: Record<string, unknown> = {}) =>
+            ({ date: '2026-03-07', check_in, check_out, ...extra });
+
         it('returns null when no check-in', () => {
-            expect(calculateHours(null, null)).toBeNull();
+            expect(calculateHours(row(null, null), '2026-03-07')).toBeNull();
         });
 
-        it('calculates 8 hours between 07:00 and 15:00', () => {
-            expect(calculateHours('2026-03-07T07:00:00Z', '2026-03-07T15:00:00Z')).toBe(8);
+        it('8 h shift pays 7.5 h', () => {
+            expect(calculateHours(row('2026-03-07T07:00:00Z', '2026-03-07T15:00:00Z'), '2026-03-07')).toBe(7.5);
         });
 
-        it('handles partial hours', () => {
-            expect(calculateHours('2026-03-07T07:00:00Z', '2026-03-07T10:30:00Z')).toBe(3.5);
+        it('short shift (≤ 4 h) has no break deducted', () => {
+            expect(calculateHours(row('2026-03-07T07:00:00Z', '2026-03-07T10:30:00Z'), '2026-03-07')).toBe(3.5);
         });
 
-        it('uses now as end when checkOut is null', () => {
-            const hours = calculateHours('2026-03-07T07:00:00Z', null);
-            expect(hours).toBeGreaterThan(0);
+        it('recorded break outside the shift falls back to the default rule', () => {
+            expect(calculateHours(row('2026-03-07T07:00:00Z', '2026-03-07T15:00:00Z', { break_start: '2026-03-06T12:00:00Z' }), '2026-03-07')).toBe(7.5);
+        });
+
+        it('open shift today counts until now', () => {
+            const now = new Date('2026-03-07T09:00:00Z');
+            expect(calculateHours(row('2026-03-07T07:00:00Z', null), '2026-03-07', now)).toBe(2);
+        });
+
+        it('open shift on a past day is not counted (must be closed)', () => {
+            expect(calculateHours(row('2026-03-07T07:00:00Z', null), '2026-03-08')).toBeNull();
+        });
+    });
+
+    describe('nzTimeToIso (hora NZ del día → UTC)', () => {
+        it('summer (NZDT, +13)', () => {
+            expect(nzTimeToIso('2026-10-12', '07:30')).toBe('2026-10-11T18:30:00.000Z');
+        });
+
+        it('winter (NZST, +12) — before it always used +13 and was an hour off', () => {
+            expect(nzTimeToIso('2026-06-15', '07:30')).toBe('2026-06-14T19:30:00.000Z');
+        });
+    });
+
+    describe('formatTime in NZ time regardless of browser zone', () => {
+        it('shows NZ hour', () => {
+            expect(formatTime('2026-10-11T18:30:00.000Z')).toBe('07:30');
+            expect(formatTimeForInput('2026-06-14T19:30:00.000Z')).toBe('07:30');
         });
     });
 

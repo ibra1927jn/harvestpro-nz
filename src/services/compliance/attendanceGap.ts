@@ -8,6 +8,7 @@
  *   - scansWithoutAttendance: hay scans pero no existe check_in (bloqueante)
  *   - attendanceWithoutScans: horas_worked > HOURS_WITHOUT_SCANS_THRESHOLD sin scans (sospechoso)
  */
+import { nzMidnight, nzEndOfDay } from '@/utils/nzst';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -51,8 +52,8 @@ export async function checkAttendanceGap(
       .from('bucket_records')
       .select('id', { count: 'exact', head: true })
       .eq('picker_id', pickerId)
-      .gte('scanned_at', `${date}T00:00:00+12:00`)
-      .lt('scanned_at', `${date}T23:59:59+12:00`)
+      .gte('scanned_at', nzMidnight(date))
+      .lte('scanned_at', nzEndOfDay(date))
       .is('deleted_at', null),
   ]);
 

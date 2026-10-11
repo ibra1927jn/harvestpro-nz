@@ -56,20 +56,27 @@ serve(async (req) => {
 
         // ── Server-side enrichment ───────────────────
         const serverTimestamp = new Date().toISOString()
-        const clientIp = req.headers.get('x-forwarded-for')
-            || req.headers.get('cf-connecting-ip')
-            || 'unknown'
+        // Primera IP de x-forwarded-for; la columna es inet, así que sin IP válida va null
+        const rawIp = (req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || '').split(',')[0].trim()
+        const clientIp = /^[0-9a-fA-F:.]+$/.test(rawIp) ? rawIp : null
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+        // Columnas reales de audit_logs: lo que no tiene columna propia va en new_values
         const enrichedEntries = entries.map(entry => ({
-            event_type: entry.event_type,
-            severity: entry.severity,
-            action: entry.action,
+            // action: CHECK INSERT/UPDATE/DELETE/CUSTOM → el evento va en new_values.event
+            action: ['INSERT', 'UPDATE', 'DELETE'].includes(entry.action) ? entry.action : 'CUSTOM',
+            table_name: entry.entity_type || entry.event_type || 'app',
+            record_id: entry.entity_id && UUID_RE.test(entry.entity_id) ? entry.entity_id : null,
             user_id: entry.user_id || user.id,
             user_email: entry.user_email || user.email,
-            orchard_id: entry.orchard_id,
-            entity_type: entry.entity_type,
-            entity_id: entry.entity_id,
-            details: entry.details,
+            new_values: {
+                event: entry.action,
+                event_type: entry.event_type,
+                severity: entry.severity,
+                orchard_id: entry.orchard_id,
+                entity_id: entry.entity_id,
+                details: entry.details,
+            },
             ip_address: clientIp,
             // Use server timestamp, ignore client timestamp to prevent forgery
             created_at: serverTimestamp,

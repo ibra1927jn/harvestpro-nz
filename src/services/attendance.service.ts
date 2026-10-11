@@ -120,7 +120,7 @@ export const attendanceService = {
    */
   async correctAttendance(
     attendanceId: string,
-    updates: { check_in?: string; check_out?: string },
+    updates: { check_in?: string; check_out?: string; break_start?: string | null },
     reason: string,
     adminId: string
   ): Promise<void> {
@@ -130,6 +130,7 @@ export const attendanceService = {
         attendance_id: attendanceId,
         check_in: updates.check_in,
         check_out: updates.check_out,
+        ...(updates.break_start !== undefined ? { break_start: updates.break_start } : {}),
         reason,
         admin_id: adminId,
       });

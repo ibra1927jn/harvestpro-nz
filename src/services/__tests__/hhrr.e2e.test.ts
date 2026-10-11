@@ -9,7 +9,8 @@ vi.mock('@/utils/logger', () => ({
   logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
 
-vi.mock('@/utils/nzst', () => ({
+vi.mock('@/utils/nzst', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/utils/nzst')>()),
   todayNZST: () => '2026-03-10',
   nowNZST: () => '2026-03-10T14:00:00+13:00',
 }));

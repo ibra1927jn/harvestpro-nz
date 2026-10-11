@@ -91,13 +91,15 @@ describe('pickerHistoryService — E2E deep tests', () => {
             const history = await pickerHistoryService.getPickerHistory('p1', 'o1');
             const mar8 = history!.dailyRecords.find(r => r.date === '2026-03-08');
             expect(mar8).toBeDefined();
-            expect(mar8!.hours).toBe(8);
+            expect(mar8!.hours).toBe(7.5); // 8 h − 30 min de descanso no pagado
         });
 
-        it('handles 0 hours when no check-out', async () => {
+        it('open shift on a past day: estimated from check-in to last scan and flagged', async () => {
             const history = await pickerHistoryService.getPickerHistory('p1', 'o1');
             const mar10 = history!.dailyRecords.find(r => r.date === '2026-03-10');
-            if (mar10) expect(mar10.hours).toBe(0);
+            expect(mar10).toBeDefined();
+            expect(mar10!.estimated).toBe(true);
+            expect(mar10!.hours).toBeGreaterThan(0);
         });
 
         it('computes quality scores', async () => {
