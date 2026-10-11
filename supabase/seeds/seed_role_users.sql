@@ -71,3 +71,23 @@ UPDATE auth.users a
 SET raw_user_meta_data = COALESCE(a.raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('role', u.role)
 FROM public.users u
 WHERE u.id = a.id AND u.role IS NOT NULL;
+
+-- Cada picker con su team leader (reparto por turnos entre los team leaders
+-- activos de su huerto). Sin esto, Equipos, "Mi equipo" y la asistencia del
+-- team leader salían vacíos.
+WITH tls AS (
+  SELECT id, orchard_id, row_number() OVER (PARTITION BY orchard_id ORDER BY name) - 1 AS n,
+         count(*) OVER (PARTITION BY orchard_id) AS total
+  FROM public.pickers
+  WHERE role = 'team_leader' AND status = 'active'
+),
+crew AS (
+  SELECT id, orchard_id, row_number() OVER (PARTITION BY orchard_id ORDER BY picker_id) - 1 AS n
+  FROM public.pickers
+  WHERE role = 'picker' AND status = 'active' AND team_leader_id IS NULL
+)
+UPDATE public.pickers p
+SET team_leader_id = t.id
+FROM crew c
+JOIN tls t ON t.orchard_id = c.orchard_id AND t.n = c.n % t.total
+WHERE p.id = c.id;
