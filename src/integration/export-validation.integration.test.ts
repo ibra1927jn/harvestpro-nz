@@ -1,187 +1,83 @@
 /**
  * INTEGRATION TEST: Export + Payroll Pipeline
  *
- * Tests: store crew data → preparePayrollData → generateCSV → verify output
- * Uses REAL exportService, REAL compliance math. Only Supabase/nzst mocked.
+ * Fichajes + escaneos de una semana → cálculo único (buildWeekBreakdown,
+ * mismo código que calculate-payroll) → preparePayrollData → CSV / Xero / PaySauce.
+ * Comprueba que lo exportado suma exactamente lo calculado.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { exportService } from '@/services/export.service';
 import { validationService } from '@/services/validation.service';
-import type { Picker } from '@/types';
+import { buildWeekBreakdown } from '@/hooks/useWeeklyReport';
 
-// Mock nzst to avoid timezone issues in tests
-vi.mock('@/utils/nzst', () => ({
-  todayNZST: vi.fn(() => '2026-03-09'),
-  nowNZST: vi.fn(() => new Date().toISOString()),
-}));
+const WEEK = { start: '2026-10-05', end: '2026-10-11' };
+const DAYS = ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09'];
+const t = (date: string, hhmm: string) => `${date}T${hhmm}:00+13:00`;
 
-// ── Helpers ──────────────────────────────────
-function makePicker(
-  id: string,
-  name: string,
-  buckets: number,
-  hours: number,
-  status = 'active'
-): Picker {
-  return {
-    id,
-    name,
-    status,
-    checked_in_today: true,
-    total_buckets_today: buckets,
-    hours,
-    current_row: 1,
-    role: 'picker',
-    avatar: name[0],
-    picker_id: `EMP-${id}`,
-  } as Picker;
+/** 10 pickers, lunes a viernes 07:00–16:00 (8.5 h pagables), ritmo distinto cada uno */
+function weekOf10() {
+    const crew = Array.from({ length: 10 }, (_, i) => ({ id: `p${i}`, name: `Picker ${i}` }));
+    const attendance = crew.flatMap(p => DAYS.map(date => ({
+        picker_id: p.id, date, check_in: t(date, '07:00'), check_out: t(date, '16:00'),
+    })));
+    const buckets = crew.flatMap((p, i) => DAYS.flatMap(date =>
+        Array.from({ length: 10 + i * 6 }, (_, k) => ({
+            picker_id: p.id,
+            scanned_at: t(date, `${String(8 + (k % 7)).padStart(2, '0')}:${String(k % 60).padStart(2, '0')}`),
+        })),
+    ));
+    return { crew, attendance, buckets };
 }
 
-// ── EXPORT SERVICE INTEGRATION ────────────────
-
 describe('Export + Payroll Pipeline — Integration', () => {
-  describe('preparePayrollData', () => {
-    it('produces correct payroll for single picker', () => {
-      const crew = [makePicker('p1', 'Alice', 20, 4)];
-      const data = exportService.preparePayrollData(crew, '2026-03-09');
+    it('la exportación suma exactamente lo calculado (total, Xero, PaySauce, CSV)', () => {
+        const { crew, attendance, buckets } = weekOf10();
+        const breakdown = buildWeekBreakdown({ attendance, buckets, crew, pieceRate: 6.5, minWage: 23.95 });
+        const calcTotal = Math.round(breakdown.reduce((s, p) => s + p.total_earnings, 0) * 100) / 100;
 
-      expect(data.date).toBe('2026-03-09');
-      expect(data.crew.length).toBe(1);
+        const data = exportService.preparePayrollData(breakdown, WEEK, id => `EMP-${id}`);
+        expect(data.crew).toHaveLength(10);
+        expect(data.summary.grandTotal).toBe(calcTotal);
+        expect(data.summary.totalHours).toBe(10 * 5 * 8.5);
 
-      const alice = data.crew[0];
-      expect(alice.name).toBe('Alice');
-      expect(alice.buckets).toBe(20);
-      expect(alice.hours).toBe(4);
-      // Piece: 20 × PIECE_RATE (default $3.50) = $70
-      expect(alice.pieceEarnings).toBeGreaterThan(0);
-      // Min wage: 4 × $23.95 = $94
-      // If piece < min, top-up = min - piece
-      expect(alice.totalEarnings).toBeGreaterThanOrEqual(alice.pieceEarnings);
+        const sumAmounts = (csv: string) =>
+            Math.round(csv.split('\n').slice(1).reduce((s, l) => s + parseFloat(l.split(',').pop() || '0'), 0) * 100) / 100;
+        expect(sumAmounts(exportService.generateXeroCSV(data))).toBe(calcTotal);
+        expect(sumAmounts(exportService.generatePaySauceCSV(data))).toBe(calcTotal);
+
+        const csv = exportService.generateCSV(data);
+        expect(csv).toContain(`Grand Total,,,,,,${calcTotal.toFixed(2)}`);
+        expect(csv.split('\n').filter(l => l.startsWith('EMP-')).length).toBe(10);
     });
 
-    it('produces correct summary for multiple pickers', () => {
-      const crew = [
-        makePicker('p1', 'Alice', 20, 4),
-        makePicker('p2', 'Bob', 50, 6),
-        makePicker('p3', 'Carlo', 100, 8),
-      ];
-      const data = exportService.preparePayrollData(crew, '2026-03-09');
-
-      expect(data.crew.length).toBe(3);
-      expect(data.summary.totalBuckets).toBe(170); // 20+50+100
-      expect(data.summary.totalHours).toBeGreaterThan(0);
-      expect(data.summary.grandTotal).toBeGreaterThan(0);
-      expect(data.summary.averageBucketsPerHour).toBeGreaterThan(0);
+    it('el complemento es por día también en la exportación', () => {
+        // Lunes 80 cubetas (sin complemento), martes 10 (con complemento)
+        const breakdown = buildWeekBreakdown({
+            attendance: ['2026-10-05', '2026-10-06'].map(date => ({ picker_id: 'p1', date, check_in: t(date, '07:00'), check_out: t(date, '17:00') })),
+            buckets: [
+                ...Array.from({ length: 80 }, () => ({ picker_id: 'p1', scanned_at: t('2026-10-05', '10:00') })),
+                ...Array.from({ length: 10 }, () => ({ picker_id: 'p1', scanned_at: t('2026-10-06', '10:00') })),
+            ],
+            crew: [{ id: 'p1', name: 'Ana' }],
+            pieceRate: 6.5,
+            minWage: 23.95,
+        });
+        const xero = exportService.generateXeroCSV(exportService.preparePayrollData(breakdown, WEEK, () => 'EMP-1'));
+        expect(xero).toContain('EMP-1,Ana,Minimum Wage Top-Up,19.00');
+        expect(xero).toContain('162.53');
     });
 
-    it('custom piece rate applied correctly', () => {
-      const crew = [makePicker('p1', 'Alice', 10, 4)];
-      const data = exportService.preparePayrollData(crew, '2026-03-09', { pieceRate: 5.0 });
-
-      const alice = data.crew[0];
-      expect(alice.pieceEarnings).toBe(50); // 10 × $5.00
+    it('CSV protege contra fórmulas en nombres', () => {
+        const breakdown = buildWeekBreakdown({
+            attendance: [{ picker_id: 'p1', date: '2026-10-05', check_in: t('2026-10-05', '07:00'), check_out: t('2026-10-05', '11:00') }],
+            buckets: [],
+            crew: [{ id: 'p1', name: '=cmd|calc' }],
+            pieceRate: 6.5,
+            minWage: 23.95,
+        });
+        const csv = exportService.generateCSV(exportService.preparePayrollData(breakdown, WEEK));
+        expect(csv).not.toMatch(/(^|,)=cmd/m);
     });
-
-    it('custom min wage applied correctly', () => {
-      const crew = [makePicker('p1', 'Alice', 1, 8)]; // 1 bucket, 8 hours
-      const data = exportService.preparePayrollData(crew, '2026-03-09', {
-        pieceRate: 3.5,
-        minWage: 25.0,
-      });
-
-      const alice = data.crew[0];
-      // Piece: 1 × $3.50 = $3.50
-      // Min: 8 × $25.00 = $200
-      // Top-up: $200 - $3.50 = $196.50
-      expect(alice.minimumTopUp).toBeCloseTo(196.5, 1);
-      expect(alice.totalEarnings).toBeCloseTo(200, 0);
-    });
-
-    it('unpaid break deduction applied for workers >6h', () => {
-      const crew = [makePicker('p1', 'Alice', 50, 8)];
-      const data = exportService.preparePayrollData(crew, '2026-03-09', {
-        unpaidBreakMinutes: 30, // 30 min break
-      });
-
-      // 8h gross - 0.5h break = 7.5h net
-      expect(data.crew[0].hours).toBe(7.5);
-    });
-
-    it('unpaid break NOT deducted for workers ≤6h', () => {
-      const crew = [makePicker('p1', 'Alice', 50, 5)];
-      const data = exportService.preparePayrollData(crew, '2026-03-09', {
-        unpaidBreakMinutes: 30,
-      });
-
-      expect(data.crew[0].hours).toBe(5); // No deduction
-    });
-
-    it('zero hours → averageBucketsPerHour is 0', () => {
-      const crew = [makePicker('p1', 'Alice', 10, 0)];
-      const data = exportService.preparePayrollData(crew, '2026-03-09');
-
-      expect(data.summary.averageBucketsPerHour).toBe(0);
-    });
-  });
-
-  describe('generateCSV', () => {
-    it('CSV contains headers and picker data', () => {
-      const crew = [makePicker('p1', 'Alice', 20, 4)];
-      const data = exportService.preparePayrollData(crew, '2026-03-09');
-      const csv = exportService.generateCSV(data);
-
-      expect(csv).toContain('Employee ID');
-      expect(csv).toContain('Name');
-      expect(csv).toContain('Buckets');
-      expect(csv).toContain('Hours');
-      expect(csv).toContain('Alice');
-      expect(csv).toContain('SUMMARY');
-    });
-
-    it('CSV contains correct summary totals', () => {
-      const crew = [makePicker('p1', 'Alice', 20, 4), makePicker('p2', 'Bob', 30, 6)];
-      const data = exportService.preparePayrollData(crew, '2026-03-09');
-      const csv = exportService.generateCSV(data);
-
-      expect(csv).toContain('Total Buckets');
-      expect(csv).toContain('50'); // 20+30
-      expect(csv).toContain('Grand Total');
-    });
-
-    it('CSV sanitizes formula injection', () => {
-      const crew = [
-        {
-          ...makePicker('p1', '=HYPERLINK("evil")', 10, 4),
-          name: '=HYPERLINK("evil")',
-        },
-      ] as Picker[];
-      const data = exportService.preparePayrollData(crew, '2026-03-09');
-      const csv = exportService.generateCSV(data);
-
-      // Cell should be escaped with leading apostrophe
-      expect(csv).toContain("'=HYPERLINK");
-    });
-  });
-
-  describe('Full pipeline: store → prepare → CSV', () => {
-    it('10-picker payroll produces valid CSV with all rows', () => {
-      const crew = Array.from({ length: 10 }, (_, i) =>
-        makePicker(`p${i}`, `Worker ${i}`, 20 + i * 5, 4 + i * 0.5)
-      );
-      const data = exportService.preparePayrollData(crew, '2026-03-09');
-      const csv = exportService.generateCSV(data);
-
-      // All 10 workers in CSV
-      expect(data.crew.length).toBe(10);
-      for (let i = 0; i < 10; i++) {
-        expect(csv).toContain(`Worker ${i}`);
-      }
-      // Summary correct
-      expect(data.summary.totalBuckets).toBe(
-        Array.from({ length: 10 }, (_, i) => 20 + i * 5).reduce((a, b) => a + b, 0)
-      ); // 20+25+30+35+40+45+50+55+60+65 = 425
-    });
-  });
 });
 
 // ── VALIDATION + SANITIZATION INTEGRATION ─────
