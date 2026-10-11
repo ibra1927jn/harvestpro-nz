@@ -118,6 +118,7 @@ export function buildWeekBreakdown(params: {
         top_up_required: r.topUp,
         total_earnings: r.total,
         is_below_minimum: r.daysBelowMinimum > 0,
+        estimated_days: r.estimatedDays,
     }));
 }
 

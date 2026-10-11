@@ -1,8 +1,7 @@
 // =============================================
 // EXPORT SERVICE - CSV/PDF Generation for Payroll
 // =============================================
-import { Picker, MINIMUM_WAGE, PIECE_RATE } from '../types';
-import { todayNZST } from '@/utils/nzst';
+import type { PickerBreakdown } from '@/services/payroll.service';
 import { generateXeroCSV, generatePaySauceCSV } from './export-payroll-formats.service';
 import { generatePDFContent } from './export-pdf-template.service';
 import { analytics } from '@/config/analytics';
@@ -18,7 +17,10 @@ const escCsv = (val: string): string => {
 
 // Types
 export interface PayrollExportData {
+  /** Etiqueta del periodo (para títulos y nombres de fichero) */
   date: string;
+  /** Semana de pago exportada (fechas NZ) */
+  period?: { start: string; end: string };
   crew: Array<{
     id: string;
     name: string;
@@ -29,6 +31,8 @@ export interface PayrollExportData {
     minimumTopUp: number;
     totalEarnings: number;
     status: string;
+    /** Días con horas estimadas (turno sin cerrar) */
+    estimatedDays?: number;
   }>;
   summary: {
     totalBuckets: number;
@@ -37,6 +41,8 @@ export interface PayrollExportData {
     totalMinimumTopUp: number;
     grandTotal: number;
     averageBucketsPerHour: number;
+    /** Pickers con algún día estimado: revisar hojas de horas antes de pagar */
+    pickersWithEstimatedDays?: number;
   };
 }
 
@@ -46,65 +52,66 @@ export interface ExportOptions {
   dateRange?: { start: string; end: string };
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Nombre de periodo para títulos y ficheros: "2026-10-05_to_2026-10-11" */
+function periodLabel(period: { start: string; end: string }): string {
+  return period.start === period.end ? period.start : `${period.start}_to_${period.end}`;
+}
+
 // =============================================
 // EXPORT SERVICE
 // =============================================
 export const exportService = {
   /**
-   * Prepare payroll data for export
-   * 🔧 L9: Accept optional custom rates from orchard settings
-   * 🔧 L16: Accept optional unpaid break deduction (gross → net hours)
+   * Datos de nómina a exportar, a partir del desglose por picker del cálculo
+   * único (calculate-payroll / buildWeekBreakdown): horas con descanso no
+   * pagado y complemento al mínimo calculado por día. Aquí no se recalcula nada.
    */
   preparePayrollData(
-    crew: Picker[],
-    date: string = todayNZST(),
-    options?: {
-      pieceRate?: number;
-      minWage?: number;
-      unpaidBreakMinutes?: number;
-    }
+    pickers: ReadonlyArray<PickerBreakdown>,
+    period: { start: string; end: string },
+    employeeIdOf: (pickerId: string) => string | undefined = () => undefined
   ): PayrollExportData {
-    const pieceRate = options?.pieceRate ?? PIECE_RATE;
-    const minWage = options?.minWage ?? MINIMUM_WAGE;
-    const unpaidBreakHours = (options?.unpaidBreakMinutes ?? 0) / 60;
+    const crewData = [...pickers]
+      .sort((a, b) => a.picker_name.localeCompare(b.picker_name))
+      .map(p => {
+        const estimatedDays = p.estimated_days ?? 0;
+        return {
+          id: p.picker_id,
+          name: p.picker_name,
+          employeeId: employeeIdOf(p.picker_id) || p.picker_id,
+          buckets: p.buckets,
+          hours: p.hours_worked,
+          pieceEarnings: p.piece_rate_earnings,
+          minimumTopUp: p.top_up_required,
+          totalEarnings: p.total_earnings,
+          status: estimatedDays > 0
+            ? 'check_timesheet'
+            : p.is_below_minimum ? 'topped_up' : 'ok',
+          estimatedDays,
+        };
+      });
 
-    const crewData = crew.map(picker => {
-      const grossHours = picker.hours || 0;
-      // 🔧 L16: Deduct unpaid break if worker worked enough hours (NZ: 30min if >6h)
-      const hours = grossHours > 6 ? Math.max(0, grossHours - unpaidBreakHours) : grossHours;
-      const pieceEarnings = (picker.total_buckets_today || 0) * pieceRate;
-      const minimumGuarantee = hours * minWage;
-      const minimumTopUp = Math.max(0, minimumGuarantee - pieceEarnings);
-      const totalEarnings = pieceEarnings + minimumTopUp;
+    const sum = (k: 'buckets' | 'hours' | 'pieceEarnings' | 'minimumTopUp' | 'totalEarnings') =>
+      round2(crewData.reduce((s, p) => s + p[k], 0));
+    const totalBuckets = sum('buckets');
+    const totalHours = sum('hours');
 
-      return {
-        id: picker.id,
-        name: picker.name,
-        employeeId: picker.picker_id || 'N/A',
-        buckets: picker.total_buckets_today || 0,
-        hours,
-        pieceEarnings,
-        minimumTopUp,
-        totalEarnings,
-        status: picker.status,
-      };
-    });
-
-    const summary = {
-      totalBuckets: crewData.reduce((sum, p) => sum + p.buckets, 0),
-      totalHours: crewData.reduce((sum, p) => sum + p.hours, 0),
-      totalPieceEarnings: crewData.reduce((sum, p) => sum + p.pieceEarnings, 0),
-      totalMinimumTopUp: crewData.reduce((sum, p) => sum + p.minimumTopUp, 0),
-      grandTotal: crewData.reduce((sum, p) => sum + p.totalEarnings, 0),
-      averageBucketsPerHour: 0,
+    return {
+      date: periodLabel(period),
+      period,
+      crew: crewData,
+      summary: {
+        totalBuckets,
+        totalHours,
+        totalPieceEarnings: sum('pieceEarnings'),
+        totalMinimumTopUp: sum('minimumTopUp'),
+        grandTotal: sum('totalEarnings'),
+        averageBucketsPerHour: totalHours > 0 ? Math.round((totalBuckets / totalHours) * 10) / 10 : 0,
+        pickersWithEstimatedDays: crewData.filter(p => (p.estimatedDays ?? 0) > 0).length,
+      },
     };
-
-    summary.averageBucketsPerHour =
-      summary.totalHours > 0
-        ? Math.round((summary.totalBuckets / summary.totalHours) * 10) / 10
-        : 0;
-
-    return { date, crew: crewData, summary };
   },
 
   /**
@@ -120,6 +127,7 @@ export const exportService = {
       'Minimum Top-Up (NZD)',
       'Total Earnings (NZD)',
       'Status',
+      'Estimated Days',
     ];
 
     // 🔧 V2: All string cells sanitized against CSV injection
@@ -132,6 +140,7 @@ export const exportService = {
       p.minimumTopUp.toFixed(2),
       p.totalEarnings.toFixed(2),
       escCsv(p.status),
+      String(p.estimatedDays ?? 0),
     ]);
 
     // Add summary rows
@@ -144,8 +153,11 @@ export const exportService = {
     rows.push(['Grand Total', '', '', '', '', '', data.summary.grandTotal.toFixed(2)]);
     rows.push(['Avg Buckets/Hour', data.summary.averageBucketsPerHour.toString()]);
 
+    const title = data.period
+      ? `Payroll Report - week ${data.period.start} to ${data.period.end}`
+      : `Payroll Report - ${data.date}`;
     const csvContent = [
-      `Payroll Report - ${data.date}`,
+      title,
       '',
       headers.join(','),
       ...rows.map(row => row.join(',')),
@@ -173,47 +185,35 @@ export const exportService = {
   },
 
   /**
-   * Export payroll to CSV
+   * Genera y descarga la exportación en el formato pedido.
+   * Devuelve nombre de fichero y totales para el historial.
    */
-  exportToCSV(crew: Picker[], date?: string): void {
-    const data = this.preparePayrollData(crew, date);
-    const csv = this.generateCSV(data);
-    const filename = `payroll-${data.date}.csv`;
-    this.downloadFile(csv, filename, 'text/csv;charset=utf-8');
-    // 📊 PostHog: Track payroll export
-    analytics.trackPayrollExport('csv', data.crew.length);
-  },
-
-  /**
-   * Export payroll to PDF (opens print dialog)
-   */
-  exportToPDF(crew: Picker[], date?: string): void {
-    const data = this.preparePayrollData(crew, date);
-    const html = this.generatePDFContent(data);
-
-    // Open in new window for printing
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.onload = () => {
-        printWindow.print();
-      };
+  exportPayroll(
+    format: ExportFormat,
+    data: PayrollExportData
+  ): { filename: string; recordCount: number; totalEarnings: number } {
+    let filename: string;
+    switch (format) {
+      case 'csv':
+        filename = `payroll-${data.date}.csv`;
+        this.downloadFile(this.generateCSV(data), filename, 'text/csv;charset=utf-8');
+        break;
+      case 'xero':
+        filename = `xero-payroll-${data.date}.csv`;
+        this.downloadFile(generateXeroCSV(data), filename, 'text/csv;charset=utf-8');
+        break;
+      case 'paysauce':
+        filename = `paysauce-payroll-${data.date}.csv`;
+        this.downloadFile(generatePaySauceCSV(data), filename, 'text/csv;charset=utf-8');
+        break;
+      case 'pdf':
+        // Fichero HTML listo para imprimir o "Guardar como PDF" (funciona sin conexión)
+        filename = `payroll-report-${data.date}.html`;
+        this.downloadFile(this.generatePDFContent(data), filename, 'text/html;charset=utf-8');
+        break;
     }
-    // 📊 PostHog: Track payroll PDF export
-    analytics.trackPayrollExport('pdf', data.crew.length);
-  },
-
-  /**
-   * Export payroll as a downloadable HTML report file.
-   * Works offline, no external dependency needed.
-   * Users can open in browser and print, or use "Save as PDF" in Chrome.
-   */
-  exportToPDFDownload(crew: Picker[], date?: string): void {
-    const data = this.preparePayrollData(crew, date);
-    const html = this.generatePDFContent(data);
-    const filename = `payroll-report-${data.date}.html`;
-    this.downloadFile(html, filename, 'text/html;charset=utf-8');
+    analytics.trackPayrollExport(format, data.crew.length);
+    return { filename, recordCount: data.crew.length, totalEarnings: data.summary.grandTotal };
   },
 
   // =============================================
@@ -221,24 +221,6 @@ export const exportService = {
   // =============================================
   generateXeroCSV: generateXeroCSV,
   generatePaySauceCSV: generatePaySauceCSV,
-
-  /** Export to Xero format and download */
-  exportToXero(crew: Picker[], date?: string): void {
-    const data = this.preparePayrollData(crew, date);
-    const csv = generateXeroCSV(data);
-    this.downloadFile(csv, `xero-payroll-${data.date}.csv`, 'text/csv;charset=utf-8');
-    // 📊 PostHog: Track Xero export
-    analytics.trackPayrollExport('xero', data.crew.length);
-  },
-
-  /** Export to PaySauce format and download */
-  exportToPaySauce(crew: Picker[], date?: string): void {
-    const data = this.preparePayrollData(crew, date);
-    const csv = generatePaySauceCSV(data);
-    this.downloadFile(csv, `paysauce-payroll-${data.date}.csv`, 'text/csv;charset=utf-8');
-    // 📊 PostHog: Track PaySauce export
-    analytics.trackPayrollExport('paysauce', data.crew.length);
-  },
 };
 
 /** Available export format types */

@@ -111,10 +111,12 @@ export async function fetchOrchardData(
       todayNZST();
   const useDelta = sameNZDay && state.crew.length > 0 && state.bucketRecords.length > 0;
 
-  // Use the provided orchardId (from AuthContext) or fall back to first orchard
+  // Huerto pedido (el del usuario, desde OrchardDataBootstrap); si no se pasa,
+  // el que ya está cargado (refrescos tras una acción); solo en último caso el primero.
+  const targetOrchardId = orchardId ?? state.orchard?.id;
   let activeOrchard: { id: string; name?: string; total_rows?: number } | null = null;
-  if (orchardId) {
-    const { data } = await supabase.from('orchards').select('*').eq('id', orchardId).single();
+  if (targetOrchardId) {
+    const { data } = await supabase.from('orchards').select('*').eq('id', targetOrchardId).single();
     activeOrchard = data;
   }
   if (!activeOrchard) {

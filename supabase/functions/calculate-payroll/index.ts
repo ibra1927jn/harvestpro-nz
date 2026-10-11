@@ -49,6 +49,8 @@ interface PickerBreakdown {
     // MVP: contamos fechas únicas con horas > 0; el flag "otherwise working
     // day" lo asumimos true para pickers estacionales.
     alternative_holidays_owed: number
+    // Días con horas estimadas (turno sin cerrar): revisar antes de pagar
+    estimated_days: number
 }
 
 interface PayrollResult {
@@ -65,6 +67,7 @@ interface PayrollResult {
         total_earnings: number
         // Suma de alternative_holidays_owed across pickers (Holidays Act s.60).
         total_alternative_holidays_owed: number
+        total_estimated_days: number
     }
     compliance: {
         workers_below_minimum: number
@@ -238,6 +241,7 @@ serve(async (req) => {
                 is_below_minimum,
                 // Holidays Act 2003 s.60: un día alternativo por festivo trabajado
                 alternative_holidays_owed: h.days,
+                estimated_days: o.estimatedDays + h.estimatedDays,
             })
 
             total_buckets += buckets
@@ -264,7 +268,8 @@ serve(async (req) => {
                 total_piece_rate_earnings: parseFloat(total_piece_rate_earnings.toFixed(2)),
                 total_top_up: parseFloat(total_top_up.toFixed(2)),
                 total_earnings: parseFloat(total_earnings.toFixed(2)),
-                total_alternative_holidays_owed
+                total_alternative_holidays_owed,
+                total_estimated_days: picker_breakdown.reduce((s, p) => s + p.estimated_days, 0),
             },
             compliance: {
                 workers_below_minimum,

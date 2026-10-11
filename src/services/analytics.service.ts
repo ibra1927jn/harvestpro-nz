@@ -5,6 +5,8 @@
  */
 import { Picker, BucketRecord } from '../types';
 import { nowNZST } from '@/utils/nzst';
+import { computePerPicker } from './harvestMetrics/perPicker';
+import { PAY_RULES } from './harvestMetrics/pay';
 import { AnalyticsTrendsService, analyticsTrendsService } from './analytics-trends.service';
 
 interface ReportRow {
@@ -15,6 +17,12 @@ interface ReportRow {
     rate: number;
     earnings: number;
     min_wage_earnings: number;
+    /** Complemento al mínimo del día */
+    top_up: number;
+    /** Pago total del día (cubetas + complemento) */
+    total: number;
+    /** De dónde salen las horas: fichaje, turno abierto, estimación */
+    hours_source: string;
     status: 'safe' | 'at_risk' | 'below_minimum';
     team_leader: string;
 }
@@ -111,23 +119,35 @@ class AnalyticsService extends AnalyticsTrendsService {
      */
     generateDailyReport(
         crew: Picker[],
-        _bucketRecords: BucketRecord[],
+        bucketRecords: BucketRecord[],
         settings: { piece_rate: number; min_wage_rate: number },
         teamLeaders: Picker[],
         metadata: ReportMetadata
     ): string {
+        // Horas y pago del cálculo único (harvestMetrics/pay.ts): fichaje con
+        // descanso no pagado y complemento al mínimo del día. Cubetas: los
+        // escaneos del día (sin rechazos de QC), no el contador de la ficha.
+        const metricsById = new Map(
+            computePerPicker(crew, bucketRecords, settings).map(m => [m.pickerId, m])
+        );
         const rows: ReportRow[] = crew
             .filter(p => p.role !== 'team_leader' && p.role !== 'runner')
             .map(p => {
-                const buckets = p.total_buckets_today || 0;
-                const hoursWorked = p.hours || 0;
+                const m = metricsById.get(p.id);
+                const buckets = m?.bins ?? 0;
+                const hoursWorked = m?.hoursWorked ?? 0;
                 const rate = hoursWorked > 0 ? buckets / hoursWorked : 0;
-                const { status, earnings, minWageEarnings } = this.calculateWageStatus(buckets, hoursWorked, settings.piece_rate, settings.min_wage_rate);
+                const { status, minWageEarnings } = this.calculateWageStatus(buckets, hoursWorked, settings.piece_rate, Math.max(settings.min_wage_rate, PAY_RULES.minWageFloor));
                 const teamLeader = teamLeaders.find(l => l.id === p.team_leader_id);
                 return {
                     name: p.name, picker_id: p.picker_id, buckets, hours_worked: hoursWorked,
-                    rate: Math.round(rate * 10) / 10, earnings: Math.round(earnings * 100) / 100,
-                    min_wage_earnings: Math.round(minWageEarnings * 100) / 100, status,
+                    rate: Math.round(rate * 10) / 10,
+                    earnings: m?.pieceRateEarnings ?? 0,
+                    min_wage_earnings: Math.round(minWageEarnings * 100) / 100,
+                    top_up: m?.topUp ?? 0,
+                    total: m?.earned ?? 0,
+                    hours_source: m?.hoursSource ?? 'none',
+                    status,
                     team_leader: teamLeader?.name || 'Unassigned'
                 };
             })
@@ -140,13 +160,14 @@ class AnalyticsService extends AnalyticsTrendsService {
         lines.push(`# Last Sync: ${metadata.last_sync}`);
         if (metadata.is_offline_data) lines.push(`# ⚠️ OFFLINE DATA - ${metadata.pending_queue_count} scans pending sync from other devices`);
         lines.push('');
-        lines.push('Name,Picker ID,Buckets,Hours,Rate (bkt/hr),Earnings ($),Min Wage ($),Status,Team Leader');
+        lines.push('Name,Picker ID,Buckets,Hours,Hours Source,Rate (bkt/hr),Piece Earnings ($),Min Wage ($),Top-Up ($),Total Pay ($),Status,Team Leader');
+        const q = (s: string) => `"${String(s).replace(/"/g, '""').replace(/^([=+\-@\t\r])/, "'$1")}"`;
         rows.forEach(r => {
-            lines.push([`"${r.name}"`, r.picker_id, r.buckets, r.hours_worked, r.rate, r.earnings.toFixed(2), r.min_wage_earnings.toFixed(2), r.status.toUpperCase(), `"${r.team_leader}"`].join(','));
+            lines.push([q(r.name), q(r.picker_id ?? ''), r.buckets, r.hours_worked, r.hours_source, r.rate, r.earnings.toFixed(2), r.min_wage_earnings.toFixed(2), r.top_up.toFixed(2), r.total.toFixed(2), r.status.toUpperCase(), q(r.team_leader)].join(','));
         });
 
         const totalBuckets = rows.reduce((sum, r) => sum + r.buckets, 0);
-        const totalEarnings = rows.reduce((sum, r) => sum + r.earnings, 0);
+        const totalEarnings = rows.reduce((sum, r) => sum + r.total, 0);
         const belowMinimum = rows.filter(r => r.status === 'below_minimum').length;
         lines.push('');
         lines.push(`# SUMMARY: ${rows.length} pickers, ${totalBuckets} buckets, $${totalEarnings.toFixed(2)} total earnings`);
