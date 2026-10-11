@@ -280,7 +280,9 @@ describe('Payroll Service', () => {
                         select: () => ({
                             eq: () => ({
                                 eq: () => ({
-                                    order: () => Promise.resolve(attendanceResponse),
+                                    is: () => ({
+                                        order: () => Promise.resolve(attendanceResponse),
+                                    }),
                                 }),
                             }),
                         }),

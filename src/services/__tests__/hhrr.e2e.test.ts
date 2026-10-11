@@ -181,6 +181,13 @@ describe('hhrr.service — E2E deep tests', () => {
       expect(summary.payrollThisWeek).toBe(311.36);
     });
 
+    it('reads the week from Monday 00:00 NZ time, not 00:00 UTC', async () => {
+      await fetchHRSummary('o1');
+      // 2026-03-10 es martes → semana desde el lunes 2026-03-09 (NZDT, +13:00)
+      expect(mockGetBucketCounts).toHaveBeenCalledWith('o1', '2026-03-09T00:00:00+13:00');
+      expect(mockGetHoursSummary).toHaveBeenCalledWith('o1', '2026-03-09');
+    });
+
     it('open shift on a past day is estimated from scans, not counted until now', async () => {
       mockGetHoursSummary.mockResolvedValueOnce([
         { picker_id: 'u1', check_in: '2026-03-10T06:00:00Z', check_out: null },

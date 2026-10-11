@@ -42,7 +42,7 @@ export const storeSyncRepository = {
             let query = supabase.from('bucket_records').select('picker_id, id, scanned_at, quality_grade, deleted_at').gte('scanned_at', since);
             if (orchardId) query = query.eq('orchard_id', orchardId);
             return query.order('id').range(from, to);
-        }).catch(() => []);
+        });
     },
 
     /** Get harvest settings piece_rate — maybeSingle evita 406 si la fila no existe aún */

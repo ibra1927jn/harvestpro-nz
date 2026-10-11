@@ -9,7 +9,7 @@
  * - Cubetas: las del día, excluyendo rechazos de QC y registros borrados.
  */
 import type { Picker, BucketRecord, HarvestSettings } from '@/types';
-import { shiftHours, dayPay, type HoursSource } from './pay';
+import { shiftHours, dayPay, nzDateOf, isNZPublicHoliday, type HoursSource } from './pay';
 
 export interface PickerMetrics {
     pickerId: string;
@@ -45,6 +45,7 @@ export function computePerPicker(
 ): PickerMetrics[] {
     const pieceRate = settings.piece_rate || 6.5;
     const minWage = settings.min_wage_rate || 23.95;
+    const isPublicHoliday = isNZPublicHoliday(nzDateOf(now));
 
     // Cubetas y timestamps por picker (clave = picker_id del registro: UUID o código corto)
     const scansByPicker = new Map<string, string[]>();
@@ -70,7 +71,7 @@ export function computePerPicker(
                 scanTimes: scans,
                 now,
             });
-            const pay = dayPay({ buckets: bins, hours: shift.hours, pieceRate, minWage });
+            const pay = dayPay({ buckets: bins, hours: shift.hours, pieceRate, minWage, isPublicHoliday });
 
             return {
                 pickerId: p.id,

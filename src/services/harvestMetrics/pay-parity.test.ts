@@ -29,4 +29,10 @@ describe('pay rules parity (app ↔ Edge Functions)', () => {
         const edge = readFileSync(resolve(root, 'supabase/functions/_shared/fetch-all-rows.ts'), 'utf8');
         expect(edge).toBe(app);
     });
+
+    it('la lista de festivos de pay.ts coincide con src/constants/nz-law.ts', async () => {
+        const { NZ_PUBLIC_HOLIDAYS } = await import('./pay');
+        const law = await import('@/constants/nz-law');
+        expect([...NZ_PUBLIC_HOLIDAYS].sort()).toEqual([...law.NZ_PUBLIC_HOLIDAYS].sort());
+    });
 });

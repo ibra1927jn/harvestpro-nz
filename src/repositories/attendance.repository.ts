@@ -105,10 +105,11 @@ export const attendanceRepository = {
             let query = supabase
                 .from('daily_attendance')
                 .select('picker_id, date, check_in, check_out, break_start, break_minutes')
+                .is('deleted_at', null)
                 .gte('date', sinceDate);
             if (orchardId) query = query.eq('orchard_id', orchardId);
             return query.order('id').range(from, to);
-        }).catch(() => []);
+        });
     },
 
     /** Get attendance for timesheet export (payroll.service) */

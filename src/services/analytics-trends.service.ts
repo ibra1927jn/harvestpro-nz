@@ -171,16 +171,25 @@ export class AnalyticsTrendsService {
         // Complemento al mínimo de cada día = suma por picker del cálculo único
         // (pay.ts): horas del fichaje con descanso no pagado, cubetas sin rechazos.
         const { attendance, buckets } = await analyticsTrendsRepository.getPayInputs(orchardId, startDateNZ, endDateNZ);
-        const att = attendance.map(a => ({
-            pickerId: a.picker_id, date: a.date, checkIn: a.check_in, checkOut: a.check_out,
-            breakStart: a.break_start, breakMinutes: a.break_minutes,
-        }));
-        const bkt = buckets.map(b => ({ pickerId: b.picker_id, scannedAt: b.scanned_at, qualityGrade: b.quality_grade }));
+        // Agrupar por día NZ una sola vez (no recorrer todas las cubetas por día)
+        const attByDay = new Map<string, Parameters<typeof payForRange>[0]['attendance'][number][]>();
+        for (const a of attendance) {
+            const list = attByDay.get(a.date) ?? [];
+            list.push({ pickerId: a.picker_id, date: a.date, checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes });
+            attByDay.set(a.date, list);
+        }
+        const bktByDay = new Map<string, Parameters<typeof payForRange>[0]['buckets'][number][]>();
+        for (const b of buckets) {
+            const day = nzDateOf(b.scanned_at);
+            const list = bktByDay.get(day) ?? [];
+            list.push({ pickerId: b.picker_id, scannedAt: b.scanned_at, qualityGrade: b.quality_grade });
+            bktByDay.set(day, list);
+        }
 
         return slots.map(s => {
             const dayRows = payForRange({
-                attendance: att.filter(a => a.date === s.dateNZ),
-                buckets: bkt.filter(b => nzDateOf(b.scannedAt) === s.dateNZ),
+                attendance: attByDay.get(s.dateNZ) ?? [],
+                buckets: bktByDay.get(s.dateNZ) ?? [],
                 pieceRate: settings.piece_rate,
                 minWage: settings.min_wage_rate,
             });

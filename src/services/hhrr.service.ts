@@ -197,11 +197,19 @@ export async function updateContract(
  * Datos de la semana de pago en curso (lunes–domingo, NZ) y pago por persona
  * con el cálculo único (pay.ts): descanso no pagado, complemento al mínimo por día.
  */
+function nzMidnight(dateYMD: string): string {
+  const offset = new Intl.DateTimeFormat('en-US', { timeZone: 'Pacific/Auckland', timeZoneName: 'longOffset' })
+    .formatToParts(new Date(`${dateYMD}T12:00:00Z`))
+    .find(p => p.type === 'timeZoneName')?.value.replace('GMT', '') || '+13:00';
+  return `${dateYMD}T00:00:00${offset}`;
+}
+
 async function loadPayWeek(orchardId?: string, minWageFor?: (personId: string) => number) {
   const week = payWeekOf(todayNZST());
   const [attendance, buckets] = await Promise.all([
     attendanceRepository.getHoursSummary(orchardId, week.start),
-    storeSyncRepository.getBucketCounts(orchardId, week.start),
+    // Medianoche NZ del lunes; una fecha sola compara con 00:00 UTC (13:00 NZDT)
+    storeSyncRepository.getBucketCounts(orchardId, nzMidnight(week.start)),
   ]);
 
   let pieceRate = 6.5;

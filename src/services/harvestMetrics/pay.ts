@@ -81,9 +81,10 @@ function round2(n: number): number {
 
 /**
  * Minutos de descanso a descontar de un tramo [startMs, endMs].
- * - Si el team leader anotó la hora: se descuenta si el descanso ya empezó
- *   dentro del tramo (y como mucho lo transcurrido).
- * - Si no: se descuenta el descanso completo cuando el tramo supera el umbral.
+ * - Si el team leader anotó la hora y cae dentro del tramo: se descuenta
+ *   (como mucho lo transcurrido, si el descanso está en curso).
+ * - Si no la anotó, o la hora cae fuera del tramo: se descuenta el descanso
+ *   completo cuando el tramo supera el umbral.
  */
 function breakToDeduct(
     startMs: number,
@@ -93,8 +94,10 @@ function breakToDeduct(
 ): number {
     const grossHours = (endMs - startMs) / MS_PER_HOUR;
     const breakStartMs = toMs(breakStart);
-    if (breakStartMs !== null) {
-        if (breakStartMs < startMs || breakStartMs >= endMs) return 0;
+    // Descanso anotado dentro del turno: se descuenta (como mucho lo transcurrido).
+    // Si la hora anotada cae fuera del turno (error al anotarla), se aplica la
+    // regla por defecto en vez de pagar el descanso.
+    if (breakStartMs !== null && breakStartMs >= startMs && breakStartMs < endMs) {
         const elapsed = (endMs - breakStartMs) / 60_000;
         return Math.min(breakMinutes, elapsed);
     }
@@ -201,15 +204,37 @@ export function dayPay(input: DayPayInput): DayPay {
     };
 }
 
+// Un solo formateador: crear un Intl.DateTimeFormat por llamada costaba ~125 µs
+// y una semana de temporada (14.000 cubetas) tardaba 2 s solo en fechas.
+const NZ_DATE_FMT = new Intl.DateTimeFormat('en-CA', {
+    timeZone: PAY_RULES.timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+});
+
 /** Fecha YYYY-MM-DD en hora de Nueva Zelanda de un timestamp. */
 export function nzDateOf(ts: string | Date): string {
-    const d = typeof ts === 'string' ? new Date(ts) : ts;
-    return new Intl.DateTimeFormat('en-CA', {
-        timeZone: PAY_RULES.timeZone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-    }).format(d);
+    return NZ_DATE_FMT.format(typeof ts === 'string' ? new Date(ts) : ts);
+}
+
+/**
+ * Festivos nacionales NZ (Monday-ised). Misma lista que src/constants/nz-law.ts;
+ * vive aquí para que la Edge Function la use sin imports (pay-parity.test.ts
+ * comprueba que coinciden). Añadir cada año cuando se publiquen.
+ */
+export const NZ_PUBLIC_HOLIDAYS: ReadonlySet<string> = new Set([
+    '2026-01-01', '2026-01-02', '2026-02-06', '2026-04-03', '2026-04-06',
+    '2026-04-27', '2026-06-01', '2026-07-10', '2026-10-26', '2026-12-25',
+    '2026-12-28',
+    '2027-01-01', '2027-01-04', '2027-02-08', '2027-03-26', '2027-03-29',
+    '2027-04-26', '2027-06-07', '2027-06-25', '2027-10-25', '2027-12-27',
+    '2027-12-28',
+]);
+
+/** ¿Es festivo nacional NZ? Recibe la fecha NZ YYYY-MM-DD. */
+export function isNZPublicHoliday(dateYMD: string): boolean {
+    return NZ_PUBLIC_HOLIDAYS.has(dateYMD.slice(0, 10));
 }
 
 function addDays(dateYMD: string, days: number): string {
@@ -266,7 +291,7 @@ export interface PickerRangePay {
     days: number;
     /** Días en que las cubetas no llegaron al mínimo */
     daysBelowMinimum: number;
-    /** Días cuyas horas son estimadas (sin fichaje cerrado) */
+    /** Días cuyas horas son estimadas (sin fichaje cerrado): revisar la hoja de horas */
     estimatedDays: number;
 }
 
@@ -279,10 +304,12 @@ export function payForRange(params: {
     buckets: ReadonlyArray<BucketRow>;
     pieceRate: number;
     minWage: number;
+    /** Por defecto, festivos nacionales NZ (isNZPublicHoliday) */
     isPublicHoliday?: (dateYMD: string) => boolean;
     now?: Date;
 }): PickerRangePay[] {
-    const { attendance, buckets, pieceRate, minWage, isPublicHoliday, now } = params;
+    const { attendance, buckets, pieceRate, minWage, now } = params;
+    const isPublicHoliday = params.isPublicHoliday ?? isNZPublicHoliday;
     const key = (pickerId: string, date: string) => `${pickerId}|${date}`;
     const today = nzDateOf((now ?? new Date()).toISOString());
 
@@ -305,23 +332,26 @@ export function payForRange(params: {
         const shift = shifts.get(k);
         const dayScans = scans.get(k) ?? [];
         // Un turno sin salida solo cuenta "hasta ahora" si es de hoy. Si quedó
-        // abierto en un día pasado, se estima por escaneos (día marcado estimado).
+        // abierto en un día pasado, se estima de la entrada al último escaneo y el
+        // día queda marcado como estimado para que el team leader lo cierre.
         const staleOpen = !!shift?.checkIn && !shift.checkOut && date < today;
         const h = shiftHours({
             checkIn: staleOpen ? null : shift?.checkIn,
             checkOut: shift?.checkOut,
             breakStart: shift?.breakStart,
             breakMinutes: shift?.breakMinutes,
-            scanTimes: dayScans,
+            scanTimes: staleOpen ? [shift?.checkIn, ...dayScans] : dayScans,
             now,
         });
-        if (h.hours === 0 && dayScans.length === 0) continue;
+        // Sin horas ni cubetas no hay nada que pagar, salvo un turno abierto de un
+        // día pasado: se mantiene (0 h, estimado) para que no desaparezca sin aviso.
+        if (h.hours === 0 && dayScans.length === 0 && !staleOpen) continue;
         const p = dayPay({
             buckets: dayScans.length,
             hours: h.hours,
             pieceRate,
             minWage,
-            isPublicHoliday: isPublicHoliday?.(date) ?? false,
+            isPublicHoliday: isPublicHoliday(date),
         });
         const acc = byPicker.get(pickerId) ?? {
             pickerId, buckets: 0, hours: 0, pieceEarnings: 0, topUp: 0, total: 0,

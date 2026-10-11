@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { shiftHours, dayPay, nzDateOf, payWeekOf, payForRange, PAY_RULES } from './pay';
+import { shiftHours, dayPay, nzDateOf, payWeekOf, payForRange, isNZPublicHoliday, PAY_RULES } from './pay';
 
 // Fechas en NZDT (UTC+13) — 11 oct 2026
 const at = (hhmm: string) => `2026-10-11T${hhmm}:00+13:00`;
@@ -16,10 +16,15 @@ describe('shiftHours', () => {
         expect(r.breakMinutes).toBe(30);
     });
 
-    it('descanso anotado fuera del turno: no descuenta', () => {
+    it('descanso anotado fuera de un turno corto: no descuenta', () => {
         const r = shiftHours({ checkIn: at('07:00'), checkOut: at('11:00'), breakStart: at('12:00') });
         expect(r.hours).toBe(4);
         expect(r.breakMinutes).toBe(0);
+    });
+
+    it('descanso anotado fuera de un turno largo (error al anotar): regla por defecto', () => {
+        const r = shiftHours({ checkIn: at('07:00'), checkOut: at('16:00'), breakStart: '2026-10-10T12:00:00+13:00' });
+        expect(r.hours).toBe(8.5);
     });
 
     it('turno corto (≤ 4 h) sin descanso anotado: no descuenta', () => {
@@ -113,6 +118,13 @@ describe('dayPay', () => {
     });
 });
 
+describe('isNZPublicHoliday', () => {
+    it('reconoce festivos y días normales', () => {
+        expect(isNZPublicHoliday('2026-10-26')).toBe(true);
+        expect(isNZPublicHoliday('2026-10-27')).toBe(false);
+    });
+});
+
 describe('nzDateOf', () => {
     it('usa la fecha de Nueva Zelanda, no la UTC', () => {
         // 18:30 UTC del día 10 = 07:30 NZDT del día 11
@@ -183,20 +195,48 @@ describe('payForRange', () => {
         expect(r.topUp).toBe(71.85);
     });
 
-    it('turno abierto de un día pasado: no cuenta hasta hoy, se estima por escaneos', () => {
+    it('turno abierto de un día pasado: de la entrada al último escaneo, no hasta hoy', () => {
         const attendance = [{ pickerId: 'p1', date: d1, checkIn: t(d1, '07:00') }];
         const buckets = [
-            { pickerId: 'p1', scannedAt: t(d1, '08:00') },
-            { pickerId: 'p1', scannedAt: t(d1, '11:00') },
+            { pickerId: 'p1', scannedAt: t(d1, '09:00') },
+            { pickerId: 'p1', scannedAt: t(d1, '15:00') },
         ];
         const [r] = payForRange({ attendance, buckets, pieceRate: 6.5, minWage: 23.95, now: new Date(t(d2, '12:00')) });
-        expect(r.hours).toBe(3);
+        expect(r.hours).toBe(7.5); // 07:00–15:00 = 8 h − 30 min
         expect(r.estimatedDays).toBe(1);
+    });
+
+    it('turno abierto de un día pasado sin cubetas: no desaparece, queda a 0 h marcado', () => {
+        const attendance = [{ pickerId: 'p1', date: d1, checkIn: t(d1, '07:00') }];
+        const rows = payForRange({ attendance, buckets: [], pieceRate: 6.5, minWage: 23.95, now: new Date(t(d2, '12:00')) });
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toMatchObject({ hours: 0, total: 0, estimatedDays: 1 });
+    });
+
+    it('festivos nacionales por defecto (Labour Day 2026-10-26)', () => {
+        const day = '2026-10-26';
+        const attendance = [{ pickerId: 'p1', date: day, checkIn: t(day, '07:00'), checkOut: t(day, '15:30') }];
+        const buckets = Array.from({ length: 10 }, () => ({ pickerId: 'p1', scannedAt: t(day, '10:00') }));
+        const [r] = payForRange({ attendance, buckets, pieceRate: 6.5, minWage: 23.95 });
+        // 8 h × 23.95 × 1.5 = 287.40 − 65 = 222.40
+        expect(r.topUp).toBe(222.4);
     });
 
     it('turno abierto de hoy: cuenta hasta ahora', () => {
         const attendance = [{ pickerId: 'p1', date: d1, checkIn: t(d1, '07:00') }];
         const [r] = payForRange({ attendance, buckets: [], pieceRate: 6.5, minWage: 23.95, now: new Date(t(d1, '10:00')) });
         expect(r.hours).toBe(3);
+    });
+});
+
+describe('rendimiento', () => {
+    it('una semana de temporada (14.000 cubetas) se calcula en menos de medio segundo', () => {
+        const buckets = Array.from({ length: 14000 }, (_, i) => ({
+            pickerId: 'p' + (i % 60),
+            scannedAt: new Date(Date.UTC(2026, 9, 4, 19) + i * 40_000).toISOString(),
+        }));
+        const start = performance.now();
+        payForRange({ attendance: [], buckets, pieceRate: 6.5, minWage: 23.95 });
+        expect(performance.now() - start).toBeLessThan(500);
     });
 });

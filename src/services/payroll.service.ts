@@ -12,7 +12,7 @@ import { supabase } from '@/services/supabase';
 import { todayNZST, toNZST } from '@/utils/nzst';
 import { PayrollResultSchema, validateResponse } from '@/schemas/api.schemas';
 import { analytics } from '@/config/analytics';
-import { shiftHours, dayPay, PAY_RULES } from '@/services/harvestMetrics/pay';
+import { shiftHours, dayPay, isNZPublicHoliday, PAY_RULES } from '@/services/harvestMetrics/pay';
 
 export interface PickerBreakdown {
   picker_id: string;
@@ -308,7 +308,7 @@ export const payrollService = {
     // 5. Construir timesheet completo por picker
     return timesheets.map(ts => {
       const bucketInfo = bucketsByPicker.get(ts.picker_id) || { total: 0, rejected: 0, grades: {} };
-      const pay = dayPay({ buckets: bucketInfo.total, hours: ts.hours_worked, pieceRate, minWage: minWageRate });
+      const pay = dayPay({ buckets: bucketInfo.total, hours: ts.hours_worked, pieceRate, minWage: minWageRate, isPublicHoliday: isNZPublicHoliday(targetDate) });
       return {
         ...ts,
         buckets_total: bucketInfo.total,

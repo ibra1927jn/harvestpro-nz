@@ -8,7 +8,7 @@ import {
     checkRateLimit,
     PayrollInputSchema,
 } from '../_shared/security.ts'
-import { payForRange, PAY_RULES, type PickerRangePay } from '../_shared/pay-rules.ts'
+import { payForRange, nzDateOf, isNZPublicHoliday, PAY_RULES, type PickerRangePay } from '../_shared/pay-rules.ts'
 import { fetchAllRows } from '../_shared/fetch-all-rows.ts'
 
 // FIX U3: Dynamic NZST offset — handles DST transitions correctly
@@ -28,24 +28,8 @@ function toNZBoundary(dateStr: string, time: string): string {
     return `${dateStr}T${time}${getNZOffset(dateStr)}`;
 }
 
-// NZ Public Holidays — Holidays Act 2003 s.50 requires time-and-a-half
-// for hours worked on a public holiday. Lista debe mantenerse en sync
-// con src/constants/nz-law.ts (NO shared import posible: src/ es TS web,
-// functions/ es Deno edge. Mantenimiento anual junto con nz-law.ts).
-const NZ_PUBLIC_HOLIDAYS_SET = new Set<string>([
-    // 2026 (Monday-ised)
-    '2026-01-01', '2026-01-02', '2026-02-06', '2026-04-03', '2026-04-06',
-    '2026-04-27', '2026-06-01', '2026-07-10', '2026-10-26', '2026-12-25',
-    '2026-12-28',
-    // 2027 (Monday-ised)
-    '2027-01-01', '2027-01-04', '2027-02-08', '2027-03-26', '2027-03-29',
-    '2027-04-26', '2027-06-07', '2027-06-25', '2027-10-25', '2027-12-27',
-    '2027-12-28',
-]);
-
-function isPublicHoliday(dateStr: string): boolean {
-    return NZ_PUBLIC_HOLIDAYS_SET.has(dateStr.slice(0, 10));
-}
+// Festivos NZ (Holidays Act 2003 s.50): lista y fechas NZ del módulo compartido
+const isPublicHoliday = isNZPublicHoliday
 
 interface PickerBreakdown {
     picker_id: string
@@ -165,6 +149,7 @@ serve(async (req) => {
             .from('daily_attendance')
             .select('picker_id, date, check_in, check_out, break_start, break_minutes')
             .eq('orchard_id', orchard_id)
+            .is('deleted_at', null)
             .gte('date', start_date)
             .lte('date', end_date)
             .order('id')
@@ -189,20 +174,20 @@ serve(async (req) => {
             scannedAt: e.scanned_at,
             qualityGrade: e.quality_grade,
         }))
-        const nzDate = (ts: string) => new Date(ts).toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' })
 
         // Días normales y festivos por separado para devolver horas de cada tipo
         // y los días alternativos (s.60). Como el cálculo es por día, sumar ambos
         // da exactamente el mismo total que calcularlos juntos.
+        const holidayBucket = new Map(bucketRows.map(b => [b, isPublicHoliday(nzDateOf(b.scannedAt))]))
         const ordinary = payForRange({
             attendance: attRows.filter(a => !isPublicHoliday(a.date)),
-            buckets: bucketRows.filter(b => !isPublicHoliday(nzDate(b.scannedAt))),
+            buckets: bucketRows.filter(b => !holidayBucket.get(b)),
             pieceRate: bucket_rate,
             minWage: min_wage_rate,
         })
         const holiday = payForRange({
             attendance: attRows.filter(a => isPublicHoliday(a.date)),
-            buckets: bucketRows.filter(b => isPublicHoliday(nzDate(b.scannedAt))),
+            buckets: bucketRows.filter(b => holidayBucket.get(b)),
             pieceRate: bucket_rate,
             minWage: min_wage_rate,
             isPublicHoliday: () => true,

@@ -10,7 +10,7 @@ function mockChain(result: { data?: unknown; error?: unknown }) {
         select: vi.fn(() => chain), eq: vi.fn(() => chain), in: vi.fn(() => chain),
         update: vi.fn(() => chain), insert: vi.fn(() => chain), order: vi.fn(() => chain),
         limit: vi.fn(() => chain), single: vi.fn(() => chain), maybeSingle: vi.fn(() => chain),
-        gte: vi.fn(() => chain), range: vi.fn(() => chain),
+        gte: vi.fn(() => chain), range: vi.fn(() => chain), is: vi.fn(() => chain),
         then: (onF?: (v: unknown) => unknown, onR?: (r: unknown) => unknown) =>
             Promise.resolve(result).then(onF, onR),
     };

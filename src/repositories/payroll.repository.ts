@@ -29,6 +29,7 @@ export const payrollRepository = {
             .select('id, picker_id, date, check_in, check_out, break_start, break_minutes, verified_by, orchard_id, updated_at')
             .eq('orchard_id', orchardId)
             .eq('date', date)
+            .is('deleted_at', null)
             .order('check_in', { ascending: true });
         return { data: data || [], error };
     },

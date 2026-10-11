@@ -30,6 +30,7 @@ export const analyticsTrendsRepository = {
                 .from('daily_attendance')
                 .select('picker_id, date, check_in, check_out, break_start, break_minutes')
                 .eq('orchard_id', orchardId)
+                .is('deleted_at', null)
                 .gte('date', startDate)
                 .lte('date', endDate)
                 .order('id')
