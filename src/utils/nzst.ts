@@ -114,3 +114,26 @@ export function toNZST(date: Date): string {
 
     return `${iso}${offsetStr}`;
 }
+
+/**
+ * Desfase horario de Nueva Zelanda en una fecha YYYY-MM-DD: "+13:00" (verano)
+ * o "+12:00" (invierno).
+ */
+export function nzOffsetOn(dateYMD: string): string {
+  return (
+    new Intl.DateTimeFormat('en-US', { timeZone: 'Pacific/Auckland', timeZoneName: 'longOffset' })
+      .formatToParts(new Date(`${dateYMD}T12:00:00Z`))
+      .find(p => p.type === 'timeZoneName')
+      ?.value.replace('GMT', '') || '+13:00'
+  );
+}
+
+/** Medianoche NZ de una fecha YYYY-MM-DD, con su desfase: "2026-10-05T00:00:00+13:00" */
+export function nzMidnight(dateYMD: string): string {
+  return `${dateYMD}T00:00:00${nzOffsetOn(dateYMD)}`;
+}
+
+/** Último segundo del día NZ: "2026-10-05T23:59:59+13:00" */
+export function nzEndOfDay(dateYMD: string): string {
+  return `${dateYMD}T23:59:59${nzOffsetOn(dateYMD)}`;
+}

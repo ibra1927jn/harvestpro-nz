@@ -109,7 +109,7 @@ describe('processAttendance', () => {
 
       expect(lockSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          updates: expect.objectContaining({ hours_worked: 8 }),
+          updates: expect.objectContaining({ hours_worked: 7.5 }), // 8 h − 30 min de descanso no pagado
         })
       );
     });

@@ -4,6 +4,8 @@
  * @module views/manager/timesheet-utils
  */
 import { logger } from '@/utils/logger';
+import { shiftHours } from '@/services/harvestMetrics/pay';
+import { todayNZST, nzOffsetOn } from '@/utils/nzst';
 
 /** Attendance record row shape */
 export interface AttendanceRow {
@@ -11,6 +13,10 @@ export interface AttendanceRow {
     picker_id: string;
     check_in: string | null;
     check_out: string | null;
+    /** Hora del descanso de 30 min (no pagado) anotada por el team leader */
+    break_start?: string | null;
+    break_minutes?: number | null;
+    deleted_at?: string | null;
     status: string;
     date: string;
     correction_reason?: string;
@@ -22,35 +28,74 @@ export interface AttendanceRow {
     };
 }
 
-/** Format ISO timestamp to HH:MM for input fields */
+const NZ_TIME = new Intl.DateTimeFormat('en-NZ', {
+    timeZone: 'Pacific/Auckland',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+});
+
+/** HH:MM en hora de Nueva Zelanda (no la zona del navegador) */
+function nzHHMM(isoString: string): string {
+    const d = new Date(isoString);
+    if (Number.isNaN(d.getTime())) throw new Error('Invalid date');
+    const parts = NZ_TIME.formatToParts(d);
+    const hh = parts.find(p => p.type === 'hour')?.value ?? '00';
+    const mm = parts.find(p => p.type === 'minute')?.value ?? '00';
+    return `${hh.padStart(2, '0')}:${mm}`;
+}
+
+/** Format ISO timestamp to HH:MM (NZ time) for input fields */
 export function formatTimeForInput(isoString: string): string {
     try {
-        const d = new Date(isoString);
-        return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+        return nzHHMM(isoString);
     } catch (e) {
         logger.warn('[TimesheetEditor] Invalid date for input formatting:', isoString, e);
         return '';
     }
 }
 
-/** Format ISO timestamp to localized HH:MM display */
+/** Format ISO timestamp to HH:MM (NZ time) for display */
 export function formatTime(isoString: string | null): string {
     if (!isoString) return '—';
     try {
-        const d = new Date(isoString);
-        return d.toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit', hour12: false });
+        return nzHHMM(isoString);
     } catch (e) {
         logger.warn('[TimesheetEditor] Invalid date for display formatting:', isoString, e);
         return '—';
     }
 }
 
-/** Calculate hours between check-in and check-out */
-export function calculateHours(checkIn: string | null, checkOut: string | null): number | null {
-    if (!checkIn) return null;
-    const start = new Date(checkIn);
-    const end = checkOut ? new Date(checkOut) : new Date();
-    return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60) * 10) / 10;
+/**
+ * Hora NZ de un día ("2026-10-05" + "07:30") → instante ISO en UTC.
+ * Usa el desfase real de ese día (+12:00 en invierno, +13:00 en verano).
+ * Antes se ponía siempre "+13:00": de abril a septiembre cada corrección
+ * quedaba una hora desplazada.
+ */
+export function nzTimeToIso(dateYMD: string, hhmm: string): string {
+    return new Date(`${dateYMD}T${hhmm}:00${nzOffsetOn(dateYMD)}`).toISOString();
+}
+
+/**
+ * Horas pagables de una fila: cálculo único (descanso de 30 min no pagado).
+ * - Sin entrada: null.
+ * - Sin salida en un día pasado: null (turno sin cerrar, hay que corregirlo).
+ * - Sin salida hoy: hasta ahora.
+ */
+export function calculateHours(
+    row: Pick<AttendanceRow, 'check_in' | 'check_out' | 'date' | 'break_start' | 'break_minutes'>,
+    today: string = todayNZST(),
+    now: Date = new Date(),
+): number | null {
+    if (!row.check_in) return null;
+    if (!row.check_out && row.date < today) return null;
+    return shiftHours({
+        checkIn: row.check_in,
+        checkOut: row.check_out,
+        breakStart: row.break_start,
+        breakMinutes: row.break_minutes,
+        now,
+    }).hours;
 }
 
 /** Flag abnormal hour counts (>12 or <0) */

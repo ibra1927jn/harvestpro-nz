@@ -7,13 +7,14 @@ import {
     checkRateLimit,
     AttendanceInputSchema,
 } from '../_shared/security.ts'
+import { shiftHours } from '../_shared/pay-rules.ts'
 
 /**
  * manage-attendance — Server-side attendance operations
  *
  * Actions:
  * - check_in:  Create attendance record + update picker status
- * - check_out: Record checkout time + calculate hours worked
+ * - check_out: Record checkout time + paid hours (unpaid 30-min break deducted)
  * - correct:   Admin timesheet correction with audit trail
  *
  * Security: Requires admin/manager/team_leader role
@@ -115,17 +116,21 @@ serve(async (req) => {
             // Fetch check-in time
             const { data: record, error: fetchErr } = await supabase
                 .from('daily_attendance')
-                .select('id, picker_id, check_in')
+                .select('id, picker_id, check_in, break_start, break_minutes')
                 .eq('id', attendance_id)
                 .single()
 
             if (fetchErr || !record) throw new Error(`Attendance record not found: ${fetchErr?.message}`)
 
-            // Calculate hours worked
+            // Horas pagables con el cálculo único (descanso de 30 min no pagado)
             let hoursWorked: number | undefined
             if (record.check_in) {
-                const raw = (new Date(nowISO).getTime() - new Date(record.check_in).getTime()) / 3_600_000
-                hoursWorked = Math.max(0, Math.round(raw * 100) / 100)
+                hoursWorked = shiftHours({
+                    checkIn: record.check_in,
+                    checkOut: nowISO,
+                    breakStart: record.break_start,
+                    breakMinutes: record.break_minutes,
+                }).hours
             }
 
             // Update attendance
@@ -162,10 +167,10 @@ serve(async (req) => {
 
         // ── CORRECT ──────────────────────────────────
         if (input.action === 'correct') {
-            const { attendance_id, check_in, check_out, reason, admin_id } = input
+            const { attendance_id, check_in, check_out, break_start, reason, admin_id } = input
 
             // Build update payload
-            const updatePayload: Record<string, string | number> = {
+            const updatePayload: Record<string, string | number | null> = {
                 correction_reason: reason,
                 corrected_by: admin_id,
                 corrected_at: new Date().toISOString(),
@@ -173,38 +178,28 @@ serve(async (req) => {
 
             if (check_in) updatePayload.check_in = check_in
             if (check_out) updatePayload.check_out = check_out
+            if (break_start !== undefined) updatePayload.break_start = break_start
 
-            // Recalculate hours if we have both times
-            const ciTime = check_in
-            const coTime = check_out
+            // Recalcular horas pagables con el cálculo único (pay-rules.ts)
+            const { data: existing, error: fetchExistingErr } = await supabase
+                .from('daily_attendance')
+                .select('check_in, check_out, break_start, break_minutes')
+                .eq('id', attendance_id)
+                .single()
 
-            if (ciTime && coTime) {
-                updatePayload.hours_worked = Math.max(
-                    0,
-                    Math.round(((new Date(coTime).getTime() - new Date(ciTime).getTime()) / 3_600_000) * 100) / 100
-                )
-            } else if (ciTime || coTime) {
-                // Fetch the other time to recalculate
-                const { data: existing, error: fetchExistingErr } = await supabase
-                    .from('daily_attendance')
-                    .select('check_in, check_out')
-                    .eq('id', attendance_id)
-                    .single()
+            if (fetchExistingErr) {
+                throw new Error(`Failed to fetch existing attendance for hours recalculation: ${fetchExistingErr.message}`)
+            }
 
-                if (fetchExistingErr) {
-                    throw new Error(`Failed to fetch existing attendance for hours recalculation: ${fetchExistingErr.message}`)
-                }
-
-                if (existing) {
-                    const ci = ciTime || existing.check_in
-                    const co = coTime || existing.check_out
-                    if (ci && co) {
-                        updatePayload.hours_worked = Math.max(
-                            0,
-                            Math.round(((new Date(co).getTime() - new Date(ci).getTime()) / 3_600_000) * 100) / 100
-                        )
-                    }
-                }
+            const ci = check_in || existing?.check_in
+            const co = check_out || existing?.check_out
+            if (ci && co) {
+                updatePayload.hours_worked = shiftHours({
+                    checkIn: ci,
+                    checkOut: co,
+                    breakStart: break_start !== undefined ? break_start : existing?.break_start,
+                    breakMinutes: existing?.break_minutes,
+                }).hours
             }
 
             // Apply correction
@@ -223,7 +218,7 @@ serve(async (req) => {
                     entity_type: 'daily_attendance',
                     entity_id: attendance_id,
                     performed_by: admin_id,
-                    new_values: { check_in, check_out },
+                    new_values: { check_in, check_out, break_start },
                     notes: reason,
                     created_at: new Date().toISOString(),
                 })

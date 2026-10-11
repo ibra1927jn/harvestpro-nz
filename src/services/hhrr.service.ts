@@ -11,7 +11,7 @@ import { settingsRepository } from '@/repositories/settings.repository';
 import { storeSyncRepository } from '@/repositories/store-sync.repository';
 import { syncService } from '@/services/sync.service';
 import { logger } from '@/utils/logger';
-import { todayNZST } from '@/utils/nzst';
+import { todayNZST, nzMidnight } from '@/utils/nzst';
 import { userRepository2 } from '@/repositories/user.repository';
 import { contractRepository2 } from '@/repositories/contract.repository';
 import { attendanceRepository } from '@/repositories/attendance.repository';
@@ -197,13 +197,6 @@ export async function updateContract(
  * Datos de la semana de pago en curso (lunes–domingo, NZ) y pago por persona
  * con el cálculo único (pay.ts): descanso no pagado, complemento al mínimo por día.
  */
-function nzMidnight(dateYMD: string): string {
-  const offset = new Intl.DateTimeFormat('en-US', { timeZone: 'Pacific/Auckland', timeZoneName: 'longOffset' })
-    .formatToParts(new Date(`${dateYMD}T12:00:00Z`))
-    .find(p => p.type === 'timeZoneName')?.value.replace('GMT', '') || '+13:00';
-  return `${dateYMD}T00:00:00${offset}`;
-}
-
 async function loadPayWeek(orchardId?: string, minWageFor?: (personId: string) => number) {
   const week = payWeekOf(todayNZST());
   const [attendance, buckets] = await Promise.all([

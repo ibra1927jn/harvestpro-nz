@@ -71,7 +71,7 @@ export const attendanceRepository = {
     async getCheckInTime(id: string) {
         const { data } = await supabase
             .from('daily_attendance')
-            .select('check_in')
+            .select('check_in, break_start, break_minutes')
             .eq('id', id)
             .single();
         return data;

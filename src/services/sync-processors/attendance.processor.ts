@@ -19,6 +19,7 @@ import { withOptimisticLock } from '../optimistic-lock.service';
 import { conflictService } from '../conflict.service';
 import { attendanceRepository } from '@/repositories/attendance.repository';
 import { logger } from '@/utils/logger';
+import { shiftHours } from '@/services/harvestMetrics/pay';
 import type { AttendancePayload } from './types';
 
 export async function processAttendance(
@@ -32,10 +33,13 @@ export async function processAttendance(
         const existing = await attendanceRepository.getCheckInTime(payload.attendanceId);
 
         if (existing?.check_in && payload.check_out) {
-            // 🔧 U4: Math.max(0, ...) prevents negative hours from admin typos
-            hoursWorked = Math.max(0, Math.round(
-                ((new Date(payload.check_out).getTime() - new Date(existing.check_in).getTime()) / 3600000) * 100
-            ) / 100);
+            // Horas pagables con el cálculo único (descanso de 30 min no pagado; nunca negativas)
+            hoursWorked = shiftHours({
+                checkIn: existing.check_in,
+                checkOut: payload.check_out,
+                breakStart: existing.break_start,
+                breakMinutes: existing.break_minutes,
+            }).hours;
         }
 
         // Check-out with optimistic lock — prevents silent overwrite

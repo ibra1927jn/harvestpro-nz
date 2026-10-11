@@ -16,7 +16,8 @@ vi.mock('@/services/attendance.service', () => ({
     },
 }));
 
-vi.mock('@/utils/nzst', () => ({
+vi.mock('@/utils/nzst', async importOriginal => ({
+    ...(await importOriginal<typeof import('@/utils/nzst')>()),
     todayNZST: () => '2026-03-10',
 }));
 
@@ -187,6 +188,33 @@ describe('TimesheetEditor', () => {
         fireEvent.change(screen.getByPlaceholderText('Reason for correction *'), { target: { value: 'Wrong clock-in' } });
         fireEvent.click(screen.getByLabelText('Save correction'));
         await waitFor(() => expect(mockCorrectAttendance).toHaveBeenCalled());
+    });
+
+    it('saves times as UTC with the real NZ offset and the break time', async () => {
+        render(<TimesheetEditor orchardId="o1" />);
+        await waitFor(() => screen.getByText('Alice Smith'));
+        fireEvent.click(screen.getByLabelText("Edit Alice Smith's timesheet"));
+        fireEvent.change(screen.getByTitle('Check-in time'), { target: { value: '07:30' } });
+        fireEvent.change(screen.getByTitle('Break start time'), { target: { value: '12:00' } });
+        fireEvent.change(screen.getByPlaceholderText('Reason for correction *'), { target: { value: 'Break recorded' } });
+        fireEvent.click(screen.getByLabelText('Save correction'));
+        await waitFor(() => expect(mockCorrectAttendance).toHaveBeenCalled());
+        const [id, updates] = mockCorrectAttendance.mock.calls.at(-1)!;
+        expect(id).toBe('att1');
+        // 2026-03-10 es horario de verano NZ (+13): 07:30 NZ = 18:30 UTC del día anterior
+        expect(updates.check_in).toBe('2026-03-09T18:30:00.000Z');
+        expect(updates.break_start).toBe('2026-03-09T23:00:00.000Z');
+    });
+
+    it('shows paid hours (break deducted) and flags shifts not closed on past days', async () => {
+        mockGetAttendanceByDate.mockResolvedValueOnce([
+            { ...mockRecords[0] },
+            { id: 'old', date: '2026-03-09', picker: { name: 'Old Open', picker_id: 'PK-9' }, check_in: '2026-03-09T07:00:00+13:00', check_out: null, status: 'active', corrected_at: null },
+        ]);
+        render(<TimesheetEditor orchardId="o1" />);
+        await waitFor(() => screen.getByText('Alice Smith'));
+        expect(screen.getByText('7.5h')).toBeTruthy(); // 07:00–15:00 = 8 h − 30 min
+        expect(screen.getByText('Not closed')).toBeTruthy();
     });
 
     it('shows empty state when no records for date', async () => {

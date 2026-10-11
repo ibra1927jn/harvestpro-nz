@@ -244,8 +244,12 @@ export const AttendanceCheckOutSchema = z.object({
 export const AttendanceCorrectionSchema = z.object({
   action: z.literal('correct'),
   attendance_id: z.string().uuid('attendance_id must be a valid UUID'),
-  check_in: z.string().datetime().optional(),
-  check_out: z.string().datetime().optional(),
+  // Con zona horaria (+12:00/+13:00 en NZ) o en UTC. Antes solo UTC: el editor
+  // mandaba "+13:00" y todas las correcciones se rechazaban.
+  check_in: z.string().datetime({ offset: true }).optional(),
+  check_out: z.string().datetime({ offset: true }).optional(),
+  // Hora del descanso de 30 min (no pagado) que anota el team leader; null = quitarla
+  break_start: z.string().datetime({ offset: true }).nullable().optional(),
   reason: z.string().min(5, 'Correction reason must be at least 5 characters'),
   admin_id: z.string().uuid('admin_id must be a valid UUID'),
 });

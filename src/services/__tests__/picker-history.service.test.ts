@@ -143,8 +143,9 @@ describe('pickerHistoryService', () => {
             const dailyRecords = Array.from({ length: 6 }, (_, i) => ({
                 date: `2026-03-${String(i + 1).padStart(2, '0')}`,
                 buckets: 5, // 5 * 6.50 = 32.50
-                hours: 8,   // 8 * 23.95 = 188
-                earnings: 188,
+                hours: 8,   // 8 * 23.95 = 191.60
+                earnings: 191.6,
+                topUp: 159.1, // 191.60 − 32.50 (complemento del cálculo único)
                 variety: null,
                 team_leader_name: null,
             }));

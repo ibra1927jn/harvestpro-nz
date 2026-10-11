@@ -16,7 +16,7 @@ function mockSupabase(
 ) {
   const buildQuery = (data: unknown, count?: number | null) => {
     const chain: Record<string, unknown> = {};
-    const methods = ['from', 'select', 'eq', 'gte', 'lt', 'is', 'maybeSingle', 'limit'] as const;
+    const methods = ['from', 'select', 'eq', 'gte', 'lt', 'lte', 'is', 'maybeSingle', 'limit'] as const;
     methods.forEach(m => {
       chain[m] = vi.fn().mockReturnValue(chain);
     });

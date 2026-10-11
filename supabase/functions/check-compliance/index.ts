@@ -7,6 +7,7 @@ import {
     checkRateLimit,
     ComplianceCheckSchema,
 } from '../_shared/security.ts'
+import { shiftHours, dayPay, nzDateOf, isNZPublicHoliday, PAY_RULES } from '../_shared/pay-rules.ts'
 
 /**
  * check-compliance — Server-side NZ Employment Relations Act compliance
@@ -74,45 +75,51 @@ serve(async (req) => {
 
         const { orchard_id, picker_ids } = ComplianceCheckSchema.parse(body)
 
-        // Get orchard settings for piece rate
-        const { data: orchard } = await supabase
-            .from('orchards')
-            .select('bucket_rate, min_wage_rate')
-            .eq('id', orchard_id)
-            .single()
+        // Tarifas del huerto (harvest_settings; la tabla orchards no tiene estas columnas)
+        const { data: settings } = await supabase
+            .from('harvest_settings')
+            .select('piece_rate, min_wage_rate')
+            .eq('orchard_id', orchard_id)
+            .maybeSingle()
 
-        const pieceRate = orchard?.bucket_rate || NZ_CONSTANTS.PIECE_RATE
-        const minWage = orchard?.min_wage_rate || NZ_CONSTANTS.MINIMUM_WAGE
+        const pieceRate = settings?.piece_rate || NZ_CONSTANTS.PIECE_RATE
+        const minWage = Math.max(settings?.min_wage_rate || NZ_CONSTANTS.MINIMUM_WAGE, PAY_RULES.minWageFloor)
 
-        // Get today in NZST
-        const today = new Intl.DateTimeFormat('en-CA', {
-            timeZone: 'Pacific/Auckland',
-        }).format(new Date())
+        // Hoy en hora NZ
+        const today = nzDateOf(new Date())
+        const isHoliday = isNZPublicHoliday(today)
+        const nzOffset = new Intl.DateTimeFormat('en-US', { timeZone: 'Pacific/Auckland', timeZoneName: 'longOffset' })
+            .formatToParts(new Date(`${today}T12:00:00Z`))
+            .find(p => p.type === 'timeZoneName')?.value.replace('GMT', '') || '+13:00'
 
         // Fetch attendance for all pickers today
         const { data: attendance } = await supabase
             .from('daily_attendance')
-            .select('picker_id, check_in, check_out, date')
+            .select('picker_id, check_in, check_out, break_start, break_minutes, date')
             .eq('orchard_id', orchard_id)
             .eq('date', today)
+            .is('deleted_at', null)
             .in('picker_id', picker_ids)
 
         // Fetch bucket counts for today
-        const todayStart = `${today}T00:00:00`
-        const todayEnd = `${today}T23:59:59`
-
+        // Cubetas del día NZ, sin rechazos de QC ni registros borrados
         const { data: bucketCounts } = await supabase
             .from('bucket_records')
-            .select('picker_id')
+            .select('picker_id, scanned_at, quality_grade')
             .eq('orchard_id', orchard_id)
-            .gte('scanned_at', todayStart)
-            .lte('scanned_at', todayEnd)
+            .is('deleted_at', null)
+            .gte('scanned_at', `${today}T00:00:00${nzOffset}`)
+            .lte('scanned_at', `${today}T23:59:59${nzOffset}`)
             .in('picker_id', picker_ids)
 
-        // Count buckets per picker
         const bucketsByPicker = new Map<string, number>()
-        bucketCounts?.forEach(b => {
+        const scansByPicker = new Map<string, string[]>()
+        bucketCounts?.forEach((b: { picker_id: string; scanned_at: string; quality_grade: string | null }) => {
+            if (b.quality_grade === 'reject') return
             bucketsByPicker.set(b.picker_id, (bucketsByPicker.get(b.picker_id) || 0) + 1)
+            const list = scansByPicker.get(b.picker_id) ?? []
+            list.push(b.scanned_at)
+            scansByPicker.set(b.picker_id, list)
         })
 
         // Get picker names
@@ -133,54 +140,59 @@ serve(async (req) => {
             const att = attendance?.find(a => a.picker_id === pickerId)
             const buckets = bucketsByPicker.get(pickerId) || 0
 
-            let hoursWorked = 0
-            if (att?.check_in) {
-                const checkOut = att.check_out ? new Date(att.check_out) : now
-                hoursWorked = Math.max(0, (checkOut.getTime() - new Date(att.check_in).getTime()) / 3_600_000)
-            }
+            // Cálculo único: horas pagables (descanso no pagado) para el salario;
+            // tiempo transcurrido en el turno (bruto) para los avisos de descanso.
+            const shift = shiftHours({
+                checkIn: att?.check_in,
+                checkOut: att?.check_out,
+                breakStart: att?.break_start,
+                breakMinutes: att?.break_minutes,
+                scanTimes: scansByPicker.get(pickerId) ?? [],
+                now,
+            })
+            const hoursWorked = shift.hours
+            const elapsedHours = shift.grossHours
+            const pay = dayPay({ buckets, hours: hoursWorked, pieceRate, minWage, isPublicHoliday: isHoliday })
 
             // 1. Rest break check (every 2 hours)
-            if (hoursWorked > NZ_CONSTANTS.REST_BREAK_INTERVAL / 60) {
+            if (elapsedHours > NZ_CONSTANTS.REST_BREAK_INTERVAL / 60) {
                 violations.push({
                     type: 'break_overdue',
                     severity: 'medium',
-                    message: `Rest break may be overdue. ${hoursWorked.toFixed(1)}h worked — 10min break required every 2h.`,
+                    message: `Rest break may be overdue. ${elapsedHours.toFixed(1)}h on shift — 10min break required every 2h.`,
                     details: {
-                        hoursWorked: parseFloat(hoursWorked.toFixed(1)),
+                        hoursWorked: parseFloat(elapsedHours.toFixed(1)),
                         breakIntervalHours: NZ_CONSTANTS.REST_BREAK_INTERVAL / 60,
                     },
                 })
             }
 
-            // 2. Meal break check (every 4 hours)
-            if (hoursWorked > NZ_CONSTANTS.MEAL_BREAK_INTERVAL / 60) {
+            // 2. Meal break check (every 4 hours) — solo si no se ha anotado el descanso
+            if (elapsedHours > NZ_CONSTANTS.MEAL_BREAK_INTERVAL / 60 && !att?.break_start) {
                 violations.push({
                     type: 'break_overdue',
                     severity: 'high',
-                    message: `Meal break required. ${hoursWorked.toFixed(1)}h worked — 30min break mandatory after 4h.`,
+                    message: `Meal break not recorded. ${elapsedHours.toFixed(1)}h on shift — 30min break mandatory after 4h.`,
                     details: {
-                        hoursWorked: parseFloat(hoursWorked.toFixed(1)),
+                        hoursWorked: parseFloat(elapsedHours.toFixed(1)),
                         mealBreakThresholdHours: NZ_CONSTANTS.MEAL_BREAK_INTERVAL / 60,
                     },
                 })
             }
 
             // 3. Wage compliance
-            const pieceEarnings = buckets * pieceRate
-            const effectiveRate = hoursWorked > 0 ? pieceEarnings / hoursWorked : 0
-            const isBelowMinimum = hoursWorked > 0 && effectiveRate < minWage
-            const topUpRequired = isBelowMinimum
-                ? Math.max(0, (hoursWorked * minWage) - pieceEarnings)
-                : 0
+            const effectiveRate = pay.pieceHourlyRate
+            const isBelowMinimum = pay.belowMinimum
+            const topUpRequired = pay.topUp
 
             if (isBelowMinimum) {
                 violations.push({
                     type: 'wage_below_minimum',
                     severity: 'high',
-                    message: `Effective rate $${effectiveRate.toFixed(2)}/hr — below minimum wage $${minWage}/hr. Top-up: $${topUpRequired.toFixed(2)}.`,
+                    message: `Effective rate $${effectiveRate.toFixed(2)}/hr — below minimum wage $${pay.minWageApplied}/hr. Top-up: $${topUpRequired.toFixed(2)}.`,
                     details: {
                         effectiveRate: parseFloat(effectiveRate.toFixed(2)),
-                        minimumWage: minWage,
+                        minimumWage: pay.minWageApplied,
                         topUpRequired: parseFloat(topUpRequired.toFixed(2)),
                         buckets,
                         pieceRate,
@@ -189,13 +201,13 @@ serve(async (req) => {
             }
 
             // 4. Excessive hours
-            if (hoursWorked > NZ_CONSTANTS.MAX_DAILY_HOURS) {
+            if (elapsedHours > NZ_CONSTANTS.MAX_DAILY_HOURS) {
                 violations.push({
                     type: 'excessive_hours',
                     severity: 'high',
-                    message: `${hoursWorked.toFixed(1)}h worked today — exceeds recommended maximum of ${NZ_CONSTANTS.MAX_DAILY_HOURS}h.`,
+                    message: `${elapsedHours.toFixed(1)}h on shift today — exceeds recommended maximum of ${NZ_CONSTANTS.MAX_DAILY_HOURS}h.`,
                     details: {
-                        hoursWorked: parseFloat(hoursWorked.toFixed(1)),
+                        hoursWorked: parseFloat(elapsedHours.toFixed(1)),
                         maxRecommended: NZ_CONSTANTS.MAX_DAILY_HOURS,
                     },
                 })
@@ -210,7 +222,7 @@ serve(async (req) => {
                     hours_worked: parseFloat(hoursWorked.toFixed(2)),
                     buckets_today: buckets,
                     effective_hourly_rate: parseFloat(effectiveRate.toFixed(2)),
-                    minimum_wage: minWage,
+                    minimum_wage: pay.minWageApplied,
                     is_below_minimum: isBelowMinimum,
                     top_up_required: parseFloat(topUpRequired.toFixed(2)),
                 },
