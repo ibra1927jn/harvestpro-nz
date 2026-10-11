@@ -99,8 +99,15 @@ export async function fetchOrchardData(
   const lastSync = state.lastSyncAt;
   const now = new Date().toISOString();
 
-  const isStale = !lastSync || Date.now() - new Date(lastSync).getTime() > 24 * 60 * 60 * 1000;
-  const useDelta = !isStale;
+  // Delta solo si la última sincronización fue HOY (fecha NZ) y hay datos en
+  // memoria. Si cambió el día, el store tendría cubetas y fichajes de ayer, y el
+  // delta (filtrado por updated_at) nunca traería las cubetas de hoy creadas antes
+  // de esa marca: el panel se quedaba en 0.
+  const sameNZDay =
+    !!lastSync &&
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' }).format(new Date(lastSync)) ===
+      todayNZST();
+  const useDelta = sameNZDay && state.crew.length > 0;
 
   // Use the provided orchardId (from AuthContext) or fall back to first orchard
   let activeOrchard: { id: string; name?: string; total_rows?: number } | null = null;
