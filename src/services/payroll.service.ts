@@ -12,6 +12,7 @@ import { supabase } from '@/services/supabase';
 import { todayNZST, toNZST } from '@/utils/nzst';
 import { PayrollResultSchema, validateResponse } from '@/schemas/api.schemas';
 import { analytics } from '@/config/analytics';
+import { shiftHours, dayPay, isNZPublicHoliday, PAY_RULES } from '@/services/harvestMetrics/pay';
 
 export interface PickerBreakdown {
   picker_id: string;
@@ -67,12 +68,15 @@ export interface TimesheetEntry {
   date: string;
   check_in: string | null;
   check_out: string | null;
+  /** Hora del descanso de 30 min (no pagado) que anota el team leader */
+  break_start?: string | null;
+  break_minutes?: number;
   hours_worked: number;
   verified_by: string | null;
   is_verified: boolean;
   orchard_id: string;
   updated_at?: string; // For optimistic locking on approval
-  requires_review?: boolean; // 🔧 L14: Flagged if hours_worked > 14
+  requires_review?: boolean; // Turno abierto de un día pasado o > 14 h
 }
 
 /** Registro completo de timesheet diario con produccion y earnings */
@@ -184,22 +188,18 @@ export const payrollService = {
     const pickerNames = await payrollRepository.fetchPickerNames(pickerIds);
 
     return (attendance || []).map(a => {
-      // CRIT-1 FIX COMPLETE: hours_worked column does NOT exist in daily_attendance.
-      // Always calculate from check_in / check_out timestamps.
-      // Shift in progress (no check_out yet) → 0 hours until worker checks out.
-      let hoursWorked = 0;
-      if (a.check_in && a.check_out) {
-        const diff = (new Date(a.check_out).getTime() - new Date(a.check_in).getTime()) / 3600000;
-        hoursWorked = Math.max(0, Math.round(diff * 100) / 100);
-      }
+      // Horas = cálculo único (pay.ts): salida − entrada − descanso no pagado.
+      // Turno sin salida → 0 h hasta que el team leader lo cierre.
+      const shift = a.check_out
+        ? shiftHours({ checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes })
+        : null;
+      const hoursWorked = shift?.hours ?? 0;
 
-      // Flag for manager review if > 14h (possible missed check-out, not silent cap)
-      let requiresReview = false;
-      if (hoursWorked > 14) {
-        requiresReview = true;
-        logger.warn(
-          `[Payroll] Picker ${a.picker_id} has ${hoursWorked}h — flagged for review (possible missed check-out)`
-        );
+      // Revisar: turno abierto de un día pasado, o más de 14 h
+      const staleOpen = !!a.check_in && !a.check_out && a.date < todayNZST();
+      const requiresReview = staleOpen || hoursWorked > 14;
+      if (requiresReview) {
+        logger.warn(`[Payroll] Picker ${a.picker_id} timesheet needs review (${staleOpen ? 'no check-out' : `${hoursWorked}h`})`);
       }
 
       return {
@@ -209,6 +209,8 @@ export const payrollService = {
         date: a.date,
         check_in: a.check_in,
         check_out: a.check_out,
+        break_start: a.break_start ?? null,
+        break_minutes: a.break_minutes ?? PAY_RULES.mealBreakMinutes,
         hours_worked: hoursWorked,
         verified_by: a.verified_by,
         is_verified: !!a.verified_by,
@@ -266,10 +268,10 @@ export const payrollService = {
     if (timesheets.length === 0) return [];
 
     // 2. Obtener bucket_records del dia (excluir rejected)
-    const startOfDayNZ = new Date(`${targetDate}T00:00:00`);
-    const endOfDayNZ = new Date(`${targetDate}T23:59:59`);
-    const startISO = toNZST(startOfDayNZ);
-    const endISO = toNZST(endOfDayNZ);
+    // Límites del día en hora NZ (no la zona del navegador)
+    const nzOffset = toNZST(new Date(`${targetDate}T12:00:00Z`)).slice(-6);
+    const startISO = `${targetDate}T00:00:00${nzOffset}`;
+    const endISO = `${targetDate}T23:59:59${nzOffset}`;
 
     const { data: bucketRecords } = await supabase
       .from('bucket_records')
@@ -287,7 +289,7 @@ export const payrollService = {
       .single();
 
     const pieceRate = settings?.piece_rate ?? 6.5;
-    const minWageRate = settings?.min_wage_rate ?? 23.5;
+    const minWageRate = settings?.min_wage_rate ?? PAY_RULES.minWageFloor;
 
     // 4. Agregar por picker: buckets (sin reject), grades, earnings
     const bucketsByPicker = new Map<string, { total: number; rejected: number; grades: Record<string, number> }>();
@@ -306,24 +308,19 @@ export const payrollService = {
     // 5. Construir timesheet completo por picker
     return timesheets.map(ts => {
       const bucketInfo = bucketsByPicker.get(ts.picker_id) || { total: 0, rejected: 0, grades: {} };
-      const pieceEarnings = bucketInfo.total * pieceRate;
-      const minimumRequired = ts.hours_worked * minWageRate;
-      const topUp = Math.max(0, minimumRequired - pieceEarnings);
-      const totalEarnings = pieceEarnings + topUp;
-      const isBelowMinimum = ts.hours_worked > 0 && (pieceEarnings / ts.hours_worked) < minWageRate;
-
+      const pay = dayPay({ buckets: bucketInfo.total, hours: ts.hours_worked, pieceRate, minWage: minWageRate, isPublicHoliday: isNZPublicHoliday(targetDate) });
       return {
         ...ts,
         buckets_total: bucketInfo.total,
         buckets_rejected: bucketInfo.rejected,
         quality_grades: bucketInfo.grades,
         piece_rate: pieceRate,
-        piece_earnings: parseFloat(pieceEarnings.toFixed(2)),
-        minimum_required: parseFloat(minimumRequired.toFixed(2)),
-        top_up: parseFloat(topUp.toFixed(2)),
-        total_earnings: parseFloat(totalEarnings.toFixed(2)),
-        is_below_minimum: isBelowMinimum,
-        pay_type: isBelowMinimum ? ('hourly_topup' as const) : ('piece_rate' as const),
+        piece_earnings: pay.pieceEarnings,
+        minimum_required: pay.minimumEarnings,
+        top_up: pay.topUp,
+        total_earnings: pay.total,
+        is_below_minimum: pay.belowMinimum,
+        pay_type: pay.belowMinimum ? ('hourly_topup' as const) : ('piece_rate' as const),
       };
     });
   },

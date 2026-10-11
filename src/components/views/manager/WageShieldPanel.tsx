@@ -15,6 +15,7 @@ import { analyticsService } from '../../../services/analytics.service';
 import { ComplianceViolation } from '../../../services/compliance.service';
 import { TrendLineChart, TrendDataPoint } from '../../charts/TrendLineChart';
 import { useHarvestStore } from '../../../stores/useHarvestStore';
+import { PAY_RULES, computePerPicker } from '@/services/harvestMetrics';
 
 interface WageShieldPanelProps {
     crew: Picker[];
@@ -45,39 +46,41 @@ const WageShieldPanel: React.FC<WageShieldPanelProps> = ({
         });
     }, [orchardId, locale, t, piece_rate, min_wage_rate]);
 
-    // Calculate wage status for all pickers
+    // Estado salarial de cada picker: MISMO cálculo que Análisis, Informe y Payroll
+    // (harvestMetrics/pay.ts). Antes usaba p.hours, que nadie rellena, y por eso
+    // siempre daba "0 perdido, 100% cumple".
+    const bucketRecords = useHarvestStore(state => state.bucketRecords);
+    const perPicker = useMemo(
+        () => computePerPicker(crew, bucketRecords ?? [], { piece_rate, min_wage_rate, shift_start_time: undefined }),
+        [crew, bucketRecords, piece_rate, min_wage_rate],
+    );
     const analysisResults = useMemo(() => {
-        const pickers = crew.filter(p =>
-            p.role !== 'team_leader' &&
-            p.role !== 'runner'
-        );
+        const minWage = Math.max(min_wage_rate || 0, PAY_RULES.minWageFloor);
+        const crewById = new Map(crew.map(p => [p.id, p]));
 
-        return pickers.map(p => {
-            const buckets = p.total_buckets_today || 0;
-            const hoursWorked = p.hours || 0;
-
-            const { status, earnings, minWageEarnings } = analyticsService.calculateWageStatus(
-                buckets,
-                hoursWorked,
-                piece_rate,
-                min_wage_rate
-            );
+        return perPicker.flatMap(m => {
+            const p = crewById.get(m.pickerId);
+            if (!p) return [];
+            const earnings = m.pieceRateEarnings;
+            const minWageEarnings = m.hoursWorked * minWage;
+            const percentage = minWageEarnings > 0 ? (earnings / minWageEarnings) * 100 : 100;
+            const baseStatus: 'safe' | 'at_risk' | 'below_minimum' =
+                percentage >= 100 ? 'safe' : percentage >= 80 ? 'at_risk' : 'below_minimum';
 
             const pickerAlerts = alerts.filter(a => a.details?.pickerId === p.id);
             const hasSevereAlert = pickerAlerts.some(a => a.severity === 'high');
             const teamLeader = teamLeaders.find(l => l.id === p.team_leader_id);
-            const deficit = Math.max(0, minWageEarnings - earnings);
 
-            return {
+            return [{
                 picker: p,
-                status: (hasSevereAlert ? 'below_minimum' : status) as 'safe' | 'at_risk' | 'below_minimum',
+                status: (hasSevereAlert ? 'below_minimum' : baseStatus) as 'safe' | 'at_risk' | 'below_minimum',
                 earnings,
                 minWageEarnings,
-                deficit,
+                deficit: m.topUp,
                 teamLeaderName: teamLeader?.name || 'Unassigned',
-                pace: hoursWorked > 0 ? Math.round(buckets / hoursWorked) : buckets,
+                pace: m.hoursWorked > 0 ? Math.round(m.bins / m.hoursWorked) : m.bins,
                 alerts: pickerAlerts,
-            };
+            }];
         }).sort((a, b) => {
             const statusOrder = { below_minimum: 0, at_risk: 1, safe: 2 };
             if (statusOrder[a.status] !== statusOrder[b.status]) {
@@ -85,7 +88,7 @@ const WageShieldPanel: React.FC<WageShieldPanelProps> = ({
             }
             return b.deficit - a.deficit;
         });
-    }, [crew, teamLeaders, piece_rate, min_wage_rate, alerts]);
+    }, [perPicker, crew, teamLeaders, min_wage_rate, alerts]);
 
     // Aggregate metrics
     const totalBleed = useMemo(() =>

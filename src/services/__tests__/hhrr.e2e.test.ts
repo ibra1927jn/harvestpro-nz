@@ -126,16 +126,16 @@ vi.mock('@/repositories/settings.repository', () => ({
 const mockGetBucketCounts = vi
   .fn()
   .mockResolvedValue([
-    { picker_id: 'u1' },
-    { picker_id: 'u1' },
-    { picker_id: 'u1' },
-    { picker_id: 'u1' },
-    { picker_id: 'u1' },
-    { picker_id: 'u1' },
-    { picker_id: 'u1' },
-    { picker_id: 'u1' },
-    { picker_id: 'u1' },
-    { picker_id: 'u1' },
+    { picker_id: 'u1', scanned_at: '2026-03-10T08:00:00Z' },
+    { picker_id: 'u1', scanned_at: '2026-03-10T08:00:00Z' },
+    { picker_id: 'u1', scanned_at: '2026-03-10T08:00:00Z' },
+    { picker_id: 'u1', scanned_at: '2026-03-10T08:00:00Z' },
+    { picker_id: 'u1', scanned_at: '2026-03-10T08:00:00Z' },
+    { picker_id: 'u1', scanned_at: '2026-03-10T08:00:00Z' },
+    { picker_id: 'u1', scanned_at: '2026-03-10T08:00:00Z' },
+    { picker_id: 'u1', scanned_at: '2026-03-10T08:00:00Z' },
+    { picker_id: 'u1', scanned_at: '2026-03-10T08:00:00Z' },
+    { picker_id: 'u1', scanned_at: '2026-03-10T08:00:00Z' },
   ]);
 
 vi.mock('@/repositories/store-sync.repository', () => ({
@@ -174,31 +174,27 @@ describe('hhrr.service — E2E deep tests', () => {
       expect(summary.complianceAlerts).toBeGreaterThan(0);
     });
 
-    it('calculates payroll from attendance hours', async () => {
+    it('calculates payroll with the unified rules (unpaid break, daily top-up)', async () => {
       const summary = await fetchHRSummary('o1');
-      // u1: 8 hours, u2: 6 hours = 14 hours * 23.95 = 335.3
-      expect(summary.payrollThisWeek).toBe(14 * 23.95);
+      // u1: 8 h − 0.5 descanso = 7.5 h → 179.63 (10 cubetas × 7 = 70 + complemento)
+      // u2: 6 h − 0.5 = 5.5 h → 131.73 (sin cubetas)
+      expect(summary.payrollThisWeek).toBe(311.36);
     });
 
-    it('caps hours at 12 per record', async () => {
-      mockGetHoursSummary.mockResolvedValueOnce([
-        {
-          picker_id: 'u1',
-          check_in: '2026-03-10T00:00:00Z',
-          check_out: '2026-03-10T20:00:00Z',
-        },
-      ]);
-      // getExpiringSoon/getExpiredButActive also called from fetchComplianceAlerts
-      const summary = await fetchHRSummary('o1');
-      expect(summary.payrollThisWeek).toBe(12 * 23.95); // Capped at 12
+    it('reads the week from Monday 00:00 NZ time, not 00:00 UTC', async () => {
+      await fetchHRSummary('o1');
+      // 2026-03-10 es martes → semana desde el lunes 2026-03-09 (NZDT, +13:00)
+      expect(mockGetBucketCounts).toHaveBeenCalledWith('o1', '2026-03-09T00:00:00+13:00');
+      expect(mockGetHoursSummary).toHaveBeenCalledWith('o1', '2026-03-09');
     });
 
-    it('skips records without check_out', async () => {
+    it('open shift on a past day is estimated from scans, not counted until now', async () => {
       mockGetHoursSummary.mockResolvedValueOnce([
         { picker_id: 'u1', check_in: '2026-03-10T06:00:00Z', check_out: null },
       ]);
       const summary = await fetchHRSummary('o1');
-      expect(summary.payrollThisWeek).toBe(0);
+      // Todas las cubetas tienen la misma hora: 0 h estimadas → solo pago por cubeta
+      expect(summary.payrollThisWeek).toBe(70);
     });
 
     it('returns zeros on error', async () => {
@@ -323,12 +319,12 @@ describe('hhrr.service — E2E deep tests', () => {
       expect(payroll.length).toBe(1); // Only active employees
       const alice = payroll[0];
       expect(alice.employee_name).toBe('Alice');
-      expect(alice.hours_worked).toBe(8);
+      expect(alice.hours_worked).toBe(7.5); // 8 h − 30 min de descanso no pagado
       expect(alice.buckets_picked).toBe(10);
-      expect(alice.piece_earnings).toBe(70); // 10 * 7.00
-      expect(alice.hourly_earnings).toBe(200); // 8 * 25
-      expect(alice.total_pay).toBe(200); // max(hourly, piece)
-      expect(alice.wage_shield_applied).toBe(true); // piece < hourly
+      expect(alice.piece_earnings).toBe(70); // 10 × 7.00
+      expect(alice.hourly_earnings).toBe(187.5); // 7.5 × 25 (tarifa del contrato)
+      expect(alice.total_pay).toBe(187.5); // cubetas + complemento hasta el mínimo
+      expect(alice.wage_shield_applied).toBe(true);
     });
 
     it('returns empty on error', async () => {

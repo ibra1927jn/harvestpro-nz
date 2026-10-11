@@ -280,7 +280,9 @@ describe('Payroll Service', () => {
                         select: () => ({
                             eq: () => ({
                                 eq: () => ({
-                                    order: () => Promise.resolve(attendanceResponse),
+                                    is: () => ({
+                                        order: () => Promise.resolve(attendanceResponse),
+                                    }),
                                 }),
                             }),
                         }),
@@ -318,7 +320,7 @@ describe('Payroll Service', () => {
             const timesheets = await payrollService.fetchTimesheets('orchard-001');
 
             // 07:00 to 15:00 = 8 hours
-            expect(timesheets[0].hours_worked).toBe(8);
+            expect(timesheets[0].hours_worked).toBe(7.5); // 8 h − 30 min de descanso no pagado
         });
 
         it('should return 0 hours when check_out is null', async () => {
@@ -350,7 +352,7 @@ describe('Payroll Service', () => {
             const timesheets = await payrollService.fetchTimesheets('orchard-001');
 
             // 🔧 L14: Hours are NOT truncated — they're flagged for review
-            expect(timesheets[0].hours_worked).toBe(16);
+            expect(timesheets[0].hours_worked).toBe(15.5); // 16 h − 30 min, sin tope
             expect(timesheets[0].requires_review).toBe(true);
         });
 

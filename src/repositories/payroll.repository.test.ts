@@ -35,6 +35,7 @@ function makeQueryBuilder(resolveWith: { data: unknown; error: unknown }) {
     const builder = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
         order: vi.fn().mockReturnThis(),
         in: vi.fn().mockResolvedValue(resolveWith),
     };

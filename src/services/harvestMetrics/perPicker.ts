@@ -1,31 +1,41 @@
 /**
- * harvestMetrics/perPicker.ts — Métricas por picker desde scan data
+ * harvestMetrics/perPicker.ts — Métricas del día por picker
  *
- * Pure helper — sin React. Deriva bins, hoursWorked, earned, effectiveRate
- * directamente de BucketRecord para garantizar consistencia entre Dashboard e Insights.
+ * Pure helper — sin React. Horas y pago salen SIEMPRE de pay.ts
+ * (shiftHours + dayPay), igual que en Payroll, HR, Informe y la Edge Function.
+ *
+ * - Horas: fichaje del día (entrada/salida/descanso que lleva el team leader);
+ *   si no hay fichaje, estimación por primer y último escaneo (solo panel en vivo).
+ * - Cubetas: las del día, excluyendo rechazos de QC y registros borrados.
  */
 import type { Picker, BucketRecord, HarvestSettings } from '@/types';
-import { deriveHoursPerPicker, HOURS_NO_DATA } from './hours';
+import { shiftHours, dayPay, nzDateOf, isNZPublicHoliday, type HoursSource } from './pay';
 
 export interface PickerMetrics {
     pickerId: string;
     pickerName: string;
     bins: number;
-    /** Horas derivadas de timestamps de scans — nunca de p.hours */
+    /** Horas pagables del día (descanso no pagado ya descontado) */
     hoursWorked: number;
+    /** De dónde salen las horas: fichaje, turno abierto, estimación o nada */
+    hoursSource: HoursSource;
     earned: number;
     pieceRateEarnings: number;
-    /** Top-up = max(0, minWageEarnings − pieceRateEarnings) */
+    /** Complemento al mínimo del día = max(0, mínimo × horas − cubetas × tarifa) */
     topUp: number;
-    /** efectivo por bin (NZD) */
+    /** Coste real por cubeta (NZD), incluido el complemento */
     costPerBin: number;
-    /** Puede ser undefined si el picker no tiene scans hoy */
     teamLeaderId?: string;
 }
 
+function isPayableBucket(r: BucketRecord): boolean {
+    return !!r.picker_id && !r.deleted_at && r.quality_grade !== 'reject';
+}
+
 /**
- * Computa métricas por picker desde el store.
- * Sólo incluye pickers con rol 'picker' que tengan ≥1 scan hoy.
+ * Computa métricas del día por picker desde el store.
+ * Incluye a los pickers (rol 'picker') con al menos una cubeta o con fichaje:
+ * quien fichó y aún no ha escaneado cobra igualmente el mínimo por sus horas.
  */
 export function computePerPicker(
     crew: Picker[],
@@ -35,45 +45,46 @@ export function computePerPicker(
 ): PickerMetrics[] {
     const pieceRate = settings.piece_rate || 6.5;
     const minWage = settings.min_wage_rate || 23.95;
-    const shiftStart = settings.shift_start_time ?? '07:00';
+    const isPublicHoliday = isNZPublicHoliday(nzDateOf(now));
 
-    // Contar bins por picker (desde BucketRecord del store)
-    const binsByPicker = new Map<string, number>();
+    // Cubetas y timestamps por picker (clave = picker_id del registro: UUID o código corto)
+    const scansByPicker = new Map<string, string[]>();
     for (const r of bucketRecords) {
-        if (!r.picker_id) continue;
-        binsByPicker.set(r.picker_id, (binsByPicker.get(r.picker_id) ?? 0) + 1);
+        if (!isPayableBucket(r)) continue;
+        const key = r.picker_id as string;
+        const list = scansByPicker.get(key) ?? [];
+        list.push(r.scanned_at || r.created_at || '');
+        scansByPicker.set(key, list);
     }
 
-    // Derivar horas por picker (pure computation from timestamps)
-    const hoursByPicker = deriveHoursPerPicker(bucketRecords, shiftStart, now);
-
-    // Construir métricas por picker de rol 'picker'
     const pickers = crew.filter(p => !p.role || p.role === 'picker');
 
     return pickers
         .map(p => {
-            // Lookup por id (UUID) y por picker_id (código corto "P001")
-            const bins = binsByPicker.get(p.id) ?? binsByPicker.get(p.picker_id) ?? 0;
-            const rawHours = hoursByPicker.get(p.id) ?? hoursByPicker.get(p.picker_id) ?? 0;
-            const hoursWorked = rawHours === HOURS_NO_DATA ? 0 : rawHours;
-
-            const pieceRateEarnings = bins * pieceRate;
-            const minWageEarnings = hoursWorked * minWage;
-            const topUp = Math.max(0, minWageEarnings - pieceRateEarnings);
-            const earned = pieceRateEarnings + topUp;
-            const costPerBin = bins > 0 ? earned / bins : 0;
+            const scans = scansByPicker.get(p.id) ?? scansByPicker.get(p.picker_id) ?? [];
+            const bins = scans.length;
+            const shift = shiftHours({
+                checkIn: p.check_in,
+                checkOut: p.check_out,
+                breakStart: p.break_start,
+                breakMinutes: p.break_minutes,
+                scanTimes: scans,
+                now,
+            });
+            const pay = dayPay({ buckets: bins, hours: shift.hours, pieceRate, minWage, isPublicHoliday });
 
             return {
                 pickerId: p.id,
                 pickerName: p.name,
                 bins,
-                hoursWorked,
-                earned,
-                pieceRateEarnings,
-                topUp,
-                costPerBin,
+                hoursWorked: shift.hours,
+                hoursSource: shift.source,
+                earned: pay.total,
+                pieceRateEarnings: pay.pieceEarnings,
+                topUp: pay.topUp,
+                costPerBin: bins > 0 ? pay.total / bins : 0,
                 teamLeaderId: p.team_leader_id,
             };
         })
-        .filter(m => m.bins > 0); // Excluir pickers sin scans
+        .filter(m => m.bins > 0 || m.hoursSource === 'timesheet' || m.hoursSource === 'open_shift');
 }

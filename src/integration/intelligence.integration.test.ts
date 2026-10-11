@@ -55,6 +55,7 @@ vi.mock('@/services/gateway.service', () => ({
 
 // ── Import the REAL store (includes REAL compliance.service) ──
 import { useHarvestStore } from '@/stores/useHarvestStore';
+import { asShiftData } from './shiftFixtures';
 
 // ── Helpers ────────────────────────────────
 function seedStore(crewOverrides: Record<string, unknown>[] = [], settingsOverrides: Record<string, unknown> = {}) {
@@ -63,14 +64,15 @@ function seedStore(crewOverrides: Record<string, unknown>[] = [], settingsOverri
         { id: 'p2', name: 'Bob', status: 'active', checked_in_today: true, total_buckets_today: 5, hours: 6, current_row: 2, role: 'picker', avatar: 'B' },
     ];
 
+    const shiftData = asShiftData((crewOverrides.length ? crewOverrides : defaultCrew) as { id: string }[]);
     useHarvestStore.setState({
-        crew: (crewOverrides.length ? crewOverrides : defaultCrew) as any,
+        crew: shiftData.crew as any,
         settings: { piece_rate: 3.50, min_wage_rate: 23.95, bins_per_row: 20, ...settingsOverrides } as any,
         currentUser: { id: 'mgr1', name: 'Manager', role: 'manager' },
         orchard: { id: 'o1', name: 'Orchard' },
         clockSkew: 0,
         buckets: [],
-        bucketRecords: [],
+        bucketRecords: shiftData.bucketRecords,
         alerts: [],
         payroll: { totalPiece: 0, totalMinimum: 0, finalTotal: 0 },
     } as any);

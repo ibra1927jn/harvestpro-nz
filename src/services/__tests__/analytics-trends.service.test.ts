@@ -9,6 +9,7 @@ vi.mock('@/repositories/analytics-trends.repository', () => ({
   analyticsTrendsRepository: {
     getBucketsByRowInRange: vi.fn(),
     getDailyAggregates: vi.fn(),
+    getPayInputs: vi.fn(),
   },
 }));
 
@@ -106,22 +107,26 @@ describe('AnalyticsTrendsService', () => {
       result.forEach(d => expect(d.value).toBe(0));
     });
 
-    it('computes bleed from getDailyAggregates when orchardId + settings provided', async () => {
+    it('computes bleed per picker per day with the unified pay rules', async () => {
       const { analyticsTrendsRepository: repo } = await import('@/repositories/analytics-trends.repository');
-      // Use today's date (computed at test-run time) so the mock always falls
-      // inside the 7-day rolling window the service uses. Hardcoded dates drift
-      // out of the window once the wall-clock advances past them.
-      const todayIso = new Date().toISOString().slice(0, 10);
-      vi.mocked(repo.getDailyAggregates).mockResolvedValue([
-        { date: todayIso, total_buckets: 100, workforce_count: 10 },
-      ]);
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' }).format(new Date());
+      const now = Date.now();
+      const iso = (msAgo: number) => new Date(now - msAgo).toISOString();
+      vi.mocked(repo.getPayInputs).mockResolvedValue({
+        attendance: [
+          // 10 h fichadas hoy → 9.5 h pagables
+          { picker_id: 'p1', date: today, check_in: iso(10 * 3600_000), check_out: iso(0), break_start: null, break_minutes: 30 },
+        ],
+        buckets: [
+          ...Array.from({ length: 12 }, () => ({ picker_id: 'p1', scanned_at: iso(0), quality_grade: 'A' })),
+          { picker_id: 'p1', scanned_at: iso(0), quality_grade: 'reject' },
+        ],
+      });
 
       const result = await service.getDailyBleed('orch-1', 7, 'en-NZ', { piece_rate: 6.5, min_wage_rate: 23.95 });
       expect(result).toHaveLength(7);
-      // bleed = max(0, 10 × 8 × 23.95 - 100 × 6.5) = max(0, 1916 - 650) = 1266
-      const dayEntry = result.find(d => d.value > 0);
-      expect(dayEntry).toBeDefined();
-      expect(dayEntry?.value).toBeGreaterThan(0);
+      // 9.5 h × 23.95 = 227.53 − 12 × 6.5 = 78 → 149.53 ≈ 150
+      expect(result[result.length - 1].value).toBe(150);
     });
 
     it('all values are non-negative', async () => {

@@ -2,6 +2,7 @@
  * Store Sync Repository — queries used by storeSync.ts for app boot hydration
  */
 import { supabase } from '@/services/supabase';
+import { fetchAllRows } from '@/utils/fetchAllRows';
 
 export const storeSyncRepository = {
     /** Get first orchard */
@@ -21,7 +22,7 @@ export const storeSyncRepository = {
     getPickersQuery(orchardId: string, today: string) {
         return supabase
             .from('pickers')
-            .select(`*, daily_attendance!left(check_in, check_out)`)
+            .select(`*, daily_attendance!left(check_in, check_out, break_start, break_minutes)`)
             .eq('orchard_id', orchardId)
             .eq('status', 'active')
             .is('deleted_at', null)
@@ -37,10 +38,11 @@ export const storeSyncRepository = {
 
     /** Get bucket records with count for payroll (hhrr.service remaining call) */
     async getBucketCounts(orchardId: string | undefined, since: string) {
-        let query = supabase.from('bucket_records').select('picker_id, id').gte('scanned_at', since);
-        if (orchardId) query = query.eq('orchard_id', orchardId);
-        const { data } = await query;
-        return data || [];
+        return fetchAllRows<{ picker_id: string; id: string; scanned_at: string | null; quality_grade: string | null; deleted_at: string | null }>((from, to) => {
+            let query = supabase.from('bucket_records').select('picker_id, id, scanned_at, quality_grade, deleted_at').gte('scanned_at', since);
+            if (orchardId) query = query.eq('orchard_id', orchardId);
+            return query.order('id').range(from, to);
+        });
     },
 
     /** Get harvest settings piece_rate — maybeSingle evita 406 si la fila no existe aún */

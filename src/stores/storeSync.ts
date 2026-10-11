@@ -9,6 +9,7 @@ import { supabase } from '@/services/supabase';
 import { offlineService } from '@/services/offline.service';
 import { logger } from '@/utils/logger';
 import { todayNZST, toNZST } from '@/utils/nzst';
+import { fetchAllRows } from '@/utils/fetchAllRows';
 import { BucketRecord, Picker } from '@/types';
 import type { HarvestStoreState, ScannedBucket } from './storeTypes';
 import { storeSyncRepository } from '@/repositories/store-sync.repository';
@@ -20,7 +21,12 @@ export type StoreGetter = () => HarvestStoreState;
 
 /** Picker row extended with attendance join + soft-delete field from Supabase query */
 interface PickerWithAttendance extends Picker {
-  daily_attendance?: { check_in: string | null }[];
+  daily_attendance?: {
+    check_in: string | null;
+    check_out?: string | null;
+    break_start?: string | null;
+    break_minutes?: number | null;
+  }[];
   deleted_at?: string | null;
 }
 
@@ -94,8 +100,16 @@ export async function fetchOrchardData(
   const lastSync = state.lastSyncAt;
   const now = new Date().toISOString();
 
-  const isStale = !lastSync || Date.now() - new Date(lastSync).getTime() > 24 * 60 * 60 * 1000;
-  const useDelta = !isStale;
+  // Delta solo si la última sincronización fue HOY (fecha NZ) y las cubetas de
+  // hoy ya están en memoria. Las cubetas NO se guardan en el navegador (crew y
+  // lastSyncAt sí): tras recargar la página, el delta (filtrado por updated_at)
+  // nunca volvía a traer las cubetas de la mañana y el panel se quedaba en 0.
+  // Igual al cambiar de día: el store tendría cubetas y fichajes de ayer.
+  const sameNZDay =
+    !!lastSync &&
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' }).format(new Date(lastSync)) ===
+      todayNZST();
+  const useDelta = sameNZDay && state.crew.length > 0 && state.bucketRecords.length > 0;
 
   // Use the provided orchardId (from AuthContext) or fall back to first orchard
   let activeOrchard: { id: string; name?: string; total_rows?: number } | null = null;
@@ -125,6 +139,9 @@ export async function fetchOrchardData(
       ...p,
       checked_in_today: !!p.daily_attendance?.[0]?.check_in,
       check_in: p.daily_attendance?.[0]?.check_in || undefined,
+      check_out: p.daily_attendance?.[0]?.check_out || undefined,
+      break_start: p.daily_attendance?.[0]?.break_start || undefined,
+      break_minutes: p.daily_attendance?.[0]?.break_minutes ?? undefined,
       daily_attendance: undefined,
     }) as Picker;
 
@@ -147,7 +164,18 @@ export async function fetchOrchardData(
       logger.info('[Sync] Full mode: downloading all active records');
     }
 
-    const [pickersRes, bucketsRes] = await Promise.all([pickersQuery, bucketsQuery]);
+    // Carga completa por páginas: un día con mucha cuadrilla pasa de las 1000
+    // filas que devuelve PostgREST por petición.
+    const bucketsPromise = useDelta
+      ? bucketsQuery
+      : fetchAllRows<BucketRecord>((from, to) =>
+          storeSyncRepository
+            .getBucketRecordsQuery(activeOrchard?.id ?? '', startOfDayNZ)
+            .is('deleted_at', null)
+            .order('id')
+            .range(from, to)
+        ).then(data => ({ data, error: null }));
+    const [pickersRes, bucketsRes] = await Promise.all([pickersQuery, bucketsPromise]);
     if (pickersRes.error) throw pickersRes.error;
     if (bucketsRes.error) throw bucketsRes.error;
 

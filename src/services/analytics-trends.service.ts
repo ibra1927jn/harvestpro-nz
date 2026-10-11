@@ -4,6 +4,7 @@
  * Queries repositories for day_closures, attendance, bucket_records
  */
 import { analyticsTrendsRepository } from '@/repositories/analytics-trends.repository';
+import { payForRange, nzDateOf } from '@/services/harvestMetrics/pay';
 
 /** Punto de tendencia diaria devuelto por getDailyTrendsV2.
  *  label = fecha cruda 'YYYY-MM-DD'. El consumidor aplica el formato local (weekday, etc.). */
@@ -167,16 +168,33 @@ export class AnalyticsTrendsService {
             return slots.map(s => ({ label: s.label, value: 0 }));
         }
 
-        const SHIFT_HOURS = 8;
-        const aggregates = await analyticsTrendsRepository.getDailyAggregates(orchardId, startDateNZ, endDateNZ);
-        const byDay = new Map(aggregates.map(a => [a.date, a]));
+        // Complemento al mínimo de cada día = suma por picker del cálculo único
+        // (pay.ts): horas del fichaje con descanso no pagado, cubetas sin rechazos.
+        const { attendance, buckets } = await analyticsTrendsRepository.getPayInputs(orchardId, startDateNZ, endDateNZ);
+        // Agrupar por día NZ una sola vez (no recorrer todas las cubetas por día)
+        const attByDay = new Map<string, Parameters<typeof payForRange>[0]['attendance'][number][]>();
+        for (const a of attendance) {
+            const list = attByDay.get(a.date) ?? [];
+            list.push({ pickerId: a.picker_id, date: a.date, checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes });
+            attByDay.set(a.date, list);
+        }
+        const bktByDay = new Map<string, Parameters<typeof payForRange>[0]['buckets'][number][]>();
+        for (const b of buckets) {
+            const day = nzDateOf(b.scanned_at);
+            const list = bktByDay.get(day) ?? [];
+            list.push({ pickerId: b.picker_id, scannedAt: b.scanned_at, qualityGrade: b.quality_grade });
+            bktByDay.set(day, list);
+        }
 
         return slots.map(s => {
-            const agg = byDay.get(s.dateNZ);
-            if (!agg || agg.workforce_count === 0) return { label: s.label, value: 0 };
-            const dailyEarnings = agg.total_buckets * settings.piece_rate;
-            const minWageCost = agg.workforce_count * SHIFT_HOURS * settings.min_wage_rate;
-            return { label: s.label, value: Math.max(0, Math.round(minWageCost - dailyEarnings)) };
+            const dayRows = payForRange({
+                attendance: attByDay.get(s.dateNZ) ?? [],
+                buckets: bktByDay.get(s.dateNZ) ?? [],
+                pieceRate: settings.piece_rate,
+                minWage: settings.min_wage_rate,
+            });
+            const topUp = dayRows.reduce((sum, r) => sum + r.topUp, 0);
+            return { label: s.label, value: Math.round(topUp) };
         });
     }
 }

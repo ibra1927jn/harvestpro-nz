@@ -125,3 +125,38 @@ describe('computePerPicker', () => {
         expect(result[0].earned).toBeGreaterThanOrEqual(0);
     });
 });
+
+describe('computePerPicker — horas desde el fichaje del team leader', () => {
+    const now = new Date('2026-04-18T18:00:00+12:00');
+    const withShift = (extra: Partial<Picker>): Picker =>
+        ({ ...picker(), ...extra }) as Picker;
+
+    it('usa entrada/salida del fichaje, no los escaneos, y descuenta 30 min', () => {
+        const crew = [withShift({
+            check_in: '2026-04-18T07:00:00+12:00',
+            check_out: '2026-04-18T17:00:00+12:00',
+        })];
+        const records = [scan('uuid-1', 60), scan('uuid-1', 120)]; // escaneos de 08:00 a 09:00
+        const [m] = computePerPicker(crew, records, settings, now);
+        expect(m.hoursSource).toBe('timesheet');
+        expect(m.hoursWorked).toBe(9.5);
+        // 2 cubetas × 6.50 = 13; 9.5 h × 23.95 = 227.53 → complemento 214.53
+        expect(m.topUp).toBe(214.53);
+    });
+
+    it('quien fichó y aún no tiene cubetas aparece igualmente (cobra el mínimo)', () => {
+        const crew = [withShift({ check_in: '2026-04-18T07:00:00+12:00', check_out: '2026-04-18T11:00:00+12:00' })];
+        const [m] = computePerPicker(crew, [], settings, now);
+        expect(m.bins).toBe(0);
+        expect(m.hoursWorked).toBe(4);
+        expect(m.topUp).toBe(95.8);
+    });
+
+    it('no cuenta cubetas rechazadas por QC ni borradas', () => {
+        const ok = scan('uuid-1', 10);
+        const rejected = { ...scan('uuid-1', 20), quality_grade: 'reject' } as BucketRecord;
+        const deleted = { ...scan('uuid-1', 30), deleted_at: '2026-04-18T09:00:00+12:00' } as BucketRecord;
+        const [m] = computePerPicker([picker()], [ok, rejected, deleted], settings, now);
+        expect(m.bins).toBe(1);
+    });
+});

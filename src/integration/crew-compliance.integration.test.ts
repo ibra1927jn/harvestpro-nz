@@ -46,8 +46,13 @@ vi.mock('@/services/gateway.service', () => ({
 }));
 
 import { useHarvestStore } from '@/stores/useHarvestStore';
+import { asShiftData } from './shiftFixtures';
 
 function resetStore(overrides: Record<string, unknown> = {}) {
+    if (Array.isArray(overrides.crew)) {
+        const shiftData = asShiftData(overrides.crew as { id: string }[]);
+        overrides = { ...overrides, crew: shiftData.crew, bucketRecords: shiftData.bucketRecords };
+    }
     useHarvestStore.setState({
         buckets: [], bucketRecords: [], isScanning: false, lastScanTime: null,
         crew: [] as any, settings: { piece_rate: 3.50, min_wage_rate: 23.95, bins_per_row: 20 } as any,

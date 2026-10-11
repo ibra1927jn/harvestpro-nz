@@ -18,6 +18,12 @@ INSERT INTO public.orchards (id, code, name, location, total_blocks, total_rows)
 VALUES ('e1337e6a-54cc-431c-9c00-980e8ea270a4', 'SUNRISE', 'Sunrise Apple Orchard', 'Hawke''s Bay, NZ', 2, 27)
 ON CONFLICT (id) DO NOTHING;
 
+-- Configuración de pago del huerto (sin esta fila cada pantalla usaba su propio
+-- valor por defecto y calculate-payroll fallaba): 6.50 $/cubeta, mínimo 23.95 $/h
+INSERT INTO public.harvest_settings (orchard_id, piece_rate, min_wage_rate)
+VALUES ('e1337e6a-54cc-431c-9c00-980e8ea270a4', 6.50, 23.95)
+ON CONFLICT (orchard_id) DO NOTHING;
+
 -- Auth users (insert directo: solo valido en local)
 INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, role, aud, instance_id, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 VALUES

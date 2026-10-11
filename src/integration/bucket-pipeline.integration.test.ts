@@ -141,11 +141,10 @@ describe('Bucket Pipeline — Integration', () => {
         }
 
         const state = useHarvestStore.getState();
+        // Las cubetas salen solo de los escaneos (no del contador
+        // total_buckets_today de la ficha, que duplicaba la cuenta).
         // Alice: 10 × $3.50 = $35 piece
-        // Bob: 5 × $3.50 = $17.50
-        // Diana: 2 × $3.50 = $7.00
-        // Total piece = $59.50
-        expect(state.payroll.totalPiece).toBeCloseTo(59.5, 0);
+        expect(state.payroll.totalPiece).toBeCloseTo(35, 0);
     });
 
     // ── Validation: Archived Picker ──────────
