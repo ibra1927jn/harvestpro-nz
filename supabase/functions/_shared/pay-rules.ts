@@ -193,11 +193,15 @@ export function dayPay(input: DayPayInput): DayPay {
     const topUp = Math.max(0, minimumEarnings - pieceEarnings);
     const pieceHourlyRate = hours > 0 ? pieceEarnings / hours : 0;
 
+    // El total es la suma de las dos partes YA redondeadas: así las líneas que se
+    // exportan a nómina (cubetas + complemento) suman exactamente el total.
+    const pieceRounded = round2(pieceEarnings);
+    const topUpRounded = round2(topUp);
     return {
-        pieceEarnings: round2(pieceEarnings),
+        pieceEarnings: pieceRounded,
         minimumEarnings: round2(minimumEarnings),
-        topUp: round2(topUp),
-        total: round2(pieceEarnings + topUp),
+        topUp: topUpRounded,
+        total: round2(pieceRounded + topUpRounded),
         minWageApplied: round2(minWageApplied),
         pieceHourlyRate: round2(pieceHourlyRate),
         belowMinimum: hours > 0 && pieceHourlyRate < minWageApplied,

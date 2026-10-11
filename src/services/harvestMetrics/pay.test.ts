@@ -125,6 +125,17 @@ describe('isNZPublicHoliday', () => {
     });
 });
 
+describe('total = cubetas + complemento, al céntimo', () => {
+    it('en miles de combinaciones el total es la suma exacta de sus partes', () => {
+        for (let buckets = 0; buckets < 60; buckets++) {
+            for (let mins = 0; mins < 600; mins += 7) {
+                const p = dayPay({ buckets, hours: Math.round(mins / 60 * 100) / 100, pieceRate: 6.55, minWage: 23.95 });
+                expect(Math.round((p.pieceEarnings + p.topUp) * 100)).toBe(Math.round(p.total * 100));
+            }
+        }
+    });
+});
+
 describe('nzDateOf', () => {
     it('usa la fecha de Nueva Zelanda, no la UTC', () => {
         // 18:30 UTC del día 10 = 07:30 NZDT del día 11
