@@ -95,11 +95,10 @@ const Manager = () => {
   // Onboarding: mostrar wizard si no hay crew, no hay settings y no fue completado
   const [onboardingDone, setOnboardingDone] = useState(() => isOnboardingCompleted());
 
-  // Trigger data fetch on mount
+  // Los datos del huerto los carga OrchardDataBootstrap (ProtectedRoute)
   useEffect(() => {
-    fetchGlobalData();
     analytics.trackPageView('manager_dashboard');
-  }, [fetchGlobalData]);
+  }, []);
 
   // Notification checking
   useEffect(() => {

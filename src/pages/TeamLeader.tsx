@@ -10,7 +10,7 @@
  *   teamLeaderNav.config.ts    — Navigation tabs
  *   team-leader/               — View components (lazy-loaded)
  */
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import ResponsiveLayout from '@/components/common/ResponsiveLayout';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
@@ -32,12 +32,8 @@ const TabLoader = () => (
 );
 
 const TeamLeader = () => {
-    const fetchGlobalData = useHarvestStore((state) => state.fetchGlobalData);
+    // Los datos del huerto los carga OrchardDataBootstrap (ProtectedRoute)
     const orchard = useHarvestStore((state) => state.orchard);
-
-    useEffect(() => {
-        fetchGlobalData();
-    }, [fetchGlobalData]);
 
     const [activeTab, setActiveTab] = useState<TeamLeaderTab>('home');
     // BottomNav has 5 tabs; 'team' and 'profile' don't appear there — fallback a 'home'.

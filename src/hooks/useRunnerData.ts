@@ -49,7 +49,6 @@ export function useRunnerData(): UseRunnerDataResult {
   const orchard = useHarvestStore(state => state.orchard);
   const crew = useHarvestStore(state => state.crew);
   const addBucket = useHarvestStore(state => state.addBucket);
-  const fetchGlobalData = useHarvestStore(state => state.fetchGlobalData);
   const { sendBroadcast } = useMessaging();
 
   const [selectedBinId, setSelectedBinId] = useState<string | undefined>(undefined);
@@ -63,11 +62,6 @@ export function useRunnerData(): UseRunnerDataResult {
   const [qualityScan, setQualityScan] = useState<{ code: string; step: 'SCAN' | 'QUALITY' } | null>(
     null
   );
-
-  // Initial data load
-  useEffect(() => {
-    fetchGlobalData();
-  }, [fetchGlobalData]);
 
   // Poll for pending uploads — 5s interval, pauses when tab is hidden
   useEffect(() => {
