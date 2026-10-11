@@ -61,6 +61,11 @@ export interface Picker {
   check_out?: string; // ISO timestamp of check-out (hoja de horas)
   break_start?: string; // Hora del descanso anotada por el team leader
   break_minutes?: number; // Minutos de descanso no pagados (30 por defecto)
+  /**
+   * Tramos de hoy en este huerto (puede salir y volver). check_in/check_out de
+   * arriba son los del tramo actual (el abierto o, si no, el último).
+   */
+  shifts?: AttendanceShift[];
   archived_at?: string; // Timestamp when picker was archived (soft delete)
 }
 
@@ -96,6 +101,29 @@ export interface HarvestSettings {
   shift_end_time?: string;
   /** Horas que dura la confianza de dispositivo MFA (default: 72) */
   mfa_device_trust_ttl_hours?: number;
+  /**
+   * Precio por cubeta de cada variedad (tabla variety_rates): los del huerto y
+   * los de la empresa (orchard_id null). Sin precio de variedad, piece_rate.
+   */
+  variety_rates?: VarietyRate[];
+}
+
+export interface VarietyRate {
+  id?: string;
+  /** null = precio de la empresa para esa variedad */
+  orchard_id: string | null;
+  variety: string;
+  piece_rate: number;
+}
+
+/** Un tramo de trabajo de hoy (entrada/salida en un huerto) */
+export interface AttendanceShift {
+  id?: string;
+  orchard_id?: string | null;
+  check_in: string | null;
+  check_out?: string | null;
+  break_start?: string | null;
+  break_minutes?: number | null;
 }
 
 export interface HarvestState {
@@ -194,6 +222,8 @@ export interface BucketRecord {
   picker_name?: string;
   quality_grade?: 'A' | 'B' | 'C' | 'reject';
   orchard_id?: string;
+  /** Variedad de la fila donde se recogió (precio por variedad) */
+  variety?: string | null;
   // Soft delete & optimistic locking (used by delta sync)
   deleted_at?: string | null;
   updated_at?: string;

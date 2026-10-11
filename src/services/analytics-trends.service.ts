@@ -4,7 +4,8 @@
  * Queries repositories for day_closures, attendance, bucket_records
  */
 import { analyticsTrendsRepository } from '@/repositories/analytics-trends.repository';
-import { payForRange, nzDateOf } from '@/services/harvestMetrics/pay';
+import { payForRange, pieceRateFor, nzDateOf } from '@/services/harvestMetrics/pay';
+import type { VarietyRate } from '@/types';
 
 /** Punto de tendencia diaria devuelto por getDailyTrendsV2.
  *  label = fecha cruda 'YYYY-MM-DD'. El consumidor aplica el formato local (weekday, etc.). */
@@ -143,7 +144,7 @@ export class AnalyticsTrendsService {
         orchardId: string | undefined,
         days: number = 7,
         locale: string = 'en-NZ',
-        settings?: { piece_rate: number; min_wage_rate: number },
+        settings?: { piece_rate: number; min_wage_rate: number; variety_rates?: VarietyRate[] },
     ): Promise<{ label: string; value: number }[]> {
         const nzFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' });
         const weekdayFmt = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'Pacific/Auckland' });
@@ -175,14 +176,19 @@ export class AnalyticsTrendsService {
         const attByDay = new Map<string, Parameters<typeof payForRange>[0]['attendance'][number][]>();
         for (const a of attendance) {
             const list = attByDay.get(a.date) ?? [];
-            list.push({ pickerId: a.picker_id, date: a.date, checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes });
+            list.push({ pickerId: a.picker_id, date: a.date, orchardId: a.orchard_id, checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes });
             attByDay.set(a.date, list);
         }
+        const varietyRates = (settings.variety_rates ?? []).map(r => ({ orchardId: r.orchard_id, variety: r.variety, pieceRate: Number(r.piece_rate) }));
         const bktByDay = new Map<string, Parameters<typeof payForRange>[0]['buckets'][number][]>();
         for (const b of buckets) {
             const day = nzDateOf(b.scanned_at);
             const list = bktByDay.get(day) ?? [];
-            list.push({ pickerId: b.picker_id, scannedAt: b.scanned_at, qualityGrade: b.quality_grade });
+            list.push({
+                pickerId: b.picker_id, scannedAt: b.scanned_at, qualityGrade: b.quality_grade,
+                orchardId: b.orchard_id, variety: b.variety,
+                pieceRate: pieceRateFor({ orchardId: b.orchard_id, variety: b.variety }, { varietyRates, fallback: settings.piece_rate }),
+            });
             bktByDay.set(day, list);
         }
 

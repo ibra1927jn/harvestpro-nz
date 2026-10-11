@@ -72,6 +72,7 @@ export const createIntelligenceSlice: StateCreator<
             const hours = m?.hoursWorked ?? 0;
             const pay = m ? dayPay({
                 buckets,
+                pieceEarnings: m.pieceRateEarnings,
                 hours,
                 pieceRate: settings.piece_rate || 6.5,
                 minWage: settings.min_wage_rate || 23.95,

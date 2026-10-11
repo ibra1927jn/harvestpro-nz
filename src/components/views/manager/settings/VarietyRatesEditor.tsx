@@ -1,0 +1,117 @@
+/**
+ * Precio por cubeta de cada variedad del huerto. Cada cubeta se paga al precio
+ * de la variedad de la fila donde se recogió; si la variedad no tiene precio,
+ * al precio normal (Piece Rate de arriba).
+ */
+import React, { useCallback, useEffect, useState } from 'react';
+import { useHarvestStore } from '@/stores/useHarvestStore';
+import {
+    loadOrchardVarietyRates,
+    saveOrchardVarietyRate,
+    type OrchardVarietyRate,
+} from '@/repositories/pay-rates.repository';
+import { logger } from '@/utils/logger';
+
+export const VarietyRatesEditor: React.FC<{ orchardId?: string; defaultRate: number }> = ({ orchardId, defaultRate }) => {
+    const [rows, setRows] = useState<OrchardVarietyRate[]>([]);
+    const [drafts, setDrafts] = useState<Record<string, string>>({});
+    const [saving, setSaving] = useState<string | null>(null);
+    const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
+
+    const load = useCallback(async () => {
+        if (!orchardId) return;
+        try {
+            const list = await loadOrchardVarietyRates(orchardId);
+            setRows(list);
+            setDrafts(Object.fromEntries(list.map(r => [r.variety, r.orchardRate != null ? String(r.orchardRate) : ''])));
+            // El panel en vivo usa los mismos precios
+            useHarvestStore.setState(s => s.settings ? {
+                settings: {
+                    ...s.settings,
+                    variety_rates: list.flatMap(r => [
+                        ...(r.orchardRate != null ? [{ orchard_id: orchardId, variety: r.variety, piece_rate: r.orchardRate }] : []),
+                        ...(r.companyRate != null ? [{ orchard_id: null, variety: r.variety, piece_rate: r.companyRate }] : []),
+                    ]),
+                },
+            } : {});
+        } catch (e) {
+            logger.warn('[VarietyRates] load failed', e);
+        }
+    }, [orchardId]);
+
+    useEffect(() => { load(); }, [load]);
+
+    const save = async (variety: string) => {
+        if (!orchardId) return;
+        const raw = (drafts[variety] ?? '').trim();
+        const value = raw === '' ? null : Number(raw);
+        if (value !== null && (!Number.isFinite(value) || value < 0)) {
+            setMessage({ text: `Invalid price for ${variety}`, ok: false });
+            return;
+        }
+        setSaving(variety);
+        try {
+            await saveOrchardVarietyRate(orchardId, variety, value);
+            setMessage({ text: `${variety}: ${value === null ? 'uses default price' : `$${value.toFixed(2)} per bucket`}`, ok: true });
+            await load();
+        } catch (e) {
+            setMessage({ text: e instanceof Error ? e.message : 'Could not save', ok: false });
+        } finally {
+            setSaving(null);
+        }
+    };
+
+    if (!orchardId) return null;
+
+    return (
+        <div className="pt-3 mt-2 border-t border-border-light" data-testid="variety-rates-editor">
+            <p className="text-sm font-bold text-text-main">Price per bucket by variety</p>
+            <p className="text-xs text-text-muted mb-2">
+                Empty = default price (${defaultRate.toFixed(2)}). Each bucket is paid at the price of the variety in its row.
+            </p>
+            {rows.length === 0 ? (
+                <p className="text-xs text-text-muted">No varieties found in this orchard's rows.</p>
+            ) : (
+                <div className="space-y-1.5">
+                    {rows.map(r => (
+                        <div key={r.variety} className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-medium text-text-sub">
+                                {r.variety}
+                                {r.orchardRate == null && r.companyRate != null && (
+                                    <span className="ml-2 text-[11px] text-text-muted">company ${r.companyRate.toFixed(2)}</span>
+                                )}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-sm text-text-muted">$</span>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.10"
+                                    inputMode="decimal"
+                                    aria-label={`Price per bucket ${r.variety}`}
+                                    placeholder={defaultRate.toFixed(2)}
+                                    value={drafts[r.variety] ?? ''}
+                                    onChange={e => setDrafts(d => ({ ...d, [r.variety]: e.target.value }))}
+                                    className="w-24 text-right text-sm border border-border-light rounded-lg px-2 py-1.5 bg-surface-white text-text-main"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => save(r.variety)}
+                                    disabled={saving === r.variety || (drafts[r.variety] ?? '') === (r.orchardRate != null ? String(r.orchardRate) : '')}
+                                    className="text-xs font-bold px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white disabled:opacity-40"
+                                >
+                                    {saving === r.variety ? '…' : 'Save'}
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+            {message && (
+                <p role="status" className={`mt-2 text-xs font-bold ${message.ok ? 'text-emerald-600' : 'text-red-600'}`}>{message.text}</p>
+            )}
+        </div>
+    );
+};
+
+export default VarietyRatesEditor;

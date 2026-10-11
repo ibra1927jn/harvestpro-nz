@@ -4,12 +4,14 @@
  * Pure helper — sin React. Horas y pago salen SIEMPRE de pay.ts
  * (shiftHours + dayPay), igual que en Payroll, HR, Informe y la Edge Function.
  *
- * - Horas: fichaje del día (entrada/salida/descanso que lleva el team leader);
+ * - Horas: tramos del día (entrada/salida/descanso que lleva el team leader;
+ *   puede haber varios si sale y vuelve, con un solo descanso no pagado);
  *   si no hay fichaje, estimación por primer y último escaneo (solo panel en vivo).
- * - Cubetas: las del día, excluyendo rechazos de QC y registros borrados.
+ * - Cubetas: las del día, excluyendo rechazos de QC y registros borrados; cada
+ *   una al precio de su variedad (settings.variety_rates) o, si no, piece_rate.
  */
 import type { Picker, BucketRecord, HarvestSettings } from '@/types';
-import { shiftHours, dayPay, nzDateOf, isNZPublicHoliday, type HoursSource } from './pay';
+import { shiftHours, payForRange, pieceRateFor, nzDateOf, type HoursSource, type AttendanceRow, type BucketRow } from './pay';
 
 export interface PickerMetrics {
     pickerId: string;
@@ -40,20 +42,23 @@ function isPayableBucket(r: BucketRecord): boolean {
 export function computePerPicker(
     crew: Picker[],
     bucketRecords: BucketRecord[],
-    settings: Pick<HarvestSettings, 'piece_rate' | 'min_wage_rate' | 'shift_start_time'>,
+    settings: Pick<HarvestSettings, 'piece_rate' | 'min_wage_rate' | 'shift_start_time' | 'variety_rates'>,
     now: Date = new Date()
 ): PickerMetrics[] {
     const pieceRate = settings.piece_rate || 6.5;
     const minWage = settings.min_wage_rate || 23.95;
-    const isPublicHoliday = isNZPublicHoliday(nzDateOf(now));
+    const today = nzDateOf(now);
+    const varietyRates = (settings.variety_rates ?? []).map(r => ({
+        orchardId: r.orchard_id, variety: r.variety, pieceRate: Number(r.piece_rate),
+    }));
 
-    // Cubetas y timestamps por picker (clave = picker_id del registro: UUID o código corto)
-    const scansByPicker = new Map<string, string[]>();
+    // Cubetas por picker (clave = picker_id del registro: UUID o código corto)
+    const scansByPicker = new Map<string, BucketRecord[]>();
     for (const r of bucketRecords) {
         if (!isPayableBucket(r)) continue;
         const key = r.picker_id as string;
         const list = scansByPicker.get(key) ?? [];
-        list.push(r.scanned_at || r.created_at || '');
+        list.push(r);
         scansByPicker.set(key, list);
     }
 
@@ -63,26 +68,48 @@ export function computePerPicker(
         .map(p => {
             const scans = scansByPicker.get(p.id) ?? scansByPicker.get(p.picker_id) ?? [];
             const bins = scans.length;
-            const shift = shiftHours({
-                checkIn: p.check_in,
-                checkOut: p.check_out,
-                breakStart: p.break_start,
-                breakMinutes: p.break_minutes,
-                scanTimes: scans,
-                now,
-            });
-            const pay = dayPay({ buckets: bins, hours: shift.hours, pieceRate, minWage, isPublicHoliday });
+            const shifts = p.shifts?.length
+                ? p.shifts
+                : p.check_in
+                    ? [{ check_in: p.check_in, check_out: p.check_out, break_start: p.break_start, break_minutes: p.break_minutes }]
+                    : [];
+            const attendance: AttendanceRow[] = shifts.map(s => ({
+                pickerId: p.id,
+                date: today,
+                orchardId: s.orchard_id ?? null,
+                checkIn: s.check_in,
+                checkOut: s.check_out,
+                breakStart: s.break_start,
+                breakMinutes: s.break_minutes,
+            }));
+            const buckets: BucketRow[] = scans.map(r => ({
+                pickerId: p.id,
+                // Las cubetas del panel son del día que se mira
+                scannedAt: r.scanned_at || r.created_at || now.toISOString(),
+                orchardId: r.orchard_id ?? null,
+                variety: r.variety ?? null,
+                pieceRate: pieceRateFor({ orchardId: r.orchard_id, variety: r.variety }, { varietyRates, fallback: pieceRate }),
+            }));
+            const [range] = payForRange({ attendance, buckets, pieceRate, minWage, now });
+            const day = range?.dayDetails.find(d => d.date === today) ?? range?.dayDetails[0];
+
+            // De dónde salen las horas (mismo significado que shiftHours)
+            const hoursSource: HoursSource = shifts.length === 0
+                ? shiftHours({ scanTimes: buckets.map(b => b.scannedAt) }).source
+                : shifts.some(s => !s.check_out) ? 'open_shift' : 'timesheet';
+            const hours = day?.hours ?? 0;
+            const total = day?.total ?? 0;
 
             return {
                 pickerId: p.id,
                 pickerName: p.name,
                 bins,
-                hoursWorked: shift.hours,
-                hoursSource: shift.source,
-                earned: pay.total,
-                pieceRateEarnings: pay.pieceEarnings,
-                topUp: pay.topUp,
-                costPerBin: bins > 0 ? pay.total / bins : 0,
+                hoursWorked: hours,
+                hoursSource,
+                earned: total,
+                pieceRateEarnings: day?.pieceEarnings ?? 0,
+                topUp: day?.topUp ?? 0,
+                costPerBin: bins > 0 ? total / bins : 0,
                 teamLeaderId: p.team_leader_id,
             };
         })

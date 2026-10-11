@@ -155,6 +155,11 @@ export function shiftHours(input: ShiftInput): ShiftHours {
 export interface DayPayInput {
     /** Cubetas válidas del día (sin rechazos de QC) */
     buckets: number;
+    /**
+     * Lo ganado con cubetas, si cada cubeta tiene su precio (variedad). Si se
+     * pasa, manda sobre buckets × pieceRate.
+     */
+    pieceEarnings?: number;
     /** Horas pagables del día (shiftHours().hours) */
     hours: number;
     pieceRate: number;
@@ -188,7 +193,9 @@ export function dayPay(input: DayPayInput): DayPay {
         ? minWage * PAY_RULES.publicHolidayMultiplier
         : minWage;
     const hours = Math.max(0, input.hours);
-    const pieceEarnings = Math.max(0, input.buckets) * Math.max(0, input.pieceRate);
+    const pieceEarnings = input.pieceEarnings !== undefined
+        ? Math.max(0, input.pieceEarnings)
+        : Math.max(0, input.buckets) * Math.max(0, input.pieceRate);
     const minimumEarnings = hours * minWageApplied;
     const topUp = Math.max(0, minimumEarnings - pieceEarnings);
     const pieceHourlyRate = hours > 0 ? pieceEarnings / hours : 0;
@@ -269,8 +276,10 @@ export function payWeekOf(dateYMD: string): PayWeek {
 
 export interface AttendanceRow {
     pickerId: string;
-    /** YYYY-MM-DD (fecha NZ del turno) */
+    /** YYYY-MM-DD (fecha NZ del tramo) */
     date: string;
+    /** Huerto del tramo (una persona puede trabajar en varios el mismo día) */
+    orchardId?: string | null;
     checkIn?: string | null;
     checkOut?: string | null;
     breakStart?: string | null;
@@ -282,6 +291,39 @@ export interface BucketRow {
     scannedAt: string;
     /** 'reject' no cuenta para el pago */
     qualityGrade?: string | null;
+    orchardId?: string | null;
+    variety?: string | null;
+    /** Precio de ESTA cubeta (según variedad y huerto); si falta, el general */
+    pieceRate?: number | null;
+}
+
+/** Un tramo de trabajo tal como cuenta para el pago */
+export interface PaySegment {
+    orchardId: string | null;
+    checkIn: string | null;
+    /** Salida real o, si quedó abierto, la estimada / "ahora" */
+    checkOut: string | null;
+    open: boolean;
+    breakStart: string | null;
+    grossHours: number;
+}
+
+/** Detalle de un día de una persona: dónde, cuándo y cuánto */
+export interface PayDay {
+    date: string;
+    segments: PaySegment[];
+    /** Horas pagables del día (todos los tramos, un descanso no pagado) */
+    hours: number;
+    breakMinutes: number;
+    buckets: number;
+    bucketsByVariety: Record<string, number>;
+    pieceEarnings: number;
+    topUp: number;
+    total: number;
+    belowMinimum: boolean;
+    /** Horas estimadas (algún tramo sin cerrar o sin fichaje) */
+    estimated: boolean;
+    isPublicHoliday: boolean;
 }
 
 export interface PickerRangePay {
@@ -297,74 +339,179 @@ export interface PickerRangePay {
     daysBelowMinimum: number;
     /** Días cuyas horas son estimadas (sin fichaje cerrado): revisar la hoja de horas */
     estimatedDays: number;
+    /** Detalle día a día (huerto, horas, cubetas por variedad, pago) */
+    dayDetails: PayDay[];
+}
+
+interface ScanForPay {
+    ms: number;
+    ts: string;
+    orchardId: string | null;
+    variety: string | null;
+    rate: number;
+}
+
+/**
+ * Horas de UN día de una persona con varios tramos (p. ej. mañana en el huerto
+ * A, tarde en el B). Reglas:
+ * - Cada tramo: entrada → salida. Abierto hoy: hasta ahora. Abierto en un día
+ *   pasado: hasta el último escaneo de ese tramo (estimado).
+ * - Un solo descanso de comida al día (no pagado): si el team leader anotó su
+ *   hora dentro de algún tramo, se descuenta (como mucho lo transcurrido); si
+ *   no, se descuentan breakMinutes cuando el día supera mealBreakAfterHours.
+ * - El tiempo entre tramos (viaje de un huerto a otro) no se paga.
+ * - Sin tramos: del primer al último escaneo (estimado).
+ */
+function dayHours(
+    rows: ReadonlyArray<AttendanceRow>,
+    scans: ReadonlyArray<ScanForPay>,
+    isToday: boolean,
+    nowMs: number,
+): { hours: number; breakMinutes: number; segments: PaySegment[]; estimated: boolean } {
+    const sorted = [...rows]
+        .filter(r => toMs(r.checkIn) !== null)
+        .sort((a, b) => (toMs(a.checkIn) ?? 0) - (toMs(b.checkIn) ?? 0));
+
+    if (sorted.length === 0) {
+        const h = shiftHours({ scanTimes: scans.map(s => s.ts) });
+        return { hours: h.hours, breakMinutes: h.breakMinutes, segments: [], estimated: h.source !== 'none' };
+    }
+
+    let estimated = false;
+    const ranges: { start: number; end: number; row: AttendanceRow }[] = [];
+    sorted.forEach((r, i) => {
+        const start = toMs(r.checkIn) as number;
+        const out = toMs(r.checkOut);
+        let end: number;
+        if (out !== null) {
+            end = Math.max(start, out);
+        } else if (isToday) {
+            end = Math.max(start, nowMs);
+            estimated = true;
+        } else {
+            // Abierto en un día pasado: hasta el último escaneo de este tramo
+            // (mismo huerto, antes del siguiente tramo)
+            const nextStart = i + 1 < sorted.length ? (toMs(sorted[i + 1].checkIn) as number) : Infinity;
+            const last = scans
+                .filter(s => s.ms >= start && s.ms < nextStart && (!r.orchardId || !s.orchardId || s.orchardId === r.orchardId))
+                .reduce((m, s) => Math.max(m, s.ms), start);
+            end = last;
+            estimated = true;
+        }
+        ranges.push({ start, end, row: r });
+    });
+
+    const grossMs = ranges.reduce((sum, x) => sum + (x.end - x.start), 0);
+    const grossHours = grossMs / MS_PER_HOUR;
+    const breakMinutesSetting = sorted.find(r => r.breakMinutes != null)?.breakMinutes ?? PAY_RULES.mealBreakMinutes;
+
+    let deducted = 0;
+    const withBreak = ranges.find(x => {
+        const b = toMs(x.row.breakStart);
+        return b !== null && b >= x.start && b < x.end;
+    });
+    if (withBreak) {
+        const b = toMs(withBreak.row.breakStart) as number;
+        deducted = Math.min(breakMinutesSetting, (withBreak.end - b) / 60_000);
+    } else if (grossHours > PAY_RULES.mealBreakAfterHours) {
+        deducted = breakMinutesSetting;
+    }
+
+    const segments: PaySegment[] = ranges.map(x => ({
+        orchardId: x.row.orchardId ?? null,
+        checkIn: x.row.checkIn ?? null,
+        checkOut: new Date(x.end).toISOString(),
+        open: !x.row.checkOut,
+        breakStart: x.row.breakStart ?? null,
+        grossHours: round2((x.end - x.start) / MS_PER_HOUR),
+    }));
+
+    return {
+        hours: round2(Math.max(0, grossHours - deducted / 60)),
+        breakMinutes: Math.round(deducted),
+        segments,
+        estimated,
+    };
 }
 
 /**
  * Pago de cada picker en un rango de días. El complemento se calcula día a día
+ * (con TODOS los tramos y cubetas de ese día, de cualquier huerto o variedad)
  * y luego se suma: nunca se agregan cubetas u horas de varios días antes.
  */
 export function payForRange(params: {
     attendance: ReadonlyArray<AttendanceRow>;
     buckets: ReadonlyArray<BucketRow>;
+    /** Precio por cubeta cuando la cubeta no trae el suyo */
     pieceRate: number;
     minWage: number;
     /** Por defecto, festivos nacionales NZ (isNZPublicHoliday) */
     isPublicHoliday?: (dateYMD: string) => boolean;
     now?: Date;
 }): PickerRangePay[] {
-    const { attendance, buckets, pieceRate, minWage, now } = params;
+    const { attendance, buckets, pieceRate, minWage } = params;
     const isPublicHoliday = params.isPublicHoliday ?? isNZPublicHoliday;
+    const nowDate = params.now ?? new Date();
+    const nowMs = nowDate.getTime();
+    const today = nzDateOf(nowDate);
     const key = (pickerId: string, date: string) => `${pickerId}|${date}`;
-    const today = nzDateOf((now ?? new Date()).toISOString());
 
-    const shifts = new Map<string, AttendanceRow>();
-    for (const a of attendance) shifts.set(key(a.pickerId, a.date), a);
+    const shifts = new Map<string, AttendanceRow[]>();
+    for (const a of attendance) {
+        const k = key(a.pickerId, a.date);
+        const list = shifts.get(k) ?? [];
+        list.push(a);
+        shifts.set(k, list);
+    }
 
-    const scans = new Map<string, string[]>();
+    const scans = new Map<string, ScanForPay[]>();
     for (const b of buckets) {
         if (b.qualityGrade === 'reject') continue;
+        const ms = toMs(b.scannedAt);
+        if (ms === null) continue;
         const k = key(b.pickerId, nzDateOf(b.scannedAt));
         const list = scans.get(k) ?? [];
-        list.push(b.scannedAt);
+        list.push({
+            ms,
+            ts: b.scannedAt,
+            orchardId: b.orchardId ?? null,
+            variety: b.variety ?? null,
+            rate: b.pieceRate ?? pieceRate,
+        });
         scans.set(k, list);
     }
 
     const byPicker = new Map<string, PickerRangePay>();
-    const dayKeys = new Set<string>([...shifts.keys(), ...scans.keys()]);
+    const dayKeys = [...new Set<string>([...shifts.keys(), ...scans.keys()])].sort();
     for (const k of dayKeys) {
         const [pickerId, date] = k.split('|');
-        const shift = shifts.get(k);
+        const rows = shifts.get(k) ?? [];
         const dayScans = scans.get(k) ?? [];
-        // Un turno sin salida solo cuenta "hasta ahora" si es de hoy. Si quedó
-        // abierto en un día pasado, se estima de la entrada al último escaneo y el
-        // día queda marcado como estimado para que el team leader lo cierre.
-        // El turno empieza cuando ficha el team leader, aunque haya escaneos antes.
-        const staleOpen = !!shift?.checkIn && !shift.checkOut && date < today;
-        const lastScanMs = dayScans.reduce((m, s) => Math.max(m, toMs(s) ?? 0), 0);
-        const checkInMs = toMs(shift?.checkIn) ?? 0;
-        const h = shiftHours({
-            checkIn: shift?.checkIn,
-            checkOut: staleOpen
-                ? new Date(Math.max(checkInMs, lastScanMs)).toISOString()
-                : shift?.checkOut,
-            breakStart: shift?.breakStart,
-            breakMinutes: shift?.breakMinutes,
-            scanTimes: dayScans,
-            now,
-        });
-        // Sin horas ni cubetas no hay nada que pagar, salvo un turno abierto de un
+        const h = dayHours(rows, dayScans, date === today, nowMs);
+        const hasStaleOpen = date < today && rows.some(r => r.checkIn && !r.checkOut);
+        // Sin horas ni cubetas no hay nada que pagar, salvo un tramo abierto de un
         // día pasado: se mantiene (0 h, estimado) para que no desaparezca sin aviso.
-        if (h.hours === 0 && dayScans.length === 0 && !staleOpen) continue;
+        if (h.hours === 0 && dayScans.length === 0 && !hasStaleOpen) continue;
+
+        const holiday = isPublicHoliday(date);
         const p = dayPay({
             buckets: dayScans.length,
+            pieceEarnings: dayScans.reduce((sum, s) => sum + s.rate, 0),
             hours: h.hours,
             pieceRate,
             minWage,
-            isPublicHoliday: isPublicHoliday(date),
+            isPublicHoliday: holiday,
         });
+        const bucketsByVariety: Record<string, number> = {};
+        for (const s of dayScans) {
+            const v = s.variety ?? '—';
+            bucketsByVariety[v] = (bucketsByVariety[v] ?? 0) + 1;
+        }
+        const estimated = h.estimated || hasStaleOpen;
+
         const acc = byPicker.get(pickerId) ?? {
             pickerId, buckets: 0, hours: 0, pieceEarnings: 0, topUp: 0, total: 0,
-            days: 0, daysBelowMinimum: 0, estimatedDays: 0,
+            days: 0, daysBelowMinimum: 0, estimatedDays: 0, dayDetails: [],
         };
         acc.buckets += dayScans.length;
         acc.hours = round2(acc.hours + h.hours);
@@ -373,9 +520,48 @@ export function payForRange(params: {
         acc.total = round2(acc.total + p.total);
         acc.days += 1;
         if (p.belowMinimum) acc.daysBelowMinimum += 1;
-        if (staleOpen || h.source !== 'timesheet') acc.estimatedDays += 1;
+        if (estimated) acc.estimatedDays += 1;
+        acc.dayDetails.push({
+            date,
+            segments: h.segments,
+            hours: h.hours,
+            breakMinutes: h.breakMinutes,
+            buckets: dayScans.length,
+            bucketsByVariety,
+            pieceEarnings: p.pieceEarnings,
+            topUp: p.topUp,
+            total: p.total,
+            belowMinimum: p.belowMinimum,
+            estimated,
+            isPublicHoliday: holiday,
+        });
         byPicker.set(pickerId, acc);
     }
 
     return [...byPicker.values()].sort((a, b) => b.buckets - a.buckets);
+}
+
+/**
+ * Precio de una cubeta: el de su variedad en su huerto; si no hay, el de su
+ * variedad para la empresa; si no, el precio normal del huerto; si no, el general.
+ */
+export function pieceRateFor(
+    bucket: { orchardId?: string | null; variety?: string | null },
+    rates: {
+        /** variety_rates: [{ orchardId|null, variety, pieceRate }] */
+        varietyRates?: ReadonlyArray<{ orchardId: string | null; variety: string; pieceRate: number }>;
+        /** harvest_settings.piece_rate por huerto */
+        orchardRates?: Readonly<Record<string, number>>;
+        fallback: number;
+    },
+): number {
+    const v = bucket.variety?.trim().toLowerCase();
+    if (v && rates.varietyRates?.length) {
+        const own = rates.varietyRates.find(r => r.orchardId === (bucket.orchardId ?? null) && r.variety.trim().toLowerCase() === v);
+        if (own) return own.pieceRate;
+        const company = rates.varietyRates.find(r => r.orchardId === null && r.variety.trim().toLowerCase() === v);
+        if (company) return company.pieceRate;
+    }
+    if (bucket.orchardId && rates.orchardRates?.[bucket.orchardId] != null) return rates.orchardRates[bucket.orchardId];
+    return rates.fallback;
 }

@@ -10,7 +10,7 @@ import { offlineService } from '@/services/offline.service';
 import { logger } from '@/utils/logger';
 import { todayNZST, toNZST } from '@/utils/nzst';
 import { fetchAllRows } from '@/utils/fetchAllRows';
-import { BucketRecord, Picker } from '@/types';
+import { BucketRecord, Picker, AttendanceShift } from '@/types';
 import type { HarvestStoreState, ScannedBucket } from './storeTypes';
 import { storeSyncRepository } from '@/repositories/store-sync.repository';
 
@@ -21,17 +21,14 @@ export type StoreGetter = () => HarvestStoreState;
 
 /** Picker row extended with attendance join + soft-delete field from Supabase query */
 interface PickerWithAttendance extends Picker {
-  daily_attendance?: {
-    check_in: string | null;
-    check_out?: string | null;
-    break_start?: string | null;
-    break_minutes?: number | null;
-  }[];
+  daily_attendance?: (AttendanceShift & { deleted_at?: string | null })[];
   deleted_at?: string | null;
 }
 
 /** Realtime attendance payload from Supabase channel */
 interface AttendanceRecord {
+  id?: string;
+  deleted_at?: string | null;
   picker_id: string;
   date: string;
   check_in: string | null;
@@ -39,6 +36,28 @@ interface AttendanceRecord {
   break_start?: string | null;
   break_minutes?: number | null;
   orchard_id: string;
+}
+
+/* ── Tramos de hoy ────────────────────────── */
+
+/**
+ * Campos de presencia de una persona a partir de sus tramos de hoy en este
+ * huerto: el tramo actual es el abierto o, si no hay, el último.
+ */
+export function attendanceFields(shifts: AttendanceShift[]): Pick<Picker,
+  'shifts' | 'checked_in_today' | 'check_in' | 'check_out' | 'break_start' | 'break_minutes'> {
+  const list = shifts
+    .filter(s => !!s.check_in)
+    .sort((a, b) => (a.check_in ?? '').localeCompare(b.check_in ?? ''));
+  const current = list.find(s => !s.check_out) ?? list[list.length - 1];
+  return {
+    shifts: list,
+    checked_in_today: list.length > 0,
+    check_in: current?.check_in || undefined,
+    check_out: current?.check_out || undefined,
+    break_start: current?.break_start || undefined,
+    break_minutes: current?.break_minutes ?? undefined,
+  };
 }
 
 /* ── Hydration ────────────────────────────── */
@@ -142,11 +161,11 @@ export async function fetchOrchardData(
   const mapPickerWithAttendance = (p: PickerWithAttendance): Picker =>
     ({
       ...p,
-      checked_in_today: !!p.daily_attendance?.[0]?.check_in,
-      check_in: p.daily_attendance?.[0]?.check_in || undefined,
-      check_out: p.daily_attendance?.[0]?.check_out || undefined,
-      break_start: p.daily_attendance?.[0]?.break_start || undefined,
-      break_minutes: p.daily_attendance?.[0]?.break_minutes ?? undefined,
+      ...attendanceFields(
+        (p.daily_attendance ?? [])
+          .filter(a => !a.deleted_at)
+          .map(({ deleted_at: _deleted, ...s }) => s)
+      ),
       daily_attendance: undefined,
     }) as Picker;
 
@@ -337,18 +356,21 @@ export function setupRealtimeSubscriptions(
         const attendanceRecord = payload.new as AttendanceRecord;
         if (attendanceRecord && attendanceRecord.date === todayStr) {
           set(state => ({
-            crew: state.crew.map(p =>
-              p.id === attendanceRecord.picker_id
-                ? {
-                    ...p,
-                    checked_in_today: !!attendanceRecord.check_in,
-                    check_in: attendanceRecord.check_in || undefined,
-                    check_out: attendanceRecord.check_out || undefined,
-                    break_start: attendanceRecord.break_start || undefined,
-                    break_minutes: attendanceRecord.break_minutes ?? undefined,
-                  }
-                : p
-            ),
+            crew: state.crew.map(p => {
+              if (p.id !== attendanceRecord.picker_id) return p;
+              // Actualiza (o añade) el tramo; uno borrado sale de la lista
+              const shift: AttendanceShift = {
+                id: attendanceRecord.id,
+                orchard_id: attendanceRecord.orchard_id,
+                check_in: attendanceRecord.check_in,
+                check_out: attendanceRecord.check_out,
+                break_start: attendanceRecord.break_start,
+                break_minutes: attendanceRecord.break_minutes,
+              };
+              const others = (p.shifts ?? []).filter(s => !shift.id || s.id !== shift.id);
+              const shifts = attendanceRecord.deleted_at ? others : [...others, shift];
+              return { ...p, ...attendanceFields(shifts) };
+            }),
           }));
           // Horas y pago de hoy al instante (salida o descanso corregidos)
           get().recalculateIntelligence();

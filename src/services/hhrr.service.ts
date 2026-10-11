@@ -17,7 +17,8 @@ import { userRepository2 } from '@/repositories/user.repository';
 import { contractRepository2 } from '@/repositories/contract.repository';
 import { attendanceRepository } from '@/repositories/attendance.repository';
 import { NZ_MINIMUM_WAGE_2026 } from '@/constants/nz-law';
-import { payForRange, payWeekOf, nzDateOf, PAY_RULES, type PickerRangePay } from '@/services/harvestMetrics';
+import { payForRange, payWeekOf, nzDateOf, pieceRateFor, PAY_RULES, type PickerRangePay } from '@/services/harvestMetrics';
+import { payRatesRepository } from '@/repositories/pay-rates.repository';
 
 // ── Types ──────────────────────────────────────
 export interface Employee {
@@ -208,10 +209,11 @@ export async function updateContract(
  */
 async function loadPayWeek(orchardId?: string, minWageFor?: (personId: string) => number) {
   const week = payWeekOf(todayNZST());
-  const [attendance, buckets] = await Promise.all([
+  const [attendance, buckets, rates] = await Promise.all([
     attendanceRepository.getHoursSummary(orchardId, week.start),
     // Medianoche NZ del lunes; una fecha sola compara con 00:00 UTC (13:00 NZDT)
     storeSyncRepository.getBucketCounts(orchardId, nzMidnight(week.start)),
+    payRatesRepository.load().catch(() => ({ varietyRates: [], orchardRates: {} })),
   ]);
 
   let pieceRate = 6.5;
@@ -226,6 +228,7 @@ async function loadPayWeek(orchardId?: string, minWageFor?: (personId: string) =
     .filter(a => !a.date || a.date <= week.end)
     .map(a => ({
       pickerId: a.picker_id,
+      orchardId: a.orchard_id,
       date: a.date ?? (a.check_in ? nzDateOf(a.check_in) : week.start),
       checkIn: a.check_in,
       checkOut: a.check_out,
@@ -234,7 +237,14 @@ async function loadPayWeek(orchardId?: string, minWageFor?: (personId: string) =
     }));
   const bucketRows = (buckets || [])
     .filter(b => !b.deleted_at && b.scanned_at)
-    .map(b => ({ pickerId: b.picker_id, scannedAt: b.scanned_at as string, qualityGrade: b.quality_grade }));
+    .map(b => ({
+      pickerId: b.picker_id,
+      scannedAt: b.scanned_at as string,
+      qualityGrade: b.quality_grade,
+      orchardId: b.orchard_id,
+      variety: b.variety,
+      pieceRate: pieceRateFor({ orchardId: b.orchard_id, variety: b.variety }, { ...rates, fallback: pieceRate }),
+    }));
 
   const people = new Set<string>([...attendanceRows.map(a => a.pickerId), ...bucketRows.map(b => b.pickerId)]);
   const pay: PickerRangePay[] = [];

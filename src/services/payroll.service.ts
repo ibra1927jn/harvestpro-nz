@@ -12,7 +12,8 @@ import { supabase } from '@/services/supabase';
 import { todayNZST, toNZST } from '@/utils/nzst';
 import { PayrollResultSchema, validateResponse } from '@/schemas/api.schemas';
 import { analytics } from '@/config/analytics';
-import { shiftHours, dayPay, isNZPublicHoliday, PAY_RULES } from '@/services/harvestMetrics/pay';
+import { shiftHours, dayPay, payForRange, pieceRateFor, isNZPublicHoliday, PAY_RULES, type PayDay } from '@/services/harvestMetrics/pay';
+import { payRatesRepository } from '@/repositories/pay-rates.repository';
 
 export interface PickerBreakdown {
   picker_id: string;
@@ -33,6 +34,8 @@ export interface PickerBreakdown {
   /** Días con horas estimadas (turno sin cerrar): revisar antes de pagar */
   estimated_days?: number;
   is_below_minimum: boolean;
+  /** Detalle día a día: huerto y horas de cada tramo, cubetas por variedad, pago */
+  days?: PayDay[];
 }
 
 export interface PayrollResult {
@@ -280,13 +283,13 @@ export const payrollService = {
 
     const { data: bucketRecords } = await supabase
       .from('bucket_records')
-      .select('picker_id, quality_grade')
+      .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
       .eq('orchard_id', orchardId)
       .is('deleted_at', null)
       .gte('scanned_at', startISO)
       .lte('scanned_at', endISO);
 
-    // 3. Obtener settings (piece_rate, min_wage_rate)
+    // 3. Obtener settings (piece_rate, min_wage_rate) y precios por variedad
     const { data: settings } = await supabase
       .from('harvest_settings')
       .select('piece_rate, min_wage_rate')
@@ -295,30 +298,79 @@ export const payrollService = {
 
     const pieceRate = settings?.piece_rate ?? 6.5;
     const minWageRate = settings?.min_wage_rate ?? PAY_RULES.minWageFloor;
+    const rates = await payRatesRepository.load().catch(() => ({ varietyRates: [], orchardRates: {} }));
+    const rateOf = (b: { orchard_id: string | null; variety: string | null }) =>
+      pieceRateFor({ orchardId: b.orchard_id, variety: b.variety }, { ...rates, fallback: pieceRate });
 
-    // 4. Agregar por picker: buckets (sin reject), grades, earnings
-    const bucketsByPicker = new Map<string, { total: number; rejected: number; grades: Record<string, number> }>();
-    (bucketRecords || []).forEach((br: { picker_id: string; quality_grade: string | null }) => {
-      const entry = bucketsByPicker.get(br.picker_id) || { total: 0, rejected: 0, grades: {} };
+    // 4. Cada cubeta va al tramo en que se recogió (una persona puede salir y
+    //    volver el mismo día): el último tramo que empezó antes de escanearla.
+    type Bkt = { picker_id: string; orchard_id: string | null; variety: string | null; scanned_at: string; quality_grade: string | null };
+    const segmentsByPicker = new Map<string, typeof timesheets>();
+    for (const ts of timesheets) {
+      const list = segmentsByPicker.get(ts.picker_id) ?? [];
+      list.push(ts);
+      segmentsByPicker.set(ts.picker_id, list);
+    }
+    for (const list of segmentsByPicker.values()) list.sort((a, b) => (a.check_in ?? '').localeCompare(b.check_in ?? ''));
+
+    const bySegment = new Map<string, { total: number; rejected: number; earnings: number; grades: Record<string, number> }>();
+    for (const br of (bucketRecords || []) as Bkt[]) {
+      const segs = segmentsByPicker.get(br.picker_id);
+      if (!segs?.length) continue;
+      const seg = [...segs].reverse().find(s => (s.check_in ?? '') <= br.scanned_at) ?? segs[0];
+      const entry = bySegment.get(seg.id) || { total: 0, rejected: 0, earnings: 0, grades: {} };
       if (br.quality_grade === 'reject') {
         entry.rejected++;
       } else {
         entry.total++;
+        entry.earnings += rateOf(br);
       }
       const grade = br.quality_grade || 'ungraded';
       entry.grades[grade] = (entry.grades[grade] || 0) + 1;
-      bucketsByPicker.set(br.picker_id, entry);
-    });
+      bySegment.set(seg.id, entry);
+    }
 
-    // 5. Construir timesheet completo por picker
+    // 5. Complemento al mínimo con el DÍA entero de la persona (todos sus
+    //    tramos); se muestra en su último tramo del día.
+    const holiday = isNZPublicHoliday(targetDate);
+    const dayTopUp = new Map<string, { topUp: number; belowMinimum: boolean; minimum: number }>();
+    for (const [pickerId, segs] of segmentsByPicker) {
+      // Horas del día con el cálculo único: todos los tramos cerrados, un solo
+      // descanso no pagado (tramo sin salida = 0 h hasta que se cierre)
+      const closed = segs.filter(t => t.check_in && t.check_out);
+      const [range] = closed.length ? payForRange({
+        attendance: closed.map(t => ({ pickerId, date: targetDate, checkIn: t.check_in, checkOut: t.check_out, breakStart: t.break_start, breakMinutes: t.break_minutes })),
+        buckets: [],
+        pieceRate,
+        minWage: minWageRate,
+        isPublicHoliday: () => holiday,
+      }) : [];
+      const hours = range?.hours ?? 0;
+      const earnings = segs.reduce((s, t) => s + (bySegment.get(t.id)?.earnings ?? 0), 0);
+      const buckets = segs.reduce((s, t) => s + (bySegment.get(t.id)?.total ?? 0), 0);
+      const p = dayPay({ buckets, pieceEarnings: earnings, hours, pieceRate, minWage: minWageRate, isPublicHoliday: holiday });
+      dayTopUp.set(pickerId, { topUp: p.topUp, belowMinimum: p.belowMinimum, minimum: p.minimumEarnings });
+    }
+
     return timesheets.map(ts => {
-      const bucketInfo = bucketsByPicker.get(ts.picker_id) || { total: 0, rejected: 0, grades: {} };
-      const pay = dayPay({ buckets: bucketInfo.total, hours: ts.hours_worked, pieceRate, minWage: minWageRate, isPublicHoliday: isNZPublicHoliday(targetDate) });
+      const info = bySegment.get(ts.id) || { total: 0, rejected: 0, earnings: 0, grades: {} };
+      const segs = segmentsByPicker.get(ts.picker_id) ?? [ts];
+      const isLast = segs[segs.length - 1].id === ts.id;
+      const day = dayTopUp.get(ts.picker_id);
+      const pieceEarnings = Math.round(info.earnings * 100) / 100;
+      const topUp = isLast ? (day?.topUp ?? 0) : 0;
+      const pay = {
+        pieceEarnings,
+        minimumEarnings: isLast ? (day?.minimum ?? 0) : 0,
+        topUp,
+        total: Math.round((pieceEarnings + topUp) * 100) / 100,
+        belowMinimum: day?.belowMinimum ?? false,
+      };
       return {
         ...ts,
-        buckets_total: bucketInfo.total,
-        buckets_rejected: bucketInfo.rejected,
-        quality_grades: bucketInfo.grades,
+        buckets_total: info.total,
+        buckets_rejected: info.rejected,
+        quality_grades: info.grades,
         piece_rate: pieceRate,
         piece_earnings: pay.pieceEarnings,
         minimum_required: pay.minimumEarnings,

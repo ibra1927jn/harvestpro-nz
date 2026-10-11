@@ -101,10 +101,10 @@ export const attendanceRepository = {
 
     /** Get hours summary for period (for payroll calculations) */
     async getHoursSummary(orchardId: string | undefined, sinceDate: string) {
-        return fetchAllRows<{ picker_id: string; date: string; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null }>((from, to) => {
+        return fetchAllRows<{ picker_id: string; orchard_id: string | null; date: string; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null }>((from, to) => {
             let query = supabase
                 .from('daily_attendance')
-                .select('picker_id, date, check_in, check_out, break_start, break_minutes')
+                .select('picker_id, orchard_id, date, check_in, check_out, break_start, break_minutes')
                 .is('deleted_at', null)
                 .gte('date', sinceDate);
             if (orchardId) query = query.eq('orchard_id', orchardId);
