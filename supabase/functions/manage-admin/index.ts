@@ -7,6 +7,7 @@ import {
     checkRateLimit,
     AdminInputSchema,
 } from '../_shared/security.ts'
+import { writeAudit } from '../_shared/audit.ts'
 
 /**
  * manage-admin — Server-side admin user management
@@ -51,14 +52,14 @@ serve(async (req) => {
             if (updateErr) throw new Error(`Failed to update role: ${updateErr.message}`)
 
             // Audit trail
-            await supabase.from('audit_logs').insert({
+            const { error: auditErr_user_role_changed } = await writeAudit(supabase, {
                 action: 'user_role_changed',
-                entity_type: 'user',
-                entity_id: user_id,
-                performed_by: user.id,
-                new_values: { role: new_role },
-                created_at: new Date().toISOString(),
+                table: 'users',
+                recordId: user_id,
+                userId: user.id,
+                newValues: { role: new_role },
             })
+            if (auditErr_user_role_changed) console.error(`[manage-admin] Audit failed: ${auditErr_user_role_changed.message}`)
 
             console.info(`[manage-admin] Role updated: user=${user_id}, role=${new_role}, by=${user.id}`)
 
@@ -81,13 +82,13 @@ serve(async (req) => {
             if (deactErr) throw new Error(`Failed to deactivate user: ${deactErr.message}`)
 
             // Audit trail
-            await supabase.from('audit_logs').insert({
+            const { error: auditErr_user_deactivated } = await writeAudit(supabase, {
                 action: 'user_deactivated',
-                entity_type: 'user',
-                entity_id: user_id,
-                performed_by: user.id,
-                created_at: new Date().toISOString(),
+                table: 'users',
+                recordId: user_id,
+                userId: user.id,
             })
+            if (auditErr_user_deactivated) console.error(`[manage-admin] Audit failed: ${auditErr_user_deactivated.message}`)
 
             console.info(`[manage-admin] User deactivated: user=${user_id}, by=${user.id}`)
 
@@ -112,13 +113,13 @@ serve(async (req) => {
             if (reactErr) throw new Error(`Failed to reactivate user: ${reactErr.message}`)
 
             // Audit trail
-            await supabase.from('audit_logs').insert({
+            const { error: auditErr_user_reactivated } = await writeAudit(supabase, {
                 action: 'user_reactivated',
-                entity_type: 'user',
-                entity_id: user_id,
-                performed_by: user.id,
-                created_at: new Date().toISOString(),
+                table: 'users',
+                recordId: user_id,
+                userId: user.id,
             })
+            if (auditErr_user_reactivated) console.error(`[manage-admin] Audit failed: ${auditErr_user_reactivated.message}`)
 
             console.info(`[manage-admin] User reactivated: user=${user_id}, by=${user.id}`)
 

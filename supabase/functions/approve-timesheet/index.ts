@@ -7,6 +7,7 @@ import {
     checkRateLimit,
     TimesheetApprovalSchema,
 } from '../_shared/security.ts'
+import { writeAudit } from '../_shared/audit.ts'
 
 /**
  * approve-timesheet — Server-side timesheet approval with optimistic locking
@@ -66,13 +67,12 @@ serve(async (req) => {
         if (updateErr) throw new Error(`Failed to approve timesheet: ${updateErr.message}`)
 
         // ── Audit Trail — must succeed for compliance ──
-        const { error: auditErr } = await supabase.from('audit_logs').insert({
+        const { error: auditErr } = await writeAudit(supabase, {
             action: 'timesheet_approved',
-            entity_type: 'daily_attendance',
-            entity_id: attendance_id,
-            performed_by: user.id,
-            new_values: { verified_by },
-            created_at: new Date().toISOString(),
+            table: 'daily_attendance',
+            recordId: attendance_id,
+            userId: user.id,
+            newValues: { verified_by },
         })
 
         if (auditErr) throw new Error(`Approval applied but audit trail failed: ${auditErr.message}`)

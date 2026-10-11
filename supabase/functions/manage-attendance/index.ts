@@ -8,6 +8,7 @@ import {
     AttendanceInputSchema,
 } from '../_shared/security.ts'
 import { shiftHours } from '../_shared/pay-rules.ts'
+import { writeAudit } from '../_shared/audit.ts'
 
 /**
  * manage-attendance — Server-side attendance operations
@@ -211,17 +212,15 @@ serve(async (req) => {
             if (corrErr) throw new Error(`Failed to apply correction: ${corrErr.message}`)
 
             // Audit trail — must succeed for compliance
-            const { error: auditErr } = await supabase
-                .from('audit_logs')
-                .insert({
-                    action: 'timesheet_correction',
-                    entity_type: 'daily_attendance',
-                    entity_id: attendance_id,
-                    performed_by: admin_id,
-                    new_values: { check_in, check_out, break_start },
-                    notes: reason,
-                    created_at: new Date().toISOString(),
-                })
+            const { error: auditErr } = await writeAudit(supabase, {
+                action: 'timesheet_correction',
+                table: 'daily_attendance',
+                recordId: attendance_id,
+                userId: admin_id,
+                oldValues: existing ?? undefined,
+                newValues: { check_in, check_out, break_start },
+                reason,
+            })
 
             if (auditErr) throw new Error(`Correction applied but audit trail failed: ${auditErr.message}`)
 
