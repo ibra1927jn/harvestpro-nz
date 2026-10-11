@@ -74,14 +74,14 @@ export const VarietyRatesEditor: React.FC<{ orchardId?: string; defaultRate: num
             ) : (
                 <div className="space-y-1.5">
                     {rows.map(r => (
-                        <div key={r.variety} className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-medium text-text-sub">
+                        <div key={r.variety} className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                            <span className="text-sm font-medium text-text-sub min-w-0 break-words">
                                 {r.variety}
                                 {r.orchardRate == null && r.companyRate != null && (
                                     <span className="ml-2 text-[11px] text-text-muted">company ${r.companyRate.toFixed(2)}</span>
                                 )}
                             </span>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 ml-auto">
                                 <span className="text-sm text-text-muted">$</span>
                                 <input
                                     type="number"
@@ -92,7 +92,7 @@ export const VarietyRatesEditor: React.FC<{ orchardId?: string; defaultRate: num
                                     placeholder={defaultRate.toFixed(2)}
                                     value={drafts[r.variety] ?? ''}
                                     onChange={e => setDrafts(d => ({ ...d, [r.variety]: e.target.value }))}
-                                    className="w-24 text-right text-sm border border-border-light rounded-lg px-2 py-1.5 bg-surface-white text-text-main"
+                                    className="w-20 text-right text-sm border border-border-light rounded-lg px-2 py-1.5 bg-surface-white text-text-main"
                                 />
                                 <button
                                     type="button"
