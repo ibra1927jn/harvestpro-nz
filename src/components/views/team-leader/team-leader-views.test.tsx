@@ -25,6 +25,12 @@ vi.mock('@/stores/useHarvestStore', () => ({
     }),
 }));
 
+vi.mock('@/hooks/useHarvestMetrics', () => ({
+    useHarvestMetrics: () => ({ perPicker: [
+        { pickerId: 'p1', earned: 100 }, { pickerId: 'p2', earned: 50 }, { pickerId: 'p9', earned: 999 },
+    ] }),
+}));
+
 vi.mock('@/context/AuthContext', () => ({
     useAuth: () => ({ appUser: { id: 'tl1', full_name: 'Maria Garcia', role: 'team_leader' } }),
 }));
@@ -50,6 +56,11 @@ describe('HomeView (TeamLeader)', () => {
         render(<HomeView />);
         expect(screen.getAllByText('35').length).toBeGreaterThanOrEqual(1);
         expect(screen.queryByText('Other Team')).toBeNull();
+    });
+
+    it('pay estimate is my team only (100 + 50)', () => {
+        render(<HomeView />);
+        expect(screen.getByText('$150')).toBeTruthy();
     });
 
     it('renders Morning Huddle when all safe', () => {

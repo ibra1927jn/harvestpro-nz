@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useHarvestStore as useHarvest } from '@/stores/useHarvestStore';
 import { useAuth } from '@/context/AuthContext';
+import { useHarvestMetrics } from '@/hooks/useHarvestMetrics';
 import { selectTeamOf, selectPresentPickers } from '@/services/harvestMetrics/roster';
 
 const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
@@ -12,6 +13,12 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
     const crew = useMemo(() => selectTeamOf(orchardCrew, appUser?.id), [orchardCrew, appUser?.id]);
     const totalCrew = selectPresentPickers(crew).length;
     const teamBuckets = crew.reduce((sum, p) => sum + (p.total_buckets_today || 0), 0);
+    // Pago estimado de MI equipo hoy (mismo cálculo que el panel del manager)
+    const { perPicker } = useHarvestMetrics();
+    const teamPay = useMemo(() => {
+        const ids = new Set(crew.map(p => p.id));
+        return perPicker.filter(m => ids.has(m.pickerId)).reduce((sum, m) => sum + m.earned, 0);
+    }, [perPicker, crew]);
 
     // 2. Safety Status (Real Monitor)
     const safetyIssuePicker = crew.find(p => p.status === 'suspended' || p.status === 'issue');
@@ -24,7 +31,7 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
 
     const cards = [
         { label: 'Buckets', value: teamBuckets, icon: 'shopping_basket', color: 'primary' },
-        { label: 'Pay Est.', value: `$${stats.payEstimate.toFixed(0)}`, icon: 'payments', color: 'text-main' },
+        { label: 'Pay Est.', value: `$${teamPay.toFixed(0)}`, icon: 'payments', color: 'text-main' },
         { label: 'Tons', value: stats.tons.toFixed(1), icon: 'scale', color: 'text-main' },
     ];
 
@@ -42,7 +49,7 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                             Kia Ora, {currentUser?.name?.split(' ')[0] || 'Team Leader'}
                         </h1>
                         <p className="text-slate-500 font-medium mt-1">
-                            {new Date().toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' })}
+                            {new Date().toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Pacific/Auckland' })}
                         </p>
                     </div>
                     <div
