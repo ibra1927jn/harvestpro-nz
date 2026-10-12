@@ -439,19 +439,8 @@ export function setupRealtimeSubscriptions(
         }));
       }
     )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'timesheets', filter: `orchard_id=eq.${orchardId}` },
-      payload => {
-        if (document.hidden) return;
-        set(state => ({
-          recentTimesheetUpdates: [
-            payload.new as Record<string, unknown>,
-            ...state.recentTimesheetUpdates,
-          ].slice(0, 10),
-        }));
-      }
-    )
+    // (Sin 'timesheets': esa tabla no existe y una suscripción a una tabla
+    //  inexistente dejaba el canal entero mudo — ni cubetas ni fichajes en vivo)
     .on(
       'postgres_changes',
       {
