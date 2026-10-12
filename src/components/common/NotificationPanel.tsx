@@ -8,6 +8,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useMessaging } from '@/context/MessagingContext';
+import { useAuth } from '@/context/AuthContext';
 
 export interface AppNotification {
     id: string;
@@ -27,27 +28,28 @@ interface NotificationPanelProps {
 }
 
 const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClose }) => {
-    const { broadcasts, unreadCount } = useMessaging();
+    const { broadcasts, unreadCount, acknowledgeBroadcast } = useMessaging();
+    const { appUser } = useAuth();
     const panelRef = useRef<HTMLDivElement>(null);
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
     // Build notification feed from broadcasts + system alerts
     useEffect(() => {
-        const now = new Date();
         const items: AppNotification[] = [];
 
         // Add broadcasts as notifications
         if (broadcasts && broadcasts.length > 0) {
-            broadcasts.slice(0, 5).forEach((b, i) => {
-                const isRecent = b.created_at && (now.getTime() - new Date(b.created_at).getTime()) < 24 * 60 * 60 * 1000;
+            broadcasts.slice(0, 5).forEach(b => {
+                // Leído = confirmado por mí (se guarda en el servidor); antes "no leído" era "de las últimas 24 h"
+                const seen = !!appUser?.id && (b.acknowledged_by || []).includes(appUser.id);
                 items.push({
-                    id: `broadcast-${i}`,
+                    id: `broadcast-${b.id}`,
                     icon: b.priority === 'urgent' ? 'priority_high' : b.priority === 'high' ? 'campaign' : 'chat',
                     title: b.title || 'Broadcast',
                     body: b.content || '',
                     time: b.created_at ? formatRelativeTime(new Date(b.created_at)) : 'Just now',
                     type: b.priority === 'urgent' ? 'alert' : 'message',
-                    read: !isRecent,
+                    read: seen,
                 });
             });
         }
@@ -66,7 +68,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClos
         }
 
         setNotifications(items);
-    }, [broadcasts]);
+    }, [broadcasts, appUser?.id]);
 
     // Close on click outside
     useEffect(() => {
@@ -87,7 +89,11 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClos
 
     const markAllRead = useCallback(() => {
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    }, []);
+        // Confirmar en el servidor los avisos pendientes
+        notifications
+            .filter(n => !n.read && n.id.startsWith('broadcast-'))
+            .forEach(n => void acknowledgeBroadcast(n.id.replace('broadcast-', '')));
+    }, [notifications, acknowledgeBroadcast]);
 
     const unreadNotifs = notifications.filter(n => !n.read).length;
 

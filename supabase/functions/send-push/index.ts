@@ -320,13 +320,21 @@ serve(async req => {
   const origin = req.headers.get('Origin');
 
   try {
-    // Auth — at least manager for broadcast, any auth for test
-    const { user, supabase } = await requireRole(req, ['admin', 'manager', 'team_leader']);
+    // Auth: cualquiera puede probar sus propias notificaciones; enviar a otros
+    // solo admin, manager y team leader (antes la prueba daba 403 al resto)
+    const { user, supabase } = await requireRole(req, [
+      'admin', 'manager', 'team_leader', 'runner', 'qc_inspector', 'payroll_admin', 'hr_admin', 'logistics',
+    ]);
+    const { data: senderRow } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
+    const senderRole = (senderRow?.role as string | undefined) ?? '';
 
     checkRateLimit(user.id, { maxRequests: 30, windowMs: 60_000 });
 
     const body = await req.json();
     const input = PushInputSchema.parse(body);
+    if (input.action !== 'test' && !['admin', 'manager', 'team_leader'].includes(senderRole)) {
+      return jsonResponse({ error: 'Only admin, manager or team leader can send notifications to others' }, origin, 403);
+    }
 
     // Load VAPID keys from Deno env (set via Supabase secrets)
     const vapidKeys = {
@@ -412,13 +420,16 @@ serve(async req => {
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
       );
 
-      const query = adminSupabase
-        .from('push_subscriptions')
-        .select('endpoint, keys_p256dh, keys_auth, user_id');
-
-      // If targeting a specific role, join with user metadata
-      // For now, send to all subscribers (role filtering TBD with user_metadata join)
-      const { data: subs } = await query;
+      // Solo a la gente del huerto de quien envía (antes iba a todos los
+      // suscritos de todas las empresas), y al rol pedido si lo hay
+      const { data: me } = await adminSupabase.from('users').select('orchard_id').eq('id', user.id).single();
+      let people = adminSupabase.from('users').select('id').eq('orchard_id', me?.orchard_id ?? '00000000-0000-0000-0000-000000000000');
+      if (input.role) people = people.eq('role', input.role);
+      const { data: recipients } = await people;
+      const ids = (recipients ?? []).map((u: { id: string }) => u.id);
+      const { data: subs } = ids.length
+        ? await adminSupabase.from('push_subscriptions').select('endpoint, keys_p256dh, keys_auth, user_id').in('user_id', ids)
+        : { data: [] as Array<{ endpoint: string; keys_p256dh: string; keys_auth: string; user_id: string }> };
 
       if (!subs || subs.length === 0) {
         return jsonResponse({ success: true, sent: 0, total: 0 }, origin);

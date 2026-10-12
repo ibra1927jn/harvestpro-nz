@@ -23,6 +23,8 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose, onSend }) => {
         try {
             await onSend(title, message, priority);
             onClose();
+        } catch {
+            // No se envió: el modal sigue abierto y la pantalla muestra el motivo
         } finally {
             setIsSending(false);
         }

@@ -128,6 +128,27 @@ export const messagingRepository = {
         return data || [];
     },
 
+    /** Confirmar un aviso (se añade el usuario a acknowledged_by) */
+    async acknowledgeBroadcast(broadcastId: string) {
+        const { error } = await supabase.rpc('acknowledge_broadcast', { p_broadcast_id: broadcastId });
+        if (error) throw error;
+    },
+
+    /** Marcar como leídos los mensajes de una conversación */
+    async markConversationRead(conversationId: string) {
+        const { error } = await supabase.rpc('mark_conversation_read', { p_conversation_id: conversationId });
+        if (error) throw error;
+    },
+
+    /** Mensajes sin leer por conversación (solo las mías) */
+    async getUnreadCounts(): Promise<Record<string, number>> {
+        const { data, error } = await supabase.rpc('my_unread_counts');
+        if (error) throw error;
+        const out: Record<string, number> = {};
+        for (const r of (data || []) as Array<{ conversation_id: string; unread: number }>) out[r.conversation_id] = r.unread;
+        return out;
+    },
+
     /** Get last messages for conversation IDs */
     async getLastMessages(conversationIds: string[]) {
         const { data } = await supabase

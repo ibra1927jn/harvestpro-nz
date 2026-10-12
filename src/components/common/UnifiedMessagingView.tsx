@@ -24,6 +24,7 @@ const UnifiedMessagingView = () => {
     getOrCreateConversation,
     createChatGroup,
     refreshMessages,
+    markConversationRead,
   } = useMessaging();
 
   const [activeTab, setActiveTab] = useState<'alerts' | 'chats'>('chats');
@@ -37,7 +38,12 @@ const UnifiedMessagingView = () => {
   >([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [actionError, setActionError] = useState<string | null>(null);
+  // No leídos: vienen del servidor (antes siempre 0)
+  const unreadCounts = useMemo(
+    () => Object.fromEntries(chatGroups.map(g => [g.id, g.unreadCount ?? 0])),
+    [chatGroups]
+  );
 
   const isManager = appUser?.role === Role.MANAGER;
   const userNameMap = useMemo(() => {
@@ -64,6 +70,8 @@ const UnifiedMessagingView = () => {
     if (window.innerWidth < 768) setIsSidebarOpen(false);
     const unsubscribe = simpleMessagingService.subscribeToConversation(selectedChat.id, newMsg => {
       if (newMsg.sender_id !== appUser?.id) {
+        // Está abierta: el mensaje cuenta como leído
+        void markConversationRead(newMsg.conversation_id);
         const dbMsg: DBMessage = {
           id: newMsg.id,
           sender_id: newMsg.sender_id,
@@ -108,7 +116,7 @@ const UnifiedMessagingView = () => {
 
   const handleSelectChat = (chat: ChatGroup) => {
     setSelectedChat(chat);
-    setUnreadCounts(prev => ({ ...prev, [chat.id]: 0 }));
+    void markConversationRead(chat.id);
   };
 
   const handleSend = useCallback(
@@ -166,6 +174,9 @@ const UnifiedMessagingView = () => {
       <main
         className={`flex-1 flex flex-col ${!selectedChat && !isSidebarOpen ? 'hidden md:flex' : 'flex'}`}
       >
+        {actionError && (
+          <div role="alert" className="m-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">{actionError}</div>
+        )}
         {selectedChat ? (
           <ChatWindow
             selectedChat={selectedChat}
@@ -221,11 +232,17 @@ const UnifiedMessagingView = () => {
           onClose={() => setShowNewChatModal(false)}
           onStartDirect={handleStartDirectChat}
           onCreateGroup={async (name, ids) => {
-            const group = await createChatGroup(name, ids);
-            if (group) {
-              setSelectedChat(group);
+            setActionError(null);
+            try {
+              const group = await createChatGroup(name, ids);
+              if (group) {
+                setSelectedChat(group);
+                setShowNewChatModal(false);
+                setActiveTab('chats');
+              }
+            } catch (e) {
+              setActionError(`Group not created: ${e instanceof Error ? e.message : 'try again'}`);
               setShowNewChatModal(false);
-              setActiveTab('chats');
             }
           }}
         />
@@ -234,7 +251,13 @@ const UnifiedMessagingView = () => {
         <BroadcastModal
           onClose={() => setShowBroadcastModal(false)}
           onSend={async (title, content, priority) => {
-            await sendBroadcast(title, content, priority as MessagePriority);
+            // Si no se guardó, el modal no se cierra y se avisa
+            const ok = await sendBroadcast(title, content, priority as MessagePriority);
+            if (!ok) {
+              setActionError('Broadcast not sent — check your connection and try again');
+              throw new Error('Broadcast not sent');
+            }
+            setActionError(null);
             refreshMessages();
           }}
         />
