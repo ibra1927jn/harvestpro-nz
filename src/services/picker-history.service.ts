@@ -7,7 +7,8 @@
 import { pickerHistoryRepository } from '@/repositories/picker-history.repository';
 import { logger } from '@/utils/logger';
 import { nzMidnight } from '@/utils/nzst';
-import { payForRange, nzDateOf, PAY_RULES } from '@/services/harvestMetrics/pay';
+import { payForRange, pieceRateFor, nzDateOf, PAY_RULES } from '@/services/harvestMetrics/pay';
+import { payRatesRepository, loadOrchardNames } from '@/repositories/pay-rates.repository';
 
 // --- Types ---
 export interface PickerProfile {
@@ -102,6 +103,8 @@ class PickerHistoryService {
 
       // 6. Get day setups for variety info
       const daySetups = await pickerHistoryRepository.getDaySetupsSince(orchardId, sinceStr);
+      const rates = await payRatesRepository.load().catch(() => ({ varietyRates: [], orchardRates: {} }));
+      const orchardNames = await loadOrchardNames().catch(() => ({} as Record<string, string>));
 
       // --- Compute daily records ---
       // Horas y pago de cada día con el cálculo único (harvestMetrics/pay.ts):
@@ -109,11 +112,16 @@ class PickerHistoryService {
       // rechazos de QC y registros borrados fuera, fechas NZ.
       const dailyMap = new Map<string, DailyRecord>();
       const today = nzDateOf(new Date());
-      type AttRow = { date: string; check_in?: string | null; check_out?: string | null; break_start?: string | null; break_minutes?: number | null; deleted_at?: string | null };
-      type BktRow = { scanned_at: string; quality_grade?: string | null; deleted_at?: string | null };
+      type AttRow = { date: string; orchard_id?: string | null; check_in?: string | null; check_out?: string | null; break_start?: string | null; break_minutes?: number | null; deleted_at?: string | null };
+      type BktRow = { scanned_at: string; orchard_id?: string | null; variety?: string | null; quality_grade?: string | null; deleted_at?: string | null };
 
-      const attByDay = new Map<string, AttRow>();
-      (attendance as AttRow[]).filter(a => !a.deleted_at).forEach(a => attByDay.set(a.date, a));
+      // Varios tramos el mismo día (p. ej. mañana en un huerto y tarde en otro)
+      const attByDay = new Map<string, AttRow[]>();
+      (attendance as AttRow[]).filter(a => !a.deleted_at).forEach(a => {
+        const list = attByDay.get(a.date) ?? [];
+        list.push(a);
+        attByDay.set(a.date, list);
+      });
       const bktByDay = new Map<string, BktRow[]>();
       (buckets as BktRow[]).filter(b => !b.deleted_at && b.scanned_at).forEach(b => {
         const day = nzDateOf(b.scanned_at);
@@ -123,13 +131,17 @@ class PickerHistoryService {
       });
 
       for (const date of new Set([...attByDay.keys(), ...bktByDay.keys()])) {
-        const a = attByDay.get(date);
+        const shifts = attByDay.get(date) ?? [];
         const dayBuckets = bktByDay.get(date) ?? [];
         const setup = daySetups.find((d: { date: string }) => d.date === date);
+        const fallback = setup?.piece_rate || 6.5;
         const [pay] = payForRange({
-          attendance: a ? [{ pickerId, date, checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes }] : [],
-          buckets: dayBuckets.map(b => ({ pickerId, scannedAt: b.scanned_at, qualityGrade: b.quality_grade })),
-          pieceRate: setup?.piece_rate || 6.5,
+          attendance: shifts.map(a => ({ pickerId, date, orchardId: a.orchard_id, checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes })),
+          buckets: dayBuckets.map(b => ({
+            pickerId, scannedAt: b.scanned_at, qualityGrade: b.quality_grade, orchardId: b.orchard_id, variety: b.variety,
+            pieceRate: pieceRateFor({ orchardId: b.orchard_id, variety: b.variety }, { ...rates, fallback }),
+          })),
+          pieceRate: fallback,
           minWage: setup?.min_wage_rate || PAY_RULES.minWageFloor,
         });
         if (!pay) continue;
@@ -140,9 +152,11 @@ class PickerHistoryService {
           earnings: pay.total,
           topUp: pay.topUp,
           estimated: pay.estimatedDays > 0,
-          variety: setup?.variety || null,
+          // Variedades recogidas ese día y huertos donde trabajó (puede ser más de uno)
+          variety: [...new Set(dayBuckets.map(b => b.variety).filter((v): v is string => !!v))].join(', ') || setup?.variety || null,
           team_leader_name: teamLeaderName,
-          orchard_name: orchardName ?? null,
+          orchard_name: [...new Set(shifts.map(s => s.orchard_id).filter((o): o is string => !!o))]
+            .map(o => orchardNames[o] ?? o.slice(0, 8)).join(' + ') || orchardName || null,
         });
       }
 

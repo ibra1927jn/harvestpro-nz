@@ -49,7 +49,7 @@ export function generatePDFContent(data: PayrollExportData, options?: { pieceRat
   <div class="header">
     <div class="logo">🍒 HarvestPro NZ</div>
     <h1>Daily Payroll Report</h1>
-    <p>Date: ${data.date} | Generated: ${new Date().toLocaleString('en-NZ')}</p>
+    <p>Date: ${data.date} | Generated: ${new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</p>
   </div>
 
   <table>

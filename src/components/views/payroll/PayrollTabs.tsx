@@ -11,6 +11,7 @@ import { logger } from '@/utils/logger';
 import { exportService, type ExportFormat } from '@/services/export.service';
 import { logExportToHistory } from './ExportHistoryTab';
 import { useHarvestStore } from '@/stores/useHarvestStore';
+import { PayWeekDetail } from './PayWeekDetail';
 
 /* ── Summary Card ── */
 export const SummaryCard: React.FC<{ icon: string; iconColor: string; label: string; value: string; highlight?: boolean }> = ({ icon, iconColor, label, value, highlight }) => (
@@ -24,8 +25,11 @@ export const SummaryCard: React.FC<{ icon: string; iconColor: string; label: str
 );
 
 /* ── Dashboard Tab ── */
-export const PayrollDashboard: React.FC<{ pickers: PickerBreakdown[]; settings: { bucket_rate: number; min_wage_rate: number } }> = ({ pickers, settings }) => (
+export const PayrollDashboard: React.FC<{ pickers: PickerBreakdown[]; settings: { bucket_rate: number; min_wage_rate: number } }> = ({ pickers, settings }) => {
+    const [detail, setDetail] = useState<PickerBreakdown | null>(null);
+    return (
     <div className="space-y-4">
+        {detail && <PayWeekDetail picker={detail} onClose={() => setDetail(null)} />}
         <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 relative overflow-hidden">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-50"></div>
             <div className="flex items-center justify-between mb-5">
@@ -60,7 +64,11 @@ export const PayrollDashboard: React.FC<{ pickers: PickerBreakdown[]; settings: 
                         )}
                         itemContent={(_index, p) => (
                             <>
-                                <td className="py-3 px-4 font-extrabold text-slate-700 text-sm">{p.picker_name}</td>
+                                <td className="py-3 px-4 font-extrabold text-slate-700 text-sm">
+                                    <button type="button" onClick={() => setDetail(p)} className="text-left hover:text-orange-600 hover:underline" title="Day-by-day detail">
+                                        {p.picker_name}
+                                    </button>
+                                </td>
                                 <td className="py-3 px-4 text-right text-slate-600 font-medium">{p.buckets}</td>
                                 <td className="py-3 px-4 text-right text-slate-600 font-medium">
                                     {p.hours_worked.toFixed(1)}
@@ -105,7 +113,8 @@ export const PayrollDashboard: React.FC<{ pickers: PickerBreakdown[]; settings: 
             )}
         </div>
     </div>
-);
+    );
+};
 
 /* ── Timesheets Tab ── */
 export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) => {
@@ -192,9 +201,9 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">
-                                    <span>{t.check_in ? new Date(t.check_in).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }) : '—'}</span>
+                                    <span>{t.check_in ? new Date(t.check_in).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' }) : '—'}</span>
                                     <span className="text-slate-300">→</span>
-                                    <span>{t.check_out ? new Date(t.check_out).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }) : 'Active'}</span>
+                                    <span>{t.check_out ? new Date(t.check_out).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' }) : 'Active'}</span>
                                 </div>
                                 <div className="flex gap-2">
                                     <button onClick={() => handleApprove(t.id, t.picker_name)} className="flex-1 py-2.5 rounded-xl bg-emerald-50 text-emerald-600 text-[11px] uppercase tracking-widest font-bold hover:bg-emerald-500 hover:text-white transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm">
@@ -227,7 +236,7 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                                     <span className="bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">{t.hours_worked.toFixed(1)} HRS</span>
                                     <span className="text-slate-300">•</span>
                                     <span>
-                                        {t.check_in ? new Date(t.check_in).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }) : '—'} → {t.check_out ? new Date(t.check_out).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }) : 'Active'}
+                                        {t.check_in ? new Date(t.check_in).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' }) : '—'} → {t.check_out ? new Date(t.check_out).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' }) : 'Active'}
                                     </span>
                                 </div>
                             </div>

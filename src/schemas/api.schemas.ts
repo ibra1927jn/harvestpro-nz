@@ -36,6 +36,31 @@ export const PickerBreakdownSchema = z.object({
     // Días con horas estimadas (turno sin cerrar): revisar la hoja de horas
     // antes de pagar. Optional — versiones anteriores no lo devolvían.
     estimated_days: z.number().int().nonnegative().optional(),
+    // Detalle día a día (tramos con huerto y horas, cubetas por variedad, pago).
+    // Optional — versiones anteriores no lo devolvían.
+    days: z.array(z.object({
+        date: z.string(),
+        segments: z.array(z.object({
+            orchardId: z.string().nullable(),
+            checkIn: z.string().nullable(),
+            checkOut: z.string().nullable(),
+            open: z.boolean(),
+            breakStart: z.string().nullable(),
+            grossHours: z.number(),
+            travelHours: z.number().default(0),
+        })),
+        hours: z.number(),
+        breakMinutes: z.number(),
+        travelMinutes: z.number().default(0),
+        buckets: z.number(),
+        bucketsByVariety: z.record(z.string(), z.number()),
+        pieceEarnings: z.number(),
+        topUp: z.number(),
+        total: z.number(),
+        belowMinimum: z.boolean(),
+        estimated: z.boolean(),
+        isPublicHoliday: z.boolean(),
+    })).optional(),
 });
 
 export const PayrollResultSchema = z.object({
@@ -74,6 +99,8 @@ export const CheckInResponseSchema = z.object({
     status: z.string(),
     id: z.string().min(1),
     already_checked_in: z.boolean(),
+    /** Tramo cerrado en otro huerto al fichar aquí */
+    closed_shift_id: z.string().nullable().optional(),
 });
 
 export const CheckOutResponseSchema = z.object({

@@ -4,6 +4,7 @@ import { useHarvestStore } from '@/stores/useHarvestStore';
 import { avatarUrl } from '@/utils/avatarUrl';
 import { logger } from '@/utils/logger';
 import { useTranslation } from '@/i18n';
+import { ElsewhereBadge } from '@/components/common/ElsewhereBadge';
 
 interface TeamLeaderCardProps {
     leader: Picker;
@@ -179,6 +180,7 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-text-main text-sm truncate">{member.name}</p>
+                                        {member.elsewhere && <div className="mt-0.5 max-w-full overflow-hidden"><ElsewhereBadge person={member} /></div>}
                                         <div className="flex justify-between items-center mt-0.5">
                                             <div className="flex items-center gap-1.5">
                                                 <span className="text-[10px] text-slate-400 font-mono">{member.picker_id || '---'}</span>

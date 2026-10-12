@@ -287,7 +287,7 @@ export function WageRatesPanel({ orchardId }: { orchardId: string }) {
 
       <p className="wage-rates-footer">
         Last synced: {config?.lastUpdated
-          ? new Date(config.lastUpdated).toLocaleString('en-NZ')
+          ? new Date(config.lastUpdated).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })
           : 'unknown'
         } · All changes are audit-logged with user, timestamp, and old/new values.
       </p>

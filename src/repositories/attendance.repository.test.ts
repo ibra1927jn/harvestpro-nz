@@ -37,7 +37,7 @@ describe('attendanceRepository', () => {
     });
 
     it('findOne returns record', async () => {
-        fromSpy.mockReturnValue(mockChain({ data: { id: 'att-1' }, error: null }) as never);
+        fromSpy.mockReturnValue(mockChain({ data: [{ id: 'att-1' }], error: null }) as never);
         const result = await attendanceRepository.findOne('p1', 'o1', '2026-03-01');
         expect(result).toEqual({ id: 'att-1' });
     });

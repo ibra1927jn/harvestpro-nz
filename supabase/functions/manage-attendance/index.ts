@@ -14,7 +14,7 @@ import { writeAudit } from '../_shared/audit.ts'
  * manage-attendance — Server-side attendance operations
  *
  * Actions:
- * - check_in:  Create attendance record + update picker status
+ * - check_in:  Open a work shift (closes an open one in another orchard)
  * - check_out: Record checkout time + paid hours (unpaid 30-min break deducted)
  * - correct:   Admin timesheet correction with audit trail
  *
@@ -51,24 +51,50 @@ serve(async (req) => {
 
             const nowISO = new Date().toISOString()
 
-            // Check if already checked in today
-            const { data: existing } = await supabase
+            // Tramos: una persona puede trabajar en varios huertos el mismo día
+            // (sale de A y entra en B). Como mucho un tramo abierto por día.
+            const { data: open } = await supabase
                 .from('daily_attendance')
-                .select('id')
+                .select('id, orchard_id')
                 .eq('picker_id', picker_id)
-                .eq('orchard_id', orchard_id)
                 .eq('date', today)
+                .is('check_out', null)
+                .is('deleted_at', null)
                 .maybeSingle()
 
-            if (existing) {
-                // Ya fichado hoy. La presencia sale de daily_attendance: no se toca
-                // pickers.status (situación laboral), así no se reactiva a nadie archivado.
+            if (open && open.orchard_id === orchard_id) {
+                // Ya está trabajando aquí. La presencia sale de daily_attendance: no se
+                // toca pickers.status (situación laboral), así no se reactiva a nadie archivado.
                 return jsonResponse({
                     picker_id,
                     status: 'present',
-                    id: existing.id,
+                    id: open.id,
                     already_checked_in: true,
                 }, origin)
+            }
+
+            let closedShiftId: string | null = null
+            if (open) {
+                // Sigue abierto en otro huerto: se cierra ahora y se marca para que
+                // el team leader o el manager revisen la hora de salida real.
+                // El tiempo de viaje entre huertos no se paga.
+                const { error: closeErr } = await supabase
+                    .from('daily_attendance')
+                    .update({
+                        check_out: nowISO,
+                        notes: 'Auto-closed: checked in at another orchard. Review check-out time.',
+                    })
+                    .eq('id', open.id)
+                    .is('check_out', null)
+                if (closeErr) throw new Error(`Failed to close previous shift: ${closeErr.message}`)
+                closedShiftId = open.id
+                await writeAudit(supabase, {
+                    action: 'shift_auto_closed',
+                    table: 'daily_attendance',
+                    recordId: open.id,
+                    userId: user.id,
+                    newValues: { check_out: nowISO, moved_to_orchard: orchard_id },
+                })
             }
 
             // Create new attendance record
@@ -96,6 +122,7 @@ serve(async (req) => {
                 status: 'present',
                 id: attendance.id,
                 already_checked_in: false,
+                closed_shift_id: closedShiftId,
             }, origin)
         }
 

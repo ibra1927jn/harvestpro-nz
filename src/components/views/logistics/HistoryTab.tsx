@@ -25,7 +25,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history }) => (
                             <span className="text-xs text-text-secondary">• {log.driver_name}</span>
                         </div>
                         <span className="text-xs font-mono text-text-muted">
-                            {new Date(log.started_at).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(log.started_at).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })}
                         </span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-text-secondary">

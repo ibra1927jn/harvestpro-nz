@@ -160,3 +160,25 @@ describe('computePerPicker — horas desde el fichaje del team leader', () => {
         expect(m.bins).toBe(1);
     });
 });
+
+describe('computePerPicker — tramos y variedades', () => {
+    it('suma dos tramos del día con un solo descanso y paga cada variedad a su precio', () => {
+        const now = new Date('2026-10-12T18:00:00+13:00');
+        const crew = [{
+            id: 'p1', picker_id: 'P1', name: 'Ana', role: 'picker', status: 'active',
+            shifts: [
+                { check_in: '2026-10-12T07:00:00+13:00', check_out: '2026-10-12T11:00:00+13:00' },
+                { check_in: '2026-10-12T12:00:00+13:00', check_out: '2026-10-12T16:00:00+13:00' },
+            ],
+        }] as unknown as Parameters<typeof computePerPicker>[0];
+        const bucket = (variety: string) => ({ id: variety + Math.random(), picker_id: 'p1', bin_id: 'b', timestamp: '', scanned_at: '2026-10-12T09:00:00+13:00', variety, orchard_id: 'A' });
+        const buckets = [...Array.from({ length: 10 }, () => bucket('Royal Gala')), ...Array.from({ length: 10 }, () => bucket('Braeburn'))];
+        const [m] = computePerPicker(crew, buckets, {
+            piece_rate: 6.5, min_wage_rate: 23.95, shift_start_time: undefined,
+            variety_rates: [{ orchard_id: null, variety: 'Braeburn', piece_rate: 8 }],
+        }, now);
+        expect(m.hoursWorked).toBe(7.5);
+        expect(m.pieceRateEarnings).toBe(145); // 10 × 6.5 + 10 × 8
+        expect(m.hoursSource).toBe('timesheet');
+    });
+});

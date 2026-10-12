@@ -11,7 +11,7 @@ import { checkAttendanceGap } from './attendanceGap';
 
 /** Construye un mock de SupabaseClient con respuestas configurables */
 function mockSupabase(
-  attendanceData: { hours_worked: number; check_in: string | null } | null,
+  attendanceData: { check_in: string | null; check_out?: string | null } | null,
   scanCount: number
 ) {
   const buildQuery = (data: unknown, count?: number | null) => {
@@ -21,6 +21,10 @@ function mockSupabase(
       chain[m] = vi.fn().mockReturnValue(chain);
     });
     chain['maybeSingle'] = vi.fn().mockResolvedValue({ data, error: null });
+    if (count === undefined) {
+      // Fichajes del día: lista de tramos (puede haber varios)
+      chain['is'] = vi.fn().mockResolvedValue({ data: data ? [data] : [], error: null });
+    }
     if (count !== undefined) {
       // Para el query de scans (head: true), la cadena resuelve con { count }
       // Sobreescribimos el objeto resuelto final con un mock del select encadenado
@@ -57,7 +61,7 @@ describe('checkAttendanceGap', () => {
 
   it('BUG-08: horas sin actividad de cosecha → attendanceWithoutScans = true', async () => {
     // Emily Foster el 09 abr: check_in presente, 6h trabajadas, 0 scans
-    const supabase = mockSupabase({ hours_worked: 6, check_in: '2026-04-09T07:00:00+12:00' }, 0);
+    const supabase = mockSupabase({ check_in: '2026-04-09T07:00:00+12:00', check_out: '2026-04-09T13:30:00+12:00' }, 0);
     const result = await checkAttendanceGap(supabase, 'emily-foster-uuid', '2026-04-09');
 
     expect(result.hasAttendance).toBe(true);
@@ -69,7 +73,7 @@ describe('checkAttendanceGap', () => {
 
   it('picker normal: sin gaps — ambos flags false', async () => {
     // Picker normal: check_in presente, 8h, 45 scans
-    const supabase = mockSupabase({ hours_worked: 8, check_in: '2026-04-10T07:00:00+12:00' }, 45);
+    const supabase = mockSupabase({ check_in: '2026-04-10T07:00:00+12:00', check_out: '2026-04-10T15:30:00+12:00' }, 45);
     const result = await checkAttendanceGap(supabase, 'normal-picker-uuid', '2026-04-10');
 
     expect(result.hasAttendance).toBe(true);
@@ -80,7 +84,7 @@ describe('checkAttendanceGap', () => {
 
   it('attendanceWithoutScans es false cuando horas <= 2 (umbral)', async () => {
     // Picker con 1h registrada sin scans — dentro del umbral de gracia
-    const supabase = mockSupabase({ hours_worked: 1, check_in: '2026-04-10T07:00:00+12:00' }, 0);
+    const supabase = mockSupabase({ check_in: '2026-04-10T07:00:00+12:00', check_out: '2026-04-10T08:00:00+12:00' }, 0);
     const result = await checkAttendanceGap(supabase, 'short-shift-uuid', '2026-04-10');
 
     expect(result.attendanceWithoutScans).toBe(false);

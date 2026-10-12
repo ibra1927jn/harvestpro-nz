@@ -16,9 +16,9 @@ import { analyticsService } from '@/services/analytics.service';
 import { startOfWeekNZ, toNZST } from '@/utils/nzst';
 import { TrendDataPoint, DayMeta } from '@/components/charts/TrendLineChart';
 import { logger } from '@/utils/logger';
-import { Picker } from '@/types';
+import { Picker, VarietyRate } from '@/types';
 import { supabase } from '@/services/supabase';
-import { payForRange, PAY_RULES } from '@/services/harvestMetrics';
+import { payForRange, pieceRateFor, PAY_RULES } from '@/services/harvestMetrics';
 import { findTeamLeader } from '@/services/harvestMetrics/roster';
 import { fetchAllRows } from '@/utils/fetchAllRows';
 
@@ -67,6 +67,7 @@ export interface WeeklyReportData {
 
 interface WeekAttendanceRow {
     picker_id: string;
+    orchard_id?: string | null;
     date: string;
     check_in: string | null;
     check_out: string | null;
@@ -76,6 +77,8 @@ interface WeekAttendanceRow {
 
 interface WeekBucketRow {
     picker_id: string;
+    orchard_id?: string | null;
+    variety?: string | null;
     scanned_at: string;
     quality_grade?: string | null;
 }
@@ -87,12 +90,16 @@ export function buildWeekBreakdown(params: {
     crew: ReadonlyArray<Pick<Picker, 'id' | 'name'>>;
     pieceRate: number;
     minWage: number;
+    /** Precios por variedad (variety_rates); sin ellos, pieceRate */
+    varietyRates?: ReadonlyArray<VarietyRate>;
     now?: Date;
 }): PickerBreakdown[] {
+    const varietyRates = (params.varietyRates ?? []).map(r => ({ orchardId: r.orchard_id, variety: r.variety, pieceRate: Number(r.piece_rate) }));
     const minWage = Math.max(params.minWage, PAY_RULES.minWageFloor);
     const rows = payForRange({
         attendance: params.attendance.map(a => ({
             pickerId: a.picker_id,
+            orchardId: a.orchard_id,
             date: a.date,
             checkIn: a.check_in,
             checkOut: a.check_out,
@@ -103,6 +110,9 @@ export function buildWeekBreakdown(params: {
             pickerId: b.picker_id,
             scannedAt: b.scanned_at,
             qualityGrade: b.quality_grade,
+            orchardId: b.orchard_id,
+            variety: b.variety,
+            pieceRate: pieceRateFor({ orchardId: b.orchard_id, variety: b.variety }, { varietyRates, fallback: params.pieceRate }),
         })),
         pieceRate: params.pieceRate,
         minWage,
@@ -176,7 +186,7 @@ export function useWeeklyReport(): WeeklyReportData {
                         const [bucketRows, attendanceRows] = await Promise.all([
                             fetchAllRows<WeekBucketRow>((from, to) => supabase
                                 .from('bucket_records')
-                                .select('picker_id, scanned_at, quality_grade')
+                                .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
                                 .eq('orchard_id', orchardId)
                                 .is('deleted_at', null)
                                 .gte('scanned_at', `${weekStart}T00:00:00${nzOffset}`)
@@ -185,7 +195,7 @@ export function useWeeklyReport(): WeeklyReportData {
                                 .range(from, to)),
                             fetchAllRows<WeekAttendanceRow>((from, to) => supabase
                                 .from('daily_attendance')
-                                .select('picker_id, date, check_in, check_out, break_start, break_minutes')
+                                .select('picker_id, orchard_id, date, check_in, check_out, break_start, break_minutes')
                                 .eq('orchard_id', orchardId)
                                 .is('deleted_at', null)
                                 .gte('date', weekStart)
@@ -200,6 +210,7 @@ export function useWeeklyReport(): WeeklyReportData {
                             crew,
                             pieceRate: settings?.piece_rate ?? 6.5,
                             minWage: settings?.min_wage_rate ?? PAY_RULES.minWageFloor,
+                            varietyRates: settings?.variety_rates,
                         });
                         setPickers(breakdown);
                         logger.info(`[WeeklyReport] Client-side fallback: ${breakdown.length} pickers computed`);

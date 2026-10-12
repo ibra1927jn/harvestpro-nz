@@ -121,15 +121,17 @@ export const userServiceRepository = {
         return data;
     },
 
-    /** Find today's attendance */
+    /** Tramo abierto de hoy (puede haber varios tramos al día; como mucho uno abierto) */
     async findTodayAttendance(userId: string, today: string) {
         const { data } = await supabase
             .from('daily_attendance')
-            .select('id')
+            .select('id, orchard_id')
             .eq('picker_id', userId)
             .eq('date', today)
-            .maybeSingle();
-        return data;
+            .is('check_out', null)
+            .is('deleted_at', null)
+            .limit(1);
+        return data?.[0] ?? null;
     },
 
     /** Insert attendance record */

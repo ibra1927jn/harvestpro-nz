@@ -16,7 +16,7 @@ const PayrollTab: React.FC<PayrollTabProps> = ({ payroll, summary }) => (
         <div className="bg-white rounded-xl p-5 shadow-sm border border-border-light">
             <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-text-primary">Weekly Payroll Summary</h3>
-                <span className="text-xs text-text-secondary">{new Date().toLocaleDateString('en-NZ', { month: 'short', day: 'numeric' })}</span>
+                <span className="text-xs text-text-secondary">{new Date().toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', month: 'short', day: 'numeric' })}</span>
             </div>
             <div className="grid grid-cols-3 gap-4 text-center">
                 <div>

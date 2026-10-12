@@ -14,8 +14,8 @@ export interface DailyAggregate {
 }
 
 export interface PayInputs {
-    attendance: { picker_id: string; date: string; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null }[];
-    buckets: { picker_id: string; scanned_at: string; quality_grade: string | null }[];
+    attendance: { picker_id: string; orchard_id?: string | null; date: string; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null }[];
+    buckets: { picker_id: string; orchard_id?: string | null; variety?: string | null; scanned_at: string; quality_grade: string | null }[];
 }
 
 export const analyticsTrendsRepository = {
@@ -28,7 +28,7 @@ export const analyticsTrendsRepository = {
         const [attendance, buckets] = await Promise.all([
             fetchAllRows<PayInputs['attendance'][number]>((from, to) => supabase
                 .from('daily_attendance')
-                .select('picker_id, date, check_in, check_out, break_start, break_minutes')
+                .select('picker_id, orchard_id, date, check_in, check_out, break_start, break_minutes')
                 .eq('orchard_id', orchardId)
                 .is('deleted_at', null)
                 .gte('date', startDate)
@@ -37,7 +37,7 @@ export const analyticsTrendsRepository = {
                 .range(from, to)),
             fetchAllRows<PayInputs['buckets'][number]>((from, to) => supabase
                 .from('bucket_records')
-                .select('picker_id, scanned_at, quality_grade')
+                .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
                 .eq('orchard_id', orchardId)
                 .is('deleted_at', null)
                 .gte('scanned_at', `${startDate}T00:00:00${offset(startDate)}`)

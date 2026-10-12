@@ -46,7 +46,7 @@ describe('storeSyncRepository', () => {
         it('returns harvest settings', async () => {
             const settings = { piece_rate: 6.50, min_wage_rate: 23.95 };
             fromSpy.mockReturnValue(mockChain({ data: settings, error: null }) as never);
-            expect(await storeSyncRepository.getSettings('o1')).toEqual(settings);
+            expect(await storeSyncRepository.getSettings('o1')).toEqual({ ...settings, variety_rates: [] });
             expect(fromSpy).toHaveBeenCalledWith('harvest_settings');
         });
 

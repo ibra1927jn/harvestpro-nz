@@ -44,7 +44,7 @@ const RunnerDetailsModal: React.FC<RunnerDetailsModalProps> = ({
     const handleStatusChange = (newStatus: 'Active' | 'Break' | 'Off Duty') => {
         const updated = { ...editedRunner, status: newStatus };
         if (newStatus === 'Break' && !updated.breakTime) {
-            updated.breakTime = new Date().toLocaleTimeString('en-NZ', {
+            updated.breakTime = new Date().toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland',
                 hour: '2-digit',
                 minute: '2-digit',
             });

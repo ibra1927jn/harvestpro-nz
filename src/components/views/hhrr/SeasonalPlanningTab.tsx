@@ -149,7 +149,7 @@ const SeasonalPlanningTab: React.FC<SeasonalPlanningTabProps> = ({ employees }) 
                                         </div>
                                         <div className="text-right">
                                             <p className="text-lg font-black tracking-tight">{days}d</p>
-                                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">{new Date(emp.contract_end!).toLocaleDateString('en-NZ')}</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">{new Date(emp.contract_end!).toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland' })}</p>
                                         </div>
                                     </div>
                                 );
@@ -183,7 +183,7 @@ const SeasonalPlanningTab: React.FC<SeasonalPlanningTabProps> = ({ employees }) 
                                         </div>
                                         <div className="text-right">
                                             <p className="text-lg font-black tracking-tight">{days}d</p>
-                                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">{new Date(emp.visa_expiry!).toLocaleDateString('en-NZ')}</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">{new Date(emp.visa_expiry!).toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland' })}</p>
                                         </div>
                                     </div>
                                 );

@@ -53,7 +53,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                 members: memberNames,
                 isGroup: true,
                 lastMsg: `Group created with ${selectedMembers.length} members`,
-                time: new Date().toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })
+                time: new Date().toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })
             };
 
             await onCreate(newGroup);

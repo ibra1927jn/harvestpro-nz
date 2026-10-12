@@ -17,7 +17,7 @@ const ProfileView = () => {
                         <div>
                             <h1 className="text-text-main text-lg font-bold leading-tight tracking-tight">My Profile</h1>
                             <p className="text-xs text-text-sub font-medium">
-                                {new Date().toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'short' })} • Session Active
+                                {new Date().toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', weekday: 'long', day: 'numeric', month: 'short' })} • Session Active
                             </p>
                         </div>
                     </div>

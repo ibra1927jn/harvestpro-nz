@@ -18,7 +18,7 @@ const RunnerActivityLog: React.FC<RunnerActivityLogProps> = ({ runner }) => (
         ) : (
             [
                 {
-                    time: new Date().toLocaleTimeString('en-NZ', {
+                    time: new Date().toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland',
                         hour: '2-digit',
                         minute: '2-digit',
                     }),

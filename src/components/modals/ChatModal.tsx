@@ -54,7 +54,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
             id: messages.length + 1,
             sender: 'You',
             text: message,
-            time: new Date().toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' }),
+            time: new Date().toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' }),
             isMe: true,
         };
         setMessages([...messages, newMsg]);

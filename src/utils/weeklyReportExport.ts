@@ -105,11 +105,11 @@ function downloadBlob(content: string, type: string, filename: string): void {
 
 function buildPdfHtml(ctx: ExportContext): string {
     const now = new Date();
-    const reportDate = now.toLocaleDateString('en-NZ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const shortDate = now.toLocaleDateString('en-NZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const reportDate = now.toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const shortDate = now.toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', day: '2-digit', month: '2-digit', year: 'numeric' });
     const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay() + 1);
     const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
-    const fmtShort = (d: Date) => d.toLocaleDateString('en-NZ', { month: 'short', day: 'numeric' });
+    const fmtShort = (d: Date) => d.toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', month: 'short', day: 'numeric' });
     const weekNum = Math.ceil(((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / 86400000 + 1) / 7);
     const periodLabel = `Week ${weekNum}: ${fmtShort(weekStart)} – ${fmtShort(weekEnd)}, ${now.getFullYear()}`;
 

@@ -15,7 +15,22 @@ export const storeSyncRepository = {
     async getSettings(orchardId: string) {
         const { data } = await supabase
             .from('harvest_settings').select('*').eq('orchard_id', orchardId).maybeSingle();
-        return data;
+        if (!data) return data;
+        // Precios por variedad: los de este huerto y los de la empresa. Si no se
+        // pueden leer, se paga a piece_rate (como antes).
+        let rates: { id: string; orchard_id: string | null; variety: string; piece_rate: number }[] | null = null;
+        try {
+            ({ data: rates } = await supabase
+                .from('variety_rates')
+                .select('id, orchard_id, variety, piece_rate')
+                .or(`orchard_id.eq.${orchardId},orchard_id.is.null`));
+        } catch {
+            rates = null;
+        }
+        return {
+            ...data,
+            variety_rates: (rates ?? []).map(r => ({ ...r, piece_rate: Number(r.piece_rate) })),
+        };
     },
 
     /**
@@ -28,10 +43,25 @@ export const storeSyncRepository = {
         // unido es solo el de hoy EN ESTE huerto: presente aquí = fichado aquí.
         const q = supabase
             .from('pickers')
-            .select(`*, daily_attendance!left(check_in, check_out, break_start, break_minutes, orchard_id)`)
+            .select(`*, daily_attendance!left(id, check_in, check_out, break_start, break_minutes, orchard_id, deleted_at)`)
             .eq('daily_attendance.date', today)
             .eq('daily_attendance.orchard_id', orchardId);
         return opts.onlyStaff ? q.eq('status', 'active').is('deleted_at', null) : q;
+    },
+
+    /**
+     * Tramos abiertos hoy en OTROS huertos: quién está trabajando ahora en otro
+     * huerto de la empresa (para mostrar "ahora en Huerto B").
+     */
+    async getOpenShiftsElsewhere(orchardId: string, today: string) {
+        const { data } = await supabase
+            .from('daily_attendance')
+            .select('picker_id, orchard_id, check_in, orchards(name)')
+            .eq('date', today)
+            .is('check_out', null)
+            .is('deleted_at', null)
+            .neq('orchard_id', orchardId);
+        return (data ?? []) as unknown as { picker_id: string; orchard_id: string; check_in: string | null; orchards: { name: string | null } | null }[];
     },
 
     /** Get bucket records since a date — returns query builder for delta chaining */
@@ -43,8 +73,8 @@ export const storeSyncRepository = {
 
     /** Get bucket records with count for payroll (hhrr.service remaining call) */
     async getBucketCounts(orchardId: string | undefined, since: string) {
-        return fetchAllRows<{ picker_id: string; id: string; scanned_at: string | null; quality_grade: string | null; deleted_at: string | null }>((from, to) => {
-            let query = supabase.from('bucket_records').select('picker_id, id, scanned_at, quality_grade, deleted_at').gte('scanned_at', since);
+        return fetchAllRows<{ picker_id: string; id: string; orchard_id: string | null; variety: string | null; scanned_at: string | null; quality_grade: string | null; deleted_at: string | null }>((from, to) => {
+            let query = supabase.from('bucket_records').select('picker_id, id, orchard_id, variety, scanned_at, quality_grade, deleted_at').gte('scanned_at', since);
             if (orchardId) query = query.eq('orchard_id', orchardId);
             return query.order('id').range(from, to);
         });
