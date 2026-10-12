@@ -91,7 +91,10 @@ export const useHarvestStore = create<HarvestStoreState>()(
               } else {
                 logger.info('[Store] Tab visible — reconnecting realtime');
                 setupRealtimeSubscriptions(activeOrchard.id, get, set);
-                fetchOrchardData(get, set).catch(() => {});
+                // Recalcular: los totales por picker salen de las cubetas recién bajadas
+                fetchOrchardData(get, set)
+                  .then(() => get().recalculateIntelligence())
+                  .catch(() => {});
               }
             };
             document.addEventListener('visibilitychange', _visibilityHandler);
