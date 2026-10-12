@@ -7,6 +7,8 @@ interface TeamsToolbarProps {
     usersCount: number;
     setIsAddTeamLeaderModalOpen: (open: boolean) => void;
     setShowImportCSV: (show: boolean) => void;
+    /** Alta de un picker nuevo (sin esto el manager no tenía cómo añadir uno) */
+    onAddPicker?: () => void;
     search: string;
     setSearch: (value: string) => void;
 }
@@ -16,6 +18,7 @@ const TeamsToolbar: React.FC<TeamsToolbarProps> = ({
     usersCount,
     setIsAddTeamLeaderModalOpen,
     setShowImportCSV,
+    onAddPicker,
     search,
     setSearch
 }) => {
@@ -56,6 +59,20 @@ const TeamsToolbar: React.FC<TeamsToolbarProps> = ({
                         <span className="material-symbols-outlined text-lg">person_add</span>
                         {t('teams.link_staff')}
                     </button>
+
+                    {onAddPicker && (
+                        <button
+                            onClick={onAddPicker}
+                            disabled={!orchardId}
+                            className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all duration-200 ${orchardId
+                                ? 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm active:scale-95'
+                                : 'bg-slate-50 text-slate-400 cursor-not-allowed border border-border-light'
+                                }`}
+                        >
+                            <span className="material-symbols-outlined text-base">person_add</span>
+                            Add Picker
+                        </button>
+                    )}
 
                     {/* Import CSV */}
                     <button
