@@ -38,15 +38,8 @@ describe('CalendarTab', () => {
         expect(screen.getByText('Upcoming Leave')).toBeTruthy();
     });
 
-    it('renders leave requests', () => {
+    it('shows no sample leave entries', () => {
         render(<CalendarTab />);
-        expect(screen.getByText('Aroha W.')).toBeTruthy();
-        expect(screen.getByText('Mateo S.')).toBeTruthy();
-    });
-
-    it('renders leave status badges', () => {
-        render(<CalendarTab />);
-        expect(screen.getByText('approved')).toBeTruthy();
-        expect(screen.getByText('pending')).toBeTruthy();
+        expect(screen.queryByText('Aroha W.')).toBeNull();
     });
 });

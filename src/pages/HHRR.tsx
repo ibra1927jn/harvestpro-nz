@@ -15,6 +15,9 @@ import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import { useHHRR } from '@/hooks/useHHRR';
 import { HR_NAV_ITEMS } from '@/config/navigation/hhrr.nav';
+import AddPickerModal from '@/components/modals/AddPickerModal';
+import { useHarvestStore } from '@/stores/useHarvestStore';
+import { setEmployeeActive, type Employee } from '@/services/hhrr.service';
 
 // Lazy-loaded views (code-split for performance)
 const EmployeesTab = React.lazy(() => import('@/components/views/hhrr/EmployeesTab'));
@@ -33,6 +36,20 @@ const TabLoader = () => (
 const HHRR: React.FC = () => {
     const [activeTab, setActiveTab] = useState('employees');
     const { summary, employees, payroll, alerts, isLoading, reload } = useHHRR();
+    const addPicker = useHarvestStore(s => s.addPicker);
+    const [showAddPicker, setShowAddPicker] = useState(false);
+
+    // Alta/baja de una persona: se guarda y se recarga; si falla, se dice
+    const updateEmployee = async (emp: Employee, changes: Partial<Employee>): Promise<string | null> => {
+        if (!changes.status) return null;
+        try {
+            await setEmployeeActive(emp, changes.status === 'active');
+            reload();
+            return null;
+        } catch (e) {
+            return e instanceof Error ? e.message : 'Not saved';
+        }
+    };
 
     const navItems = HR_NAV_ITEMS.map(item => ({
         ...item,
@@ -54,13 +71,13 @@ const HHRR: React.FC = () => {
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'employees': return <ComponentErrorBoundary componentName="Employees"><EmployeesTab employees={employees} alerts={alerts} /></ComponentErrorBoundary>;
+            case 'employees': return <ComponentErrorBoundary componentName="Employees"><EmployeesTab employees={employees} alerts={alerts} onUpdateEmployee={updateEmployee} onAddPicker={() => setShowAddPicker(true)} /></ComponentErrorBoundary>;
             case 'contracts': return <ComponentErrorBoundary componentName="Contracts"><ContractsTab employees={employees} summary={summary} onRefresh={reload} /></ComponentErrorBoundary>;
             case 'payroll': return <ComponentErrorBoundary componentName="Payroll"><PayrollTab payroll={payroll} summary={summary} /></ComponentErrorBoundary>;
             case 'documents': return <ComponentErrorBoundary componentName="Documents"><DocumentsTab /></ComponentErrorBoundary>;
             case 'calendar': return <ComponentErrorBoundary componentName="Calendar"><CalendarTab /></ComponentErrorBoundary>;
             case 'planning': return <ComponentErrorBoundary componentName="Seasonal Planning"><SeasonalPlanningTab employees={employees} /></ComponentErrorBoundary>;
-            default: return <ComponentErrorBoundary componentName="Employees"><EmployeesTab employees={employees} alerts={alerts} /></ComponentErrorBoundary>;
+            default: return <ComponentErrorBoundary componentName="Employees"><EmployeesTab employees={employees} alerts={alerts} onUpdateEmployee={updateEmployee} onAddPicker={() => setShowAddPicker(true)} /></ComponentErrorBoundary>;
         }
     };
 
@@ -82,6 +99,13 @@ const HHRR: React.FC = () => {
                 <SummaryCard icon="payments" iconColor="text-indigo-500" label="Payroll This Week" value={`$${(summary.payrollThisWeek / 1000).toFixed(1)}k`} />
                 <SummaryCard icon="warning" iconColor="text-red-500" label="Compliance Alerts" value={summary.complianceAlerts} />
             </div>
+
+            {showAddPicker && (
+                <AddPickerModal
+                    onClose={() => setShowAddPicker(false)}
+                    onAdd={async (p) => { await addPicker(p); reload(); }}
+                />
+            )}
 
             {/* Tab Content */}
             <div key={activeTab} className="animate-fade-in">

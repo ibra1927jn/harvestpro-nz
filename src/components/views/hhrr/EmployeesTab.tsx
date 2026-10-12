@@ -7,7 +7,6 @@ import { Virtuoso } from 'react-virtuoso';
 import EmptyState from '@/components/ui/EmptyState';
 import FilterBar from '@/components/ui/FilterBar';
 import InlineSelect from '@/components/ui/InlineSelect';
-import InlineEdit from '@/components/ui/InlineEdit';
 import { Employee, ComplianceAlert } from '@/services/hhrr.service';
 
 const ROLE_BADGES: Record<string, string> = {
@@ -25,20 +24,33 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const VISA_COLORS: Record<string, string> = {
-    citizen: 'text-emerald-600',
-    resident: 'text-blue-600',
     work_visa: 'text-amber-600',
     expired: 'text-red-600',
+    not_recorded: 'text-slate-400',
 };
+
+const visaLabel = (emp: Employee) =>
+    emp.visa_status === 'work_visa'
+        ? `visa${emp.visa_expiry ? ` until ${new Date(emp.visa_expiry + 'T12:00:00Z').toLocaleDateString('en-NZ', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' })}` : ''}`
+        : emp.visa_status === 'expired' ? 'visa expired' : 'no visa on file';
 
 interface EmployeesTabProps {
     employees: Employee[];
     alerts: ComplianceAlert[];
-    onUpdateEmployee?: (id: string, changes: Partial<Employee>) => void;
+    /** Devuelve un mensaje si no se pudo guardar */
+    onUpdateEmployee?: (emp: Employee, changes: Partial<Employee>) => Promise<string | null>;
+    /** Dar de alta un picker (RRHH) */
+    onAddPicker?: () => void;
 }
 
-const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdateEmployee }) => {
+const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdateEmployee, onAddPicker }) => {
     const [searchQuery, setSearchQuery] = useState('');
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const update = async (emp: Employee, changes: Partial<Employee>) => {
+        setSaveError(null);
+        const err = await onUpdateEmployee?.(emp, changes);
+        if (err) setSaveError(`${emp.full_name}: ${err}`);
+    };
     const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
 
     // Extract unique values for filter options
@@ -60,6 +72,20 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
 
     return (
         <div className="space-y-4">
+            {onAddPicker && (
+                <div className="flex justify-end">
+                    <button
+                        onClick={onAddPicker}
+                        className="px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold flex items-center gap-2 hover:bg-indigo-700"
+                    >
+                        <span className="material-symbols-outlined text-base">person_add</span>
+                        Add picker
+                    </button>
+                </div>
+            )}
+            {saveError && (
+                <div role="alert" className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-800">{saveError}</div>
+            )}
             <FilterBar
                 searchValue={searchQuery}
                 onSearchChange={setSearchQuery}
@@ -98,25 +124,16 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
                                     <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
                                         <InlineSelect
                                             value={emp.status}
-                                            options={['active', 'on_leave', 'terminated', 'pending']}
+                                            options={['active', 'terminated']}
                                             colorMap={STATUS_COLORS}
-                                            onSave={(val) => onUpdateEmployee?.(emp.id, { status: val as Employee['status'] })}
+                                            onSave={(val) => update(emp, { status: val as Employee['status'] })}
                                         />
                                         <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/50 border border-slate-100 ${VISA_COLORS[emp.visa_status] || 'text-slate-500'}`}>
                                             <span className="material-symbols-outlined text-[14px]">public</span>
-                                            {emp.visa_status.replace('_', ' ')}
+                                            {visaLabel(emp)}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100/60">
-                                        <span className="flex items-center gap-1.5 text-xs text-slate-400 font-medium group-hover:text-slate-500 transition-colors">
-                                            <span className="material-symbols-outlined text-[14px]">phone</span>
-                                            <InlineEdit
-                                                value={emp.phone ?? ''}
-                                                onSave={(val) => onUpdateEmployee?.(emp.id, { phone: val })}
-                                                placeholder="Add phone..."
-                                                type="text"
-                                            />
-                                        </span>
                                         <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
                                             <span className="material-symbols-outlined text-[14px]">event</span>
                                             Hired {new Date(emp.hire_date).toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', month: 'short', day: 'numeric', year: 'numeric' })}

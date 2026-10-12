@@ -57,7 +57,7 @@ const SeasonalPlanningTab: React.FC<SeasonalPlanningTabProps> = ({ employees }) 
 
     // Visa expiry alerts
     const visaExpiring = activeEmployees.filter(e => {
-        if (!e.visa_expiry || e.visa_status === 'citizen' || e.visa_status === 'resident') return false;
+        if (!e.visa_expiry || e.visa_status === 'not_recorded') return false;
         const exp = new Date(e.visa_expiry);
         return exp >= today && exp <= in90;
     });

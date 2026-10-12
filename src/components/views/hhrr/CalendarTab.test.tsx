@@ -60,21 +60,10 @@ describe('CalendarTab', () => {
         expect(screen.queryByTestId('schedule-meal')).toBeNull();
     });
 
-    it('renders Upcoming Leave heading + preview placeholder', () => {
+    it('says leave is not tracked yet instead of showing sample names', () => {
         render(<CalendarTab />);
         expect(screen.getByText('Upcoming Leave')).toBeTruthy();
-        expect(screen.getByText(/schema leave_requests pendiente/)).toBeTruthy();
-    });
-
-    it('renders leave entries placeholders', () => {
-        render(<CalendarTab />);
-        expect(screen.getByText('Aroha W.')).toBeTruthy();
-        expect(screen.getByText('Mateo S.')).toBeTruthy();
-    });
-
-    it('renders leave status badges', () => {
-        render(<CalendarTab />);
-        expect(screen.getByText('approved')).toBeTruthy();
-        expect(screen.getByText('pending')).toBeTruthy();
+        expect(screen.getByText(/not tracked in the app yet/)).toBeTruthy();
+        expect(screen.queryByText('Aroha W.')).toBeNull();
     });
 });

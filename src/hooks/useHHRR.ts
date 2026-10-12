@@ -4,7 +4,7 @@
  * Extracts data fetching logic from HHRR.tsx following
  * the usePayroll pattern (thin hook, page becomes pure orchestrator).
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     fetchHRSummary, fetchEmployees, fetchPayroll, fetchComplianceAlerts,
     type HRSummary, type Employee, type PayrollEntry, type ComplianceAlert
@@ -29,8 +29,11 @@ export function useHHRR(): UseHHRRResult {
     const [alerts, setAlerts] = useState<ComplianceAlert[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Solo la primera carga muestra el esqueleto; al recargar tras un cambio
+    // la pantalla se queda (si no, se perdía el aviso de "guardado")
+    const loadedOnce = useRef(false);
     const reload = useCallback(async () => {
-        setIsLoading(true);
+        if (!loadedOnce.current) setIsLoading(true);
         try {
             const [sum, emps, pay, alts] = await Promise.all([
                 fetchHRSummary(),
@@ -46,6 +49,7 @@ export function useHHRR(): UseHHRRResult {
             logger.warn('[HHRR] Failed to load HR data:', err);
         } finally {
             setIsLoading(false);
+            loadedOnce.current = true;
         }
     }, []);
 

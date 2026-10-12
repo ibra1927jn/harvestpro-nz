@@ -61,6 +61,16 @@ export const userRepository2 = {
      * leaders, runners; la misma lista que Equipos y Nómina) más el personal de
      * oficina que solo tiene cuenta en la app (manager, RRHH, nómina, QC...).
      */
+    /** Alta/baja desde RRHH: plantilla → pickers.status, oficina → users.is_active */
+    async setActive(id: string, source: 'staff' | 'office', active: boolean): Promise<void> {
+        const q = source === 'staff'
+            ? supabase.from('pickers').update({ status: active ? 'active' : 'inactive' }).eq('id', id).select('id').maybeSingle()
+            : supabase.from('users').update({ is_active: active }).eq('id', id).select('id').maybeSingle();
+        const { data, error } = await q;
+        if (error) throw error;
+        if (!data) throw new Error('Not allowed to change this person');
+    },
+
     async getStaff(): Promise<StaffMember[]> {
         const [{ data: staff, error: staffErr }, { data: users, error: usersErr }] = await Promise.all([
             supabase.from('pickers').select('id, name, role, status, created_at, orchard_id, picker_id').is('deleted_at', null),
@@ -74,7 +84,8 @@ export const userRepository2 = {
             full_name: p.name,
             email: userById.get(p.id)?.email ?? '',
             role: p.role || 'picker',
-            active: p.status !== 'archived',
+            // Baja (inactive/archived) = no activo; antes 'inactive' contaba como activo
+            active: p.status !== 'archived' && p.status !== 'inactive',
             created_at: p.created_at ?? undefined,
             orchard_id: p.orchard_id ?? undefined,
             code: p.picker_id,

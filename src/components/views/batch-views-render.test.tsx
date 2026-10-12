@@ -126,12 +126,12 @@ describe('CalendarTab', () => {
     expect(container.textContent).toContain('Shift Start');
   });
 
-  it('shows leave requests with status', async () => {
+  it('does not show sample leave entries', async () => {
     const mod = await import('@/components/views/hhrr/CalendarTab');
     const CalendarTab = mod.default;
     const { container } = render(<CalendarTab />);
-    expect(container.textContent).toContain('Aroha W.');
-    expect(container.textContent).toContain('approved');
+    expect(container.textContent).not.toContain('Aroha W.');
+    expect(container.textContent).toContain('not tracked in the app yet');
   });
 });
 

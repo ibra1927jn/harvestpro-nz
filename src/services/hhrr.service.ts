@@ -19,6 +19,7 @@ import { attendanceRepository } from '@/repositories/attendance.repository';
 import { NZ_MINIMUM_WAGE_2026 } from '@/constants/nz-law';
 import { payForRange, payWeekOf, nzDateOf, pieceRateFor, PAY_RULES, type PickerRangePay } from '@/services/harvestMetrics';
 import { payRatesRepository } from '@/repositories/pay-rates.repository';
+import { hrDocumentsRepository, HR_DOCUMENT_TYPE_LABELS } from '@/repositories/hr-documents.repository';
 
 // ── Types ──────────────────────────────────────
 export interface Employee {
@@ -31,8 +32,14 @@ export interface Employee {
   contract_start: string;
   contract_end?: string;
   hourly_rate: number;
-  visa_status: 'citizen' | 'resident' | 'work_visa' | 'expired';
+  /** Del visado de trabajo subido en Documentos (no se inventa: sin documento = not_recorded) */
+  visa_status: 'work_visa' | 'expired' | 'not_recorded';
   visa_expiry?: string;
+  /** Contrato vigente (si tiene) */
+  contract_id?: string;
+  contract_updated_at?: string;
+  /** staff = plantilla (pickers, TL, runners); office = cuenta de oficina */
+  source?: 'staff' | 'office';
   phone?: string;
   emergency_contact?: string;
   hire_date: string;
@@ -129,10 +136,21 @@ export async function fetchHRSummary(orchardId?: string): Promise<HRSummary> {
 export async function fetchEmployees(_orchardId?: string): Promise<Employee[]> {
   try {
     const staff = await userRepository2.getStaff();
-    const contracts = await contractRepository2.getByEmployeeIds(staff.map(s => s.id));
+    const [contracts, visas] = await Promise.all([
+      contractRepository2.getByEmployeeIds(staff.map(s => s.id)),
+      hrDocumentsRepository.listWorkVisas().catch(() => []),
+    ]);
+    const today = todayNZST();
 
     return staff.map(person => {
       const contract = contracts.find(c => c.employee_id === person.id);
+      // Visado: el documento "Work Visa" más reciente de esa persona
+      const visa = visas
+        .filter(d => d.picker_id === person.id || d.user_id === person.id)
+        .sort((a, b) => (b.expires_at ?? '').localeCompare(a.expires_at ?? ''))[0];
+      const visa_status: Employee['visa_status'] = !visa
+        ? 'not_recorded'
+        : visa.expires_at && visa.expires_at < today ? 'expired' : 'work_visa';
       return {
         id: person.id,
         full_name: person.full_name,
@@ -143,7 +161,11 @@ export async function fetchEmployees(_orchardId?: string): Promise<Employee[]> {
         contract_start: contract?.start_date || person.created_at || new Date().toISOString(),
         contract_end: contract?.end_date || undefined,
         hourly_rate: contract?.hourly_rate || NZ_MINIMUM_WAGE_2026,
-        visa_status: 'citizen' as const,
+        visa_status,
+        visa_expiry: visa?.expires_at ?? undefined,
+        contract_id: contract?.id,
+        contract_updated_at: contract?.updated_at ?? undefined,
+        source: person.source,
         hire_date: person.created_at || new Date().toISOString(),
         orchard_id: person.orchard_id,
       };
@@ -189,6 +211,45 @@ export async function createContract(contract: {
   notes?: string;
 }): Promise<string> {
   return syncService.addToQueue('CONTRACT', { action: 'create', ...contract });
+}
+
+/**
+ * Crear contrato (RRHH). Directo, no por la cola: RRHH trabaja en oficina con
+ * conexión y necesita saber al momento si se guardó.
+ */
+export async function saveNewContract(contract: {
+  employee_id: string;
+  orchard_id: string;
+  type: 'permanent' | 'seasonal' | 'casual';
+  start_date: string;
+  end_date?: string | null;
+  hourly_rate: number;
+  notes?: string | null;
+  created_by?: string | null;
+}): Promise<void> {
+  if (contract.hourly_rate < PAY_RULES.minWageFloor) {
+    throw new Error(`Hourly rate cannot be below the NZ minimum wage ($${PAY_RULES.minWageFloor}/h)`);
+  }
+  await contractRepository2.insertOne({ ...contract, end_date: contract.end_date || null, status: 'active' });
+}
+
+/** Cambiar un contrato existente (renovar, terminar, tarifa, fecha fin) por su id */
+export async function changeContract(
+  contractId: string,
+  updates: { status?: 'active' | 'terminated'; end_date?: string | null; hourly_rate?: number; notes?: string }
+): Promise<void> {
+  if (updates.hourly_rate !== undefined && updates.hourly_rate < PAY_RULES.minWageFloor) {
+    throw new Error(`Hourly rate cannot be below the NZ minimum wage ($${PAY_RULES.minWageFloor}/h)`);
+  }
+  await contractRepository2.updateOne(contractId, updates);
+}
+
+/**
+ * Alta / baja de una persona desde RRHH: plantilla → pickers.status;
+ * oficina → users.is_active.
+ */
+export async function setEmployeeActive(emp: Pick<Employee, 'id' | 'source'>, active: boolean): Promise<void> {
+  await userRepository2.setActive(emp.id, emp.source ?? 'staff', active);
 }
 
 export async function updateContract(
@@ -377,6 +438,35 @@ export async function fetchComplianceAlerts(orchardId?: string): Promise<Complia
     }
   } catch (error) {
     logger.error('[HHRR] Error fetching compliance alerts:', error);
+  }
+
+  // Documentos (visados, certificados…) caducados o que caducan en 30 días
+  try {
+    const docs = await hrDocumentsRepository.listExpiringCompany(30);
+    if (docs.length > 0) {
+      const ids = docs.map(d => (d.picker_id || d.user_id) as string).filter(Boolean);
+      const names = await userRepository2.getNamesByIds(ids);
+      const today = todayNZST();
+      for (const d of docs) {
+        if (!d.expires_at) continue;
+        const days = Math.round((Date.parse(d.expires_at) - Date.parse(today)) / 86400000);
+        const who = (d.picker_id || d.user_id) as string;
+        alerts.push({
+          id: `doc-${d.id}`,
+          type: d.document_type === 'work_visa' ? 'visa_expiry' : 'missing_document',
+          severity: days < 0 ? 'critical' : days < 7 ? 'high' : 'medium',
+          employee_id: who,
+          employee_name: names[who] || 'Unknown',
+          message: days < 0
+            ? `${HR_DOCUMENT_TYPE_LABELS[d.document_type]} expired ${Math.abs(days)} days ago (${d.expires_at})`
+            : `${HR_DOCUMENT_TYPE_LABELS[d.document_type]} expires in ${days} days (${d.expires_at})`,
+          created_at: new Date().toISOString(),
+          resolved: false,
+        });
+      }
+    }
+  } catch (error) {
+    logger.warn('[HHRR] Could not check document expiries:', error);
   }
 
   return alerts;

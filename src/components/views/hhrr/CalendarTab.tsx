@@ -11,10 +11,6 @@
 import React from 'react';
 import { useOrchardSchedule } from '@/hooks/useOrchardSchedule';
 
-const UPCOMING_LEAVE_PLACEHOLDER = [
-    { name: 'Aroha W.', type: 'Annual Leave', dates: 'Feb 17-21', status: 'approved' },
-    { name: 'Mateo S.', type: 'Sick Leave', dates: 'Feb 14', status: 'pending' },
-];
 
 const CalendarTab: React.FC = () => {
     const { schedule, isFallback } = useOrchardSchedule();
@@ -59,36 +55,12 @@ const CalendarTab: React.FC = () => {
                 )}
             </div>
 
-            {/* Upcoming Leave — placeholder hasta que exista schema leave_requests */}
+            {/* Vacaciones: aún no se registran en la app (antes salían nombres de ejemplo) */}
             <div className="bg-white rounded-xl p-5 shadow-sm border border-border-light">
-                <h3 className="font-bold text-text-primary mb-4">Upcoming Leave</h3>
-                <p className="mb-3 text-xs text-text-muted">
-                    Preview — schema leave_requests pendiente.
+                <h3 className="font-bold text-text-primary mb-2">Upcoming Leave</h3>
+                <p className="text-sm text-text-secondary">
+                    Leave requests are not tracked in the app yet.
                 </p>
-                <div className="space-y-1">
-                    {UPCOMING_LEAVE_PLACEHOLDER.map((leave, i) => (
-                        <div
-                            key={i}
-                            className="flex items-center justify-between py-2.5 border-b border-border-light last:border-0"
-                        >
-                            <div>
-                                <p className="text-sm font-bold text-text-primary">{leave.name}</p>
-                                <p className="text-xs text-text-secondary">
-                                    {leave.type} • {leave.dates}
-                                </p>
-                            </div>
-                            <span
-                                className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                                    leave.status === 'approved'
-                                        ? 'bg-emerald-50 text-emerald-700'
-                                        : 'bg-amber-50 text-amber-700'
-                                }`}
-                            >
-                                {leave.status}
-                            </span>
-                        </div>
-                    ))}
-                </div>
             </div>
         </div>
     );

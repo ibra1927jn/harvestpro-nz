@@ -9,7 +9,7 @@ function mockChain(result: { data?: unknown; error?: unknown }) {
     const chain: Record<string, unknown> = {
         select: vi.fn(() => chain), eq: vi.fn(() => chain), in: vi.fn(() => chain),
         not: vi.fn(() => chain), lte: vi.fn(() => chain), gte: vi.fn(() => chain),
-        lt: vi.fn(() => chain), order: vi.fn(() => chain),
+        lt: vi.fn(() => chain), order: vi.fn(() => chain), is: vi.fn(() => chain),
         then: (onF?: (v: unknown) => unknown, onR?: (r: unknown) => unknown) =>
             Promise.resolve(result).then(onF, onR),
     };
