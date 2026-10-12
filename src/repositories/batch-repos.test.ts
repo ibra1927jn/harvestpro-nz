@@ -548,7 +548,7 @@ describe('userServiceRepository', () => {
     });
 
     it('findTodayAttendance returns data', async () => {
-        fromSpy.mockReturnValue(mockChain({ data: { id: 'a1' }, error: null }) as never);
+        fromSpy.mockReturnValue(mockChain({ data: [{ id: 'a1' }], error: null }) as never);
         const result = await repo.findTodayAttendance('u1', '2026-03-01');
         expect(result).toEqual({ id: 'a1' });
     });
