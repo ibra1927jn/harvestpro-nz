@@ -3,6 +3,7 @@ import { useHarvestStore as useHarvest } from '@/stores/useHarvestStore';
 import { useAuth } from '@/context/AuthContext';
 import { useHarvestMetrics } from '@/hooks/useHarvestMetrics';
 import { selectTeamOf, selectPresentPickers } from '@/services/harvestMetrics/roster';
+import { UnclosedShiftsAlert } from '@/components/common/UnclosedShiftsAlert';
 
 const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
     const { stats, crew: orchardCrew, settings } = useHarvest();
@@ -41,6 +42,11 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
 
     return (
         <div className="bg-slate-50 min-h-screen pb-24 font-sans selection:bg-primary/20">
+            {crew.length > 0 && (
+                <div className="px-4 pt-4">
+                    <UnclosedShiftsAlert pickerIds={crew.map(p => p.id)} hint="Close these shifts in Attendance with the real check-out time." />
+                </div>
+            )}
             {/* Header Section - Glassmorphic */}
             <header className="sticky top-0 z-30 px-6 pt-12 pb-6 bg-white/70 backdrop-blur-xl border-b border-white/50 shadow-sm">
                 <div className="flex justify-between items-start mb-6">

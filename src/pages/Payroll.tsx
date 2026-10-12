@@ -17,6 +17,7 @@ import ExportHistoryTab from '@/components/views/payroll/ExportHistoryTab';
 import { PayWeekCloseBar } from '@/components/views/payroll/PayWeekCloseBar';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
+import { UnclosedShiftsAlert } from '@/components/common/UnclosedShiftsAlert';
 
 const PAYROLL_NAV: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
@@ -72,6 +73,10 @@ const Payroll: React.FC = () => {
                 onClose={pay.closeWeek}
                 onReopen={pay.reopenWeek}
             />
+
+            <div className="mb-4">
+                <UnclosedShiftsAlert hint="Ask the team leader or manager to fix the check-out time in the timesheets before closing the week." />
+            </div>
 
             {pay.error && (
                 <div role="alert" className="bg-red-50 border border-red-200 rounded-2xl px-5 py-3 mb-4 text-sm font-bold text-red-700">{pay.error}</div>

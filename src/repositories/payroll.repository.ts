@@ -65,6 +65,33 @@ export const payrollRepository = {
         return { data: data || [], error };
     },
 
+    /**
+     * Todo lo de un día de estas personas en CUALQUIER huerto (tramos y
+     * cubetas): las horas y el complemento se calculan con el día entero.
+     */
+    async fetchDayOfPeople(pickerIds: string[], date: string, dayStartIso: string, dayEndIso: string) {
+        if (pickerIds.length === 0) return { shifts: [], buckets: [] };
+        const [{ data: shifts }, { data: buckets }] = await Promise.all([
+            supabase
+                .from('daily_attendance')
+                .select('id, picker_id, orchard_id, check_in, check_out, break_start, break_minutes')
+                .in('picker_id', pickerIds)
+                .eq('date', date)
+                .is('deleted_at', null),
+            supabase
+                .from('bucket_records')
+                .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
+                .in('picker_id', pickerIds)
+                .is('deleted_at', null)
+                .gte('scanned_at', dayStartIso)
+                .lte('scanned_at', dayEndIso),
+        ]);
+        return {
+            shifts: (shifts || []) as { id: string; picker_id: string; orchard_id: string | null; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null }[],
+            buckets: (buckets || []) as { picker_id: string; orchard_id: string | null; variety: string | null; scanned_at: string; quality_grade: string | null }[],
+        };
+    },
+
     /** Fetch picker names by IDs */
     async fetchPickerNames(pickerIds: string[]): Promise<Record<string, string>> {
         if (pickerIds.length === 0) return {};

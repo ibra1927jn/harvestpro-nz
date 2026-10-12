@@ -115,6 +115,41 @@ export const attendanceRepository = {
         });
     },
 
+    /**
+     * Tramos de días pasados que nadie cerró (sin hora de salida). Sus horas
+     * son estimadas y la semana no se puede cerrar hasta corregirlos.
+     * Últimos `days` días; opcionalmente de un huerto o de ciertas personas.
+     */
+    async getUnclosedPastShifts(today: string, opts: { orchardId?: string; pickerIds?: string[]; days?: number } = {}) {
+        const since = new Date(`${today}T12:00:00Z`);
+        since.setUTCDate(since.getUTCDate() - (opts.days ?? 30));
+        if (opts.pickerIds && opts.pickerIds.length === 0) return [];
+        let q = supabase
+            .from('daily_attendance')
+            .select('id, picker_id, orchard_id, date, check_in, pickers(name), orchards(name)')
+            .is('check_out', null)
+            .is('deleted_at', null)
+            .not('check_in', 'is', null)
+            .lt('date', today)
+            .gte('date', since.toISOString().slice(0, 10))
+            .order('date', { ascending: false });
+        if (opts.orchardId) q = q.eq('orchard_id', opts.orchardId);
+        if (opts.pickerIds) q = q.in('picker_id', opts.pickerIds);
+        const { data, error } = await q;
+        if (error) throw error;
+        return ((data ?? []) as unknown as {
+            id: string; picker_id: string; orchard_id: string | null; date: string; check_in: string | null;
+            pickers: { name: string | null } | null; orchards: { name: string | null } | null;
+        }[]).map(r => ({
+            id: r.id,
+            pickerId: r.picker_id,
+            pickerName: r.pickers?.name ?? 'Unknown',
+            orchardName: r.orchards?.name ?? '—',
+            date: r.date,
+            checkIn: r.check_in,
+        }));
+    },
+
     /** Get attendance for timesheet export (payroll.service) */
     async getTimesheets(orchardId: string, date: string) {
         const { data, error } = await supabase
