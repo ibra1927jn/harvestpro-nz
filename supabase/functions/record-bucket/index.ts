@@ -17,7 +17,7 @@ import {
  * - Injection of fake scan records
  * - Badge ID spoofing
  *
- * Security: Requires admin/manager/team_leader role
+ * Security: admin/manager/team_leader and runner (los runners son quienes escanean)
  */
 serve(async (req) => {
     const preflight = handlePreflight(req)
@@ -26,7 +26,7 @@ serve(async (req) => {
     const origin = req.headers.get('Origin')
 
     try {
-        const { user, supabase } = await requireRole(req, ['admin', 'manager', 'team_leader'])
+        const { user, supabase } = await requireRole(req, ['admin', 'manager', 'team_leader', 'runner'])
         checkRateLimit(user.id, { maxRequests: 120, windowMs: 60_000 }) // Higher limit for rapid scanning
 
         const body = await req.json()
@@ -44,15 +44,18 @@ serve(async (req) => {
         // ── Badge-to-UUID Resolution ─────────────────
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
         if (!uuidRegex.test(finalPickerId)) {
-            // Resolve badge/harness ID to picker UUID
-            const { data: picker, error: lookupErr } = await supabase
+            // Tarjeta → persona. La gente rota entre huertos de la empresa: se busca
+            // en toda la plantilla; si el código se repitiera, gana el de este huerto.
+            const { data: matches, error: lookupErr } = await supabase
                 .from('pickers')
-                .select('id')
+                .select('id, orchard_id')
                 .eq('picker_id', finalPickerId)
-                .eq('orchard_id', input.orchard_id)
-                .maybeSingle()
+                .is('deleted_at', null)
 
             if (lookupErr) throw new Error(`Badge lookup failed: ${lookupErr.message}`)
+
+            const list = (matches ?? []) as { id: string; orchard_id: string | null }[]
+            const picker = list.length === 1 ? list[0] : list.find(m => m.orchard_id === input.orchard_id)
 
             if (!picker) {
                 // EXACT MATCH ONLY — no fuzzy matching for financial safety
@@ -76,7 +79,7 @@ serve(async (req) => {
                 row_number: input.row_number,
                 quality_grade: input.quality_grade,
                 bin_id: input.bin_id,
-                scanned_by: input.scanned_by,
+                scanned_by: input.scanned_by ?? user.id,
                 scanned_at: scannedAt,
             })
             .select('id, picker_id, scanned_at')
