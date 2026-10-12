@@ -13,6 +13,8 @@ function mockChain(result: { data?: unknown; error?: unknown }) {
         delete: vi.fn(() => chain),
         eq: vi.fn(() => chain),
         order: vi.fn(() => chain),
+        is: vi.fn(() => chain),
+        limit: vi.fn(() => chain),
         single: vi.fn(() => chain),
         maybeSingle: vi.fn(() => chain),
         then: (onF?: (v: unknown) => unknown, onR?: (r: unknown) => unknown) =>

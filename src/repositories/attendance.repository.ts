@@ -40,8 +40,11 @@ export const attendanceRepository = {
             .eq('picker_id', pickerId)
             .eq('orchard_id', orchardId)
             .eq('date', date)
-            .maybeSingle();
-        return data;
+            .is('deleted_at', null)
+            .order('check_in', { ascending: false })
+            .limit(1);
+        // Varios tramos al día: el más reciente
+        return data?.[0] ?? null;
     },
 
     /** Insert new attendance record */
