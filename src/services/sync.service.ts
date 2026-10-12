@@ -62,7 +62,7 @@ const ContractPayloadSchema = z.object({
 });
 
 const TransportPayloadSchema = z.object({
-  action: z.enum(['create', 'assign', 'complete']),
+  action: z.enum(['create', 'assign', 'complete', 'cancel']),
   requestId: z.string().optional(),
   vehicleId: z.string().optional(),
   assignedBy: z.string().optional(),
