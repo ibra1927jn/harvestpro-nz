@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { selectTeamOf, isPresentToday } from '@/services/harvestMetrics/roster';
 import AddPickerModal from '../../modals/AddPickerModal';
 import PickerDetailsModal from '../../modals/PickerDetailsModal';
+import { ElsewhereBadge } from '@/components/common/ElsewhereBadge';
 
 const TeamView = () => {
     const {
@@ -107,7 +108,7 @@ const TeamView = () => {
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-1.5">
-                                            <h3 className="text-slate-800 font-extrabold text-base tracking-tight">{picker.name}</h3>
+                                            <h3 className="text-slate-800 font-extrabold text-base tracking-tight flex items-center gap-1.5 flex-wrap">{picker.name}<ElsewhereBadge person={picker} /></h3>
                                             {(picker.total_buckets_today || 0) > 20 &&
                                                 <span className="material-symbols-outlined text-amber-500 text-[16px] fill-current">star</span>
                                             }

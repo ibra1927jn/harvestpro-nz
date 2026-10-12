@@ -49,6 +49,21 @@ export const storeSyncRepository = {
         return opts.onlyStaff ? q.eq('status', 'active').is('deleted_at', null) : q;
     },
 
+    /**
+     * Tramos abiertos hoy en OTROS huertos: quién está trabajando ahora en otro
+     * huerto de la empresa (para mostrar "ahora en Huerto B").
+     */
+    async getOpenShiftsElsewhere(orchardId: string, today: string) {
+        const { data } = await supabase
+            .from('daily_attendance')
+            .select('picker_id, orchard_id, check_in, orchards(name)')
+            .eq('date', today)
+            .is('check_out', null)
+            .is('deleted_at', null)
+            .neq('orchard_id', orchardId);
+        return (data ?? []) as unknown as { picker_id: string; orchard_id: string; check_in: string | null; orchards: { name: string | null } | null }[];
+    },
+
     /** Get bucket records since a date — returns query builder for delta chaining */
     getBucketRecordsQuery(orchardId: string, since: string) {
         return supabase

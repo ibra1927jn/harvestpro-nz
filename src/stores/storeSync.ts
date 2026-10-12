@@ -243,6 +243,26 @@ export async function fetchOrchardData(
     );
   }
 
+  // Quién está trabajando ahora en otro huerto (la gente rota entre huertos)
+  if (activeOrchard?.id) {
+    try {
+      const elsewhere = await storeSyncRepository.getOpenShiftsElsewhere(activeOrchard.id, today);
+      const byPicker = new Map(elsewhere.map(s => [s.picker_id, s]));
+      set(s => ({
+        crew: s.crew.map(p => {
+          const o = byPicker.get(p.id);
+          // Si está fichado aquí, manda este huerto
+          const next = o && !(p.check_in && !p.check_out)
+            ? { orchard_id: o.orchard_id, orchard_name: o.orchards?.name ?? 'another orchard', since: o.check_in }
+            : null;
+          return (p.elsewhere ?? null) === null && next === null ? p : { ...p, elsewhere: next };
+        }),
+      }));
+    } catch (e) {
+      logger.warn('[Sync] Could not load shifts in other orchards:', e);
+    }
+  }
+
   // Fetch blocks
   if (activeOrchard?.id) await get().fetchBlocks(activeOrchard.id);
 
@@ -369,7 +389,10 @@ export function setupRealtimeSubscriptions(
               };
               const others = (p.shifts ?? []).filter(s => !shift.id || s.id !== shift.id);
               const shifts = attendanceRecord.deleted_at ? others : [...others, shift];
-              return { ...p, ...attendanceFields(shifts) };
+              const fields = attendanceFields(shifts);
+              // Ficha aquí: ya no está en otro huerto (allí se cerró su tramo)
+              const here = !!fields.check_in && !fields.check_out;
+              return { ...p, ...fields, ...(here ? { elsewhere: null } : {}) };
             }),
           }));
           // Horas y pago de hoy al instante (salida o descanso corregidos)

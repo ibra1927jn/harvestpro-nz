@@ -66,6 +66,8 @@ export interface Picker {
    * arriba son los del tramo actual (el abierto o, si no, el último).
    */
   shifts?: AttendanceShift[];
+  /** Si ahora mismo está trabajando en OTRO huerto de la empresa */
+  elsewhere?: { orchard_id: string; orchard_name: string; since?: string | null } | null;
   archived_at?: string; // Timestamp when picker was archived (soft delete)
 }
 
