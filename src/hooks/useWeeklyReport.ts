@@ -124,6 +124,7 @@ export function buildWeekBreakdown(params: {
         buckets: r.buckets,
         hours_worked: r.hours,
         piece_rate_earnings: r.pieceEarnings,
+        holiday_premium: r.holidayPremium,
         hourly_rate: r.hours > 0 ? Math.round((r.pieceEarnings / r.hours) * 100) / 100 : 0,
         minimum_required: Math.round(r.hours * minWage * 100) / 100,
         top_up_required: r.topUp,

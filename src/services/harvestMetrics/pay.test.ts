@@ -239,8 +239,11 @@ describe('payForRange', () => {
         const attendance = [{ pickerId: 'p1', date: day, checkIn: t(day, '07:00'), checkOut: t(day, '15:30') }];
         const buckets = Array.from({ length: 10 }, () => ({ pickerId: 'p1', scannedAt: t(day, '10:00') }));
         const [r] = payForRange({ attendance, buckets, pieceRate: 6.5, minWage: 23.95 });
-        // 8 h × 23.95 × 1.5 = 287.40 − 65 = 222.40
-        expect(r.topUp).toBe(222.4);
+        // Mínimo 8 h × 23.95 × 1.5 = 287.40. Cubetas 65 + plus de festivo 32.50
+        // (tiempo y medio también sobre las cubetas) → complemento 189.90
+        expect(r.holidayPremium).toBe(32.5);
+        expect(r.topUp).toBe(189.9);
+        expect(r.total).toBe(287.4);
     });
 
     it('turno abierto de hoy: cuenta hasta ahora', () => {
@@ -360,5 +363,61 @@ describe('pieceRateFor', () => {
         expect(pieceRateFor({ orchardId: 'B', variety: 'BRAEBURN ' }, rates)).toBe(8);
         expect(pieceRateFor({ orchardId: 'B', variety: 'Fuji' }, rates)).toBe(6);
         expect(pieceRateFor({ orchardId: 'C', variety: null }, rates)).toBe(5);
+    });
+});
+
+describe('payForRange — líneas por variedad y reparto por huerto', () => {
+    const d1 = '2026-10-05';
+    const t = (hhmm: string) => `${d1}T${hhmm}:00+13:00`;
+    const now = new Date('2026-10-07T12:00:00+13:00');
+    it('reparte horas, cubetas y complemento entre huertos y cuadra con el total', () => {
+        const attendance = [
+            { pickerId: 'p1', date: d1, orchardId: 'A', checkIn: t('07:00'), checkOut: t('11:00') },
+            { pickerId: 'p1', date: d1, orchardId: 'B', checkIn: t('11:30'), checkOut: t('15:30') },
+        ];
+        const buckets = [
+            ...Array.from({ length: 5 }, () => ({ pickerId: 'p1', scannedAt: t('09:00'), orchardId: 'A', variety: 'Royal Gala', pieceRate: 6.5 })),
+            ...Array.from({ length: 3 }, () => ({ pickerId: 'p1', scannedAt: t('12:00'), orchardId: 'B', variety: 'Braeburn', pieceRate: 8 })),
+        ];
+        const [r] = payForRange({ attendance, buckets, pieceRate: 6.5, minWage: 23.95, now });
+        const day = r.dayDetails[0];
+        expect(day.pieceLines).toEqual([
+            { variety: 'Braeburn', rate: 8, buckets: 3, earnings: 24 },
+            { variety: 'Royal Gala', rate: 6.5, buckets: 5, earnings: 32.5 },
+        ]);
+        // 4 h + 15 min de trayecto en cada huerto: mitad y mitad
+        const [a, b] = day.byOrchard;
+        expect(a.orchardId).toBe('A');
+        expect(a.hours + b.hours).toBeCloseTo(day.hours, 2);
+        expect(a.hours).toBeCloseTo(b.hours, 2);
+        expect(a.pieceEarnings).toBe(32.5);
+        expect(b.pieceEarnings).toBe(24);
+        expect(Math.round((a.total + b.total) * 100) / 100).toBe(day.total);
+    });
+});
+
+describe('festivo: tiempo y medio también sobre las cubetas (Holidays Act s.50)', () => {
+    it('cubetas por encima del mínimo: cobra 1.5× lo de las cubetas', () => {
+        const p = dayPay({ buckets: 0, pieceEarnings: 300, hours: 8, pieceRate: 6.5, minWage: 23.95, isPublicHoliday: true });
+        expect(p.pieceEarnings).toBe(300);
+        expect(p.holidayPremium).toBe(150);
+        expect(p.topUp).toBe(0);
+        expect(p.total).toBe(450);
+        expect(p.belowMinimum).toBe(false);
+    });
+
+    it('cubetas por debajo: el mínimo ×1.5 manda, el complemento cubre la diferencia', () => {
+        const p = dayPay({ buckets: 0, pieceEarnings: 100, hours: 8, pieceRate: 6.5, minWage: 23.95, isPublicHoliday: true });
+        // mínimo 8 × 23.95 × 1.5 = 287.40; cubetas 100 + plus 50 → complemento 137.40
+        expect(p.holidayPremium).toBe(50);
+        expect(p.topUp).toBe(137.4);
+        expect(p.total).toBe(287.4);
+        expect(p.belowMinimum).toBe(true);
+    });
+
+    it('día normal: sin plus', () => {
+        const p = dayPay({ buckets: 0, pieceEarnings: 300, hours: 8, pieceRate: 6.5, minWage: 23.95, isPublicHoliday: false });
+        expect(p.holidayPremium).toBe(0);
+        expect(p.total).toBe(300);
     });
 });

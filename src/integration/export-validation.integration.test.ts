@@ -46,7 +46,7 @@ describe('Export + Payroll Pipeline — Integration', () => {
         expect(sumAmounts(exportService.generatePaySauceCSV(data))).toBe(calcTotal);
 
         const csv = exportService.generateCSV(data);
-        expect(csv).toContain(`Grand Total,,,,,,${calcTotal.toFixed(2)}`);
+        expect(csv).toContain(`Grand Total,,,,,,,${calcTotal.toFixed(2)}`);
         expect(csv.split('\n').filter(l => l.startsWith('EMP-')).length).toBe(10);
     });
 

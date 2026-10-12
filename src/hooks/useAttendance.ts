@@ -65,7 +65,12 @@ export const useAttendance = (appUser: AppUser | undefined) => {
   // Derived State
   const mergedList = useMemo(() => {
     return roster.map((picker: Picker) => {
-      const record = attendance.find((a: AttendanceRecord) => a.picker_id === picker.id);
+      // Puede haber varios tramos hoy (salió y volvió, o pasó por otro huerto):
+      // manda el abierto; si no hay, el último.
+      const records = attendance
+        .filter((a: AttendanceRecord) => a.picker_id === picker.id)
+        .sort((x, y) => (x.check_in ?? '').localeCompare(y.check_in ?? ''));
+      const record = records.find(r => !r.check_out) ?? records[records.length - 1];
       return {
         ...picker,
         attendanceRecord: record,

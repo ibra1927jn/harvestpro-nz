@@ -37,6 +37,7 @@ import type { HarvestStoreState } from './storeTypes';
 
 // Module-level ref for visibility cleanup
 let _visibilityHandler: (() => void) | null = null;
+let _onlineHandler: (() => void) | null = null;
 
 export const useHarvestStore = create<HarvestStoreState>()(
   persist(
@@ -90,10 +91,25 @@ export const useHarvestStore = create<HarvestStoreState>()(
               } else {
                 logger.info('[Store] Tab visible — reconnecting realtime');
                 setupRealtimeSubscriptions(activeOrchard.id, get, set);
-                fetchOrchardData(get, set).catch(() => {});
+                // Recalcular: los totales por picker salen de las cubetas recién bajadas
+                fetchOrchardData(get, set)
+                  .then(() => get().recalculateIntelligence())
+                  .catch(() => {});
               }
             };
             document.addEventListener('visibilitychange', _visibilityHandler);
+
+            // Vuelve la conexión: lo que llegó mientras no había red (cubetas
+            // subidas por otros móviles, fichajes) no entró por tiempo real.
+            if (_onlineHandler) window.removeEventListener('online', _onlineHandler);
+            _onlineHandler = () => {
+              logger.info('[Store] Back online — catching up');
+              if (!document.hidden) setupRealtimeSubscriptions(activeOrchard.id, get, set);
+              fetchOrchardData(get, set)
+                .then(() => get().recalculateIntelligence())
+                .catch(() => {});
+            };
+            window.addEventListener('online', _onlineHandler);
           }
         } catch (error) {
           logger.error('[Store] Error fetching global data:', error);

@@ -8,6 +8,17 @@
 import { supabase } from '@/services/supabase';
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
 
+export interface PayWeekActionResult {
+    week: { start: string; end: string };
+    closed?: boolean;
+    reopened?: boolean;
+    already_closed?: boolean;
+    total_earnings?: number;
+    /** No se puede cerrar con horas estimadas: quién y qué días */
+    reason?: 'ESTIMATED_HOURS';
+    pending?: { picker_id: string; picker_name: string; dates: string[] }[];
+}
+
 export const payrollRepository = {
     /** Invoke the calculate-payroll Edge Function with gateway resilience */
     /** orchardId vacío = nómina de la empresa (todos los huertos, suma por persona) */
@@ -19,6 +30,25 @@ export const payrollRepository = {
         });
         if (error) throw new Error(error.message);
         return data;
+    },
+
+    /**
+     * Cerrar / reabrir / consultar una semana de pago (Edge Function close-pay-week).
+     * Sin reintentos automáticos: cerrar o reabrir es una acción del usuario.
+     */
+    async invokePayWeek(body: { action: 'close' | 'reopen' | 'status'; week_start: string; reason?: string }) {
+        const { data, error } = await supabase.functions.invoke('close-pay-week', { body });
+        if (error) {
+            // El motivo real viene en el cuerpo de la respuesta (hint)
+            let hint = error.message;
+            try {
+                const ctx = (error as { context?: Response }).context;
+                const json = ctx ? await ctx.json() : null;
+                hint = json?.hint || json?.error || hint;
+            } catch { /* respuesta sin JSON */ }
+            throw new Error(hint);
+        }
+        return data as PayWeekActionResult;
     },
 
     /** Fetch attendance records for timesheets (hours calculated from check_in/check_out) */
@@ -33,6 +63,33 @@ export const payrollRepository = {
             .is('deleted_at', null)
             .order('check_in', { ascending: true });
         return { data: data || [], error };
+    },
+
+    /**
+     * Todo lo de un día de estas personas en CUALQUIER huerto (tramos y
+     * cubetas): las horas y el complemento se calculan con el día entero.
+     */
+    async fetchDayOfPeople(pickerIds: string[], date: string, dayStartIso: string, dayEndIso: string) {
+        if (pickerIds.length === 0) return { shifts: [], buckets: [] };
+        const [{ data: shifts }, { data: buckets }] = await Promise.all([
+            supabase
+                .from('daily_attendance')
+                .select('id, picker_id, orchard_id, check_in, check_out, break_start, break_minutes')
+                .in('picker_id', pickerIds)
+                .eq('date', date)
+                .is('deleted_at', null),
+            supabase
+                .from('bucket_records')
+                .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
+                .in('picker_id', pickerIds)
+                .is('deleted_at', null)
+                .gte('scanned_at', dayStartIso)
+                .lte('scanned_at', dayEndIso),
+        ]);
+        return {
+            shifts: (shifts || []) as { id: string; picker_id: string; orchard_id: string | null; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null }[],
+            buckets: (buckets || []) as { picker_id: string; orchard_id: string | null; variety: string | null; scanned_at: string; quality_grade: string | null }[],
+        };
     },
 
     /** Fetch picker names by IDs */

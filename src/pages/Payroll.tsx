@@ -14,8 +14,10 @@ import type { NavItem } from '@/components/common/DesktopLayout';
 import { usePayroll } from '@/hooks/usePayroll';
 import { SummaryCard, PayrollDashboard, TimesheetsTab, WageCalculatorTab, ExportTab } from '@/components/views/payroll/PayrollTabs';
 import ExportHistoryTab from '@/components/views/payroll/ExportHistoryTab';
+import { PayWeekCloseBar } from '@/components/views/payroll/PayWeekCloseBar';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
+import { UnclosedShiftsAlert } from '@/components/common/UnclosedShiftsAlert';
 
 const PAYROLL_NAV: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
@@ -59,6 +61,21 @@ const Payroll: React.FC = () => {
                 <button type="button" onClick={() => pay.goToWeek(1)} aria-label="Next pay week" className="p-2 rounded-xl hover:bg-slate-100">
                     <span className="material-symbols-outlined">chevron_right</span>
                 </button>
+            </div>
+
+            <PayWeekCloseBar
+                weekEnd={pay.week.end}
+                closedInfo={pay.closedInfo}
+                canManageWeek={pay.canManageWeek}
+                weekFinished={pay.weekFinished}
+                closing={pay.closing}
+                closeResult={pay.closeResult}
+                onClose={pay.closeWeek}
+                onReopen={pay.reopenWeek}
+            />
+
+            <div className="mb-4">
+                <UnclosedShiftsAlert hint="Ask the team leader or manager to fix the check-out time in the timesheets before closing the week." />
             </div>
 
             {pay.error && (
@@ -109,7 +126,7 @@ const Payroll: React.FC = () => {
                 {activeTab === 'dashboard' && <ComponentErrorBoundary componentName="Payroll Dashboard"><PayrollDashboard pickers={pay.pickers} settings={pay.settings} /></ComponentErrorBoundary>}
                 {activeTab === 'timesheets' && <ComponentErrorBoundary componentName="Timesheets"><TimesheetsTab orchardId={pay.orchardId} /></ComponentErrorBoundary>}
                 {activeTab === 'wages' && <ComponentErrorBoundary componentName="Wage Calculator"><WageCalculatorTab settings={pay.settings} /></ComponentErrorBoundary>}
-                {activeTab === 'export' && <ComponentErrorBoundary componentName="Export"><ExportTab pickers={pay.pickers} week={pay.week} isLoading={pay.isLoading} /></ComponentErrorBoundary>}
+                {activeTab === 'export' && <ComponentErrorBoundary componentName="Export"><ExportTab pickers={pay.pickers} week={pay.week} isLoading={pay.isLoading} closedAt={pay.closedInfo?.closed_at ?? null} /></ComponentErrorBoundary>}
                 {activeTab === 'history' && <ComponentErrorBoundary componentName="Export History"><ExportHistoryTab /></ComponentErrorBoundary>}
             </div>
         </ResponsiveLayout>

@@ -27,6 +27,8 @@ export interface PickerBreakdown {
   /** Días alternativos en lieu owed por trabajar public holidays (Holidays Act s.60). */
   alternative_holidays_owed?: number;
   piece_rate_earnings: number;
+  /** Festivo: media parte extra de lo ganado por cubetas (Holidays Act s.50) */
+  holiday_premium?: number;
   hourly_rate: number;
   minimum_required: number;
   top_up_required: number;
@@ -40,6 +42,8 @@ export interface PickerBreakdown {
 
 export interface PayrollResult {
   orchard_id: string;
+  /** Semana cerrada: cifras = foto guardada al cerrar (lo que se pagó) */
+  closed?: { closed_at: string | null; closed_by: string | null };
   date_range: {
     start: string;
     end: string;
@@ -100,6 +104,49 @@ export interface DailyTimesheetRecord extends TimesheetEntry {
   pay_type: 'piece_rate' | 'hourly_topup';
 }
 
+/**
+ * Día completo de cada persona (todos sus tramos y cubetas de cualquier huerto)
+ * con el cálculo único. Las hojas de horas de un huerto muestran SU parte:
+ * horas del día repartidas por tramo (tiempo + mitad de trayectos, un solo
+ * descanso), igual que Nómina y el coste por huerto. Los tramos sin cerrar no
+ * cuentan hasta que se cierren.
+ */
+async function computeDayOfPeople(pickerIds: string[], date: string, minWage: number = PAY_RULES.minWageFloor) {
+  const offset = toNZST(new Date(`${date}T12:00:00Z`)).slice(-6);
+  const { shifts, buckets } = await payrollRepository.fetchDayOfPeople(
+    pickerIds, date, `${date}T00:00:00${offset}`, `${date}T23:59:59${offset}`,
+  );
+  const rates = await payRatesRepository.load().catch(() => ({ varietyRates: [], orchardRates: {} as Record<string, number> }));
+  const holiday = isNZPublicHoliday(date);
+  const byPicker = new Map<string, { day: PayDay | undefined; segHours: Map<string, number> }>();
+  for (const id of pickerIds) {
+    const closed = shifts.filter(s => s.picker_id === id && s.check_in && s.check_out)
+      .sort((a, b) => (a.check_in ?? '').localeCompare(b.check_in ?? ''));
+    const [range] = payForRange({
+      attendance: closed.map(s => ({ pickerId: id, date, orchardId: s.orchard_id, checkIn: s.check_in, checkOut: s.check_out, breakStart: s.break_start, breakMinutes: s.break_minutes })),
+      buckets: buckets.filter(b => b.picker_id === id).map(b => ({
+        pickerId: id, scannedAt: b.scanned_at, qualityGrade: b.quality_grade, orchardId: b.orchard_id, variety: b.variety,
+        pieceRate: pieceRateFor({ orchardId: b.orchard_id, variety: b.variety }, { ...rates, fallback: rates.orchardRates[b.orchard_id ?? ''] ?? 6.5 }),
+      })),
+      pieceRate: 6.5,
+      minWage: Math.max(minWage, PAY_RULES.minWageFloor),
+      isPublicHoliday: () => holiday,
+    });
+    const day = range?.dayDetails.find(d => d.date === date);
+    // Horas de cada tramo = su parte de las horas pagables del día
+    const segHours = new Map<string, number>();
+    const segs = day?.segments ?? [];
+    const weight = segs.reduce((s, x) => s + x.grossHours + x.travelHours, 0);
+    closed.forEach((s, i) => {
+      const seg = segs[i];
+      const share = seg && weight > 0 ? (seg.grossHours + seg.travelHours) / weight : 0;
+      segHours.set(s.id, Math.round((day?.hours ?? 0) * share * 100) / 100);
+    });
+    byPicker.set(id, { day, segHours });
+  }
+  return byPicker;
+}
+
 export const payrollService = {
   /**
    * Calcular nómina usando Edge Function (servidor)
@@ -118,6 +165,16 @@ export const payrollService = {
     // 🔧 L3: Via repository — guarantees automatic JWT refresh
     const data = await payrollRepository.invokeCalculatePayroll(orchardId, startDate, endDate);
     return validateResponse(PayrollResultSchema, data, 'calculatePayroll');
+  },
+
+  /** Cerrar la semana de pago (lunes = weekStart): guarda la foto y bloquea cambios */
+  async closePayWeek(weekStart: string) {
+    return payrollRepository.invokePayWeek({ action: 'close', week_start: weekStart });
+  },
+
+  /** Reabrir una semana cerrada (motivo obligatorio, queda auditado) */
+  async reopenPayWeek(weekStart: string, reason: string) {
+    return payrollRepository.invokePayWeek({ action: 'reopen', week_start: weekStart, reason });
   },
 
   /**
@@ -193,15 +250,20 @@ export const payrollService = {
 
     // Get picker names
     const pickerIds = [...new Set(attendance.map(a => a.picker_id))];
-    const pickerNames = await payrollRepository.fetchPickerNames(pickerIds);
+    const [pickerNames, days] = await Promise.all([
+      payrollRepository.fetchPickerNames(pickerIds),
+      computeDayOfPeople(pickerIds, targetDate).catch(() => null),
+    ]);
 
     return (attendance || []).map(a => {
-      // Horas = cálculo único (pay.ts): salida − entrada − descanso no pagado.
+      // Horas = su parte de las horas pagables del día (cálculo único: un solo
+      // descanso no pagado, trayecto entre huertos pagado a medias).
       // Turno sin salida → 0 h hasta que el team leader lo cierre.
-      const shift = a.check_out
+      const fromDay = days?.get(a.picker_id)?.segHours.get(a.id);
+      const shift = a.check_out && fromDay === undefined
         ? shiftHours({ checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes })
         : null;
-      const hoursWorked = shift?.hours ?? 0;
+      const hoursWorked = a.check_out ? (fromDay ?? shift?.hours ?? 0) : 0;
 
       // Revisar: turno abierto de un día pasado, o más de 14 h
       const staleOpen = !!a.check_in && !a.check_out && a.date < todayNZST();
@@ -330,26 +392,26 @@ export const payrollService = {
       bySegment.set(seg.id, entry);
     }
 
-    // 5. Complemento al mínimo con el DÍA entero de la persona (todos sus
-    //    tramos); se muestra en su último tramo del día.
-    const holiday = isNZPublicHoliday(targetDate);
+    // 5. Complemento al mínimo: se calcula con el DÍA entero de la persona
+    //    (todos sus tramos y cubetas, de cualquier huerto) y a este huerto le
+    //    toca su parte (según horas, igual que el coste por huerto en Nómina).
+    //    Se muestra en su último tramo del día en este huerto.
+    const days = await computeDayOfPeople([...segmentsByPicker.keys()], targetDate, minWageRate).catch(() => null);
     const dayTopUp = new Map<string, { topUp: number; belowMinimum: boolean; minimum: number }>();
     for (const [pickerId, segs] of segmentsByPicker) {
-      // Horas del día con el cálculo único: todos los tramos cerrados, un solo
-      // descanso no pagado (tramo sin salida = 0 h hasta que se cierre)
-      const closed = segs.filter(t => t.check_in && t.check_out);
-      const [range] = closed.length ? payForRange({
-        attendance: closed.map(t => ({ pickerId, date: targetDate, checkIn: t.check_in, checkOut: t.check_out, breakStart: t.break_start, breakMinutes: t.break_minutes })),
-        buckets: [],
-        pieceRate,
-        minWage: minWageRate,
-        isPublicHoliday: () => holiday,
-      }) : [];
-      const hours = range?.hours ?? 0;
-      const earnings = segs.reduce((s, t) => s + (bySegment.get(t.id)?.earnings ?? 0), 0);
-      const buckets = segs.reduce((s, t) => s + (bySegment.get(t.id)?.total ?? 0), 0);
-      const p = dayPay({ buckets, pieceEarnings: earnings, hours, pieceRate, minWage: minWageRate, isPublicHoliday: holiday });
-      dayTopUp.set(pickerId, { topUp: p.topUp, belowMinimum: p.belowMinimum, minimum: p.minimumEarnings });
+      const day = days?.get(pickerId)?.day;
+      const share = day?.byOrchard.find(o => o.orchardId === orchardId);
+      const hours = segs.reduce((s, t) => s + t.hours_worked, 0);
+      if (day && share) {
+        const minimum = Math.round(hours * Math.max(minWageRate, PAY_RULES.minWageFloor) * (day.isPublicHoliday ? PAY_RULES.publicHolidayMultiplier : 1) * 100) / 100;
+        dayTopUp.set(pickerId, { topUp: share.topUp, belowMinimum: day.belowMinimum, minimum });
+      } else {
+        // Sin datos del día completo: solo lo de este huerto
+        const earnings = segs.reduce((s, t) => s + (bySegment.get(t.id)?.earnings ?? 0), 0);
+        const buckets = segs.reduce((s, t) => s + (bySegment.get(t.id)?.total ?? 0), 0);
+        const p = dayPay({ buckets, pieceEarnings: earnings, hours, pieceRate, minWage: minWageRate, isPublicHoliday: isNZPublicHoliday(targetDate) });
+        dayTopUp.set(pickerId, { topUp: p.topUp, belowMinimum: p.belowMinimum, minimum: p.minimumEarnings });
+      }
     }
 
     return timesheets.map(ts => {
@@ -359,11 +421,15 @@ export const payrollService = {
       const day = dayTopUp.get(ts.picker_id);
       const pieceEarnings = Math.round(info.earnings * 100) / 100;
       const topUp = isLast ? (day?.topUp ?? 0) : 0;
+      // Festivo: las cubetas van a tiempo y medio (Holidays Act s.50)
+      const holidayPremium = isNZPublicHoliday(targetDate)
+        ? Math.round(pieceEarnings * (PAY_RULES.publicHolidayMultiplier - 1) * 100) / 100
+        : 0;
       const pay = {
         pieceEarnings,
         minimumEarnings: isLast ? (day?.minimum ?? 0) : 0,
         topUp,
-        total: Math.round((pieceEarnings + topUp) * 100) / 100,
+        total: Math.round((pieceEarnings + holidayPremium + topUp) * 100) / 100,
         belowMinimum: day?.belowMinimum ?? false,
       };
       return {

@@ -53,7 +53,7 @@ describe('generatePaySauceCSV', () => {
 
     it('generates earnings rows for workers', () => {
         const csv = generatePaySauceCSV(mockData);
-        expect(csv).toContain('EARNINGS');
+        expect(csv).toContain('PIECE');
         expect(csv).toContain('P01');
     });
 

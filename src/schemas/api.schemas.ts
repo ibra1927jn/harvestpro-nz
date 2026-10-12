@@ -28,6 +28,8 @@ export const PickerBreakdownSchema = z.object({
     // no lo devolvían.
     alternative_holidays_owed: z.number().int().nonnegative().optional(),
     piece_rate_earnings: z.number().nonnegative(),
+    // Festivo: media parte extra de lo ganado por cubetas (Holidays Act s.50)
+    holiday_premium: z.number().nonnegative().optional(),
     hourly_rate: z.number().nonnegative(),
     minimum_required: z.number().nonnegative(),
     top_up_required: z.number().nonnegative(),
@@ -54,7 +56,15 @@ export const PickerBreakdownSchema = z.object({
         travelMinutes: z.number().default(0),
         buckets: z.number(),
         bucketsByVariety: z.record(z.string(), z.number()),
+        pieceLines: z.array(z.object({
+            variety: z.string(), rate: z.number(), buckets: z.number(), earnings: z.number(),
+        })).default([]),
+        byOrchard: z.array(z.object({
+            orchardId: z.string().nullable(), hours: z.number(), buckets: z.number(),
+            pieceEarnings: z.number(), holidayPremium: z.number().default(0), topUp: z.number(), total: z.number(),
+        })).default([]),
         pieceEarnings: z.number(),
+        holidayPremium: z.number().default(0),
         topUp: z.number(),
         total: z.number(),
         belowMinimum: z.boolean(),
@@ -65,6 +75,11 @@ export const PickerBreakdownSchema = z.object({
 
 export const PayrollResultSchema = z.object({
     orchard_id: z.string().min(1),
+    // Semana cerrada: lo que se devuelve es la foto guardada al cerrar
+    closed: z.object({
+        closed_at: z.string().nullable(),
+        closed_by: z.string().nullable(),
+    }).optional(),
     date_range: z.object({
         start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

@@ -124,7 +124,8 @@ async function handleGetAttendance(supabase: ReturnType<typeof createClient>, or
   return {
     data: {
       date: today,
-      total_checked_in: data?.filter(a => a.check_in).length || 0,
+      // Personas fichadas hoy (una persona puede tener varios tramos)
+      total_checked_in: new Set(((data || []) as { picker_id: string; check_in: string | null }[]).filter(a => a.check_in).map(a => a.picker_id)).size,
       records: data || [],
     },
     status: 200,

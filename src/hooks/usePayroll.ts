@@ -11,6 +11,8 @@ import { payrollService, PayrollResult } from '@/services/payroll.service';
 import { payWeekOf, type PayWeek } from '@/services/harvestMetrics';
 import { todayNZST } from '@/utils/nzst';
 import { logger } from '@/utils/logger';
+import { useAuth } from '@/context/AuthContext';
+import type { PayWeekActionResult } from '@/repositories/payroll.repository';
 
 /** Semana de pago a mostrar por defecto: el lunes se cierra la semana anterior. */
 export function defaultPayWeek(today: string = todayNZST()): PayWeek {
@@ -36,6 +38,10 @@ export function usePayroll() {
     const [error, setError] = useState<string | null>(null);
     // Solo la primera carga muestra el esqueleto; al cambiar de semana se mantiene la pantalla
     const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+    const [reloadKey, setReloadKey] = useState(0);
+    const [closing, setClosing] = useState(false);
+    const [closeResult, setCloseResult] = useState<PayWeekActionResult | null>(null);
+    const { appUser } = useAuth();
 
     useEffect(() => {
         let cancelled = false;
@@ -60,14 +66,53 @@ export function usePayroll() {
         };
         loadPayroll();
         return () => { cancelled = true; };
-    }, [orchardId, week]);
+    }, [orchardId, week, reloadKey]);
+
+    // Al cambiar de semana se olvida el aviso de la anterior
+    useEffect(() => { setCloseResult(null); }, [week]);
 
     const goToWeek = useCallback((weeks: number) => setWeek(w => shiftPayWeek(w, weeks)), []);
+
+    // Cierre de semana: solo Nómina y admin, y solo semanas ya terminadas
+    const canManageWeek = appUser?.role === 'payroll_admin' || appUser?.role === 'admin';
+    const weekFinished = todayNZST() > week.end;
+    const closedInfo = payrollData?.closed ?? null;
+
+    const closeWeek = useCallback(async () => {
+        setClosing(true);
+        setError(null);
+        try {
+            const res = await payrollService.closePayWeek(week.start);
+            setCloseResult(res);
+            if (res.closed || res.already_closed) setReloadKey(k => k + 1);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'No se pudo cerrar la semana.');
+        } finally {
+            setClosing(false);
+        }
+    }, [week.start]);
+
+    const reopenWeek = useCallback(async (reason: string) => {
+        setClosing(true);
+        setError(null);
+        try {
+            await payrollService.reopenPayWeek(week.start, reason);
+            setCloseResult(null);
+            setReloadKey(k => k + 1);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'No se pudo reabrir la semana.');
+        } finally {
+            setClosing(false);
+        }
+    }, [week.start]);
 
     const summary = payrollData?.summary || { total_buckets: 0, total_hours: 0, total_piece_rate_earnings: 0, total_top_up: 0, total_earnings: 0 };
     const compliance = payrollData?.compliance || { workers_below_minimum: 0, workers_total: 0, compliance_rate: 100 };
     const pickers = payrollData?.picker_breakdown || [];
     const settings = payrollData?.settings || { bucket_rate: 0, min_wage_rate: 23.95 };
 
-    return { orchardId, isLoading, hasLoadedOnce, error, week, goToWeek, summary, compliance, pickers, settings };
+    return {
+        orchardId, isLoading, hasLoadedOnce, error, week, goToWeek, summary, compliance, pickers, settings,
+        closedInfo, canManageWeek, weekFinished, closing, closeResult, closeWeek, reopenWeek,
+    };
 }

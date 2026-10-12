@@ -27,6 +27,7 @@ import DashboardStatCard from './DashboardStatCard';
 import DashboardEmptyState from './DashboardEmptyState';
 import PredictionsCard from './PredictionsCard';
 import { useVelocityDrilldown } from '@/hooks/useVelocityDrilldown';
+import { UnclosedShiftsAlert } from '@/components/common/UnclosedShiftsAlert';
 
 interface DashboardViewProps {
   stats: HarvestState['stats'];
@@ -183,6 +184,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto pb-24 animate-fade-in">
       <SimulationBanner />
       <TrustBadges />
+      {orchard?.id && <UnclosedShiftsAlert orchardId={orchard.id} />}
 
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">

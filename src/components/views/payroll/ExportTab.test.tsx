@@ -43,7 +43,7 @@ describe('ExportTab', () => {
         render(<ExportTab pickers={[row({})]} week={WEEK} />);
         fireEvent.click(screen.getByText('Xero'));
         const [content, filename] = download.mock.calls[0];
-        expect(filename).toBe('xero-payroll-2026-10-05_to_2026-10-11.csv');
+        expect(filename).toBe('xero-payroll-2026-10-05_to_2026-10-11-DRAFT.csv');
         expect(content).toContain('EMP001,Ana,Minimum Wage Top-Up,7.50');
         expect(getExportHistory()[0]).toMatchObject({ format: 'xero', recordCount: 1, totalEarnings: 179.63 });
         expect(screen.getByRole('status').textContent).toContain('xero-payroll');

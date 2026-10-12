@@ -12,6 +12,7 @@ import { exportService, type ExportFormat } from '@/services/export.service';
 import { logExportToHistory } from './ExportHistoryTab';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { PayWeekDetail } from './PayWeekDetail';
+import { loadOrchardNames } from '@/repositories/pay-rates.repository';
 
 /* ── Summary Card ── */
 export const SummaryCard: React.FC<{ icon: string; iconColor: string; label: string; value: string; highlight?: boolean }> = ({ icon, iconColor, label, value, highlight }) => (
@@ -321,13 +322,20 @@ export const ExportTab: React.FC<{
     pickers: PickerBreakdown[];
     week: { start: string; end: string; closesOn: string };
     isLoading?: boolean;
-}> = ({ pickers, week, isLoading = false }) => {
+    /** Semana cerrada: la exportación es la definitiva */
+    closedAt?: string | null;
+}> = ({ pickers, week, isLoading = false, closedAt = null }) => {
     const crew = useHarvestStore(s => s.crew);
     const [lastExport, setLastExport] = useState<string | null>(null);
     const [exportError, setExportError] = useState<string | null>(null);
+    const [orchards, setOrchards] = useState<Record<string, string>>({});
+    useEffect(() => { loadOrchardNames().then(setOrchards).catch(() => setOrchards({})); }, []);
 
     const codeById = new Map(crew.map(p => [p.id, p.picker_id]));
-    const data = exportService.preparePayrollData(pickers, { start: week.start, end: week.end }, id => codeById.get(id));
+    const data = exportService.preparePayrollData(pickers, { start: week.start, end: week.end }, id => codeById.get(id), {
+        closedAt,
+        orchardName: id => (id ? orchards[id] ?? id.slice(0, 8) : '—'),
+    });
     const toReview = data.crew.filter(p => (p.estimatedDays ?? 0) > 0);
     const disabled = isLoading || data.crew.length === 0;
 
@@ -362,6 +370,13 @@ export const ExportTab: React.FC<{
                     <div><p className="text-2xl font-black text-orange-600">${data.summary.grandTotal.toFixed(2)}</p><p className="text-[11px] uppercase tracking-widest font-bold text-slate-400">Total pay</p></div>
                 </div>
             </div>
+
+            {data.status === 'draft' && (
+                <div data-testid="export-draft-warning" className="bg-orange-50/90 border border-orange-200 rounded-2xl px-5 py-3">
+                    <p className="text-sm font-extrabold text-orange-900">Draft — this week is not closed yet</p>
+                    <p className="text-[12px] text-orange-800 mt-1">Figures can still change. Close the pay week (Dashboard) before exporting to pay; draft files are named "-DRAFT".</p>
+                </div>
+            )}
 
             {toReview.length > 0 && (
                 <div data-testid="export-estimated-warning" className="bg-amber-50/90 border border-amber-200 rounded-2xl px-5 py-4">

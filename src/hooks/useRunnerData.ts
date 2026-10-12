@@ -91,6 +91,17 @@ export function useRunnerData(): UseRunnerDataResult {
     [sendBroadcast]
   );
 
+  // Fila del picker: la que tiene asignada en el mapa, o su fila actual
+  const rowAssignments = useHarvestStore(s => s.rowAssignments);
+  const rowOf = useCallback(
+    (pickerId: string, currentRow?: number): number | undefined => {
+      const assigned = rowAssignments.find(r => r.assigned_pickers?.includes(pickerId));
+      const row = assigned?.row_number ?? currentRow;
+      return row && row > 0 ? row : undefined;
+    },
+    [rowAssignments]
+  );
+
   const handleScanComplete = useCallback(
     (scannedData: string | string[]) => {
       setShowScanner(false);
@@ -114,8 +125,8 @@ export function useRunnerData(): UseRunnerDataResult {
       // BATCH MODO O MODO ESTÁNDAR: Procesar todos los tickets en memoria (Buckets)
       let validCodes = 0;
       codes.forEach(code => {
-        const isCheckedIn = crew.some(p => p.id === code || p.picker_id === code);
-        if (!isCheckedIn) {
+        const picker = crew.find(p => p.id === code || p.picker_id === code);
+        if (!picker) {
           logger.warn(`Picker ${code} not checked in.`);
           return; // ignora los que no están checked in
         }
@@ -127,6 +138,8 @@ export function useRunnerData(): UseRunnerDataResult {
           quality_grade: 'A',
           timestamp: nowNZST(),
           orchard_id: orchard?.id || 'offline_pending',
+          row_number: rowOf(picker.id, picker.current_row),
+          bin_id: selectedBinId || null,
         });
         validCodes++;
       });
@@ -141,7 +154,7 @@ export function useRunnerData(): UseRunnerDataResult {
         });
       }
     },
-    [scanType, rawInventory, crew, addBucket, orchard?.id]
+    [scanType, rawInventory, crew, addBucket, orchard?.id, rowOf, selectedBinId]
   );
 
   const submitQuality = useCallback(
@@ -151,17 +164,20 @@ export function useRunnerData(): UseRunnerDataResult {
       setQualityScan(null);
       logger.debug(`[Runner] Scanning bucket with bin_id: ${selectedBinId}`);
 
+      const picker = crew.find(p => p.id === code || p.picker_id === code);
       addBucket({
         picker_id: code,
         quality_grade: grade,
         timestamp: nowNZST(),
         orchard_id: orchard?.id || 'offline_pending',
+        row_number: picker ? rowOf(picker.id, picker.current_row) : undefined,
+        bin_id: selectedBinId || null,
       });
 
       feedbackService.triggerSuccess();
       setToast({ message: 'Bucket Saved (Offline Ready)', type: 'success' });
     },
-    [qualityScan, selectedBinId, addBucket, orchard?.id]
+    [qualityScan, selectedBinId, addBucket, orchard?.id, crew, rowOf]
   );
 
   // Calculate real inventory data from context

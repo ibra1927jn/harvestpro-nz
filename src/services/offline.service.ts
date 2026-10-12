@@ -50,6 +50,15 @@ export const offlineService = {
     }
   },
 
+  /** Rechazado por el servidor (semana cerrada, tarjeta desconocida…): no se reintenta */
+  async markAsFailed(id: string, reason: string) {
+    try {
+      await db.bucket_queue.update(id, { synced: -1, failure_reason: reason.slice(0, 500) });
+    } catch (error) {
+      logger.error('❌ [Offline] Failed to mark as failed:', error);
+    }
+  },
+
   async getPendingCount(): Promise<number> {
     return await db.bucket_queue.where('synced').equals(0).count();
   },

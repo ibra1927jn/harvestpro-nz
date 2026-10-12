@@ -268,7 +268,7 @@ export const BucketRecordSchema = z.object({
   row_number: z.number().int().positive().optional(),
   quality_grade: z.string().optional(),
   bin_id: z.string().optional(),
-  scanned_by: z.string().uuid('scanned_by must be a valid UUID'),
+  scanned_by: z.string().uuid('scanned_by must be a valid UUID').optional(),
   scanned_at: z.string().optional(),
 });
 

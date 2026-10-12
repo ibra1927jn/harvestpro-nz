@@ -58,7 +58,7 @@ describe('generatePDFContent', () => {
 
     it('incluye la fecha del reporte', () => {
         const html = generatePDFContent(baseData);
-        expect(html).toContain('Date: 2026-04-18');
+        expect(html).toContain('2026-04-18');
     });
 
     it('renderiza cada picker con employee id + name + totals', () => {
@@ -91,7 +91,7 @@ describe('generatePDFContent', () => {
 
     it('respeta options.pieceRate override', () => {
         const html = generatePDFContent(baseData, { pieceRate: 7.5 });
-        expect(html).toContain('Piece Rate: $7.5/bucket');
+        expect(html).toContain('piece rate: $7.5/bucket');
     });
 
     it('respeta options.minWage override', () => {

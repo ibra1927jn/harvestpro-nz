@@ -15,7 +15,8 @@ export const attendanceRepository = {
             .from('daily_attendance')
             .select(`*, picker:pickers ( name, role, team_leader_id )`)
             .eq('orchard_id', orchardId)
-            .eq('date', date);
+            .eq('date', date)
+            .is('deleted_at', null);
         if (error) throw error;
         return data || [];
     },
@@ -97,7 +98,9 @@ export const attendanceRepository = {
             .select(`picker_id, status, check_in, pickers!inner ( * )`)
             .eq('orchard_id', orchardId)
             .eq('date', date)
-            .eq('status', 'present');
+            // Trabajando ahora: tramo abierto (una persona puede tener varios tramos al día)
+            .is('check_out', null)
+            .is('deleted_at', null);
         if (error) throw error;
         return data || [];
     },
@@ -113,6 +116,41 @@ export const attendanceRepository = {
             if (orchardId) query = query.eq('orchard_id', orchardId);
             return query.order('id').range(from, to);
         });
+    },
+
+    /**
+     * Tramos de días pasados que nadie cerró (sin hora de salida). Sus horas
+     * son estimadas y la semana no se puede cerrar hasta corregirlos.
+     * Últimos `days` días; opcionalmente de un huerto o de ciertas personas.
+     */
+    async getUnclosedPastShifts(today: string, opts: { orchardId?: string; pickerIds?: string[]; days?: number } = {}) {
+        const since = new Date(`${today}T12:00:00Z`);
+        since.setUTCDate(since.getUTCDate() - (opts.days ?? 30));
+        if (opts.pickerIds && opts.pickerIds.length === 0) return [];
+        let q = supabase
+            .from('daily_attendance')
+            .select('id, picker_id, orchard_id, date, check_in, pickers(name), orchards(name)')
+            .is('check_out', null)
+            .is('deleted_at', null)
+            .not('check_in', 'is', null)
+            .lt('date', today)
+            .gte('date', since.toISOString().slice(0, 10))
+            .order('date', { ascending: false });
+        if (opts.orchardId) q = q.eq('orchard_id', opts.orchardId);
+        if (opts.pickerIds) q = q.in('picker_id', opts.pickerIds);
+        const { data, error } = await q;
+        if (error) throw error;
+        return ((data ?? []) as unknown as {
+            id: string; picker_id: string; orchard_id: string | null; date: string; check_in: string | null;
+            pickers: { name: string | null } | null; orchards: { name: string | null } | null;
+        }[]).map(r => ({
+            id: r.id,
+            pickerId: r.picker_id,
+            pickerName: r.pickers?.name ?? 'Unknown',
+            orchardName: r.orchards?.name ?? '—',
+            date: r.date,
+            checkIn: r.check_in,
+        }));
     },
 
     /** Get attendance for timesheet export (payroll.service) */

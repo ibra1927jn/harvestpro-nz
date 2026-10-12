@@ -67,3 +67,6 @@ verify_jwt = false
 # Public REST API — uses API key auth (not JWT), so verify_jwt must be false
 [functions.api-v1]
 verify_jwt = false
+
+[functions.close-pay-week]
+verify_jwt = true

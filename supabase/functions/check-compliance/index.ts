@@ -7,7 +7,7 @@ import {
     checkRateLimit,
     ComplianceCheckSchema,
 } from '../_shared/security.ts'
-import { shiftHours, dayPay, nzDateOf, isNZPublicHoliday, PAY_RULES } from '../_shared/pay-rules.ts'
+import { payForRange, pieceRateFor, nzDateOf, isNZPublicHoliday, PAY_RULES } from '../_shared/pay-rules.ts'
 
 /**
  * check-compliance — Server-side NZ Employment Relations Act compliance
@@ -92,35 +92,40 @@ serve(async (req) => {
             .formatToParts(new Date(`${today}T12:00:00Z`))
             .find(p => p.type === 'timeZoneName')?.value.replace('GMT', '') || '+13:00'
 
-        // Fetch attendance for all pickers today
+        // Tramos de hoy de estas personas en TODOS los huertos (pueden haber
+        // pasado por otro huerto: el mínimo se comprueba con el día entero)
         const { data: attendance } = await supabase
             .from('daily_attendance')
-            .select('picker_id, check_in, check_out, break_start, break_minutes, date')
-            .eq('orchard_id', orchard_id)
+            .select('picker_id, orchard_id, check_in, check_out, break_start, break_minutes, date')
             .eq('date', today)
             .is('deleted_at', null)
             .in('picker_id', picker_ids)
 
-        // Fetch bucket counts for today
-        // Cubetas del día NZ, sin rechazos de QC ni registros borrados
+        // Cubetas del día NZ (todos los huertos); los rechazos los quita el cálculo
         const { data: bucketCounts } = await supabase
             .from('bucket_records')
-            .select('picker_id, scanned_at, quality_grade')
-            .eq('orchard_id', orchard_id)
+            .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
             .is('deleted_at', null)
             .gte('scanned_at', `${today}T00:00:00${nzOffset}`)
             .lte('scanned_at', `${today}T23:59:59${nzOffset}`)
             .in('picker_id', picker_ids)
 
-        const bucketsByPicker = new Map<string, number>()
-        const scansByPicker = new Map<string, string[]>()
-        bucketCounts?.forEach((b: { picker_id: string; scanned_at: string; quality_grade: string | null }) => {
-            if (b.quality_grade === 'reject') return
-            bucketsByPicker.set(b.picker_id, (bucketsByPicker.get(b.picker_id) || 0) + 1)
-            const list = scansByPicker.get(b.picker_id) ?? []
-            list.push(b.scanned_at)
-            scansByPicker.set(b.picker_id, list)
-        })
+        // Precio de cada cubeta: variedad (huerto → empresa) o precio del huerto
+        const [{ data: varietyRows }, { data: settingsRows }] = await Promise.all([
+            supabase.from('variety_rates').select('orchard_id, variety, piece_rate'),
+            supabase.from('harvest_settings').select('orchard_id, piece_rate'),
+        ])
+        const varietyRates = ((varietyRows ?? []) as { orchard_id: string | null; variety: string; piece_rate: number }[])
+            .map(v => ({ orchardId: v.orchard_id, variety: v.variety, pieceRate: Number(v.piece_rate) }))
+        const orchardRates: Record<string, number> = {}
+        for (const s of (settingsRows ?? []) as { orchard_id: string; piece_rate: number | null }[]) {
+            if (s.piece_rate != null) orchardRates[s.orchard_id] = Number(s.piece_rate)
+        }
+
+        type AttRow = { picker_id: string; orchard_id: string | null; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null; date: string }
+        type BktRow = { picker_id: string; orchard_id: string | null; variety: string | null; scanned_at: string; quality_grade: string | null }
+        const attRows = (attendance ?? []) as AttRow[]
+        const bktRows = (bucketCounts ?? []) as BktRow[]
 
         // Get picker names
         const { data: pickers } = await supabase
@@ -137,22 +142,35 @@ serve(async (req) => {
 
         for (const pickerId of picker_ids) {
             const violations: ComplianceViolation[] = []
-            const att = attendance?.find(a => a.picker_id === pickerId)
-            const buckets = bucketsByPicker.get(pickerId) || 0
-
-            // Cálculo único: horas pagables (descanso no pagado) para el salario;
-            // tiempo transcurrido en el turno (bruto) para los avisos de descanso.
-            const shift = shiftHours({
-                checkIn: att?.check_in,
-                checkOut: att?.check_out,
-                breakStart: att?.break_start,
-                breakMinutes: att?.break_minutes,
-                scanTimes: scansByPicker.get(pickerId) ?? [],
+            const shifts = attRows.filter(a => a.picker_id === pickerId)
+            const [range] = payForRange({
+                attendance: shifts.map(a => ({
+                    pickerId, date: today, orchardId: a.orchard_id,
+                    checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes,
+                })),
+                buckets: bktRows.filter(b => b.picker_id === pickerId).map(b => ({
+                    pickerId, scannedAt: b.scanned_at, qualityGrade: b.quality_grade, orchardId: b.orchard_id, variety: b.variety,
+                    pieceRate: pieceRateFor({ orchardId: b.orchard_id, variety: b.variety }, { varietyRates, orchardRates, fallback: pieceRate }),
+                })),
+                pieceRate,
+                minWage,
+                isPublicHoliday: () => isHoliday,
                 now,
             })
-            const hoursWorked = shift.hours
-            const elapsedHours = shift.grossHours
-            const pay = dayPay({ buckets, hours: hoursWorked, pieceRate, minWage, isPublicHoliday: isHoliday })
+            const day = range?.dayDetails[0]
+            const buckets = day?.buckets ?? 0
+            // Horas pagables del día (todos los tramos, trayecto, un descanso)
+            const hoursWorked = day?.hours ?? 0
+            // Tiempo en el día (bruto) para los avisos de descanso y de exceso de horas
+            const elapsedHours = (day?.segments ?? []).reduce((sum, s) => sum + s.grossHours + s.travelHours, 0)
+            const mealBreakRecorded = shifts.some(a => !!a.break_start)
+            const minWageApplied = isHoliday ? minWage * PAY_RULES.publicHolidayMultiplier : minWage
+            const pay = {
+                pieceHourlyRate: hoursWorked > 0 ? (day?.pieceEarnings ?? 0) / hoursWorked : 0,
+                belowMinimum: day?.belowMinimum ?? false,
+                topUp: day?.topUp ?? 0,
+                minWageApplied: Math.round(minWageApplied * 100) / 100,
+            }
 
             // 1. Rest break check (every 2 hours)
             if (elapsedHours > NZ_CONSTANTS.REST_BREAK_INTERVAL / 60) {
@@ -168,7 +186,7 @@ serve(async (req) => {
             }
 
             // 2. Meal break check (every 4 hours) — solo si no se ha anotado el descanso
-            if (elapsedHours > NZ_CONSTANTS.MEAL_BREAK_INTERVAL / 60 && !att?.break_start) {
+            if (elapsedHours > NZ_CONSTANTS.MEAL_BREAK_INTERVAL / 60 && !mealBreakRecorded) {
                 violations.push({
                     type: 'break_overdue',
                     severity: 'high',

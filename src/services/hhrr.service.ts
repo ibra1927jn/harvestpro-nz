@@ -120,27 +120,32 @@ export async function fetchHRSummary(orchardId?: string): Promise<HRSummary> {
   }
 }
 
-export async function fetchEmployees(orchardId?: string): Promise<Employee[]> {
+/**
+ * Empleados de la empresa: la plantilla única (la misma lista que Equipos y
+ * Nómina: pickers, team leaders, runners) más el personal de oficina con cuenta.
+ * Antes salían solo las cuentas de la app y no aparecía ningún picker.
+ * orchardId se ignora: la gente rota entre huertos de la misma empresa.
+ */
+export async function fetchEmployees(_orchardId?: string): Promise<Employee[]> {
   try {
-    const data = await userRepository2.getAll(orchardId);
-    const userIds = data.map(u => u.id);
-    const contracts = await contractRepository2.getByEmployeeIds(userIds);
+    const staff = await userRepository2.getStaff();
+    const contracts = await contractRepository2.getByEmployeeIds(staff.map(s => s.id));
 
-    return data.map(user => {
-      const contract = contracts.find(c => c.employee_id === user.id);
+    return staff.map(person => {
+      const contract = contracts.find(c => c.employee_id === person.id);
       return {
-        id: user.id,
-        full_name: user.full_name || 'Unknown',
-        email: user.email || '',
-        role: user.role || 'picker',
-        status: user.is_active ? ('active' as const) : ('terminated' as const),
+        id: person.id,
+        full_name: person.full_name,
+        email: person.email,
+        role: person.role,
+        status: person.active ? ('active' as const) : ('terminated' as const),
         contract_type: (contract?.type || 'seasonal') as 'permanent' | 'seasonal' | 'casual',
-        contract_start: contract?.start_date || user.created_at || new Date().toISOString(),
+        contract_start: contract?.start_date || person.created_at || new Date().toISOString(),
         contract_end: contract?.end_date || undefined,
         hourly_rate: contract?.hourly_rate || NZ_MINIMUM_WAGE_2026,
         visa_status: 'citizen' as const,
-        hire_date: user.created_at || new Date().toISOString(),
-        orchard_id: user.orchard_id,
+        hire_date: person.created_at || new Date().toISOString(),
+        orchard_id: person.orchard_id,
       };
     });
   } catch (error) {
@@ -260,19 +265,43 @@ async function loadPayWeek(orchardId?: string, minWageFor?: (personId: string) =
   return { week, pay, pieceRate };
 }
 
+/**
+ * Nómina de la semana por persona, con las MISMAS cifras que la pantalla de
+ * Nómina (calculate-payroll, empresa entera: todos los huertos, trayectos,
+ * precio por variedad). Si el servidor no responde, el mismo cálculo aquí.
+ * Salen las personas en plantilla y cualquiera que haya cobrado esa semana.
+ */
 export async function fetchPayroll(orchardId?: string): Promise<PayrollEntry[]> {
   try {
     const employees = await fetchEmployees(orchardId);
-    const activeEmployees = employees.filter(e => e.status === 'active');
-    const rateById = new Map(activeEmployees.map(e => [e.id, e.hourly_rate]));
+    const week = payWeekOf(todayNZST());
 
-    const { week, pay } = await loadPayWeek(orchardId, id => rateById.get(id) ?? PAY_RULES.minWageFloor);
-    const payById = new Map(pay.map(p => [p.pickerId, p]));
+    let rows: { id: string; hours: number; buckets: number; piece: number; topUp: number; total: number }[];
+    let minWage: number = PAY_RULES.minWageFloor;
+    try {
+      const result = await payrollService.calculatePayroll(undefined, week.start, week.end);
+      minWage = Math.max(result.settings.min_wage_rate, PAY_RULES.minWageFloor);
+      rows = result.picker_breakdown.map(p => ({
+        id: p.picker_id, hours: p.hours_worked, buckets: p.buckets,
+        piece: p.piece_rate_earnings, topUp: p.top_up_required, total: p.total_earnings,
+      }));
+    } catch {
+      // Mismo cálculo aquí; el mínimo de cada persona es la tarifa de su contrato si es mayor
+      const rateById = new Map(employees.map(e => [e.id, e.hourly_rate]));
+      const fallback = await loadPayWeek(orchardId, id => Math.max(rateById.get(id) ?? 0, PAY_RULES.minWageFloor));
+      rows = fallback.pay.map(p => ({
+        id: p.pickerId, hours: p.hours, buckets: p.buckets,
+        piece: p.pieceEarnings, topUp: p.topUp, total: p.total,
+      }));
+    }
+    const payById = new Map(rows.map(r => [r.id, r]));
+    const people = employees.filter(e => e.status === 'active' || payById.has(e.id));
 
-    return activeEmployees.map(emp => {
+    return people.map(emp => {
       const p = payById.get(emp.id);
       const hours = p?.hours ?? 0;
-      const minWage = Math.max(emp.hourly_rate, PAY_RULES.minWageFloor);
+      // Mínimo garantizado: tarifa del contrato si es mayor que el mínimo general
+      const personMin = Math.max(emp.hourly_rate, minWage);
       return {
         id: `payroll-${emp.id}`,
         employee_id: emp.id,
@@ -280,8 +309,8 @@ export async function fetchPayroll(orchardId?: string): Promise<PayrollEntry[]> 
         role: emp.role,
         hours_worked: hours,
         buckets_picked: p?.buckets ?? 0,
-        hourly_earnings: Math.round(hours * minWage * 100) / 100,
-        piece_earnings: p?.pieceEarnings ?? 0,
+        hourly_earnings: Math.round(hours * personMin * 100) / 100,
+        piece_earnings: p?.piece ?? 0,
         total_pay: p?.total ?? 0,
         wage_shield_applied: (p?.topUp ?? 0) > 0,
         period_start: week.start,
