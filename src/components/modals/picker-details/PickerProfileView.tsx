@@ -4,6 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { Picker, PickerStatus } from '../../../types';
 import { ComparisonBadge, isPicker } from './roleUtils';
+import { useAuth } from '@/context/AuthContext';
 
 interface PickerProfileViewProps {
     picker: Picker;
@@ -22,6 +23,7 @@ const PickerProfileView: React.FC<PickerProfileViewProps> = React.memo(({
 }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [assignedRow, setAssignedRow] = useState(picker.current_row?.toString() || '');
+    const { appUser } = useAuth();
     const [status, setStatus] = useState<PickerStatus>(picker.status);
 
     // Cuando picker.hours === 0 el picker no activa wage-alert, pero puede tener check_in
@@ -131,7 +133,10 @@ const PickerProfileView: React.FC<PickerProfileViewProps> = React.memo(({
                                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-slate-900 bg-white transition-all">
                                 <option value="active">Active</option>
                                 <option value="on_break">On Break</option>
-                                <option value="inactive">Inactive</option>
+                                {/* Dar de baja (Inactive) es cosa del team leader o RRHH */}
+                                {(appUser?.role !== 'manager' || status === 'inactive') && (
+                                    <option value="inactive">Inactive</option>
+                                )}
                             </select>
                         </div>
                         <div className="flex gap-2 pt-1">

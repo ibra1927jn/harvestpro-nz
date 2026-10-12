@@ -40,7 +40,6 @@ import Header from '@/components/common/Header';
 
 // Modals
 import DaySettingsModal from '@/components/modals/DaySettingsModal';
-import AddPickerModal from '@/components/modals/AddPickerModal';
 import BroadcastModal from '@/components/views/manager/BroadcastModal';
 import RowAssignmentModal from '@/components/views/manager/RowAssignmentModal';
 
@@ -60,7 +59,7 @@ const Manager = () => {
     orchard,
     settings,
     updateSettings,
-    addPicker,
+    addPicker: _addPicker,
     removePicker: _removePicker,
     updatePicker: _updatePicker,
     assignRow: _assignRow,
@@ -125,7 +124,6 @@ const Manager = () => {
 
   // Modal States
   const [showSettings, setShowSettings] = useState(false);
-  const [showAddUser, setShowAddUser] = useState(false);
   const [showBroadcast, setShowBroadcast] = useState(false);
   const [showAssignment, setShowAssignment] = useState<{ show: boolean; row: number }>({
     show: false,
@@ -159,7 +157,6 @@ const Manager = () => {
           <ComponentErrorBoundary componentName="Teams">
             <TeamsView
               crew={crew}
-              setShowAddUser={setShowAddUser}
               setSelectedUser={picker => openPickerProfile(picker.id)}
               settings={settings}
               orchardId={selectedOrchardId || orchard?.id}
@@ -258,7 +255,6 @@ const Manager = () => {
           }
         />
       )}
-      {showAddUser && <AddPickerModal onClose={() => setShowAddUser(false)} onAdd={addPicker} />}
       {showBroadcast && <BroadcastModal onClose={() => setShowBroadcast(false)} />}
       {showAssignment.show && (
         <RowAssignmentModal

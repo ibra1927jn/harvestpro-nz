@@ -200,8 +200,8 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                                     </div>
                                 </div>
 
-                                {/* Unlink crew member */}
-                                {onRemoveUser && (
+                                {/* Sacar pickers del equipo es cosa del team leader o RRHH, no del manager */}
+                                {onRemoveUser && member.role !== 'picker' && (
                                     <button
                                         onClick={(e) => handleUnlink(e, member.id)}
                                         disabled={unlinking === member.id}

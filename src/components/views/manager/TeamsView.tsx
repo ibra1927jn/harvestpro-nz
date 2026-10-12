@@ -25,7 +25,6 @@ interface TeamsViewProps {
 
 const TeamsView: React.FC<TeamsViewProps> = ({
     crew,
-    setShowAddUser,
     setSelectedUser,
     settings,
     orchardId,
@@ -63,7 +62,6 @@ const TeamsView: React.FC<TeamsViewProps> = ({
                 orchardId={orchardId}
                 usersCount={selectStaff(crew).length}
                 setIsAddTeamLeaderModalOpen={setIsAddTeamLeaderModalOpen}
-                onAddPicker={setShowAddUser ? () => setShowAddUser(true) : undefined}
                 setShowImportCSV={setShowImportCSV}
                 search={search}
                 setSearch={setSearch}
