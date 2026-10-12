@@ -30,6 +30,10 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
   const bucketRecords = useHarvestStore(state => state.bucketRecords);
   // Cubetas en el bin activo (móvil + servidor, sin duplicar)
   const activeBinBuckets = bucketsInBin(selectedBinId, buckets, bucketRecords);
+  // Código de la pegatina (no el id interno)
+  const storeBins = useHarvestStore(state => state.inventory);
+  const activeBinCode =
+    storeBins.find(b => b.id === selectedBinId)?.bin_code || selectedBinId?.slice(0, 8);
 
   const binCapacity = 72;
   const activeBinPercentage = Math.round((activeBinBuckets / binCapacity) * 100);
@@ -135,7 +139,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
           <div className="flex items-start justify-between mb-4">
             <div>
               <h2 className="text-3xl font-black text-slate-800 tracking-tight leading-none mb-1">
-                {selectedBinId ? `Bin ${selectedBinId}` : 'No Bin Selected'}
+                {selectedBinId ? `Bin ${activeBinCode}` : 'No Bin Selected'}
               </h2>
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                 {selectedBinId ? 'Fill Progress' : 'Scan a bin to start'}

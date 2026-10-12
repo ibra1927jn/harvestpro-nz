@@ -7,6 +7,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { useMessaging } from '@/context/MessagingContext';
+import { useAuth } from '@/context/AuthContext';
 import { offlineService } from '@/services/offline.service';
 import { feedbackService } from '@/services/feedback.service';
 import { nowNZST } from '@/utils/nzst';
@@ -118,7 +119,8 @@ export function useRunnerData(): UseRunnerDataResult {
 
   // Pedir bins vacíos: crea una petición de transporte que Logística ve en
   // "Requests" (funciona sin conexión: se sube al volver la red) y avisa.
-  const currentUser = useHarvestStore(state => state.currentUser);
+  const { appUser } = useAuth();
+  const currentUser = appUser ? { id: appUser.id, name: appUser.full_name } : null;
   const handleRequestRefill = useCallback(async () => {
     feedbackService.vibrate(50);
     if (!orchard?.id || !currentUser?.id) {
