@@ -1,103 +1,118 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useHarvestStore } from '../../stores/useHarvestStore';
-import { bucketEventsRepository } from '@/repositories/bucket-events.repository';
+import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
 import { offlineService } from '../../services/offline.service';
 import { logger } from '@/utils/logger';
 
-const BASE_DELAY = 5_000;    // 5 seconds
-const MAX_DELAY = 300_000;   // 5 minutes cap
+const BASE_DELAY = 5_000; // 5 segundos
+const MAX_DELAY = 300_000; // tope 5 minutos
+const BATCH_SIZE = 50;
+
+type ScanResult = {
+    id: string | null;
+    status: 'saved' | 'duplicate' | 'rejected' | 'retry';
+    reason?: string;
+};
 
 /**
- * Invisible sync bridge that batch-uploads pending buckets to Supabase.
- * 
- * FIX C3: Uses getState() to avoid stale closure on buckets array.
- * 
- * IDEMPOTENCY: If `bucket_events.id` has a UNIQUE constraint (migration),
- * duplicate inserts from retry attempts receive a 409/23505 error.
- * We treat these as success — the data already exists in the DB.
+ * Sube las cubetas escaneadas sin conexión.
+ *
+ * - Va por la función record-bucket (resuelve tarjeta → persona, aplica la
+ *   semana cerrada y guarda en bucket_records).
+ * - Cada escaneo lleva su id del móvil: si un envío se cortó a medias y se
+ *   repite, el servidor lo reconoce y no se duplica.
+ * - Un rechazo definitivo (semana cerrada, tarjeta desconocida) se aparta con
+ *   su motivo en vez de reintentarlo para siempre.
+ * - Sin conexión no intenta nada; al volver la conexión sube al momento.
  */
 export const HarvestSyncBridge = () => {
     const retryDelay = useRef(BASE_DELAY);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const syncPendingBucketsRef = useRef<(() => Promise<void>) | null>(null);
+    const running = useRef(false);
+    const syncRef = useRef<(() => Promise<void>) | null>(null);
 
-    // Stable scheduleNext using ref to avoid circular dependency
     const scheduleNext = useCallback(() => {
         if (timerRef.current) clearTimeout(timerRef.current);
         timerRef.current = setTimeout(() => {
-            syncPendingBucketsRef.current?.();
+            syncRef.current?.();
         }, retryDelay.current);
-    }, []); // Empty deps — uses ref, so stable forever
+    }, []);
 
-    // FIX C3: Stable callback — reads from store directly, no stale closure
     const syncPendingBuckets = useCallback(async () => {
-        const { buckets, markAsSynced } = useHarvestStore.getState();
-        const pending = buckets.filter(b => !b.synced);
-
-        if (pending.length === 0) {
-            retryDelay.current = BASE_DELAY;
-            scheduleNext();
-            return;
-        }
-
+        if (running.current) return;
+        running.current = true;
         try {
-            const rows = pending.map(b => ({
-                id: b.id,
-                picker_id: b.picker_id,
-                quality_grade: b.quality_grade,
-                orchard_id: b.orchard_id,
-                recorded_at: b.timestamp,
-            }));
+            const { buckets, markAsSynced, markAsFailed } = useHarvestStore.getState();
+            const pending = buckets.filter(b => !b.synced && !b.failed);
 
-            const { error } = await bucketEventsRepository.insertBatch(rows);
-
-            if (!error) {
-                pending.forEach(b => markAsSynced(b.id));
+            if (pending.length === 0 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
                 retryDelay.current = BASE_DELAY;
+                return;
+            }
 
-                offlineService.cleanupSynced().catch(e =>
-                    logger.error('[Bridge] Cleanup failed:', e)
+            // Los más antiguos primero
+            const ordered = [...pending].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+            let anyRetry = false;
+
+            for (let i = 0; i < ordered.length; i += BATCH_SIZE) {
+                const chunk = ordered.slice(i, i + BATCH_SIZE);
+                const scans = chunk.map(b => ({
+                    id: b.id,
+                    picker_id: b.picker_id,
+                    orchard_id: b.orchard_id,
+                    quality_grade: b.quality_grade,
+                    scanned_at: b.timestamp,
+                    ...(b.row_number ? { row_number: b.row_number } : {}),
+                    ...(b.bin_id ? { bin_id: b.bin_id } : {}),
+                }));
+
+                // Si se corta a mitad y se repite, los ids evitan duplicados
+                const { data } = await edgeFunctionsRepository.invoke<{ results: ScanResult[] }>(
+                    'record-bucket',
+                    { scans },
+                    { maxRetries: 1, timeoutMs: 30_000 }
                 );
-            } else if (error.code === '23505') {
-                logger.info('[Bridge] ⚡ Duplicate detected (23505), resolving individually');
+                const results = data?.results ?? [];
+                const byId = new Map(results.filter(r => r.id).map(r => [r.id as string, r]));
 
-
-                for (const b of pending) {
-                    const { error: singleError } = await bucketEventsRepository.insertSingle({
-                        id: b.id,
-                        picker_id: b.picker_id,
-                        quality_grade: b.quality_grade,
-                        orchard_id: b.orchard_id,
-                        recorded_at: b.timestamp,
-                    });
-
-                    if (!singleError || singleError.code === '23505') {
+                for (const b of chunk) {
+                    const r = byId.get(b.id);
+                    if (!r || r.status === 'retry') {
+                        anyRetry = true;
+                    } else if (r.status === 'saved' || r.status === 'duplicate') {
                         markAsSynced(b.id);
+                    } else {
+                        logger.warn(`[Bridge] Bucket ${b.id} rejected: ${r.reason}`);
+                        markAsFailed(b.id, r.reason || 'Rejected');
                     }
                 }
-                retryDelay.current = BASE_DELAY;
-            } else {
-
-                logger.error('[Bridge] Batch insert error:', error.message);
-                retryDelay.current = Math.min(retryDelay.current * 2, MAX_DELAY);
             }
+
+            retryDelay.current = anyRetry ? Math.min(retryDelay.current * 2, MAX_DELAY) : BASE_DELAY;
+            offlineService.cleanupSynced().catch(e => logger.error('[Bridge] Cleanup failed:', e));
         } catch (e) {
-
-            logger.error('[Bridge] Network error:', e);
+            // Sin red / servidor caído: se reintenta más tarde (o al volver la conexión)
+            logger.warn('[Bridge] Upload failed, will retry:', e);
             retryDelay.current = Math.min(retryDelay.current * 2, MAX_DELAY);
+        } finally {
+            running.current = false;
+            scheduleNext();
         }
+    }, [scheduleNext]);
 
-        scheduleNext();
-    }, [scheduleNext]); // scheduleNext is stable (empty deps), safe to include
-
-    // Update ref whenever syncPendingBuckets changes
     useEffect(() => {
-        syncPendingBucketsRef.current = syncPendingBuckets;
+        syncRef.current = syncPendingBuckets;
     }, [syncPendingBuckets]);
 
     useEffect(() => {
+        const onOnline = () => {
+            retryDelay.current = BASE_DELAY;
+            syncPendingBuckets();
+        };
+        window.addEventListener('online', onOnline);
         syncPendingBuckets();
         return () => {
+            window.removeEventListener('online', onOnline);
             if (timerRef.current) clearTimeout(timerRef.current);
         };
     }, [syncPendingBuckets]);

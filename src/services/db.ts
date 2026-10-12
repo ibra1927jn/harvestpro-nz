@@ -10,6 +10,7 @@ export interface QueuedBucket {
   synced: number; // 0 = pending, 1 = synced, -1 = error
   scanned_by: string; // 🔧 V17: Who scanned this bucket (user UUID) — prevents authorship fraud
   row_number?: number;
+  bin_id?: string;
   failure_reason?: string;
 }
 

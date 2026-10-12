@@ -92,6 +92,8 @@ export const createBucketSlice: StateCreator<
             timestamp: newBucket.timestamp,
             orchard_id: newBucket.orchard_id,
             scanned_by: get().currentUser?.id || 'unknown',
+            ...(newBucket.row_number ? { row_number: newBucket.row_number } : {}),
+            ...(newBucket.bin_id ? { bin_id: newBucket.bin_id } : {}),
         }).catch(e => logger.error('Failed to save to Dexie:', e));
 
         // Recalculate intelligence after adding bucket
@@ -107,6 +109,16 @@ export const createBucketSlice: StateCreator<
         // Also mark in Dexie
         offlineService.markAsSynced(id)
             .catch(e => logger.error('Failed to mark synced in Dexie:', e));
+    },
+
+    markAsFailed: (id, reason) => {
+        set(state => ({
+            buckets: state.buckets.map(b =>
+                b.id === id ? { ...b, failed: true, failure_reason: reason } : b
+            )
+        }));
+        offlineService.markAsFailed(id, reason)
+            .catch(e => logger.error('Failed to mark failed in Dexie:', e));
     },
 
     clearSynced: () => {

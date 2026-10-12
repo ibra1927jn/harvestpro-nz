@@ -25,6 +25,12 @@ export interface ScannedBucket {
     timestamp: string;
     synced: boolean;
     orchard_id: string;
+    /** Fila del picker al escanear (para cobrar al precio de su variedad) */
+    row_number?: number;
+    bin_id?: string | null;
+    /** Rechazado por el servidor: no se reintenta (motivo en failure_reason) */
+    failed?: boolean;
+    failure_reason?: string;
 }
 
 export interface HarvestStats {
@@ -57,8 +63,9 @@ export interface BucketSlice {
     isScanning: boolean;
     lastScanTime: number | null;
     bucketRecords: BucketRecord[];
-    addBucket: (bucket: Omit<ScannedBucket, 'id' | 'synced'>) => void;
+    addBucket: (bucket: Omit<ScannedBucket, 'id' | 'synced' | 'failed' | 'failure_reason'>) => void;
     markAsSynced: (id: string) => void;
+    markAsFailed: (id: string, reason: string) => void;
     clearSynced: () => void;
 }
 

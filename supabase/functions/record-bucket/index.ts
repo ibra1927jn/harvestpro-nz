@@ -7,6 +7,7 @@ import {
     checkRateLimit,
     BucketRecordSchema,
 } from '../_shared/security.ts'
+import { z } from 'npm:zod@^4.3.6'
 
 /**
  * record-bucket — Server-side bucket/scan recording
@@ -19,6 +20,29 @@ import {
  *
  * Security: admin/manager/team_leader and runner (los runners son quienes escanean)
  */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+const BatchScanSchema = z.object({
+    id: z.string().regex(UUID_RE, 'id must be a UUID'),
+    picker_id: z.string().min(1),
+    orchard_id: z.string().regex(UUID_RE, 'orchard_id must be a UUID (scan made before the orchard was loaded)'),
+    row_number: z.number().int().positive().optional().nullable(),
+    quality_grade: z.enum(['A', 'B', 'C', 'reject']).optional(),
+    bin_id: z.string().optional().nullable(),
+    scanned_by: z.string().regex(UUID_RE).optional().nullable(),
+    scanned_at: z.string().min(10),
+})
+
+/** Tarjeta → persona, en toda la empresa (si se repite, gana este huerto) */
+// deno-lint-ignore no-explicit-any
+async function resolveBadge(supabase: any, code: string, orchardId: string): Promise<string | null> {
+    const { data, error } = await supabase.from('pickers').select('id, orchard_id').eq('picker_id', code).is('deleted_at', null)
+    if (error) throw new Error(`Badge lookup failed: ${error.message}`)
+    const list = (data ?? []) as { id: string; orchard_id: string | null }[]
+    const match = list.length === 1 ? list[0] : list.find(m => m.orchard_id === orchardId)
+    return match?.id ?? null
+}
+
 serve(async (req) => {
     const preflight = handlePreflight(req)
     if (preflight) return preflight
@@ -35,6 +59,55 @@ serve(async (req) => {
         // El auth check de arriba garantiza que solo usuarios autenticados pueden hacer warmup.
         if (body?._warmup === true) {
             return jsonResponse({ status: 'warm', function: 'record-bucket' }, origin)
+        }
+
+        // ── Lote (móvil que vuelve a tener conexión) ─────────────
+        // { scans: [...] }: cada escaneo trae su id (generado en el móvil). Si ya
+        // se guardó en un intento anterior, cuenta como guardado (sin duplicar).
+        // Un rechazo definitivo (semana cerrada, tarjeta desconocida) vuelve con
+        // su motivo para no reintentarlo para siempre.
+        if (Array.isArray(body?.scans)) {
+            const scans = body.scans.slice(0, 200) as unknown[]
+            const results: { id: string | null; status: 'saved' | 'duplicate' | 'rejected' | 'retry'; reason?: string }[] = []
+            const badgeCache = new Map<string, string | null>()
+            for (const raw of scans) {
+                const scanId = typeof (raw as { id?: unknown })?.id === 'string' ? (raw as { id: string }).id : null
+                try {
+                    const s = BatchScanSchema.parse(raw)
+                    let pickerId = s.picker_id
+                    if (!UUID_RE.test(pickerId)) {
+                        if (!badgeCache.has(pickerId)) badgeCache.set(pickerId, await resolveBadge(supabase, pickerId, s.orchard_id))
+                        const resolved = badgeCache.get(pickerId)
+                        if (!resolved) throw new Error(`UNKNOWN_BADGE: "${pickerId}"`)
+                        pickerId = resolved
+                    }
+                    const { error } = await supabase.from('bucket_records').insert({
+                        id: s.id,
+                        picker_id: pickerId,
+                        orchard_id: s.orchard_id,
+                        row_number: s.row_number,
+                        quality_grade: s.quality_grade,
+                        bin_id: s.bin_id,
+                        scanned_by: s.scanned_by ?? user.id,
+                        scanned_at: s.scanned_at,
+                    })
+                    if (error) {
+                        if (error.code === '23505') { results.push({ id: s.id, status: 'duplicate' }); continue }
+                        // Errores de datos → rechazo definitivo; el resto (BD caída…) → reintentar luego
+                        const permanent = ['P0001', '23503', '23514', '22P02', '22007', '23502'].includes(error.code ?? '')
+                        results.push({ id: s.id, status: permanent ? 'rejected' : 'retry', reason: error.message })
+                        continue
+                    }
+                    results.push({ id: s.id, status: 'saved' })
+                } catch (e) {
+                    const msg = e instanceof Error ? e.message : String(e)
+                    const transient = msg.startsWith('Badge lookup failed')
+                    results.push({ id: scanId, status: transient ? 'retry' : 'rejected', reason: msg })
+                }
+            }
+            const saved = results.filter(x => x.status === 'saved' || x.status === 'duplicate').length
+            console.info(`[record-bucket] Batch: ${saved}/${results.length} stored by ${user.id}`)
+            return jsonResponse({ results }, origin)
         }
 
         const input = BucketRecordSchema.parse(body)
