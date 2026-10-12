@@ -15,3 +15,10 @@ BEGIN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.row_assignments;
     END IF;
 END $$;
+
+-- El disparador de versión (bump_version) escribe NEW.updated_at, pero
+-- row_assignments no tenía esa columna: cualquier cambio (retirar una
+-- asignación, marcar fila completa, progreso) fallaba con
+-- 'record "new" has no field "updated_at"'.
+ALTER TABLE public.row_assignments
+    ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
