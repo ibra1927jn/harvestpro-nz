@@ -3,6 +3,21 @@
  */
 import { supabase } from '@/services/supabase';
 
+/** Persona de la empresa para RRHH */
+export interface StaffMember {
+    id: string;
+    full_name: string;
+    email: string;
+    role: string;
+    active: boolean;
+    created_at?: string;
+    orchard_id?: string;
+    /** Código de picker (LOC-001...), si está en la plantilla */
+    code?: string;
+    /** staff = plantilla de campo; office = solo cuenta de la app */
+    source: 'staff' | 'office';
+}
+
 export const userRepository2 = {
     /** Get all users (optionally filtered by orchard) */
     async getAll(orchardId?: string) {
@@ -28,13 +43,57 @@ export const userRepository2 = {
         return count || 0;
     },
 
-    /** Get user names by IDs */
+    /** Nombres por id: plantilla (pickers) y, si no está, cuentas de la app (oficina) */
     async getNamesByIds(ids: string[]): Promise<Record<string, string>> {
         if (ids.length === 0) return {};
-        const { data } = await supabase
-            .from('users')
-            .select('id, full_name')
-            .in('id', ids);
-        return Object.fromEntries((data || []).map(u => [u.id, u.full_name || 'Unknown']));
+        const [{ data: staff }, { data: users }] = await Promise.all([
+            supabase.from('pickers').select('id, name').in('id', ids),
+            supabase.from('users').select('id, full_name').in('id', ids),
+        ]);
+        const out: Record<string, string> = {};
+        for (const u of users || []) out[u.id] = u.full_name || 'Unknown';
+        for (const p of staff || []) out[p.id] = p.name || out[p.id] || 'Unknown';
+        return out;
+    },
+
+    /**
+     * Empleados de la empresa para RRHH: la plantilla única (pickers, team
+     * leaders, runners; la misma lista que Equipos y Nómina) más el personal de
+     * oficina que solo tiene cuenta en la app (manager, RRHH, nómina, QC...).
+     */
+    async getStaff(): Promise<StaffMember[]> {
+        const [{ data: staff, error: staffErr }, { data: users, error: usersErr }] = await Promise.all([
+            supabase.from('pickers').select('id, name, role, status, created_at, orchard_id, picker_id').is('deleted_at', null),
+            supabase.from('users').select('id, full_name, email, role, is_active, created_at, orchard_id'),
+        ]);
+        if (staffErr) throw staffErr;
+        if (usersErr) throw usersErr;
+        const userById = new Map((users || []).map(u => [u.id, u]));
+        const out: StaffMember[] = (staff || []).map(p => ({
+            id: p.id,
+            full_name: p.name,
+            email: userById.get(p.id)?.email ?? '',
+            role: p.role || 'picker',
+            active: p.status !== 'archived',
+            created_at: p.created_at ?? undefined,
+            orchard_id: p.orchard_id ?? undefined,
+            code: p.picker_id,
+            source: 'staff',
+        }));
+        const inStaff = new Set(out.map(s => s.id));
+        for (const u of users || []) {
+            if (inStaff.has(u.id)) continue;
+            out.push({
+                id: u.id,
+                full_name: u.full_name || 'Unknown',
+                email: u.email || '',
+                role: u.role || 'office',
+                active: !!u.is_active,
+                created_at: u.created_at ?? undefined,
+                orchard_id: u.orchard_id ?? undefined,
+                source: 'office',
+            });
+        }
+        return out.sort((a, b) => a.full_name.localeCompare(b.full_name));
     },
 };

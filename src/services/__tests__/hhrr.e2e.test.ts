@@ -42,6 +42,18 @@ vi.mock('@/repositories/user.repository', () => ({
   userRepository2: {
     getActiveCount: (...a: unknown[]) => mockGetActiveCount(...a),
     getAll: (...a: unknown[]) => mockGetAll(...a),
+    // Plantilla para RRHH: misma forma que getStaff (aquí desde las filas de prueba)
+    getStaff: async (...a: unknown[]) =>
+      ((await mockGetAll(...a)) as Array<Record<string, unknown>>).map(u => ({
+        id: u.id,
+        full_name: (u.full_name as string) || 'Unknown',
+        email: (u.email as string) || '',
+        role: (u.role as string) || 'picker',
+        active: !!u.is_active,
+        created_at: u.created_at,
+        orchard_id: u.orchard_id,
+        source: 'staff',
+      })),
     getNamesByIds: (...a: unknown[]) => mockGetNamesByIds(...a),
   },
 }));
@@ -317,7 +329,8 @@ describe('hhrr.service — E2E deep tests', () => {
   describe('fetchPayroll', () => {
     it('calculates payroll for active employees', async () => {
       const payroll = await fetchPayroll('o1');
-      expect(payroll.length).toBe(1); // Only active employees
+      // En plantilla + quien trabajó esa semana aunque ya esté de baja (hay que pagarle)
+      expect(payroll.map(p => p.employee_name)).toEqual(['Alice', 'Bob']);
       const alice = payroll[0];
       expect(alice.employee_name).toBe('Alice');
       expect(alice.hours_worked).toBe(7.5); // 8 h − 30 min de descanso no pagado

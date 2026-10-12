@@ -149,28 +149,53 @@ export async function computePayroll(
     //    - festivos (Holidays Act 2003 s.50): mínimo × 1.5 ese día
     type Att = { picker_id: string; orchard_id: string | null; date: string; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null }
     type Ev = { picker_id: string; orchard_id: string | null; variety: string | null; scanned_at: string; quality_grade: string | null }
-    const rows = payForRange({
-        attendance: ((attendance ?? []) as Att[]).map(a => ({
-            pickerId: a.picker_id,
-            orchardId: a.orchard_id,
-            date: a.date.slice(0, 10),
-            checkIn: a.check_in,
-            checkOut: a.check_out,
-            breakStart: a.break_start,
-            breakMinutes: a.break_minutes,
-        })),
-        buckets: ((events ?? []) as Ev[]).map(e => ({
-            pickerId: e.picker_id,
-            orchardId: e.orchard_id,
-            variety: e.variety,
-            scannedAt: e.scanned_at,
-            qualityGrade: e.quality_grade,
-            pieceRate: pieceRateFor({ orchardId: e.orchard_id, variety: e.variety }, { varietyRates, orchardRates, fallback: bucket_rate }),
-        })),
+    const attRows = ((attendance ?? []) as Att[]).map(a => ({
+        pickerId: a.picker_id,
+        orchardId: a.orchard_id,
+        date: a.date.slice(0, 10),
+        checkIn: a.check_in,
+        checkOut: a.check_out,
+        breakStart: a.break_start,
+        breakMinutes: a.break_minutes,
+    }))
+    const bucketRows = ((events ?? []) as Ev[]).map(e => ({
+        pickerId: e.picker_id,
+        orchardId: e.orchard_id,
+        variety: e.variety,
+        scannedAt: e.scanned_at,
+        qualityGrade: e.quality_grade,
+        pieceRate: pieceRateFor({ orchardId: e.orchard_id, variety: e.variety }, { varietyRates, orchardRates, fallback: bucket_rate }),
+    }))
+
+    // Tarifa por hora del contrato: si es mayor que el mínimo, es el mínimo
+    // garantizado de esa persona (nadie cobra menos de lo firmado).
+    const { data: contractRows } = await supabase
+        .from('contracts')
+        .select('employee_id, hourly_rate, start_date, end_date, status')
+        .in('status', ['active', 'expiring'])
+    const minWageById = new Map<string, number>()
+    for (const k of (contractRows ?? []) as { employee_id: string; hourly_rate: number | null; start_date: string | null; end_date: string | null }[]) {
+        const rate = Number(k.hourly_rate ?? 0)
+        const covers = (!k.start_date || k.start_date <= end_date) && (!k.end_date || k.end_date >= start_date)
+        if (covers && rate > min_wage_rate) minWageById.set(k.employee_id, Math.max(rate, minWageById.get(k.employee_id) ?? 0))
+    }
+    const minWageOf = (id: string) => minWageById.get(id) ?? min_wage_rate
+
+    // Un cálculo por cada mínimo distinto (casi todos usan el general)
+    const groups = new Map<number, Set<string>>()
+    for (const id of new Set([...attRows.map(a => a.pickerId), ...bucketRows.map(b => b.pickerId)])) {
+        const w = minWageOf(id)
+        const set = groups.get(w) ?? new Set<string>()
+        set.add(id)
+        groups.set(w, set)
+    }
+    const rows = [...groups.entries()].flatMap(([minWage, ids]) => payForRange({
+        attendance: attRows.filter(a => ids.has(a.pickerId)),
+        buckets: bucketRows.filter(b => ids.has(b.pickerId)),
         pieceRate: bucket_rate,
-        minWage: min_wage_rate,
+        minWage,
         isPublicHoliday,
-    })
+    })).sort((a, b) => b.buckets - a.buckets)
     const pickerIds = rows.map(r => r.pickerId)
 
     const { data: names } = pickerIds.length
@@ -204,7 +229,7 @@ export async function computePayroll(
             hours_holiday,
             piece_rate_earnings: r.pieceEarnings,
             hourly_rate: r.hours > 0 ? r2(r.pieceEarnings / r.hours) : 0,
-            minimum_required: r2(hours_ordinary * min_wage_rate + hours_holiday * min_wage_rate * PAY_RULES.publicHolidayMultiplier),
+            minimum_required: r2(hours_ordinary * minWageOf(r.pickerId) + hours_holiday * minWageOf(r.pickerId) * PAY_RULES.publicHolidayMultiplier),
             top_up_required: r.topUp,
             total_earnings: r.total,
             is_below_minimum,
