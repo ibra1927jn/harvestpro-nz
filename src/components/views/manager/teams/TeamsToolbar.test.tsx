@@ -12,6 +12,7 @@ describe('TeamsToolbar', () => {
         usersCount: 15,
         setIsAddTeamLeaderModalOpen: vi.fn(),
         setShowImportCSV: vi.fn(),
+        canImportPickers: true,
         search: '',
         setSearch: vi.fn(),
     };
@@ -66,5 +67,10 @@ describe('TeamsToolbar', () => {
         const csvBtn = screen.getByText('Import CSV').closest('button')!;
         expect(linkBtn.disabled).toBe(true);
         expect(csvBtn.disabled).toBe(true);
+    });
+
+    it('hides Import CSV for the manager (pickers are added by team leaders or HR)', () => {
+        render(<TeamsToolbar {...defaultProps} canImportPickers={false} />);
+        expect(screen.queryByText(/Import CSV/i)).toBeNull();
     });
 });

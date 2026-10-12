@@ -31,6 +31,14 @@ export const createRowSlice: StateCreator<HarvestStoreState, [], [], RowSlice> =
     const orchardId = get().orchard?.id;
     if (!orchardId || rowNumbers.length === 0) return;
 
+    // Equipo: el team leader que va en el grupo o, si no, el de sus pickers
+    const crewNow = get().crew;
+    const members = crewNow.filter(p => pickerIds.includes(p.id));
+    const teamLeaderId =
+      members.find(p => p.role === 'team_leader')?.id ??
+      members.find(p => p.team_leader_id)?.team_leader_id ??
+      null;
+
     // Build one RowAssignment entry per row
     const newEntries: RowAssignment[] = rowNumbers.map(rn => ({
       id: safeUUID(),
@@ -38,7 +46,16 @@ export const createRowSlice: StateCreator<HarvestStoreState, [], [], RowSlice> =
       side,
       assigned_pickers: pickerIds,
       completion_percentage: 0,
+      team_leader_id: teamLeaderId,
     }));
+
+    // Lo que había antes (para deshacer si no se guarda, y para retirar en el servidor)
+    const before = { rowAssignments: get().rowAssignments, crew: get().crew };
+    const replacedIds = before.rowAssignments
+      .filter(ra => ra.assigned_pickers.some(pid => pickerIds.includes(pid)))
+      .map(ra => ra.id)
+      // las reconstruidas en el móvil ("rebuilt-…") no existen en el servidor
+      .filter(id => /^[0-9a-f-]{36}$/i.test(id));
 
     // ATOMIC state update — removes old team entries, adds all new ones at once
     set(state => ({
@@ -56,16 +73,18 @@ export const createRowSlice: StateCreator<HarvestStoreState, [], [], RowSlice> =
       ),
     }));
 
-    // SUPABASE PERSISTENCE — best-effort, failures don't undo local state
+    // Guardar en el servidor: si no se puede, se deshace y se avisa (el team
+    // leader no recibiría nada y el manager creería que sí)
     try {
-      // Persistir pickers.current_row
+      const { error: upsertError } = await rowRepository.upsertRowAssignments(orchardId, newEntries);
+      if (upsertError) throw new Error(upsertError.message);
+
       const { error } = await rowRepository.updatePickerRows(pickerIds, rowNumbers[0]);
       if (error) {
         logger.warn('⚠️ [Store] Picker current_row update failed (non-fatal):', error);
       }
-
-      // Persistir row_assignments en Supabase para que Team Leader reciba via realtime
-      await rowRepository.upsertRowAssignments(orchardId, newEntries);
+      const { error: retireError } = await rowRepository.retireAssignments(replacedIds);
+      if (retireError) logger.warn('⚠️ [Store] Old row assignments not retired:', retireError);
 
       logger.info(
         `📍 [Store] Rows ${rowNumbers.join(',')} — ${pickerIds.length} pickers updated in Supabase`
@@ -73,7 +92,9 @@ export const createRowSlice: StateCreator<HarvestStoreState, [], [], RowSlice> =
       // 📊 PostHog: Track row assignment
       analytics.trackRowAssignment(pickerIds[0], rowNumbers[0]);
     } catch (e) {
-      logger.warn('⚠️ [Store] Row assignment persistence threw (non-fatal):', e);
+      logger.error('❌ [Store] Row assignment not saved:', e);
+      set(before);
+      throw new Error('Row assignment not saved — check your connection and try again');
     }
   },
 

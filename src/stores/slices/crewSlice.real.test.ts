@@ -3,9 +3,6 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('@/repositories/picker-crud.repository', () => ({
-    pickerCrudRepository: { insert: vi.fn().mockResolvedValue({}), updateById: vi.fn().mockResolvedValue({}) },
-}));
 vi.mock('@/services/sync.service', () => ({
     syncService: { addToQueue: vi.fn().mockResolvedValue('q') },
 }));
@@ -16,6 +13,15 @@ vi.mock('@/utils/logger', () => ({
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 import { createCrewSlice } from './crewSlice';
+import { pickerCrudRepository } from '@/repositories/picker-crud.repository';
+import { beforeEach } from 'vitest';
+
+// El store ya cargó el repositorio real (test-setup): se espía en vez de mockear el módulo
+beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(pickerCrudRepository, 'insert').mockResolvedValue({} as never);
+    vi.spyOn(pickerCrudRepository, 'updateById').mockResolvedValue({} as never);
+});
 
 function makeSlice(initial: Record<string, unknown> = {}) {
     const store: Record<string, unknown> = {
@@ -104,5 +110,19 @@ describe('crewSlice', () => {
         const result = updater({ crew: [{ id: 'p1' }, { id: 'p2' }] });
         expect((result.crew as unknown[]).length).toBe(1);
     });
-});
 
+    it('addPicker sends only real pickers columns and reports DB errors', async () => {
+        const insert = vi.spyOn(pickerCrudRepository, 'insert').mockResolvedValue({} as never);
+        Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
+        const { slice } = makeSlice();
+
+        await slice.addPicker({ name: 'Alice', picker_id: 'LOC-900' });
+        const row = insert.mock.calls[insert.mock.calls.length - 1][0];
+        expect(Object.keys(row).sort()).toEqual(
+            ['current_row', 'id', 'name', 'orchard_id', 'picker_id', 'role', 'safety_verified', 'status', 'team_leader_id']
+        );
+
+        insert.mockRejectedValueOnce({ code: '23505', message: 'duplicate key value' });
+        await expect(slice.addPicker({ name: 'Bob', picker_id: 'LOC-900' })).rejects.toThrow(/already used/);
+    });
+});

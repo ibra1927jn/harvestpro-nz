@@ -7,6 +7,8 @@ interface TeamsToolbarProps {
     usersCount: number;
     setIsAddTeamLeaderModalOpen: (open: boolean) => void;
     setShowImportCSV: (show: boolean) => void;
+    /** Importar pickers por CSV: no para el manager (altas = team leader o RRHH) */
+    canImportPickers?: boolean;
     search: string;
     setSearch: (value: string) => void;
 }
@@ -16,6 +18,7 @@ const TeamsToolbar: React.FC<TeamsToolbarProps> = ({
     usersCount,
     setIsAddTeamLeaderModalOpen,
     setShowImportCSV,
+    canImportPickers = false,
     search,
     setSearch
 }) => {
@@ -57,7 +60,11 @@ const TeamsToolbar: React.FC<TeamsToolbarProps> = ({
                         {t('teams.link_staff')}
                     </button>
 
+
                     {/* Import CSV */}
+
+
+                    {canImportPickers && (
                     <button
                         onClick={() => setShowImportCSV(true)}
                         disabled={!orchardId}
@@ -69,6 +76,9 @@ const TeamsToolbar: React.FC<TeamsToolbarProps> = ({
                         <span className="material-symbols-outlined text-base">upload</span>
                         {t('teams.import_csv')}
                     </button>
+
+
+                    )}
                 </div>
             </div>
 

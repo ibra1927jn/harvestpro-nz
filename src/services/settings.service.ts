@@ -20,13 +20,20 @@ export const settingsService = {
     async updateHarvestSettings(
         orchardId: string,
         updates: Partial<HarvestSettings>
-    ): Promise<boolean> {
+    ): Promise<{ ok: true } | { ok: false; reason: string }> {
         try {
             await settingsRepository.upsert(orchardId, updates);
-            return true;
+            return { ok: true };
         } catch (error) {
-            logger.error('[SettingsService] Failed to update settings:', (error as Error).message);
-            return false;
+            const msg = (error as { message?: string })?.message ?? String(error);
+            logger.error('[SettingsService] Failed to update settings:', msg);
+            // Motivo legible para la pantalla
+            const reason = /min_wage_floor/i.test(msg)
+                ? 'Minimum wage cannot be below the NZ legal minimum ($23.95/h).'
+                : /fetch|network/i.test(msg)
+                    ? 'No connection — settings not saved.'
+                    : 'Settings not saved. Please try again.';
+            return { ok: false, reason };
         }
     },
 };

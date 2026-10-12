@@ -12,6 +12,7 @@ describe('TeamsToolbar', () => {
         usersCount: 42,
         setIsAddTeamLeaderModalOpen: vi.fn(),
         setShowImportCSV: vi.fn(),
+        canImportPickers: true,
         search: '',
         setSearch: vi.fn(),
     };

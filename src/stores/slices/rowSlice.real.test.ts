@@ -3,19 +3,24 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('@/repositories/row.repository', () => ({
-    rowRepository: {
-        updatePickerRows: vi.fn().mockResolvedValue({ error: null }),
-        updateProgress: vi.fn().mockResolvedValue({}),
-        completeRow: vi.fn().mockResolvedValue({}),
-    },
-}));
 vi.mock('@/utils/logger', () => ({
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 vi.mock('@/utils/uuid', () => ({ safeUUID: () => 'row-uuid-1' }));
 
 import { createRowSlice } from './rowSlice';
+import { rowRepository } from '@/repositories/row.repository';
+import { beforeEach } from 'vitest';
+
+// El store ya cargó el repositorio real (test-setup), así que se espían sus métodos
+beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(rowRepository, 'updatePickerRows').mockResolvedValue({ error: null } as never);
+    vi.spyOn(rowRepository, 'upsertRowAssignments').mockResolvedValue({ error: null } as never);
+    vi.spyOn(rowRepository, 'retireAssignments').mockResolvedValue({ error: null } as never);
+    vi.spyOn(rowRepository, 'updateProgress').mockResolvedValue(undefined as never);
+    vi.spyOn(rowRepository, 'completeRow').mockResolvedValue(undefined as never);
+});
 
 function makeSlice(initial: Record<string, unknown> = {}) {
     const store: Record<string, unknown> = {
@@ -117,5 +122,27 @@ describe('rowSlice', () => {
             rowAssignments: [{ id: 'r1', completion_percentage: 60 }],
         });
         expect((result.rowAssignments as Array<{ completion_percentage: number }>)[0].completion_percentage).toBe(100);
+    });
+
+    it('assignRows undoes the change and throws when the server rejects it', async () => {
+        vi.spyOn(rowRepository, 'upsertRowAssignments')
+            .mockResolvedValueOnce({ error: { message: 'permission denied' } } as never);
+        const { slice, setSpy } = makeSlice();
+        await expect(slice.assignRows([5], 'north', ['p1'])).rejects.toThrow(/not saved/);
+        // último set() = estado anterior restaurado
+        const last = setSpy.mock.calls[setSpy.mock.calls.length - 1][0];
+        expect(last.rowAssignments).toEqual([]);
+    });
+
+    it('assignRows retires the team\'s previous server assignments', async () => {
+        const oldId = '11111111-1111-4111-8111-111111111111';
+        const { slice } = makeSlice({
+            rowAssignments: [
+                { id: oldId, row_number: 2, side: 'north', assigned_pickers: ['p1'], completion_percentage: 0 },
+                { id: 'rebuilt-3-p1', row_number: 3, side: 'north', assigned_pickers: ['p1'], completion_percentage: 0 },
+            ],
+        });
+        await slice.assignRows([5], 'north', ['p1']);
+        expect(rowRepository.retireAssignments).toHaveBeenCalledWith([oldId]);
     });
 });

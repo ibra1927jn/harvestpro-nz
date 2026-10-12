@@ -266,12 +266,13 @@ export async function fetchOrchardData(
   // Fetch blocks
   if (activeOrchard?.id) await get().fetchBlocks(activeOrchard.id);
 
-  // Recuperar row assignments del servidor si el store esta vacio
+  // Row assignments: el servidor manda (antes solo se pedían si el móvil no
+  // tenía ninguna guardada, y el team leader no veía las nuevas)
   const existingAssignments = get().rowAssignments;
-  if (existingAssignments.length === 0 && activeOrchard?.id) {
+  if (activeOrchard?.id) {
     const { data: serverAssignments, error: raError } = await supabase
       .from('row_assignments')
-      .select('id, row_number, side, assigned_pickers, completion_percentage')
+      .select('id, row_number, side, assigned_pickers, completion_percentage, team_leader_id')
       .eq('orchard_id', activeOrchard.id)
       .eq('status', 'active')
       .is('deleted_at', null);
@@ -284,10 +285,14 @@ export async function fetchOrchardData(
         side: (ra.side as 'north' | 'south') ?? 'north',
         assigned_pickers: (ra.assigned_pickers as string[]) ?? [],
         completion_percentage: (ra.completion_percentage as number) ?? 0,
+        team_leader_id: (ra.team_leader_id as string | null) ?? null,
       }));
       set({ rowAssignments: rebuiltAssignments });
       logger.info(`[Store] Loaded ${rebuiltAssignments.length} row assignments from server`);
-    } else {
+    } else if (!raError && serverAssignments && existingAssignments.length > 0) {
+      // El servidor no tiene ninguna activa: las guardadas en el móvil están caducadas
+      set({ rowAssignments: [] });
+    } else if (existingAssignments.length === 0) {
       // Fallback: reconstruir desde crew data si el servidor no tiene registros
       const crewList = get().crew;
       const rowMap = new Map<string, { row: number; pickers: string[] }>();
@@ -435,19 +440,8 @@ export function setupRealtimeSubscriptions(
         }));
       }
     )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'timesheets', filter: `orchard_id=eq.${orchardId}` },
-      payload => {
-        if (document.hidden) return;
-        set(state => ({
-          recentTimesheetUpdates: [
-            payload.new as Record<string, unknown>,
-            ...state.recentTimesheetUpdates,
-          ].slice(0, 10),
-        }));
-      }
-    )
+    // (Sin 'timesheets': esa tabla no existe y una suscripción a una tabla
+    //  inexistente dejaba el canal entero mudo — ni cubetas ni fichajes en vivo)
     .on(
       'postgres_changes',
       {
@@ -473,12 +467,12 @@ export function setupRealtimeSubscriptions(
 
         set(state => {
           // DELETE o soft-delete: eliminar del store local
-          if (payload.eventType === 'DELETE' || record.deleted_at || record.status === 'completed') {
-            if (payload.eventType === 'DELETE' || record.deleted_at) {
-              return {
-                rowAssignments: state.rowAssignments.filter(ra => ra.id !== record.id),
-              };
-            }
+          // Ya no activa (movida, terminada o borrada): fuera de las actuales
+          // (queda en el historial de filas)
+          if (payload.eventType === 'DELETE' || record.deleted_at || (record.status && record.status !== 'active')) {
+            return {
+              rowAssignments: state.rowAssignments.filter(ra => ra.id !== record.id),
+            };
           }
 
           // INSERT o UPDATE: upsert en store local
@@ -489,6 +483,7 @@ export function setupRealtimeSubscriptions(
             side: (record.side as 'north' | 'south') ?? 'north',
             assigned_pickers: record.assigned_pickers ?? [],
             completion_percentage: record.completion_percentage ?? 0,
+            team_leader_id: (record as { team_leader_id?: string | null }).team_leader_id ?? null,
           };
 
           if (exists) {

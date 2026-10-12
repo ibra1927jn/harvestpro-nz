@@ -64,14 +64,14 @@ describe('settingsService — E2E tests', () => {
     describe('updateHarvestSettings', () => {
         it('upserts settings and returns true', async () => {
             const result = await settingsService.updateHarvestSettings('o1', { piece_rate: 7.00 });
-            expect(result).toBe(true);
+            expect(result).toEqual({ ok: true });
             expect(mockUpsert).toHaveBeenCalledWith('o1', { piece_rate: 7.00 });
         });
 
         it('returns false on error', async () => {
             mockUpsert.mockRejectedValueOnce(new Error('DB error'));
             const result = await settingsService.updateHarvestSettings('o1', { piece_rate: 7.00 });
-            expect(result).toBe(false);
+            expect(result).toMatchObject({ ok: false });
         });
     });
 });

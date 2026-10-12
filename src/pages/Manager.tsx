@@ -24,6 +24,7 @@ import { useHarvestStore } from '@/stores/useHarvestStore';
 // Modular Views — eager (lightweight or always visible)
 import DashboardView from '@/components/views/manager/DashboardView';
 import TeamsView from '@/components/views/manager/TeamsView';
+import RowHistory from '@/components/common/row-history/RowHistory';
 import MoreMenuView from '@/components/views/manager/MoreMenuView';
 
 // Lazy-loaded views (code-split for mobile performance)
@@ -39,7 +40,6 @@ import Header from '@/components/common/Header';
 
 // Modals
 import DaySettingsModal from '@/components/modals/DaySettingsModal';
-import AddPickerModal from '@/components/modals/AddPickerModal';
 import BroadcastModal from '@/components/views/manager/BroadcastModal';
 import RowAssignmentModal from '@/components/views/manager/RowAssignmentModal';
 
@@ -59,7 +59,7 @@ const Manager = () => {
     orchard,
     settings,
     updateSettings,
-    addPicker,
+    addPicker: _addPicker,
     removePicker: _removePicker,
     updatePicker: _updatePicker,
     assignRow: _assignRow,
@@ -124,7 +124,6 @@ const Manager = () => {
 
   // Modal States
   const [showSettings, setShowSettings] = useState(false);
-  const [showAddUser, setShowAddUser] = useState(false);
   const [showBroadcast, setShowBroadcast] = useState(false);
   const [showAssignment, setShowAssignment] = useState<{ show: boolean; row: number }>({
     show: false,
@@ -158,7 +157,6 @@ const Manager = () => {
           <ComponentErrorBoundary componentName="Teams">
             <TeamsView
               crew={crew}
-              setShowAddUser={setShowAddUser}
               setSelectedUser={picker => openPickerProfile(picker.id)}
               settings={settings}
               orchardId={selectedOrchardId || orchard?.id}
@@ -196,6 +194,10 @@ const Manager = () => {
                 setActiveTab={setActiveTab}
                 onRowClick={rowNum => setShowAssignment({ show: true, row: rowNum })}
               />
+              {/* Recorrido de filas de cada equipo */}
+              <div className="px-4 pb-6 pt-2">
+                <RowHistory title="Row history by team" />
+              </div>
             </Suspense>
           </ComponentErrorBoundary>
         );
@@ -253,7 +255,6 @@ const Manager = () => {
           }
         />
       )}
-      {showAddUser && <AddPickerModal onClose={() => setShowAddUser(false)} onAdd={addPicker} />}
       {showBroadcast && <BroadcastModal onClose={() => setShowBroadcast(false)} />}
       {showAssignment.show && (
         <RowAssignmentModal

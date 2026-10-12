@@ -65,7 +65,7 @@ describe('settingsService', () => {
         const updates = { piece_rate: 6.0, variety: 'Gold3' };
         const result = await settingsService.updateHarvestSettings('orchard-1', updates);
 
-        expect(result).toBe(true);
+        expect(result).toEqual({ ok: true });
         expect(mockUpsert).toHaveBeenCalledWith('orchard-1', updates);
     });
 
@@ -73,7 +73,7 @@ describe('settingsService', () => {
         mockUpsert.mockRejectedValue(new Error('Permission denied'));
 
         const result = await settingsService.updateHarvestSettings('orchard-1', {});
-        expect(result).toBe(false);
+        expect(result).toMatchObject({ ok: false });
     });
 
     it('updateHarvestSettings does NOT include updated_at in payload (R9-Fix3)', async () => {
