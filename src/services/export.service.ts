@@ -77,8 +77,11 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** FINAL (semana cerrada) o DRAFT (puede cambiar) */
 export function statusLine(data: Pick<PayrollExportData, 'status' | 'closedAt'>): string {
+  const closed = data.closedAt
+    ? new Intl.DateTimeFormat('en-NZ', { timeZone: 'Pacific/Auckland', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(data.closedAt)) + ' NZ time'
+    : '';
   return data.status === 'final'
-    ? `FINAL - pay week closed ${data.closedAt ?? ''}`.trim()
+    ? `FINAL - pay week closed ${closed}`.trim()
     : 'DRAFT - pay week not closed yet; figures may still change';
 }
 
