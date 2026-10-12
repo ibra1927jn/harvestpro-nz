@@ -15,7 +15,8 @@ export const attendanceRepository = {
             .from('daily_attendance')
             .select(`*, picker:pickers ( name, role, team_leader_id )`)
             .eq('orchard_id', orchardId)
-            .eq('date', date);
+            .eq('date', date)
+            .is('deleted_at', null);
         if (error) throw error;
         return data || [];
     },
@@ -97,7 +98,9 @@ export const attendanceRepository = {
             .select(`picker_id, status, check_in, pickers!inner ( * )`)
             .eq('orchard_id', orchardId)
             .eq('date', date)
-            .eq('status', 'present');
+            // Trabajando ahora: tramo abierto (una persona puede tener varios tramos al día)
+            .is('check_out', null)
+            .is('deleted_at', null);
         if (error) throw error;
         return data || [];
     },
