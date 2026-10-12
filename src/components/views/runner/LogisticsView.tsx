@@ -1,7 +1,7 @@
 // components/views/runner/LogisticsView.tsx
 import React from 'react';
+import { bucketsInBin } from '@/services/bin.service';
 import { useHarvestStore } from '@/stores/useHarvestStore';
-import { useToast } from '@/hooks/useToast';
 import { avatarUrl } from '@/utils/avatarUrl';
 
 interface LogisticsViewProps {
@@ -13,6 +13,8 @@ interface LogisticsViewProps {
     [key: string]: unknown;
   };
   onBroadcast?: (message: string) => void;
+  /** Pide bins vacíos a Logística (crea la petición de transporte) */
+  onRequestRefill?: () => void;
   selectedBinId?: string;
 }
 
@@ -21,11 +23,17 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
   pendingUploads = 0,
   inventory,
   onBroadcast,
+  onRequestRefill,
   selectedBinId,
 }) => {
   const buckets = useHarvestStore(state => state.buckets);
-  const activeBinBuckets = buckets.filter(r => r.orchard_id === 'offline_pending').length;
-  const { showToast } = useToast();
+  const bucketRecords = useHarvestStore(state => state.bucketRecords);
+  // Cubetas en el bin activo (móvil + servidor, sin duplicar)
+  const activeBinBuckets = bucketsInBin(selectedBinId, buckets || [], bucketRecords || []);
+  // Código de la pegatina (no el id interno)
+  const storeBins = useHarvestStore(state => state.inventory);
+  const activeBinCode =
+    (storeBins || []).find(b => b.id === selectedBinId)?.bin_code || selectedBinId?.slice(0, 8);
 
   const binCapacity = 72;
   const activeBinPercentage = Math.round((activeBinBuckets / binCapacity) * 100);
@@ -63,11 +71,10 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
     return () => clearInterval(timer);
   }, [inventory]);
 
+  // El aviso de éxito o error lo da quien crea la petición (useRunnerData)
   const handleRefillRequest = () => {
-    if (onBroadcast) {
-      onBroadcast('Runner needs empty bins at Current Zone');
-      showToast('Request broadcasted!', 'success');
-    }
+    if (onRequestRefill) onRequestRefill();
+    else onBroadcast?.('Runner needs empty bins');
   };
 
   return (
@@ -132,7 +139,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
           <div className="flex items-start justify-between mb-4">
             <div>
               <h2 className="text-3xl font-black text-slate-800 tracking-tight leading-none mb-1">
-                {selectedBinId ? `Bin ${selectedBinId}` : 'No Bin Selected'}
+                {selectedBinId ? `Bin ${activeBinCode}` : 'No Bin Selected'}
               </h2>
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                 {selectedBinId ? 'Fill Progress' : 'Scan a bin to start'}

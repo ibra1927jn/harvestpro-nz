@@ -22,11 +22,12 @@ export interface UseQCResult {
   isSubmitting: boolean;
   isLoading: boolean;
   lastGrade: { grade: QualityGrade; picker: string } | null;
+  gradeError: string | null;
   crew: Picker[];
   orchardId: string | undefined;
   setSelectedPicker: (picker: Picker | null) => void;
   setNotes: (notes: string) => void;
-  handleGrade: (grade: QualityGrade, photoBlob?: Blob | null) => Promise<void>;
+  handleGrade: (grade: QualityGrade, photoBlob?: Blob | null) => Promise<boolean>;
   loadInspections: () => Promise<void>;
 }
 
@@ -48,6 +49,7 @@ export function useQC(): UseQCResult {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [lastGrade, setLastGrade] = useState<{ grade: QualityGrade; picker: string } | null>(null);
+  const [gradeError, setGradeError] = useState<string | null>(null);
 
   const loadInspections = useCallback(async () => {
     if (!orchardId) {
@@ -68,9 +70,10 @@ export function useQC(): UseQCResult {
   }, [orchardId]);
 
   const handleGrade = useCallback(
-    async (grade: QualityGrade, photoBlob?: Blob | null) => {
-      if (!selectedPicker || !orchardId || !appUser?.id) return;
+    async (grade: QualityGrade, photoBlob?: Blob | null): Promise<boolean> => {
+      if (!selectedPicker || !orchardId || !appUser?.id) return false;
       setIsSubmitting(true);
+      setGradeError(null);
 
       let photoUrl: string | undefined;
 
@@ -112,9 +115,13 @@ export function useQC(): UseQCResult {
         setNotes('');
         await loadInspections();
         setTimeout(() => setLastGrade(null), 3000);
+      } else {
+        // Antes no se avisaba y parecía guardado
+        setGradeError(`Inspection for ${selectedPicker.name} was NOT saved. Try again.`);
       }
 
       setIsSubmitting(false);
+      return !!result;
     },
     [selectedPicker, orchardId, appUser?.id, notes, loadInspections]
   );
@@ -127,6 +134,7 @@ export function useQC(): UseQCResult {
     isSubmitting,
     isLoading,
     lastGrade,
+    gradeError,
     crew,
     orchardId,
     setSelectedPicker,

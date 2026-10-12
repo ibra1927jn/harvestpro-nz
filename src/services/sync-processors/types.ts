@@ -44,7 +44,7 @@ export type ContractPayload = {
 };
 
 export type TransportPayload = {
-    action: 'create' | 'assign' | 'complete';
+    action: 'create' | 'assign' | 'complete' | 'cancel';
     requestId?: string;
     vehicleId?: string;
     assignedBy?: string;

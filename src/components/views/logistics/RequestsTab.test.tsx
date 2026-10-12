@@ -7,6 +7,9 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
+vi.mock('@/context/AuthContext', () => ({
+    useAuth: () => ({ appUser: { id: '00000000-0000-4000-8000-000000000001' } }),
+}));
 vi.mock('@/services/logistics-dept.service', () => ({
   logisticsService: {
     assignTractor: vi.fn(),

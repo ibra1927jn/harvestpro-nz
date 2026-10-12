@@ -13,17 +13,21 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose }) => {
     const [message, setMessage] = useState('');
     const [priority, setPriority] = useState<'normal' | 'high' | 'urgent'>('normal');
     const [isSending, setIsSending] = useState(false);
+    const [sendError, setSendError] = useState(false);
 
     const handleSend = async () => {
         if (!title || !message) return;
         setIsSending(true);
         try {
-            await sendBroadcast(
+            setSendError(false);
+            const ok = await sendBroadcast(
                 title,
                 message,
                 priority
             );
-            onClose();
+            // Si no se guardó, la ventana sigue abierta para reintentar
+            if (ok === false) setSendError(true);
+            else onClose();
         } catch (e) {
 
             logger.error("Failed to broadcast", e);
@@ -89,6 +93,9 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose }) => {
                     </div>
                 </div>
 
+                {sendError && (
+                    <p role="alert" className="mb-3 text-sm font-medium text-red-600">Broadcast not sent. Check your connection and try again.</p>
+                )}
                 <button
                     onClick={handleSend}
                     disabled={isSending || !title || !message}

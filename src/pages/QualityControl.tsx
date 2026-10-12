@@ -79,6 +79,7 @@ export default function QualityControl() {
                                     setNotes={qc.setNotes}
                                     isSubmitting={qc.isSubmitting}
                                     lastGrade={qc.lastGrade}
+                                    gradeError={qc.gradeError}
                                     onGrade={qc.handleGrade}
                                     onAutoAdvance={() => {
                                         if (qc.selectedPicker && qc.crew.length > 0) {

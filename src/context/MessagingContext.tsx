@@ -124,7 +124,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
     priority: MessagePriority = 'normal',
     targetRoles?: Role[]
   ) => {
-    if (!userIdRef.current || !orchardIdRef.current) return;
+    if (!userIdRef.current || !orchardIdRef.current) return false;
 
     try {
       const broadcast = buildBroadcast(
@@ -144,8 +144,10 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
       }));
       // 📊 PostHog: Track broadcast sent
       analytics.trackBroadcast((targetRoles || [Role.TEAM_LEADER, Role.RUNNER]).length, priority);
+      return true;
     } catch (error) {
       logger.error('[MessagingContext] Error sending broadcast:', error);
+      return false;
     }
   };
 

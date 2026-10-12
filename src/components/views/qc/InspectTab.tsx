@@ -57,14 +57,16 @@ interface InspectTabProps {
     setNotes: (n: string) => void;
     isSubmitting: boolean;
     lastGrade: { grade: QualityGrade; picker: string } | null;
-    onGrade: (grade: QualityGrade, photoBlob?: Blob | null) => void;
+    /** Fallo al guardar la última inspección */
+    gradeError?: string | null;
+    onGrade: (grade: QualityGrade, photoBlob?: Blob | null) => Promise<boolean> | void;
     /** If provided, called after a successful grade to auto-select next */
     onAutoAdvance?: () => void;
 }
 
 export default function InspectTab({
     crew, distribution, selectedPicker, setSelectedPicker,
-    notes, setNotes, isSubmitting, lastGrade, onGrade, onAutoAdvance,
+    notes, setNotes, isSubmitting, lastGrade, gradeError, onGrade, onAutoAdvance,
 }: InspectTabProps) {
     const [searchQuery, setSearchQuery] = React.useState('');
     const [turboMode, setTurboMode] = React.useState(false);
@@ -80,14 +82,15 @@ export default function InspectTab({
     }, [crew, searchQuery]);
 
     // Turbo mode: wrap onGrade to add haptic + auto-advance
-    const handleTurboGrade = (grade: QualityGrade) => {
+    const handleTurboGrade = async (grade: QualityGrade) => {
         // Haptic feedback
         if (turboMode && navigator.vibrate) {
             navigator.vibrate(50); // short pulse
         }
-        onGrade(grade, photoBlob);
+        const saved = await onGrade(grade, photoBlob);
+        // Si no se guardó, se queda en el mismo picker (y la foto) para reintentar
+        if (saved === false) return;
         clearPhoto();
-        // Auto-advance will be triggered after the grade completes
         if (turboMode && onAutoAdvance) {
             // Small delay so the success toast renders before advancing
             setTimeout(() => onAutoAdvance(), 300);
@@ -117,6 +120,12 @@ export default function InspectTab({
                     <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-300 shadow-sm ${turboMode ? 'translate-x-7' : 'translate-x-1'}`} />
                 </button>
             </div>
+            {gradeError && (
+                <div role="alert" className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base text-red-600">error</span>
+                    <span className="text-sm text-red-800">{gradeError}</span>
+                </div>
+            )}
             {/* Success Toast */}
             {lastGrade && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">

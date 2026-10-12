@@ -24,7 +24,7 @@ export function buildOptimisticMessage(
   orchardId?: string
 ): DBMessage {
   return {
-    id: Math.random().toString(36).substring(2, 11),
+    id: crypto.randomUUID(),
     sender_id: senderId,
     content,
     priority,
@@ -49,7 +49,7 @@ export function buildBroadcast(
   targetRoles?: Role[]
 ): Broadcast {
   return {
-    id: Math.random().toString(36).substring(2, 11),
+    id: crypto.randomUUID(),
     orchard_id: orchardId,
     sender_id: senderId,
     title,
