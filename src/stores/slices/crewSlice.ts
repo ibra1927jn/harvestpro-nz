@@ -57,8 +57,22 @@ export const createCrewSlice: StateCreator<
             return;
         }
 
+        // Solo columnas que existen en public.pickers (avatar, hours y qcStatus
+        // son de pantalla; mandarlos hacía que la BD rechazara el alta)
+        const row = {
+            id: newPicker.id,
+            picker_id: newPicker.picker_id,
+            name: newPicker.name,
+            orchard_id: newPicker.orchard_id,
+            role: newPicker.role,
+            status: newPicker.status,
+            current_row: newPicker.current_row,
+            safety_verified: newPicker.safety_verified,
+            team_leader_id: newPicker.team_leader_id ?? null,
+        };
+
         try {
-            const data = await pickerCrudRepository.insert({ ...newPicker });
+            const data = await pickerCrudRepository.insert(row);
 
             // Update with any server-side defaults (e.g., created_at)
             set(state => ({
@@ -75,6 +89,14 @@ export const createCrewSlice: StateCreator<
             } else {
                 logger.error('❌ [Store] Failed to add picker:', e);
                 set(state => ({ crew: state.crew.filter(p => p.id !== stableId) }));
+                // Que la pantalla lo diga (antes el modal se cerraba como si nada)
+                const err = e as { message?: string; code?: string };
+                const msg = err?.message ?? String(e);
+                throw new Error(
+                    err?.code === '23505' || /duplicate|unique/i.test(msg)
+                        ? `ID ${newPicker.picker_id} is already used by another person`
+                        : `Could not add ${newPicker.name}: ${msg}`
+                );
             }
         }
     },

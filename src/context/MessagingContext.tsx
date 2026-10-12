@@ -11,7 +11,7 @@
  */
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback, ReactNode } from 'react';
 import { supabase } from '../services/supabase';
-import { db } from '../services/db'; // Direct DB access for queue
+import { messageOutbox } from '@/services/message-outbox.service';
 import { Broadcast, Role, MessagePriority } from '../types';
 import { nowNZST } from '@/utils/nzst';
 import { logger } from '@/utils/logger';
@@ -54,6 +54,21 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
   // =============================================
   // MESSAGE ACTIONS
   // =============================================
+  // Mensajes que no salieron: se envían al abrir la app y al volver la conexión
+  useEffect(() => {
+    const flush = () => {
+      messageOutbox.flush()
+        .then(n => { if (n > 0) logger.info(`[MessagingContext] Sent ${n} queued message(s)`); })
+        .catch(e => logger.warn('[MessagingContext] Outbox flush failed:', e));
+    };
+    const t = setTimeout(flush, 3000);
+    window.addEventListener('online', flush);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('online', flush);
+    };
+  }, []);
+
   const sendMessage = async (
     conversationId: string,
     content: string,
@@ -64,7 +79,6 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
       return null;
     }
 
-    const tempId = Math.random().toString(36).substring(2, 11);
     const timestamp = nowNZST();
 
     // 1. Optimistic UI Update
@@ -87,7 +101,8 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
         const data = await messagingRepository.sendMessage(
           conversationId,
           userIdRef.current,
-          content
+          content,
+          { id: optimisticMsg.id, createdAt: timestamp }
         );
 
         if (!data) throw new Error('Send failed');
@@ -102,15 +117,14 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
     } catch (error) {
       logger.warn('[MessagingContext] Offline/Error, queuing message...', error);
 
-      // 3. Fallback to Offline Queue
-      await db.message_queue.add({
-        id: tempId, // Add ID
-        channel_type: 'direct', // Default or derived
+      // 3. Bandeja de salida: se envía sola al volver la conexión
+      await messageOutbox.queue({
+        id: optimisticMsg.id,
+        channel_type: 'direct',
         recipient_id: conversationId,
         sender_id: userIdRef.current,
         content,
         timestamp,
-        synced: 0,
         priority,
       });
 

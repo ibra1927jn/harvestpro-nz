@@ -266,9 +266,10 @@ export async function fetchOrchardData(
   // Fetch blocks
   if (activeOrchard?.id) await get().fetchBlocks(activeOrchard.id);
 
-  // Recuperar row assignments del servidor si el store esta vacio
+  // Row assignments: el servidor manda (antes solo se pedían si el móvil no
+  // tenía ninguna guardada, y el team leader no veía las nuevas)
   const existingAssignments = get().rowAssignments;
-  if (existingAssignments.length === 0 && activeOrchard?.id) {
+  if (activeOrchard?.id) {
     const { data: serverAssignments, error: raError } = await supabase
       .from('row_assignments')
       .select('id, row_number, side, assigned_pickers, completion_percentage')
@@ -287,7 +288,10 @@ export async function fetchOrchardData(
       }));
       set({ rowAssignments: rebuiltAssignments });
       logger.info(`[Store] Loaded ${rebuiltAssignments.length} row assignments from server`);
-    } else {
+    } else if (!raError && serverAssignments && existingAssignments.length > 0) {
+      // El servidor no tiene ninguna activa: las guardadas en el móvil están caducadas
+      set({ rowAssignments: [] });
+    } else if (existingAssignments.length === 0) {
       // Fallback: reconstruir desde crew data si el servidor no tiene registros
       const crewList = get().crew;
       const rowMap = new Map<string, { row: number; pickers: string[] }>();

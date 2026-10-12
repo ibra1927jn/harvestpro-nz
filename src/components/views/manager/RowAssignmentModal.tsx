@@ -32,6 +32,7 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, initia
     const [selectedRunner, setSelectedRunner] = useState<string>('');
     const [selectedSide, setSelectedSide] = useState<'north' | 'south'>('north');
     const [assigning, setAssigning] = useState(false);
+    const [assignError, setAssignError] = useState<string | null>(null);
 
     const { t } = useTranslation();
     const teamLeaders = crew.filter(p => p.role === 'team_leader');
@@ -90,15 +91,21 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, initia
     const handleAssign = async () => {
         if (!assignRows || !selectedLeader || selectedRows.length === 0) return;
         setAssigning(true);
+        setAssignError(null);
         const teamMembers = crew.filter(p => p.team_leader_id === selectedLeader || p.id === selectedLeader);
         const memberIds = teamMembers.map(p => p.id);
         // Incluir el runner seleccionado si no está ya en la lista
         if (selectedRunner && !memberIds.includes(selectedRunner)) {
             memberIds.push(selectedRunner);
         }
-        await assignRows(selectedRows, selectedSide, memberIds);
-        setAssigning(false);
-        onClose();
+        try {
+            await assignRows(selectedRows, selectedSide, memberIds);
+            onClose();
+        } catch (e) {
+            setAssignError(e instanceof Error ? e.message : 'Row assignment not saved');
+        } finally {
+            setAssigning(false);
+        }
     };
 
     return (
@@ -225,6 +232,9 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, initia
 
                 {/* Confirm */}
                 <div className="px-5 pb-5 pt-2">
+                    {assignError && (
+                        <p role="alert" className="mb-2 text-sm font-medium text-red-600">{assignError}</p>
+                    )}
                     <button
                         onClick={handleAssign}
                         disabled={!selectedLeader || selectedRows.length === 0 || assigning}

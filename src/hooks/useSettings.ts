@@ -38,7 +38,7 @@ export interface OrchardOption {
 }
 
 export function useSettings() {
-    const { orchard, settings, updateSettings, currentUser } = useHarvestStore();
+    const { orchard, settings, currentUser } = useHarvestStore();
     const orchardId = orchard?.id;
 
     // Form data
@@ -73,6 +73,7 @@ export function useSettings() {
     // Save state
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+    const [saveError, setSaveError] = useState<string | null>(null);
     const [hasChanges, setHasChanges] = useState(false);
 
     // Permiso de edición del salario mínimo: sólo admin y hr_admin
@@ -182,6 +183,19 @@ export function useSettings() {
         if (!selected) return;
         // Actualizar el orchard activo en el store (sólo los campos expuestos en Settings)
         useHarvestStore.setState({ orchard: { id: selected.id, name: selected.name, total_rows: selected.total_rows } });
+        // Cargar los ajustes de ESE huerto: antes el formulario seguía con los del
+        // anterior y al guardar los copiaba encima
+        void settingsService.getHarvestSettings(selected.id).then(s => {
+            if (!s) return;
+            setFormData(prev => ({
+                ...prev,
+                piece_rate: s.piece_rate,
+                min_wage_rate: s.min_wage_rate,
+                min_buckets_per_hour: s.min_buckets_per_hour,
+                target_tons: s.target_tons,
+                variety: s.variety ?? prev.variety,
+            }));
+        }).catch(e => logger.warn('[Settings] Could not load settings for orchard:', e));
         // Recargar el mapa de bloques para el nuevo orchard
         void useHarvestStore.getState().fetchBlocks(selected.id);
         if (selected.varieties) {
@@ -196,6 +210,7 @@ export function useSettings() {
         if (!orchardId) return;
         setIsSaving(true);
         setSaveStatus('idle');
+        setSaveError(null);
         try {
             const payload = {
                 piece_rate: Number(formData.piece_rate),
@@ -206,8 +221,15 @@ export function useSettings() {
                 shift_start_time: formData.shift_start_time,
                 shift_end_time: formData.shift_end_time,
             };
-            await settingsService.updateHarvestSettings(orchardId, payload);
-            updateSettings(payload);
+            const result = await settingsService.updateHarvestSettings(orchardId, payload);
+            if (!result.ok) {
+                // Antes salía "guardado" aunque la BD lo rechazara
+                setSaveError(result.reason);
+                setSaveStatus('error');
+                return;
+            }
+            // Ya está guardado: solo actualizar la pantalla (sin volver a escribir)
+            useHarvestStore.setState(state => ({ settings: { ...state.settings, ...payload } }));
             setSaveStatus('saved');
             setHasChanges(false);
         } catch (e) {
@@ -256,7 +278,7 @@ export function useSettings() {
         orchardVarieties,
         handleOrchardSelect,
         // Save
-        isSaving, saveStatus, hasChanges, handleSave,
+        isSaving, saveStatus, saveError, hasChanges, handleSave,
         // Notifications
         notifEnabled, notifTypes, notifTestSent,
         handleNotifToggle, handleNotifType, handleSendTest,

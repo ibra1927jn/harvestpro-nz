@@ -23,8 +23,8 @@ export const rowRepository = {
     async upsertRowAssignments(
         orchardId: string,
         entries: RowAssignment[]
-    ): Promise<void> {
-        if (entries.length === 0) return;
+    ): Promise<{ error: { message: string } | null }> {
+        if (entries.length === 0) return { error: null };
 
         const rows = entries.map(e => ({
             id: e.id,
@@ -43,6 +43,18 @@ export const rowRepository = {
         if (error) {
             logger.warn('[RowRepo] Failed to upsert row_assignments:', error.message);
         }
+        return { error };
+    },
+
+    /**
+     * Retira asignaciones sustituidas por una nueva (borrado lógico), para que
+     * al recargar el equipo no aparezca en todas las filas que tuvo antes.
+     */
+    async retireAssignments(ids: string[]) {
+        if (ids.length === 0) return { error: null };
+        const { error } = await supabase.from('row_assignments')
+            .update({ deleted_at: new Date().toISOString() }).in('id', ids);
+        return { error };
     },
 
     /** Update row assignment progress */

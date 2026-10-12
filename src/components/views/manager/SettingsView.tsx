@@ -318,7 +318,7 @@ const SettingsView: React.FC = () => {
                 )}
                 {s.saveStatus === 'error' && (
                     <div className="flex items-center justify-center gap-2 text-sm text-red-600 animate-slide-up">
-                        <span className="material-symbols-outlined text-base">error</span>Failed to save. Please try again.
+                        <span className="material-symbols-outlined text-base">error</span>{s.saveError || 'Failed to save. Please try again.'}
                     </div>
                 )}
             </div>

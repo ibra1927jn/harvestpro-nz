@@ -65,7 +65,7 @@ describe('settingsService.updateHarvestSettings', () => {
     it('devuelve true en upsert OK', async () => {
         (settingsRepository.upsert as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
         const ok = await settingsService.updateHarvestSettings('o1', { min_wage_rate: 24 });
-        expect(ok).toBe(true);
+        expect(ok).toEqual({ ok: true });
         expect(settingsRepository.upsert).toHaveBeenCalledWith('o1', { min_wage_rate: 24 });
     });
 
@@ -74,7 +74,7 @@ describe('settingsService.updateHarvestSettings', () => {
             new Error('db down'),
         );
         const ok = await settingsService.updateHarvestSettings('o1', { variety: 'Gold' });
-        expect(ok).toBe(false);
+        expect(ok).toMatchObject({ ok: false });
         expect(logger.error).toHaveBeenCalled();
     });
 });

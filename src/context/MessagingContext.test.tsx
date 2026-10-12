@@ -46,10 +46,8 @@ vi.mock('@/services/supabase', () => ({
         removeChannel: vi.fn(), removeAllChannels: vi.fn(),
     },
 }));
-vi.mock('@/services/db', () => ({
-    db: {
-        message_queue: { add: mocks.messageQueueAdd },
-    },
+vi.mock('@/services/message-outbox.service', () => ({
+    messageOutbox: { queue: mocks.messageQueueAdd, flush: vi.fn().mockResolvedValue(0) },
 }));
 vi.mock('@/utils/logger', () => ({
     logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
@@ -186,7 +184,7 @@ describe('MessagingContext', () => {
                 response = await result.current.sendMessage('conv-1', 'Hello!');
             });
 
-            expect(mocks.sendMessage).toHaveBeenCalledWith('conv-1', 'user-1', 'Hello!');
+            expect(mocks.sendMessage).toHaveBeenCalledWith('conv-1', 'user-1', 'Hello!', expect.objectContaining({ id: expect.any(String) }));
             expect(mocks.updateConversationTimestamp).toHaveBeenCalledWith('conv-1');
             expect(response).toEqual(mockMsg);
         });
@@ -205,7 +203,7 @@ describe('MessagingContext', () => {
                 expect.objectContaining({
                     sender_id: 'user-1',
                     content: 'Offline msg',
-                    synced: 0,
+                    recipient_id: 'conv-1',
                 })
             );
         });

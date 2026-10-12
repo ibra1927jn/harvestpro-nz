@@ -6,10 +6,22 @@ import { nowNZST } from '@/utils/nzst';
 
 export const messagingRepository = {
     /** Send a message */
-    async sendMessage(conversationId: string, senderId: string, content: string) {
+    async sendMessage(
+        conversationId: string,
+        senderId: string,
+        content: string,
+        opts?: { id?: string; createdAt?: string }
+    ) {
+        // id y hora del móvil: un reenvío no duplica y conserva cuándo se escribió
         const { data, error } = await supabase
             .from('chat_messages')
-            .insert([{ conversation_id: conversationId, sender_id: senderId, content }])
+            .insert([{
+                conversation_id: conversationId,
+                sender_id: senderId,
+                content,
+                ...(opts?.id ? { id: opts.id } : {}),
+                ...(opts?.createdAt ? { created_at: opts.createdAt } : {}),
+            }])
             .select()
             .single();
         if (error) throw error;
