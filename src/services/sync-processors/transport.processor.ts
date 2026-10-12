@@ -9,7 +9,7 @@ import { transportRequestRepo } from '@/repositories/index';
  */
 export async function processTransport(payload: TransportPayload, expectedUpdatedAt?: string): Promise<void> {
     if (payload.action === 'create') {
-        await transportRequestRepo.create({
+        const { error } = await transportRequestRepo.create({
             orchard_id: payload.orchard_id!,
             requested_by: payload.requested_by!,
             requester_name: payload.requester_name || 'Unknown',
@@ -18,6 +18,8 @@ export async function processTransport(payload: TransportPayload, expectedUpdate
             priority: (payload.priority || 'normal') as 'normal' | 'high' | 'urgent',
             notes: payload.notes || null,
         });
+        // Sin esto el fallo se perdía y la cola lo daba por subido
+        if (error) throw new Error(`Transport request not saved: ${error}`);
     } else if (payload.action === 'assign' && payload.requestId) {
         const updates = {
             assigned_vehicle: payload.vehicleId,
@@ -35,13 +37,14 @@ export async function processTransport(payload: TransportPayload, expectedUpdate
                 throw new Error(`Optimistic lock conflict on transport ${payload.requestId}`);
             }
         } else {
-            await transportRequestRepo.update(payload.requestId, updates);
+            const { error } = await transportRequestRepo.update(payload.requestId, updates);
+            if (error) throw new Error(`Transport ${payload.requestId} not updated: ${error}`);
         }
-    } else if (payload.action === 'complete' && payload.requestId) {
-        const updates = {
-            status: 'completed' as const,
-            completed_at: nowNZST(),
-        };
+    } else if ((payload.action === 'complete' || payload.action === 'cancel') && payload.requestId) {
+        // Cancelar no es completar: queda como cancelado y sin hora de fin
+        const updates = payload.action === 'cancel'
+            ? { status: 'cancelled' as const }
+            : { status: 'completed' as const, completed_at: nowNZST() };
         if (expectedUpdatedAt) {
             const result = await withOptimisticLock({
                 table: 'transport_requests',
@@ -53,7 +56,8 @@ export async function processTransport(payload: TransportPayload, expectedUpdate
                 throw new Error(`Optimistic lock conflict on transport ${payload.requestId}`);
             }
         } else {
-            await transportRequestRepo.update(payload.requestId, updates);
+            const { error } = await transportRequestRepo.update(payload.requestId, updates);
+            if (error) throw new Error(`Transport ${payload.requestId} not updated: ${error}`);
         }
     }
 }

@@ -14,6 +14,12 @@ export const binRepository = {
         return data || [];
     },
 
+    /** Alta de un bin (los runners pueden darlos de alta en su huerto) */
+    async insert(bin: { id: string; orchard_id: string; bin_code: string; status: string }): Promise<void> {
+        const { error } = await supabase.from('bins').insert([bin]);
+        if (error) throw error;
+    },
+
     /** Update bin status */
     async updateStatus(binId: string, status: string, filledAt: string | null): Promise<void> {
         const { error } = await supabase

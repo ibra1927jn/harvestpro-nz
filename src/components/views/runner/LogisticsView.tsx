@@ -1,7 +1,7 @@
 // components/views/runner/LogisticsView.tsx
 import React from 'react';
+import { bucketsInBin } from '@/services/bin.service';
 import { useHarvestStore } from '@/stores/useHarvestStore';
-import { useToast } from '@/hooks/useToast';
 import { avatarUrl } from '@/utils/avatarUrl';
 
 interface LogisticsViewProps {
@@ -13,6 +13,8 @@ interface LogisticsViewProps {
     [key: string]: unknown;
   };
   onBroadcast?: (message: string) => void;
+  /** Pide bins vacíos a Logística (crea la petición de transporte) */
+  onRequestRefill?: () => void;
   selectedBinId?: string;
 }
 
@@ -21,11 +23,13 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
   pendingUploads = 0,
   inventory,
   onBroadcast,
+  onRequestRefill,
   selectedBinId,
 }) => {
   const buckets = useHarvestStore(state => state.buckets);
-  const activeBinBuckets = buckets.filter(r => r.orchard_id === 'offline_pending').length;
-  const { showToast } = useToast();
+  const bucketRecords = useHarvestStore(state => state.bucketRecords);
+  // Cubetas en el bin activo (móvil + servidor, sin duplicar)
+  const activeBinBuckets = bucketsInBin(selectedBinId, buckets, bucketRecords);
 
   const binCapacity = 72;
   const activeBinPercentage = Math.round((activeBinBuckets / binCapacity) * 100);
@@ -63,11 +67,10 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
     return () => clearInterval(timer);
   }, [inventory]);
 
+  // El aviso de éxito o error lo da quien crea la petición (useRunnerData)
   const handleRefillRequest = () => {
-    if (onBroadcast) {
-      onBroadcast('Runner needs empty bins at Current Zone');
-      showToast('Request broadcasted!', 'success');
-    }
+    if (onRequestRefill) onRequestRefill();
+    else onBroadcast?.('Runner needs empty bins');
   };
 
   return (

@@ -322,6 +322,23 @@ export async function fetchOrchardData(
     logger.info(`[Store] Using ${existingAssignments.length} persisted row assignments`);
   }
 
+  // Bins del huerto (escaneo de bins del runner y panel de Logística).
+  // Se conservan los dados de alta en el móvil que aún no estén en el servidor.
+  if (activeOrchard?.id) {
+    try {
+      // Import diferido: el store no arrastra el servicio de bins al cargarse
+      const { binService } = await import('@/services/bin.service');
+      const bins = await binService.getBins(activeOrchard.id);
+      set(state => {
+        const serverIds = new Set(bins.map(b => b.id));
+        const localOnly = (state.inventory || []).filter(b => !serverIds.has(b.id) && b.bin_code);
+        return { inventory: [...bins, ...localOnly] };
+      });
+    } catch (e) {
+      logger.warn('[Store] Could not load bins:', e);
+    }
+  }
+
   return activeOrchard;
 }
 

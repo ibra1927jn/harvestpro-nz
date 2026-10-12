@@ -202,7 +202,7 @@ export async function fetchTransportHistory(orchardId?: string): Promise<Transpo
 }
 
 export async function createTransportRequest(
-    request: Omit<TransportRequest, 'id' | 'status' | 'created_at'>
+    request: Omit<TransportRequest, 'id' | 'status' | 'created_at'> & { orchard_id: string }
 ): Promise<string> {
     return syncService.addToQueue('TRANSPORT', { action: 'create', ...request });
 }
@@ -215,6 +215,10 @@ export async function assignVehicleToRequest(
 
 export async function completeTransportRequest(requestId: string, currentUpdatedAt?: string): Promise<string> {
     return syncService.addToQueue('TRANSPORT', { action: 'complete', requestId }, currentUpdatedAt);
+}
+
+export async function cancelTransportRequest(requestId: string, currentUpdatedAt?: string): Promise<string> {
+    return syncService.addToQueue('TRANSPORT', { action: 'cancel', requestId }, currentUpdatedAt);
 }
 
 function mapTransportRequest(row: Record<string, unknown>): TransportRequest {

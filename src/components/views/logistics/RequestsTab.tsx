@@ -7,8 +7,9 @@ import EmptyState from '@/components/ui/EmptyState';
 import FilterBar from '@/components/ui/FilterBar';
 import {
     TransportRequest, Tractor,
-    assignVehicleToRequest, completeTransportRequest
+    assignVehicleToRequest, completeTransportRequest, cancelTransportRequest
 } from '@/services/logistics-dept.service';
+import { useAuth } from '@/context/AuthContext';
 
 const PRIORITY_BADGES: Record<string, string> = {
     urgent: 'bg-red-100 text-red-700',
@@ -32,6 +33,7 @@ interface RequestsTabProps {
 }
 
 const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRefresh, readOnly = false }) => {
+    const { appUser } = useAuth();
     const [assigningId, setAssigningId] = useState<string | null>(null);
     const [selectedVehicle, setSelectedVehicle] = useState('');
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -60,8 +62,9 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
     const availableTractors = tractors.filter(t => t.status === 'active' || t.status === 'idle');
 
     const handleAssign = (requestId: string, updatedAt?: string) => {
-        if (!selectedVehicle) return;
-        assignVehicleToRequest(requestId, selectedVehicle, 'current_user', updatedAt);
+        if (!selectedVehicle || !appUser?.id) return;
+        // Quién asigna: el usuario real (antes se mandaba el texto 'current_user' y la BD lo rechazaba)
+        assignVehicleToRequest(requestId, selectedVehicle, appUser.id, updatedAt);
         showToast('Vehicle assigned to transport request');
         setAssigningId(null);
         setSelectedVehicle('');
@@ -75,7 +78,7 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
     };
 
     const handleCancel = (requestId: string, updatedAt?: string) => {
-        completeTransportRequest(requestId, updatedAt); // Re-uses complete — status set server-side
+        cancelTransportRequest(requestId, updatedAt);
         showToast('Transport request cancelled', 'error');
         onRefresh?.();
     };

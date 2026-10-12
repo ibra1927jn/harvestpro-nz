@@ -79,7 +79,9 @@ export const messagingRepository = {
 
     /** Insert broadcast */
     async insertBroadcast(broadcast: Record<string, unknown>) {
-        await supabase.from('broadcasts').insert([broadcast]);
+        // Antes se ignoraba el error y el aviso "se enviaba" sin guardarse
+        const { error } = await supabase.from('broadcasts').insert([broadcast]);
+        if (error) throw new Error(`Broadcast not saved: ${error.message}`);
     },
 
     /** Find direct conversation with two participants */

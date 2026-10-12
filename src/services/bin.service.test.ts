@@ -81,7 +81,27 @@ describe('binService.updateBinStatus', () => {
     it('pasa filled_at null para in-progress y collected', async () => {
         await binService.updateBinStatus('b1', 'in-progress');
         await binService.updateBinStatus('b1', 'collected');
-        expect(binRepository.updateStatus).toHaveBeenNthCalledWith(1, 'b1', 'in-progress', null);
+        expect(binRepository.updateStatus).toHaveBeenNthCalledWith(1, 'b1', 'partial', null);
         expect(binRepository.updateStatus).toHaveBeenNthCalledWith(2, 'b1', 'collected', null);
+    });
+});
+
+describe('bins: estados y llenado', () => {
+    it('lee "partial" de la BD como "in-progress" en la app', async () => {
+        (binRepository.getByOrchard as ReturnType<typeof vi.fn>).mockResolvedValue([
+            { id: 'b1', status: 'partial', bin_code: 'B-001' },
+            { id: 'b2', status: 'empty', bin_code: 'B-002', deleted_at: '2026-10-01T00:00:00Z' },
+        ]);
+        const bins = await binService.getBins('o1');
+        expect(bins).toHaveLength(1);
+        expect(bins[0].status).toBe('in-progress');
+    });
+
+    it('cuenta las cubetas del bin sin duplicar las ya subidas', async () => {
+        const { bucketsInBin } = await import('./bin.service');
+        const local = [{ id: 'a', bin_id: 'b1' }, { id: 'b', bin_id: 'b1' }, { id: 'c', bin_id: 'b2' }];
+        const records = [{ id: 'a', bin_id: 'b1' }, { id: 'd', bin_id: 'b1' }];
+        expect(bucketsInBin('b1', local, records)).toBe(3);
+        expect(bucketsInBin(undefined, local, records)).toBe(0);
     });
 });

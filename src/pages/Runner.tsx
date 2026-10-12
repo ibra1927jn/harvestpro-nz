@@ -65,6 +65,7 @@ const Runner = () => {
                     pendingUploads={runner.pendingUploads}
                     inventory={runner.inventory}
                     onBroadcast={runner.handleBroadcast}
+                    onRequestRefill={runner.handleRequestRefill}
                     selectedBinId={runner.selectedBinId}
                   />
                 </ComponentErrorBoundary>

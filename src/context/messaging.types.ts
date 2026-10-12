@@ -66,7 +66,7 @@ export interface MessagingContextType extends MessagingState {
         content: string,
         priority?: MessagePriority,
         targetRoles?: Role[]
-    ) => Promise<void>;
+    ) => Promise<boolean>;
     /** Get existing or create new 1:1 conversation */
     getOrCreateConversation: (recipientId: string) => Promise<string | null>;
     /** Mark message as read (updates unread count) */

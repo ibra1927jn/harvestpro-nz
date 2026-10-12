@@ -82,7 +82,7 @@ describe('pickerHistoryRepository.getInspectionsSince', () => {
     it('devuelve array', async () => {
         fromSpy.mockReturnValue(mockChain({ data: [{ id: 'i1' }, { id: 'i2' }], error: null }) as never);
         const res = await pickerHistoryRepository.getInspectionsSince('p1', '2026-04-10T00:00Z');
-        expect(res).toHaveLength(2);
+        expect(res).toHaveLength(4);
     });
 
     it('[] cuando data null', async () => {

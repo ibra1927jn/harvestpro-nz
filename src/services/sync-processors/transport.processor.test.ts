@@ -16,7 +16,7 @@ describe('processTransport', () => {
     describe('create action', () => {
         it('creates transport request via repository', async () => {
             const createSpy = vi.spyOn(transportRequestRepo, 'create')
-                .mockResolvedValue(undefined as never);
+                .mockResolvedValue({ data: null, error: null } as never);
 
             await processTransport({
                 action: 'create',
@@ -41,7 +41,7 @@ describe('processTransport', () => {
 
         it('defaults requester_name to "Unknown"', async () => {
             const createSpy = vi.spyOn(transportRequestRepo, 'create')
-                .mockResolvedValue(undefined as never);
+                .mockResolvedValue({ data: null, error: null } as never);
 
             await processTransport({
                 action: 'create',
@@ -87,7 +87,7 @@ describe('processTransport', () => {
 
         it('uses repository when no expectedUpdatedAt', async () => {
             const updateSpy = vi.spyOn(transportRequestRepo, 'update')
-                .mockResolvedValue(undefined as never);
+                .mockResolvedValue({ data: null, error: null } as never);
 
             await processTransport({
                 action: 'assign',
@@ -142,13 +142,43 @@ describe('processTransport', () => {
 
         it('uses repository when no expectedUpdatedAt', async () => {
             const updateSpy = vi.spyOn(transportRequestRepo, 'update')
-                .mockResolvedValue(undefined as never);
+                .mockResolvedValue({ data: null, error: null } as never);
 
             await processTransport({ action: 'complete', requestId: 'req-5' });
 
             expect(updateSpy).toHaveBeenCalledWith('req-5', expect.objectContaining({
                 status: 'completed',
             }));
+        });
+    });
+
+    describe('cancel action', () => {
+        it('marks the request cancelled (not completed) and sets no end time', async () => {
+            const updateSpy = vi.spyOn(transportRequestRepo, 'update')
+                .mockResolvedValue({ data: null, error: null } as never);
+
+            await processTransport({ action: 'cancel', requestId: 'req-6' });
+
+            expect(updateSpy).toHaveBeenCalledWith('req-6', { status: 'cancelled' });
+        });
+    });
+
+    describe('failed writes', () => {
+        it('throws when the create fails so the queue retries it', async () => {
+            vi.spyOn(transportRequestRepo, 'create')
+                .mockResolvedValue({ data: null, error: 'invalid input syntax for type uuid' } as never);
+
+            await expect(processTransport({
+                action: 'create', orchard_id: 'o1', requested_by: 'u1', zone: 'Row 3',
+            })).rejects.toThrow(/not saved/);
+        });
+
+        it('throws when an update fails', async () => {
+            vi.spyOn(transportRequestRepo, 'update')
+                .mockResolvedValue({ data: null, error: 'permission denied' } as never);
+
+            await expect(processTransport({ action: 'assign', requestId: 'r1', vehicleId: 'v1', assignedBy: 'u1' }))
+                .rejects.toThrow(/not updated/);
         });
     });
 });

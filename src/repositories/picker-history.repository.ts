@@ -50,13 +50,20 @@ export const pickerHistoryRepository = {
     },
 
     /** Get quality inspections for a picker since a given ISO timestamp */
-    async getInspectionsSince(pickerId: string, sinceIso: string) {
-        const { data } = await supabase
-            .from('quality_inspections')
-            .select('*')
-            .eq('picker_id', pickerId)
-            .gte('created_at', sinceIso);
-        return data || [];
+    async getInspectionsSince(pickerId: string, sinceIso: string): Promise<Array<{ quality_grade: string | null; created_at: string | null }>> {
+        // Las inspecciones de la app de Calidad están en qc_inspections (columna
+        // grade); quality_inspections es la tabla antigua. Se leen las dos.
+        const [qc, legacy] = await Promise.all([
+            supabase.from('qc_inspections').select('grade, created_at')
+                .eq('picker_id', pickerId).gte('created_at', sinceIso),
+            supabase.from('quality_inspections').select('quality_grade, created_at')
+                .eq('picker_id', pickerId).gte('created_at', sinceIso),
+        ]);
+        return [
+            ...((qc.data || []) as Array<{ grade: string; created_at: string | null }>)
+                .map(i => ({ quality_grade: i.grade, created_at: i.created_at })),
+            ...((legacy.data || []) as Array<{ quality_grade: string | null; created_at: string | null }>),
+        ];
     },
 
     /** Get day setups for an orchard since a given date */
