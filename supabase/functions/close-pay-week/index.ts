@@ -54,7 +54,7 @@ serve(async (req) => {
 
         const { data: current } = await admin
             .from('pay_weeks')
-            .select('week_start, status, closed_at, closed_by, total_earnings, reopened_at, reopen_reason')
+            .select('id, week_start, status, closed_at, closed_by, total_earnings, reopened_at, reopen_reason')
             .eq('week_start', week.start)
             .maybeSingle()
 
@@ -87,7 +87,7 @@ serve(async (req) => {
             }
 
             const nowIso = new Date().toISOString()
-            const { error: upsertErr } = await admin.from('pay_weeks').upsert({
+            const { data: saved, error: upsertErr } = await admin.from('pay_weeks').upsert({
                 week_start: week.start,
                 week_end: week.end,
                 status: 'closed',
@@ -96,16 +96,17 @@ serve(async (req) => {
                 snapshot: payroll,
                 total_earnings: payroll.summary.total_earnings,
                 updated_at: nowIso,
-            })
+            }).select('id').single()
             if (upsertErr) throw new Error(`Failed to close week: ${upsertErr.message}`)
 
-            await writeAudit(admin, {
+            const { error: auditErr } = await writeAudit(admin, {
                 action: 'pay_week_closed',
                 table: 'pay_weeks',
-                recordId: week.start,
+                recordId: saved.id,
                 userId: user.id,
-                newValues: { week_end: week.end, total_earnings: payroll.summary.total_earnings, workers: payroll.compliance.workers_total },
+                newValues: { week_start: week.start, week_end: week.end, total_earnings: payroll.summary.total_earnings, workers: payroll.compliance.workers_total },
             })
+            if (auditErr) console.error(`[PayWeek] Audit failed: ${auditErr.message}`)
             console.info(`[PayWeek] Closed ${week.start} by ${user.id}: $${payroll.summary.total_earnings}`)
             return jsonResponse({ week, closed: true, total_earnings: payroll.summary.total_earnings }, origin)
         }
@@ -127,14 +128,16 @@ serve(async (req) => {
         }).eq('week_start', week.start)
         if (reopenErr) throw new Error(`Failed to reopen week: ${reopenErr.message}`)
 
-        await writeAudit(admin, {
+        const { error: auditErr } = await writeAudit(admin, {
             action: 'pay_week_reopened',
             table: 'pay_weeks',
-            recordId: week.start,
+            recordId: current.id,
             userId: user.id,
+            newValues: { week_start: week.start },
             oldValues: { closed_at: current.closed_at, total_earnings: current.total_earnings },
             reason,
         })
+        if (auditErr) console.error(`[PayWeek] Audit failed: ${auditErr.message}`)
         console.info(`[PayWeek] Reopened ${week.start} by ${user.id}: ${reason}`)
         return jsonResponse({ week, reopened: true }, origin)
     } catch (error) {
