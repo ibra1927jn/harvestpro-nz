@@ -13,7 +13,7 @@ export const ElsewhereBadge: React.FC<{ person: Pick<Picker, 'elsewhere'> }> = (
             className="inline-flex items-center gap-0.5 text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded font-bold max-w-full"
         >
             <span className="material-symbols-outlined text-[11px]">swap_horiz</span>
-            <span className="truncate">Now at {person.elsewhere.orchard_name}</span>
+            <span className="truncate">{person.elsewhere.orchard_name}</span>
         </span>
     );
 };
