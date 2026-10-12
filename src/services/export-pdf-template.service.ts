@@ -3,7 +3,7 @@
 // Extracted from export.service.ts for maintainability
 // =============================================
 import { MINIMUM_WAGE, PIECE_RATE } from '../types';
-import type { PayrollExportData } from './export.service';
+import { statusLine, type PayrollExportData } from './export.service';
 
 /** Escape HTML entities to prevent XSS in PDF export */
 export const escHtml = (s: string): string =>
@@ -39,6 +39,10 @@ export function generatePDFContent(data: PayrollExportData, options?: { pieceRat
     .summary-value { font-size: 20px; font-weight: bold; color: #1a1a2e; }
     .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #999; }
     .currency { text-align: right; }
+    .status { font-weight: bold; font-size: 13px; margin: 8px 0; padding: 6px 10px; border-radius: 6px; display: inline-block; }
+    .status.final { background: #e8f7ee; color: #1b7a3d; }
+    .status.draft { background: #fff4e0; color: #9a5b00; }
+    h3.section { color: #d91e36; margin-top: 30px; }
     @media print {
       body { padding: 20px; }
       .no-print { display: none; }
@@ -48,8 +52,9 @@ export function generatePDFContent(data: PayrollExportData, options?: { pieceRat
 <body>
   <div class="header">
     <div class="logo">🍒 HarvestPro NZ</div>
-    <h1>Daily Payroll Report</h1>
-    <p>Date: ${data.date} | Generated: ${new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</p>
+    <h1>Weekly Payroll Report</h1>
+    <p class="status ${data.status === 'final' ? 'final' : 'draft'}">${escHtml(statusLine(data))}</p>
+    <p>Week: ${data.period ? `${data.period.start} → ${data.period.end}` : data.date} | Generated: ${new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}</p>
   </div>
 
   <table>
@@ -111,9 +116,27 @@ export function generatePDFContent(data: PayrollExportData, options?: { pieceRat
     </div>
   </div>
 
+  ${(data.byOrchard?.length ?? 0) > 0 ? `
+  <h3 class="section">Cost by orchard</h3>
+  <p style="font-size:11px;color:#666">Travel between orchards is paid, half to each orchard. Top-up is shared by hours.</p>
+  <table>
+    <thead><tr><th>Orchard</th><th>Paid hours</th><th>Buckets</th><th class="currency">Piece ($)</th><th class="currency">Top-Up ($)</th><th class="currency">Total ($)</th></tr></thead>
+    <tbody>
+      ${(data.byOrchard ?? []).map(o => `
+        <tr>
+          <td>${escHtml(o.orchard)}</td>
+          <td>${o.hours.toFixed(2)}</td>
+          <td>${o.buckets}</td>
+          <td class="currency">$${o.pieceEarnings.toFixed(2)}</td>
+          <td class="currency">$${o.topUp.toFixed(2)}</td>
+          <td class="currency"><strong>$${o.total.toFixed(2)}</strong></td>
+        </tr>`).join('')}
+    </tbody>
+  </table>` : ''}
+
   <div class="footer">
     <p>HarvestPro NZ - Payroll Management System</p>
-    <p>Minimum Wage: $${displayMinWage}/hr | Piece Rate: $${displayPieceRate}/bucket</p>
+    <p>Minimum Wage: $${displayMinWage}/hr | Default piece rate: $${displayPieceRate}/bucket (each variety is paid at its own price)</p>
   </div>
 </body>
 </html>`;

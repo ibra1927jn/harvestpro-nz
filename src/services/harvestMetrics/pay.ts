@@ -310,6 +310,29 @@ export interface PaySegment {
     travelHours: number;
 }
 
+/** Cubetas pagadas a un mismo precio (misma variedad y tarifa) */
+export interface PieceLine {
+    variety: string;
+    rate: number;
+    buckets: number;
+    earnings: number;
+}
+
+/**
+ * Parte del día que corresponde a un huerto:
+ * - horas: lo trabajado allí + su mitad de los trayectos, menos su parte del descanso
+ * - cubetas y lo ganado por cubetas: las recogidas allí
+ * - complemento al mínimo: repartido según las horas
+ */
+export interface OrchardShare {
+    orchardId: string | null;
+    hours: number;
+    buckets: number;
+    pieceEarnings: number;
+    topUp: number;
+    total: number;
+}
+
 /** Detalle de un día de una persona: dónde, cuándo y cuánto */
 export interface PayDay {
     date: string;
@@ -321,6 +344,10 @@ export interface PayDay {
     travelMinutes: number;
     buckets: number;
     bucketsByVariety: Record<string, number>;
+    /** Líneas de pago por cubetas: variedad y precio (para Xero/PaySauce) */
+    pieceLines: PieceLine[];
+    /** Reparto del día por huerto (coste por huerto) */
+    byOrchard: OrchardShare[];
     pieceEarnings: number;
     topUp: number;
     total: number;
@@ -455,6 +482,73 @@ function dayHours(
     };
 }
 
+/** Agrupa las cubetas del día por variedad y precio */
+function buildPieceLines(scans: ReadonlyArray<ScanForPay>): PieceLine[] {
+    const lines = new Map<string, PieceLine>();
+    for (const s of scans) {
+        const variety = s.variety ?? '—';
+        const k = `${variety}|${s.rate}`;
+        const line = lines.get(k) ?? { variety, rate: s.rate, buckets: 0, earnings: 0 };
+        line.buckets += 1;
+        line.earnings = round2(line.earnings + s.rate);
+        lines.set(k, line);
+    }
+    return [...lines.values()].sort((a, b) => a.variety.localeCompare(b.variety) || a.rate - b.rate);
+}
+
+/**
+ * Reparte el día entre huertos. Las horas pagables del día se reparten en
+ * proporción a (tiempo en el huerto + su mitad de trayectos); las cubetas van
+ * al huerto donde se escanearon; el complemento al mínimo, según las horas.
+ * Los céntimos que sobran del redondeo van al huerto con más peso, para que la
+ * suma de huertos sea exactamente el total del día.
+ */
+function splitByOrchard(
+    h: { hours: number; segments: PaySegment[] },
+    scans: ReadonlyArray<ScanForPay>,
+    topUp: number,
+): OrchardShare[] {
+    const key = (o: string | null | undefined) => o ?? '';
+    const weight = new Map<string, number>();
+    for (const s of h.segments) weight.set(key(s.orchardId), (weight.get(key(s.orchardId)) ?? 0) + s.grossHours + s.travelHours);
+    const piece = new Map<string, { buckets: number; earnings: number }>();
+    for (const s of scans) {
+        const k = key(s.orchardId);
+        const e = piece.get(k) ?? { buckets: 0, earnings: 0 };
+        e.buckets += 1;
+        e.earnings += s.rate;
+        piece.set(k, e);
+    }
+    const ids = [...new Set([...weight.keys(), ...piece.keys()])];
+    if (ids.length === 0) return [];
+    const totalWeight = [...weight.values()].reduce((a, b) => a + b, 0);
+    // Sin tramos (horas estimadas por escaneos): las horas siguen a las cubetas
+    const share = (k: string) => totalWeight > 0
+        ? (weight.get(k) ?? 0) / totalWeight
+        : (piece.get(k)?.buckets ?? 0) / Math.max(1, scans.length);
+
+    const out = ids.map(k => ({
+        orchardId: k === '' ? null : k,
+        hours: round2(h.hours * share(k)),
+        buckets: piece.get(k)?.buckets ?? 0,
+        pieceEarnings: round2(piece.get(k)?.earnings ?? 0),
+        topUp: round2(topUp * share(k)),
+        total: 0,
+    }));
+    // Cuadrar céntimos con el total del día
+    const fix = (field: 'hours' | 'topUp', target: number) => {
+        const diff = round2(target - out.reduce((s, o) => s + o[field], 0));
+        if (diff !== 0) {
+            const big = out.reduce((m, o) => (share(key(o.orchardId)) > share(key(m.orchardId)) ? o : m), out[0]);
+            big[field] = round2(big[field] + diff);
+        }
+    };
+    fix('hours', h.hours);
+    fix('topUp', topUp);
+    for (const o of out) o.total = round2(o.pieceEarnings + o.topUp);
+    return out.sort((a, b) => key(a.orchardId).localeCompare(key(b.orchardId)));
+}
+
 /**
  * Pago de cada picker en un rango de días. El complemento se calcula día a día
  * (con TODOS los tramos y cubetas de ese día, de cualquier huerto o variedad)
@@ -529,6 +623,8 @@ export function payForRange(params: {
             bucketsByVariety[v] = (bucketsByVariety[v] ?? 0) + 1;
         }
         const estimated = h.estimated || hasStaleOpen;
+        const pieceLines = buildPieceLines(dayScans);
+        const byOrchard = splitByOrchard(h, dayScans, p.topUp);
 
         const acc = byPicker.get(pickerId) ?? {
             pickerId, buckets: 0, hours: 0, pieceEarnings: 0, topUp: 0, total: 0,
@@ -550,6 +646,8 @@ export function payForRange(params: {
             travelMinutes: h.travelMinutes,
             buckets: dayScans.length,
             bucketsByVariety,
+            pieceLines,
+            byOrchard,
             pieceEarnings: p.pieceEarnings,
             topUp: p.topUp,
             total: p.total,

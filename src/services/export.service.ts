@@ -33,7 +33,28 @@ export interface PayrollExportData {
     status: string;
     /** Días con horas estimadas (turno sin cerrar) */
     estimatedDays?: number;
+    /** Cubetas de la semana por variedad y precio (líneas de Xero/PaySauce) */
+    pieceLines?: Array<{ variety: string; rate: number; buckets: number; earnings: number }>;
+    /** Detalle día a día */
+    days?: Array<{
+      date: string;
+      orchards: string;
+      times: string;
+      breakMinutes: number;
+      travelMinutes: number;
+      hours: number;
+      buckets: string;
+      pieceEarnings: number;
+      topUp: number;
+      total: number;
+      estimated: boolean;
+    }>;
   }>;
+  /** Coste de la semana por huerto (horas, cubetas, pago) */
+  byOrchard?: Array<{ orchard: string; hours: number; buckets: number; pieceEarnings: number; topUp: number; total: number }>;
+  /** final = semana cerrada (lo que se paga); draft = puede cambiar todavía */
+  status?: 'final' | 'draft';
+  closedAt?: string | null;
   summary: {
     totalBuckets: number;
     totalHours: number;
@@ -54,6 +75,13 @@ export interface ExportOptions {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+/** FINAL (semana cerrada) o DRAFT (puede cambiar) */
+export function statusLine(data: Pick<PayrollExportData, 'status' | 'closedAt'>): string {
+  return data.status === 'final'
+    ? `FINAL - pay week closed ${data.closedAt ?? ''}`.trim()
+    : 'DRAFT - pay week not closed yet; figures may still change';
+}
+
 /** Nombre de periodo para títulos y ficheros: "2026-10-05_to_2026-10-11" */
 function periodLabel(period: { start: string; end: string }): string {
   return period.start === period.end ? period.start : `${period.start}_to_${period.end}`;
@@ -71,8 +99,14 @@ export const exportService = {
   preparePayrollData(
     pickers: ReadonlyArray<PickerBreakdown>,
     period: { start: string; end: string },
-    employeeIdOf: (pickerId: string) => string | undefined = () => undefined
+    employeeIdOf: (pickerId: string) => string | undefined = () => undefined,
+    opts: { closedAt?: string | null; orchardName?: (orchardId: string | null) => string } = {}
   ): PayrollExportData {
+    const orchardName = opts.orchardName ?? ((id: string | null) => id ?? '—');
+    const time = (iso: string | null) => iso
+      ? new Intl.DateTimeFormat('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso))
+      : '—';
+    const orchardTotals = new Map<string, { orchard: string; hours: number; buckets: number; pieceEarnings: number; topUp: number; total: number }>();
     const crewData = [...pickers]
       .sort((a, b) => a.picker_name.localeCompare(b.picker_name))
       .map(p => {
@@ -90,6 +124,42 @@ export const exportService = {
             ? 'check_timesheet'
             : p.is_below_minimum ? 'topped_up' : 'ok',
           estimatedDays,
+          pieceLines: (() => {
+            const lines = new Map<string, { variety: string; rate: number; buckets: number; earnings: number }>();
+            for (const d of p.days ?? []) for (const l of d.pieceLines ?? []) {
+              const k = `${l.variety}|${l.rate}`;
+              const e = lines.get(k) ?? { variety: l.variety, rate: l.rate, buckets: 0, earnings: 0 };
+              e.buckets += l.buckets;
+              e.earnings = round2(e.earnings + l.earnings);
+              lines.set(k, e);
+            }
+            return [...lines.values()];
+          })(),
+          days: (p.days ?? []).map(d => {
+            for (const o of d.byOrchard ?? []) {
+              const name = orchardName(o.orchardId);
+              const t = orchardTotals.get(name) ?? { orchard: name, hours: 0, buckets: 0, pieceEarnings: 0, topUp: 0, total: 0 };
+              t.hours = round2(t.hours + o.hours);
+              t.buckets += o.buckets;
+              t.pieceEarnings = round2(t.pieceEarnings + o.pieceEarnings);
+              t.topUp = round2(t.topUp + o.topUp);
+              t.total = round2(t.total + o.total);
+              orchardTotals.set(name, t);
+            }
+            return {
+              date: d.date,
+              orchards: [...new Set(d.segments.map(s => orchardName(s.orchardId)))].join(' + ') || '—',
+              times: d.segments.map(s => `${time(s.checkIn)}-${s.open ? 'open' : time(s.checkOut)}`).join(' / ') || 'no check-in',
+              breakMinutes: d.breakMinutes,
+              travelMinutes: d.travelMinutes ?? 0,
+              hours: d.hours,
+              buckets: Object.entries(d.bucketsByVariety).map(([v, n]) => `${n} ${v === '—' ? '(no variety)' : v}`).join(' · ') || '0',
+              pieceEarnings: d.pieceEarnings,
+              topUp: d.topUp,
+              total: d.total,
+              estimated: d.estimated,
+            };
+          }),
         };
       });
 
@@ -101,6 +171,9 @@ export const exportService = {
     return {
       date: periodLabel(period),
       period,
+      status: opts.closedAt ? 'final' : 'draft',
+      closedAt: opts.closedAt ?? null,
+      byOrchard: [...orchardTotals.values()].sort((a, b) => a.orchard.localeCompare(b.orchard)),
       crew: crewData,
       summary: {
         totalBuckets,
@@ -153,14 +226,35 @@ export const exportService = {
     rows.push(['Grand Total', '', '', '', '', '', data.summary.grandTotal.toFixed(2)]);
     rows.push(['Avg Buckets/Hour', data.summary.averageBucketsPerHour.toString()]);
 
+    // Detalle por día: huertos, horas de entrada/salida, descanso, trayecto, variedades
+    const detail: string[][] = [[], ['DAILY DETAIL'], [
+      'Employee ID', 'Name', 'Date', 'Orchards', 'In-Out', 'Break (min, unpaid)', 'Travel (min, paid)',
+      'Paid Hours', 'Buckets', 'Piece Earnings (NZD)', 'Top-Up (NZD)', 'Total (NZD)', 'Estimated',
+    ]];
+    for (const p of data.crew) for (const d of p.days ?? []) {
+      detail.push([
+        escCsv(p.employeeId), escCsv(p.name), d.date, escCsv(d.orchards), escCsv(d.times),
+        String(d.breakMinutes), String(d.travelMinutes), d.hours.toFixed(2), escCsv(d.buckets),
+        d.pieceEarnings.toFixed(2), d.topUp.toFixed(2), d.total.toFixed(2), d.estimated ? 'yes' : 'no',
+      ]);
+    }
+    // Coste por huerto (trayecto: mitad a cada huerto; complemento según horas)
+    const orchards: string[][] = [[], ['COST BY ORCHARD'], ['Orchard', 'Paid Hours', 'Buckets', 'Piece Earnings (NZD)', 'Top-Up (NZD)', 'Total (NZD)']];
+    for (const o of data.byOrchard ?? []) {
+      orchards.push([escCsv(o.orchard), o.hours.toFixed(2), String(o.buckets), o.pieceEarnings.toFixed(2), o.topUp.toFixed(2), o.total.toFixed(2)]);
+    }
+
     const title = data.period
       ? `Payroll Report - week ${data.period.start} to ${data.period.end}`
       : `Payroll Report - ${data.date}`;
     const csvContent = [
       title,
+      statusLine(data),
       '',
       headers.join(','),
       ...rows.map(row => row.join(',')),
+      ...(data.crew.some(p => p.days?.length) ? detail.map(row => row.join(',')) : []),
+      ...((data.byOrchard?.length ?? 0) > 0 ? orchards.map(row => row.join(',')) : []),
     ].join('\n');
 
     return csvContent;
@@ -193,22 +287,24 @@ export const exportService = {
     data: PayrollExportData
   ): { filename: string; recordCount: number; totalEarnings: number } {
     let filename: string;
+    // Un borrador lo dice en el nombre del fichero, para no pagarlo por error
+    const tag = data.status === 'final' ? '' : '-DRAFT';
     switch (format) {
       case 'csv':
-        filename = `payroll-${data.date}.csv`;
+        filename = `payroll-${data.date}${tag}.csv`;
         this.downloadFile(this.generateCSV(data), filename, 'text/csv;charset=utf-8');
         break;
       case 'xero':
-        filename = `xero-payroll-${data.date}.csv`;
+        filename = `xero-payroll-${data.date}${tag}.csv`;
         this.downloadFile(generateXeroCSV(data), filename, 'text/csv;charset=utf-8');
         break;
       case 'paysauce':
-        filename = `paysauce-payroll-${data.date}.csv`;
+        filename = `paysauce-payroll-${data.date}${tag}.csv`;
         this.downloadFile(generatePaySauceCSV(data), filename, 'text/csv;charset=utf-8');
         break;
       case 'pdf':
         // Fichero HTML listo para imprimir o "Guardar como PDF" (funciona sin conexión)
-        filename = `payroll-report-${data.date}.html`;
+        filename = `payroll-report-${data.date}${tag}.html`;
         this.downloadFile(this.generatePDFContent(data), filename, 'text/html;charset=utf-8');
         break;
     }

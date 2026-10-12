@@ -54,6 +54,13 @@ export const PickerBreakdownSchema = z.object({
         travelMinutes: z.number().default(0),
         buckets: z.number(),
         bucketsByVariety: z.record(z.string(), z.number()),
+        pieceLines: z.array(z.object({
+            variety: z.string(), rate: z.number(), buckets: z.number(), earnings: z.number(),
+        })).default([]),
+        byOrchard: z.array(z.object({
+            orchardId: z.string().nullable(), hours: z.number(), buckets: z.number(),
+            pieceEarnings: z.number(), topUp: z.number(), total: z.number(),
+        })).default([]),
         pieceEarnings: z.number(),
         topUp: z.number(),
         total: z.number(),

@@ -71,7 +71,7 @@ describe('generatePDFContent', () => {
     it('includes HarvestPro NZ branding', () => {
         const html = generatePDFContent(makeData());
         expect(html).toContain('HarvestPro NZ');
-        expect(html).toContain('Daily Payroll Report');
+        expect(html).toContain('Weekly Payroll Report');
     });
 
     it('renders crew member data', () => {
@@ -124,7 +124,7 @@ describe('generatePDFContent', () => {
     it('uses default rates when no options provided', () => {
         const html = generatePDFContent(makeData());
         expect(html).toContain('Minimum Wage: $');
-        expect(html).toContain('Piece Rate: $');
+        expect(html).toContain('Default piece rate: $');
     });
 
     it('escapes HTML in crew member names', () => {

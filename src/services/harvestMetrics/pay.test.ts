@@ -362,3 +362,33 @@ describe('pieceRateFor', () => {
         expect(pieceRateFor({ orchardId: 'C', variety: null }, rates)).toBe(5);
     });
 });
+
+describe('payForRange — líneas por variedad y reparto por huerto', () => {
+    const d1 = '2026-10-05';
+    const t = (hhmm: string) => `${d1}T${hhmm}:00+13:00`;
+    const now = new Date('2026-10-07T12:00:00+13:00');
+    it('reparte horas, cubetas y complemento entre huertos y cuadra con el total', () => {
+        const attendance = [
+            { pickerId: 'p1', date: d1, orchardId: 'A', checkIn: t('07:00'), checkOut: t('11:00') },
+            { pickerId: 'p1', date: d1, orchardId: 'B', checkIn: t('11:30'), checkOut: t('15:30') },
+        ];
+        const buckets = [
+            ...Array.from({ length: 5 }, () => ({ pickerId: 'p1', scannedAt: t('09:00'), orchardId: 'A', variety: 'Royal Gala', pieceRate: 6.5 })),
+            ...Array.from({ length: 3 }, () => ({ pickerId: 'p1', scannedAt: t('12:00'), orchardId: 'B', variety: 'Braeburn', pieceRate: 8 })),
+        ];
+        const [r] = payForRange({ attendance, buckets, pieceRate: 6.5, minWage: 23.95, now });
+        const day = r.dayDetails[0];
+        expect(day.pieceLines).toEqual([
+            { variety: 'Braeburn', rate: 8, buckets: 3, earnings: 24 },
+            { variety: 'Royal Gala', rate: 6.5, buckets: 5, earnings: 32.5 },
+        ]);
+        // 4 h + 15 min de trayecto en cada huerto: mitad y mitad
+        const [a, b] = day.byOrchard;
+        expect(a.orchardId).toBe('A');
+        expect(a.hours + b.hours).toBeCloseTo(day.hours, 2);
+        expect(a.hours).toBeCloseTo(b.hours, 2);
+        expect(a.pieceEarnings).toBe(32.5);
+        expect(b.pieceEarnings).toBe(24);
+        expect(Math.round((a.total + b.total) * 100) / 100).toBe(day.total);
+    });
+});

@@ -58,14 +58,10 @@ describe('generatePaySauceCSV', () => {
         expect(lines[0]).toBe('Employee Number,Pay Type,Description,Quantity,Rate,Amount');
     });
 
-    it('emits EARNINGS pay type', () => {
+    it('emite una línea PIECE por cubetas (cantidad = cubetas, precio por cubeta)', () => {
         const csv = generatePaySauceCSV(mockData);
-        expect(csv).toContain('EARNINGS');
-    });
-
-    it('includes bucket count in description', () => {
-        const csv = generatePaySauceCSV(mockData);
-        expect(csv).toContain('50 buckets');
+        const ana = csv.split('\n').find(l => l.startsWith('EMP001,PIECE'));
+        expect(ana).toContain(',50,3.00,150.00');
     });
 
     it('skips workers with 0 hours + 0 earnings + 0 buckets', () => {
@@ -73,12 +69,12 @@ describe('generatePaySauceCSV', () => {
         expect(csv).not.toContain('EMP003');
     });
 
-    it('calculates effective rate correctly', () => {
+    it('las líneas de una persona suman su total (cubetas + complemento)', () => {
         const csv = generatePaySauceCSV(mockData);
-        const lines = csv.split('\n');
-        // Ana: 160 / 8 = 20.00
-        const anaLine = lines.find(l => l.includes('EMP001'));
-        expect(anaLine).toContain('20.00');
+        const amount = csv.split('\n').filter(l => l.startsWith('EMP001,'))
+            .reduce((s, l) => s + Number(l.split(',').pop()), 0);
+        // Ana: 150 por cubetas + 10 de complemento = 160
+        expect(amount).toBeCloseTo(160, 2);
     });
 });
 

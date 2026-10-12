@@ -80,10 +80,10 @@ describe('exportService.exportPayroll', () => {
     beforeEach(() => vi.restoreAllMocks());
 
     it.each([
-        ['csv', 'payroll-2026-10-05_to_2026-10-11.csv'],
-        ['xero', 'xero-payroll-2026-10-05_to_2026-10-11.csv'],
-        ['paysauce', 'paysauce-payroll-2026-10-05_to_2026-10-11.csv'],
-        ['pdf', 'payroll-report-2026-10-05_to_2026-10-11.html'],
+        ['csv', 'payroll-2026-10-05_to_2026-10-11-DRAFT.csv'],
+        ['xero', 'xero-payroll-2026-10-05_to_2026-10-11-DRAFT.csv'],
+        ['paysauce', 'paysauce-payroll-2026-10-05_to_2026-10-11-DRAFT.csv'],
+        ['pdf', 'payroll-report-2026-10-05_to_2026-10-11-DRAFT.html'],
     ] as const)('%s descarga %s y devuelve totales para el historial', (format, filename) => {
         const download = vi.spyOn(exportService, 'downloadFile').mockImplementation(() => {});
         const data = exportService.preparePayrollData([row({ hours_worked: 8, total_earnings: 191.6, top_up_required: 191.6 })], WEEK);
@@ -101,5 +101,55 @@ describe('exportService.exportPayroll', () => {
         expect(xero).toContain('EMP001,Ana,Piece Rate Earnings,10,6.50,65.00');
         expect(xero).toContain('EMP001,Ana,Minimum Wage Top-Up,7.50');
         expect(xero).toContain('114.63');
+    });
+});
+
+describe('exportService — semana cerrada y detalle', () => {
+    const picker = {
+        picker_id: 'p1', picker_name: 'Ana', buckets: 8, hours_worked: 8, piece_rate_earnings: 56.5,
+        hourly_rate: 7, minimum_required: 191.6, top_up_required: 135.1, total_earnings: 191.6, is_below_minimum: true,
+        days: [{
+            date: '2026-10-05', hours: 8, breakMinutes: 30, travelMinutes: 30, buckets: 8,
+            bucketsByVariety: { 'Royal Gala': 5, Braeburn: 3 },
+            pieceLines: [
+                { variety: 'Braeburn', rate: 8, buckets: 3, earnings: 24 },
+                { variety: 'Royal Gala', rate: 6.5, buckets: 5, earnings: 32.5 },
+            ],
+            byOrchard: [
+                { orchardId: 'A', hours: 4, buckets: 5, pieceEarnings: 32.5, topUp: 67.55, total: 100.05 },
+                { orchardId: 'B', hours: 4, buckets: 3, pieceEarnings: 24, topUp: 67.55, total: 91.55 },
+            ],
+            segments: [
+                { orchardId: 'A', checkIn: '2026-10-04T18:00:00Z', checkOut: '2026-10-04T22:00:00Z', open: false, breakStart: null, grossHours: 4, travelHours: 0.25 },
+                { orchardId: 'B', checkIn: '2026-10-04T22:30:00Z', checkOut: '2026-10-05T02:30:00Z', open: false, breakStart: null, grossHours: 4, travelHours: 0.25 },
+            ],
+            pieceEarnings: 56.5, topUp: 135.1, total: 191.6, belowMinimum: true, estimated: false, isPublicHoliday: false,
+        }],
+    };
+    const names = (id: string | null) => ({ A: 'Orchard A', B: 'Orchard B' } as Record<string, string>)[id ?? ''] ?? '—';
+
+    it('semana cerrada = FINAL, sin "-DRAFT" en el nombre', () => {
+        const data = exportService.preparePayrollData([picker], { start: '2026-10-05', end: '2026-10-11' }, () => 'EMP1', { closedAt: '2026-10-12T01:00:00Z', orchardName: names });
+        expect(data.status).toBe('final');
+        expect(exportService.generateCSV(data).split('\n')[1]).toContain('FINAL');
+    });
+
+    it('CSV con detalle por día y coste por huerto', () => {
+        const data = exportService.preparePayrollData([picker], { start: '2026-10-05', end: '2026-10-11' }, () => 'EMP1', { orchardName: names });
+        const csv = exportService.generateCSV(data);
+        expect(csv).toContain('DRAFT');
+        expect(csv).toContain('DAILY DETAIL');
+        expect(csv).toContain('Orchard A + Orchard B');
+        expect(csv).toContain('07:00-11:00 / 11:30-15:30');
+        expect(csv).toContain('COST BY ORCHARD');
+        expect(data.byOrchard?.map(o => o.total)).toEqual([100.05, 91.55]);
+    });
+
+    it('Xero: una línea por variedad con su precio + complemento', () => {
+        const data = exportService.preparePayrollData([picker], { start: '2026-10-05', end: '2026-10-11' }, () => 'EMP1', { orchardName: names });
+        const xero = exportService.generateXeroCSV(data).split('\n');
+        expect(xero).toContain('EMP1,Ana,Piece Rate - Braeburn,3,8.00,24.00');
+        expect(xero).toContain('EMP1,Ana,Piece Rate - Royal Gala,5,6.50,32.50');
+        expect(xero.some(l => l.startsWith('EMP1,Ana,Minimum Wage Top-Up,8.00,') && l.endsWith(',135.10'))).toBe(true);
     });
 });
