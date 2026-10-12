@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 const mocks = vi.hoisted(() => ({
+    acknowledge: vi.fn(),
     broadcasts: [] as Array<{
         id: string; title: string; content: string; created_at: string;
         acknowledged_by: string[]; sender_id: string;
@@ -24,7 +25,11 @@ vi.mock('@/context/MessagingContext', () => ({
         broadcasts: mocks.broadcasts,
         messages: [],
         unreadCount: mocks.broadcasts.length,
+        acknowledgeBroadcast: mocks.acknowledge,
     }),
+}));
+vi.mock('@/context/AuthContext', () => ({
+    useAuth: () => ({ appUser: { id: 'me', role: 'team_leader' } }),
 }));
 
 import NotificationPanel from './NotificationPanel';
@@ -64,5 +69,16 @@ describe('NotificationPanel', () => {
         }];
         render(<NotificationPanel onClose={vi.fn()} />);
         expect(screen.getByText('Weather Alert')).toBeTruthy();
+    });
+
+    it('a broadcast I already confirmed is not unread; Mark all read confirms the rest', () => {
+        mocks.broadcasts = [
+            { id: 'b1', title: 'Seen', content: 'x', created_at: new Date().toISOString(), acknowledged_by: ['me'], sender_id: 's' },
+            { id: 'b2', title: 'New', content: 'y', created_at: new Date().toISOString(), acknowledged_by: [], sender_id: 's' },
+        ];
+        render(<NotificationPanel onClose={vi.fn()} />);
+        fireEvent.click(screen.getByText('Mark all read'));
+        expect(mocks.acknowledge).toHaveBeenCalledTimes(1);
+        expect(mocks.acknowledge).toHaveBeenCalledWith('b2');
     });
 });

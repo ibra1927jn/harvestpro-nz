@@ -1,5 +1,6 @@
 import { logger } from '@/utils/logger';
-import { todayNZST } from '@/utils/nzst';
+import { todayNZST, nzMidnight } from '@/utils/nzst';
+import { showSystemNotification } from '@/utils/systemNotification';
 /**
  * notification.service.ts — Web Push Notifications for HarvestPro
  *
@@ -98,6 +99,8 @@ function sendNotification(
 
         return notif;
     } catch (err) {
+        // Android/WebView: new Notification() no está permitido → service worker
+        void showSystemNotification(title, body, options?.tag);
         logger.error('[NotificationService] Failed to send:', err);
         return null;
     }
@@ -117,21 +120,24 @@ async function checkAlerts(): Promise<void> {
 
         // 1. Visa expiry check (within 7 days)
         if (prefs.types.visa_expiry) {
-            const sevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+            // Visados: documentos "Work Visa" de RRHH (users.visa_expiry no existe)
+            const today = todayNZST();
+            const in7 = new Date(now.getTime() + 7 * 86400000).toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' });
             const { data: expiring } = await supabase
-                .from('users')
-                .select('full_name, visa_expiry')
-                .not('visa_expiry', 'is', null)
-                .lte('visa_expiry', sevenDays.toISOString())
-                .gte('visa_expiry', now.toISOString())
+                .from('hr_documents')
+                .select('id, title, expires_at')
+                .eq('document_type', 'work_visa')
+                .is('deleted_at', null)
+                .gte('expires_at', today)
+                .lte('expires_at', in7)
                 .limit(5);
 
-            expiring?.forEach((u: { full_name: string; visa_expiry: string }) => {
-                const days = Math.ceil((new Date(u.visa_expiry).getTime() - now.getTime()) / (86400000));
+            expiring?.forEach((d: { id: string; title: string; expires_at: string }) => {
+                const days = Math.round((Date.parse(d.expires_at) - Date.parse(today)) / 86400000);
                 sendNotification(
                     '⚠️ Visa Expiry Alert',
-                    `${u.full_name}'s visa expires in ${days} day${days !== 1 ? 's' : ''}`,
-                    { tag: `visa-${u.full_name}` },
+                    `${d.title}: expires in ${days} day${days !== 1 ? 's' : ''}`,
+                    { tag: `visa-${d.id}` },
                 );
             });
         }
@@ -143,7 +149,8 @@ async function checkAlerts(): Promise<void> {
             const { data: inspections } = await supabase
                 .from('qc_inspections')
                 .select('grade')
-                .gte('created_at', `${today}T00:00:00`)
+                // Medianoche NZ con su desfase (sin él, Postgres lo leía como UTC)
+                .gte('created_at', nzMidnight(today))
                 .limit(200);
 
             if (inspections && inspections.length >= 10) {

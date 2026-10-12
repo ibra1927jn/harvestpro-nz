@@ -67,6 +67,8 @@ export interface MessagingContextType extends MessagingState {
         priority?: MessagePriority,
         targetRoles?: Role[]
     ) => Promise<boolean>;
+    /** Marcar una conversación como leída (se guarda y baja el contador) */
+    markConversationRead: (conversationId: string) => Promise<void>;
     /** Get existing or create new 1:1 conversation */
     getOrCreateConversation: (recipientId: string) => Promise<string | null>;
     /** Mark message as read (updates unread count) */

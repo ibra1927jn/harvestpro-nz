@@ -12,6 +12,7 @@
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback, ReactNode } from 'react';
 import { supabase } from '../services/supabase';
 import { messageOutbox } from '@/services/message-outbox.service';
+import { showSystemNotification } from '@/utils/systemNotification';
 import { Broadcast, Role, MessagePriority } from '../types';
 import { nowNZST } from '@/utils/nzst';
 import { logger } from '@/utils/logger';
@@ -209,8 +210,33 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
     }));
   };
 
+  const markConversationRead = async (conversationId: string) => {
+    if (!userIdRef.current) return;
+    // En pantalla al momento; en el servidor para que no vuelva a salir
+    setState(prev => {
+      const was = prev.chatGroups.find(g => g.id === conversationId)?.unreadCount ?? 0;
+      return {
+        ...prev,
+        chatGroups: prev.chatGroups.map(g => (g.id === conversationId ? { ...g, unreadCount: 0 } : g)),
+        unreadCount: Math.max(0, prev.unreadCount - was),
+      };
+    });
+    try {
+      await messagingRepository.markConversationRead(conversationId);
+    } catch (e) {
+      logger.warn('[MessagingContext] Could not mark conversation read:', e);
+    }
+  };
+
   const acknowledgeBroadcast = async (broadcastId: string) => {
     if (!userIdRef.current) return;
+    try {
+      // Antes solo cambiaba la pantalla y no se guardaba
+      await messagingRepository.acknowledgeBroadcast(broadcastId);
+    } catch (e) {
+      logger.warn('[MessagingContext] Could not acknowledge broadcast:', e);
+      return;
+    }
 
     setState(prev => ({
       ...prev,
@@ -283,9 +309,10 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
       // Batch 1: broadcasts y conversations en paralelo — independientes entre sí
       // Antes era secuencial (4 queries en cadena bloqueando el pool)
       logger.info('[CONN-TRACE] refreshMessages batch 1 — broadcasts + conversations (paralelo)');
-      const [broadcastsData, convData] = await Promise.all([
+      const [broadcastsData, convData, unreadMap] = await Promise.all([
         messagingRepository.getBroadcasts(orchardIdRef.current),
         messagingRepository.getConversations(currentUserId),
+        messagingRepository.getUnreadCounts().catch(() => ({} as Record<string, number>)),
       ]);
 
       // Collect unique participant IDs to resolve names
@@ -354,7 +381,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
               : lastMsg.content
             : '',
           time: timeStr,
-          unreadCount: 0,
+          unreadCount: unreadMap[c.id] ?? 0,
         };
       });
 
@@ -362,6 +389,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
         ...prev,
         broadcasts: broadcastsData || [],
         chatGroups,
+        unreadCount: Object.values(unreadMap).reduce((a, b) => a + b, 0),
       }));
     } catch (error) {
       logger.error('[MessagingContext] Error refreshing messages:', error);
@@ -403,12 +431,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
               navigator.vibrate([200, 100, 200, 100, 500]);
             }
 
-            if (Notification.permission === 'granted') {
-              new Notification(`📢 ${newBroadcast.title}`, {
-                body: newBroadcast.content,
-                icon: '/pwa-192x192.png',
-              });
-            }
+            void showSystemNotification(`📢 ${newBroadcast.title}`, newBroadcast.content, `broadcast-${newBroadcast.id}`);
           } catch (e) {
             logger.warn('[MessagingContext] Feedback trigger failed', e);
           }
@@ -426,6 +449,28 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orchardIdRef.current]); // Re-subscribe if orchard changes
 
+  // Mensajes nuevos (RLS: solo de mis conversaciones) → contadores al día
+  useEffect(() => {
+    const channel = supabase
+      .channel('my-chat-messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, payload => {
+        const msg = payload.new as { sender_id?: string; content?: string; conversation_id?: string };
+        if (!userIdRef.current || msg.sender_id === userIdRef.current) return;
+        messagingRepository.getUnreadCounts().then(map => {
+          setState(prev => ({
+            ...prev,
+            chatGroups: prev.chatGroups.map(g => ({ ...g, unreadCount: map[g.id] ?? 0 })),
+            unreadCount: Object.values(map).reduce((a, b) => a + b, 0),
+          }));
+        }).catch(() => undefined);
+        if (document.hidden && msg.content) {
+          void showSystemNotification('New message', msg.content.slice(0, 120), `chat-${msg.conversation_id}`);
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   // =============================================
   // CONTEXT VALUE
   // =============================================
@@ -435,6 +480,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
     sendBroadcast,
     getOrCreateConversation,
     markMessageRead,
+    markConversationRead,
     acknowledgeBroadcast,
     createChatGroup,
     loadChatGroups,
