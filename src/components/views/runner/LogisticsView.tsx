@@ -29,11 +29,11 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
   const buckets = useHarvestStore(state => state.buckets);
   const bucketRecords = useHarvestStore(state => state.bucketRecords);
   // Cubetas en el bin activo (móvil + servidor, sin duplicar)
-  const activeBinBuckets = bucketsInBin(selectedBinId, buckets, bucketRecords);
+  const activeBinBuckets = bucketsInBin(selectedBinId, buckets || [], bucketRecords || []);
   // Código de la pegatina (no el id interno)
   const storeBins = useHarvestStore(state => state.inventory);
   const activeBinCode =
-    storeBins.find(b => b.id === selectedBinId)?.bin_code || selectedBinId?.slice(0, 8);
+    (storeBins || []).find(b => b.id === selectedBinId)?.bin_code || selectedBinId?.slice(0, 8);
 
   const binCapacity = 72;
   const activeBinPercentage = Math.round((activeBinBuckets / binCapacity) * 100);
