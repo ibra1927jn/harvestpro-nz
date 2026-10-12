@@ -1,7 +1,7 @@
 // =============================================
 // NZST TIMEZONE UTILITY TESTS
 // =============================================
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { nowNZST, todayNZST, toNZST, yesterdayNZST, startOfWeekNZ } from './nzst';
 
 describe('NZST Timezone Utility', () => {
@@ -162,4 +162,19 @@ describe('NZST Timezone Utility', () => {
             expect(offset).toBeLessThanOrEqual(14);
         });
     });
+});
+
+describe('toNZST — same instant whatever the phone timezone', () => {
+    const original = process.env.TZ;
+    afterAll(() => { process.env.TZ = original; });
+    for (const tz of ['UTC', 'Europe/Madrid', 'Pacific/Auckland', 'America/Los_Angeles']) {
+        it(`gives NZ time with the right offset when the device is in ${tz}`, () => {
+            process.env.TZ = tz;
+            const summer = new Date('2026-10-12T04:32:42.500Z');
+            expect(toNZST(summer)).toBe('2026-10-12T17:32:42+13:00');
+            const winter = new Date('2026-06-01T12:00:00Z');
+            expect(toNZST(winter)).toBe('2026-06-02T00:00:00+12:00');
+            expect(new Date(toNZST(summer)).getTime()).toBe(Date.parse('2026-10-12T04:32:42Z'));
+        });
+    }
 });

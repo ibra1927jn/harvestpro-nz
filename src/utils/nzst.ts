@@ -90,7 +90,7 @@ export function toNZST(date: Date): string {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        hour12: false,
+        hourCycle: 'h23',
     }).formatToParts(date);
 
     const get = (type: string) => parts.find(p => p.type === type)?.value || '00';
@@ -103,12 +103,14 @@ export function toNZST(date: Date): string {
         timeZone: NZ_TIMEZONE,
         year: 'numeric', month: 'numeric', day: 'numeric',
         hour: 'numeric', minute: 'numeric', second: 'numeric',
-        hour12: false,
+        hourCycle: 'h23',
     }).formatToParts(date);
 
     const nzGet = (type: string) => parseInt(nzParts.find(p => p.type === type)?.value || '0');
-    const nzDate = new Date(nzGet('year'), nzGet('month') - 1, nzGet('day'), nzGet('hour'), nzGet('minute'), nzGet('second'));
-    const offsetMs = nzDate.getTime() - utcMs;
+    // Date.UTC: la hora NZ se lee como si fuera UTC. Con new Date(y, m, d…) se
+    // leía en la zona del móvil y el desfase salía mal fuera de UTC (en NZ, +00:00).
+    const nzAsUtc = Date.UTC(nzGet('year'), nzGet('month') - 1, nzGet('day'), nzGet('hour') % 24, nzGet('minute'), nzGet('second'));
+    const offsetMs = nzAsUtc - Math.floor(utcMs / 1000) * 1000;
     const offsetHours = Math.round(offsetMs / 3600000);
     const offsetStr = `+${String(offsetHours).padStart(2, '0')}:00`;
 
