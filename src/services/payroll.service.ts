@@ -40,6 +40,8 @@ export interface PickerBreakdown {
 
 export interface PayrollResult {
   orchard_id: string;
+  /** Semana cerrada: cifras = foto guardada al cerrar (lo que se pagó) */
+  closed?: { closed_at: string | null; closed_by: string | null };
   date_range: {
     start: string;
     end: string;
@@ -118,6 +120,16 @@ export const payrollService = {
     // 🔧 L3: Via repository — guarantees automatic JWT refresh
     const data = await payrollRepository.invokeCalculatePayroll(orchardId, startDate, endDate);
     return validateResponse(PayrollResultSchema, data, 'calculatePayroll');
+  },
+
+  /** Cerrar la semana de pago (lunes = weekStart): guarda la foto y bloquea cambios */
+  async closePayWeek(weekStart: string) {
+    return payrollRepository.invokePayWeek({ action: 'close', week_start: weekStart });
+  },
+
+  /** Reabrir una semana cerrada (motivo obligatorio, queda auditado) */
+  async reopenPayWeek(weekStart: string, reason: string) {
+    return payrollRepository.invokePayWeek({ action: 'reopen', week_start: weekStart, reason });
   },
 
   /**

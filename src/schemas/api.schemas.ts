@@ -65,6 +65,11 @@ export const PickerBreakdownSchema = z.object({
 
 export const PayrollResultSchema = z.object({
     orchard_id: z.string().min(1),
+    // Semana cerrada: lo que se devuelve es la foto guardada al cerrar
+    closed: z.object({
+        closed_at: z.string().nullable(),
+        closed_by: z.string().nullable(),
+    }).optional(),
     date_range: z.object({
         start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

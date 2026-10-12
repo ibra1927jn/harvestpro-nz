@@ -8,6 +8,17 @@
 import { supabase } from '@/services/supabase';
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
 
+export interface PayWeekActionResult {
+    week: { start: string; end: string };
+    closed?: boolean;
+    reopened?: boolean;
+    already_closed?: boolean;
+    total_earnings?: number;
+    /** No se puede cerrar con horas estimadas: quién y qué días */
+    reason?: 'ESTIMATED_HOURS';
+    pending?: { picker_id: string; picker_name: string; dates: string[] }[];
+}
+
 export const payrollRepository = {
     /** Invoke the calculate-payroll Edge Function with gateway resilience */
     /** orchardId vacío = nómina de la empresa (todos los huertos, suma por persona) */
@@ -19,6 +30,25 @@ export const payrollRepository = {
         });
         if (error) throw new Error(error.message);
         return data;
+    },
+
+    /**
+     * Cerrar / reabrir / consultar una semana de pago (Edge Function close-pay-week).
+     * Sin reintentos automáticos: cerrar o reabrir es una acción del usuario.
+     */
+    async invokePayWeek(body: { action: 'close' | 'reopen' | 'status'; week_start: string; reason?: string }) {
+        const { data, error } = await supabase.functions.invoke('close-pay-week', { body });
+        if (error) {
+            // El motivo real viene en el cuerpo de la respuesta (hint)
+            let hint = error.message;
+            try {
+                const ctx = (error as { context?: Response }).context;
+                const json = ctx ? await ctx.json() : null;
+                hint = json?.hint || json?.error || hint;
+            } catch { /* respuesta sin JSON */ }
+            throw new Error(hint);
+        }
+        return data as PayWeekActionResult;
     },
 
     /** Fetch attendance records for timesheets (hours calculated from check_in/check_out) */

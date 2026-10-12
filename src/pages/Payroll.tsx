@@ -14,6 +14,7 @@ import type { NavItem } from '@/components/common/DesktopLayout';
 import { usePayroll } from '@/hooks/usePayroll';
 import { SummaryCard, PayrollDashboard, TimesheetsTab, WageCalculatorTab, ExportTab } from '@/components/views/payroll/PayrollTabs';
 import ExportHistoryTab from '@/components/views/payroll/ExportHistoryTab';
+import { PayWeekCloseBar } from '@/components/views/payroll/PayWeekCloseBar';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 
@@ -60,6 +61,17 @@ const Payroll: React.FC = () => {
                     <span className="material-symbols-outlined">chevron_right</span>
                 </button>
             </div>
+
+            <PayWeekCloseBar
+                weekEnd={pay.week.end}
+                closedInfo={pay.closedInfo}
+                canManageWeek={pay.canManageWeek}
+                weekFinished={pay.weekFinished}
+                closing={pay.closing}
+                closeResult={pay.closeResult}
+                onClose={pay.closeWeek}
+                onReopen={pay.reopenWeek}
+            />
 
             {pay.error && (
                 <div role="alert" className="bg-red-50 border border-red-200 rounded-2xl px-5 py-3 mb-4 text-sm font-bold text-red-700">{pay.error}</div>

@@ -26,6 +26,10 @@ vi.mock('@/services/payroll.service', () => ({
     PayrollResult: {},
 }));
 
+vi.mock('@/context/AuthContext', () => ({
+    useAuth: () => ({ appUser: { role: 'payroll_admin' } }),
+}));
+
 vi.mock('@/utils/logger', () => ({ logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
 describe('usePayroll', () => {
@@ -82,5 +86,14 @@ describe('pay week helpers', () => {
         const w = defaultPayWeek('2026-10-11');
         expect(shiftPayWeek(w, -1).start).toBe('2026-09-28');
         expect(shiftPayWeek(w, 1).start).toBe('2026-10-12');
+    });
+});
+
+describe('usePayroll — cierre de semana', () => {
+    it('Nómina puede cerrar una semana terminada', async () => {
+        const { result } = renderHook(() => usePayroll());
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+        expect(result.current.canManageWeek).toBe(true);
+        expect(result.current.closedInfo).toBeNull();
     });
 });
