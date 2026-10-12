@@ -34,7 +34,11 @@ interface AddPickerModalProps {
 
 const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
     const { appUser } = useAuth();
-    const { orchard } = useHarvestStore();
+    const { orchard, crew } = useHarvestStore();
+    // RRHH/admin eligen el equipo; el team leader lo mete en el suyo
+    const choosesTeam = appUser?.role === 'hr_admin' || appUser?.role === 'admin';
+    const teamLeaders = (crew || []).filter(p => p.role === 'team_leader' && p.status !== 'archived');
+    const [teamLeaderId, setTeamLeaderId] = useState('');
     const [name, setName] = useState('');
     const [idNumber, setIdNumber] = useState('');
     const [harnessNumber, setHarnessNumber] = useState('');
@@ -71,7 +75,9 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
                 picker_id: idNumber,
                 harness_id: harnessNumber,
                 // Si lo añade un team leader, va a su equipo; si es el manager, queda sin asignar
-                team_leader_id: appUser?.role === 'team_leader' ? appUser.id : undefined,
+                team_leader_id: appUser?.role === 'team_leader'
+                    ? appUser.id
+                    : (choosesTeam && teamLeaderId ? teamLeaderId : undefined),
                 orchard_id: orchard?.id || undefined, // Allow undefined if not in orchard
                 status: 'active',
                 safety_verified: true,
@@ -106,6 +112,16 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
                             placeholder="e.g. Liam O'Connor"
                             className="w-full px-4 py-3 rounded-xl border-2 border-border-light focus:border-primary outline-none text-text-main bg-white transition-colors" />
                     </div>
+                    {choosesTeam && (
+                        <div>
+                            <label className="text-xs font-bold text-text-muted uppercase mb-2 block">Team (team leader)</label>
+                            <select value={teamLeaderId} onChange={(e) => setTeamLeaderId(e.target.value)} aria-label="Team leader"
+                                className="w-full px-4 py-3 rounded-xl border-2 border-border-light focus:border-primary outline-none text-text-main bg-white">
+                                <option value="">No team yet</option>
+                                {teamLeaders.map(tl => <option key={tl.id} value={tl.id}>{tl.name}</option>)}
+                            </select>
+                        </div>
+                    )}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="text-xs font-bold text-text-muted uppercase mb-2 block">Picker ID *</label>

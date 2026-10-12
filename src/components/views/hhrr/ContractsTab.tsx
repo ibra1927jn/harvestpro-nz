@@ -4,7 +4,10 @@
  */
 import React, { useState, useMemo } from 'react';
 import { Employee, HRSummary } from '@/services/hhrr.service';
-import { updateContract } from '@/services/hhrr.service';
+import { changeContract, saveNewContract } from '@/services/hhrr.service';
+import { useHarvestStore } from '@/stores/useHarvestStore';
+import { useAuth } from '@/context/AuthContext';
+import { PAY_RULES } from '@/services/harvestMetrics';
 import FilterBar from '@/components/ui/FilterBar';
 import InlineEdit from '@/components/ui/InlineEdit';
 
@@ -19,6 +22,10 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
+    const [creatingFor, setCreatingFor] = useState<string | null>(null);
+    const [busy, setBusy] = useState<string | null>(null);
+    const storeOrchardId = useHarvestStore(s => s.orchard?.id);
+    const { appUser } = useAuth();
 
     const filterOptions = useMemo(() => ({
         types: [...new Set(employees.map(e => e.contract_type))].sort(),
@@ -38,22 +45,53 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
         setTimeout(() => setToast(null), 3000);
     };
 
-    const handleRenew = (empId: string, empName: string) => {
-        const nextYear = new Date();
-        nextYear.setFullYear(nextYear.getFullYear() + 1);
-        updateContract(empId, {
-            status: 'active',
-            end_date: nextYear.toISOString().split('T')[0],
-        });
-        showToast(`Contract renewed for ${empName} until ${nextYear.toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland' })}`);
-        onRefresh?.();
+    // Cambios sobre el contrato de verdad (por su id), esperando a que se guarde.
+    // Antes se usaba el id de la persona como id de contrato: no cambiaba nada
+    // y la pantalla decía que sí.
+    const run = async (emp: Employee, action: () => Promise<void>, okMessage: string, okType: 'success' | 'error' = 'success') => {
+        setBusy(emp.id);
+        try {
+            await action();
+            showToast(okMessage, okType);
+            onRefresh?.();
+        } catch (e) {
+            showToast(`${emp.full_name}: ${e instanceof Error ? e.message : 'not saved'}`, 'error');
+        } finally {
+            setBusy(null);
+        }
     };
 
-    const handleTerminate = (empId: string, empName: string) => {
-        updateContract(empId, { status: 'terminated' });
-        showToast(`Contract terminated for ${empName}`, 'error');
+    const handleRenew = (emp: Employee) => {
+        if (!emp.contract_id) return;
+        const nextYear = new Date();
+        nextYear.setFullYear(nextYear.getFullYear() + 1);
+        const end = nextYear.toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' });
+        void run(emp, () => changeContract(emp.contract_id!, { status: 'active', end_date: end }),
+            `Contract renewed for ${emp.full_name} until ${end}`);
+    };
+
+    const handleTerminate = (emp: Employee) => {
+        if (!emp.contract_id) return;
         setConfirmId(null);
-        onRefresh?.();
+        void run(emp, () => changeContract(emp.contract_id!, { status: 'terminated' }),
+            `Contract terminated for ${emp.full_name}`, 'error');
+    };
+
+    const handleCreate = (emp: Employee, form: NewContractForm) => {
+        const orchardId = emp.orchard_id || storeOrchardId;
+        if (!orchardId) { showToast('No orchard for this person', 'error'); return; }
+        void run(emp, async () => {
+            await saveNewContract({
+                employee_id: emp.id,
+                orchard_id: orchardId,
+                type: form.type,
+                start_date: form.start,
+                end_date: form.end || null,
+                hourly_rate: form.rate,
+                created_by: appUser?.id ?? null,
+            });
+            setCreatingFor(null);
+        }, `Contract created for ${emp.full_name}`);
     };
 
     return (
@@ -113,12 +151,12 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                             <span className="flex items-center gap-1.5">
                                 <span className="material-symbols-outlined text-[16px] text-slate-400">event</span>
                                 {new Date(emp.contract_start).toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', month: 'short', year: 'numeric' })}
-                                {emp.contract_end && (
+                                {emp.contract_id && emp.contract_end && (
                                     <>
                                         <span className="text-slate-300 mx-1">→</span>
                                         <InlineEdit
                                             value={emp.contract_end}
-                                            onSave={(val) => updateContract(emp.id, { end_date: val })}
+                                            onSave={(val) => run(emp, () => changeContract(emp.contract_id!, { end_date: val }), 'End date saved')}
                                             type="date"
                                         />
                                     </>
@@ -127,21 +165,46 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                             <span className="w-px h-4 bg-slate-200"></span>
                             <span className="flex items-center gap-1.5">
                                 <span className="material-symbols-outlined text-[16px] text-slate-400">attach_money</span>
-                                <InlineEdit
-                                    value={String(emp.hourly_rate)}
-                                    onSave={(val) => updateContract(emp.id, { hourly_rate: parseFloat(val) || emp.hourly_rate })}
-                                    type="number"
-                                    prefix="$"
-                                    suffix="/hr"
-                                    minWidth="60px"
-                                />
+                                {emp.contract_id ? (
+                                    <InlineEdit
+                                        value={String(emp.hourly_rate)}
+                                        onSave={(val) => run(emp, () => changeContract(emp.contract_id!, { hourly_rate: parseFloat(val) || emp.hourly_rate }), 'Hourly rate saved')}
+                                        type="number"
+                                        prefix="$"
+                                        suffix="/hr"
+                                        minWidth="60px"
+                                    />
+                                ) : (
+                                    <span className="text-slate-400">No contract</span>
+                                )}
                             </span>
                         </div>
 
+                        {/* Sin contrato: crearlo */}
+                        {!emp.contract_id && (
+                            creatingFor === emp.id ? (
+                                <CreateContractForm
+                                    busy={busy === emp.id}
+                                    onCancel={() => setCreatingFor(null)}
+                                    onSave={(form) => handleCreate(emp, form)}
+                                />
+                            ) : (
+                                <button
+                                    onClick={() => setCreatingFor(emp.id)}
+                                    className="relative z-10 w-full py-3 rounded-2xl bg-indigo-50 text-indigo-700 text-[11px] uppercase tracking-widest font-bold hover:bg-indigo-100 flex items-center justify-center gap-1.5 border border-indigo-100"
+                                >
+                                    <span className="material-symbols-outlined text-[16px]">add</span>
+                                    Create contract
+                                </button>
+                            )
+                        )}
+
                         {/* Action Buttons */}
+                        {emp.contract_id && (
                         <div className="flex gap-3 relative z-10">
                             <button
-                                onClick={() => handleRenew(emp.id, emp.full_name)}
+                                onClick={() => handleRenew(emp)}
+                                disabled={busy === emp.id}
                                 className="flex-1 py-3 rounded-2xl bg-emerald-50/50 text-emerald-700 text-[11px] uppercase tracking-widest font-bold hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1.5 border border-emerald-100/50"
                             >
                                 <span className="material-symbols-outlined text-[16px]">autorenew</span>
@@ -150,7 +213,8 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                             {confirmId === emp.id ? (
                                 <div className="flex-1 flex gap-2">
                                     <button
-                                        onClick={() => handleTerminate(emp.id, emp.full_name)}
+                                        onClick={() => handleTerminate(emp)}
+                                        disabled={busy === emp.id}
                                         className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-[11px] uppercase tracking-widest font-bold hover:bg-red-600 transition-colors shadow-sm"
                                     >
                                         Confirm
@@ -172,8 +236,51 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                                 </button>
                             )}
                         </div>
+                        )}
                     </div>
                 ))}
+            </div>
+        </div>
+    );
+};
+
+interface NewContractForm {
+    type: 'permanent' | 'seasonal' | 'casual';
+    start: string;
+    end: string;
+    rate: number;
+}
+
+const CreateContractForm: React.FC<{ busy: boolean; onCancel: () => void; onSave: (f: NewContractForm) => void }> = ({ busy, onCancel, onSave }) => {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' });
+    const [form, setForm] = useState<NewContractForm>({ type: 'seasonal', start: today, end: '', rate: PAY_RULES.minWageFloor });
+    const field = 'w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm bg-white';
+    return (
+        <div className="relative z-10 space-y-2 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3" data-testid="create-contract-form">
+            <div className="grid grid-cols-2 gap-2">
+                <label className="text-[11px] font-bold text-slate-500">Type
+                    <select className={field} value={form.type} onChange={e => setForm({ ...form, type: e.target.value as NewContractForm['type'] })}>
+                        <option value="seasonal">Seasonal</option>
+                        <option value="casual">Casual</option>
+                        <option value="permanent">Permanent</option>
+                    </select>
+                </label>
+                <label className="text-[11px] font-bold text-slate-500">Hourly rate ($)
+                    <input className={field} type="number" step="0.01" min={PAY_RULES.minWageFloor} value={form.rate}
+                        onChange={e => setForm({ ...form, rate: parseFloat(e.target.value) || 0 })} />
+                </label>
+                <label className="text-[11px] font-bold text-slate-500">Start
+                    <input className={field} type="date" value={form.start} onChange={e => setForm({ ...form, start: e.target.value })} />
+                </label>
+                <label className="text-[11px] font-bold text-slate-500">End (optional)
+                    <input className={field} type="date" value={form.end} onChange={e => setForm({ ...form, end: e.target.value })} />
+                </label>
+            </div>
+            <div className="flex gap-2">
+                <button onClick={onCancel} disabled={busy} className="flex-1 rounded-xl bg-white py-2 text-xs font-bold text-slate-600 border border-slate-200">Cancel</button>
+                <button onClick={() => onSave(form)} disabled={busy || !form.start} className="flex-1 rounded-xl bg-indigo-600 py-2 text-xs font-bold text-white disabled:opacity-50">
+                    {busy ? 'Saving…' : 'Save contract'}
+                </button>
             </div>
         </div>
     );

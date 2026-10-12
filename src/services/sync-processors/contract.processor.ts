@@ -12,7 +12,7 @@ export async function processContract(
   expectedUpdatedAt?: string
 ): Promise<void> {
   if (payload.action === 'create') {
-    await contractRepo.create({
+    const { error } = await contractRepo.create({
       employee_id: payload.employee_id!,
       orchard_id: payload.orchard_id!,
       type: payload.type as 'permanent' | 'seasonal' | 'casual',
@@ -21,6 +21,7 @@ export async function processContract(
       hourly_rate: payload.hourly_rate || MINIMUM_WAGE,
       notes: payload.notes || null,
     });
+    if (error) throw new Error(`Contract not saved: ${error}`);
   } else if (payload.action === 'update' && payload.contractId) {
     const updates: Record<string, unknown> = {};
     if (payload.status !== undefined) updates.status = payload.status;
@@ -39,7 +40,8 @@ export async function processContract(
         throw new Error(`Optimistic lock conflict on contract ${payload.contractId}`);
       }
     } else {
-      await contractRepo.update(payload.contractId, updates);
+      const { error } = await contractRepo.update(payload.contractId, updates);
+      if (error) throw new Error(`Contract ${payload.contractId} not updated: ${error}`);
     }
   }
 }

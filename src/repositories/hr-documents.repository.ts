@@ -48,6 +48,17 @@ export const hrDocumentsRepository = {
     return (data || []) as HRDocumentRow[];
   },
 
+  /** Todos los documentos de la empresa, más nuevos primero */
+  async listAll(): Promise<HRDocumentRow[]> {
+    const { data, error } = await supabase
+      .from('hr_documents')
+      .select('*')
+      .is('deleted_at', null)
+      .order('uploaded_at', { ascending: false });
+    if (error) throw error;
+    return (data || []) as HRDocumentRow[];
+  },
+
   /** Docs for a specific picker (includes expired). */
   async listByPicker(pickerId: string): Promise<HRDocumentRow[]> {
     const { data, error } = await supabase
@@ -132,6 +143,32 @@ export const hrDocumentsRepository = {
       .createSignedUrl(storagePath, expiresInSec);
     if (error) throw error;
     return data.signedUrl;
+  },
+
+  /** Visados de trabajo de toda la empresa (para el estado de visado en RRHH) */
+  async listWorkVisas(): Promise<Pick<HRDocumentRow, 'id' | 'picker_id' | 'user_id' | 'expires_at'>[]> {
+    const { data, error } = await supabase
+      .from('hr_documents')
+      .select('id, picker_id, user_id, expires_at')
+      .eq('document_type', 'work_visa')
+      .is('deleted_at', null);
+    if (error) throw error;
+    return data || [];
+  },
+
+  /** Documentos de toda la empresa caducados o que caducan en N días */
+  async listExpiringCompany(daysAhead = 30): Promise<HRDocumentRow[]> {
+    const cutoff = new Date(Date.now() + daysAhead * 86400000)
+      .toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' });
+    const { data, error } = await supabase
+      .from('hr_documents')
+      .select('*')
+      .is('deleted_at', null)
+      .not('expires_at', 'is', null)
+      .lte('expires_at', cutoff)
+      .order('expires_at', { ascending: true });
+    if (error) throw error;
+    return (data || []) as HRDocumentRow[];
   },
 
   /** Docs expiring in the next N days across an orchard. */

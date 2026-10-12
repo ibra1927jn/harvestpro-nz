@@ -25,14 +25,17 @@ describe('processContract', () => {
         mockInsert.mockClear().mockResolvedValue({ error: null });
         mockUpdate.mockClear();
         mockEq.mockClear();
+        // Cadena como la real: insert/update → select → single (el repositorio
+        // devuelve {error} y el procesador ahora lanza si lo hay)
+        const done = { single: () => Promise.resolve({ data: {}, error: null }) };
         vi.spyOn(supabase, 'from').mockReturnValue({
-            insert: mockInsert,
+            insert: (...args: unknown[]) => { mockInsert(...args); return { select: () => done }; },
             update: (...args: unknown[]) => {
                 mockUpdate(...args);
                 return {
                     eq: (...eqArgs: unknown[]) => {
                         mockEq(...eqArgs);
-                        return Promise.resolve({ error: null });
+                        return { select: () => done };
                     },
                 };
             },

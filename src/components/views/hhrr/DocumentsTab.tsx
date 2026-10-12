@@ -17,6 +17,8 @@ import {
 } from '@/repositories/hr-documents.repository';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { logger } from '@/utils/logger';
+import { userRepository2, type StaffMember } from '@/repositories/user.repository';
+import { useAuth } from '@/context/AuthContext';
 
 function daysUntil(iso: string | null): number | null {
     if (!iso) return null;
@@ -37,13 +39,22 @@ const DocumentsTab: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [uploadOpen, setUploadOpen] = useState(false);
     const [err, setErr] = useState<string | null>(null);
+    // Plantilla de la empresa: a quién pertenece cada documento
+    const [staff, setStaff] = useState<StaffMember[]>([]);
+    const nameOf = (d: HRDocumentRow) =>
+        staff.find(s => s.id === (d.picker_id || d.user_id))?.full_name ?? '—';
 
     const reload = useCallback(async () => {
         if (!orchardId) return;
         setLoading(true);
         try {
-            const rows = await hrDocumentsRepository.listByOrchard(orchardId);
+            // RRHH trabaja con toda la empresa (la gente rota entre huertos)
+            const [rows, people] = await Promise.all([
+                hrDocumentsRepository.listAll(),
+                userRepository2.getStaff().catch(() => [] as StaffMember[]),
+            ]);
             setDocs(rows);
+            setStaff(people);
             setErr(null);
         } catch (e) {
             logger.error('[DocumentsTab] load failed:', e);
@@ -143,7 +154,7 @@ const DocumentsTab: React.FC = () => {
                                         {expBadge}
                                     </h4>
                                     <p className="text-xs text-text-secondary">
-                                        {HR_DOCUMENT_TYPE_LABELS[doc.document_type]} · {formatBytes(doc.file_size_bytes)}
+                                        {nameOf(doc)} · {HR_DOCUMENT_TYPE_LABELS[doc.document_type]} · {formatBytes(doc.file_size_bytes)}
                                     </p>
                                 </div>
                                 <button
@@ -171,6 +182,7 @@ const DocumentsTab: React.FC = () => {
             {uploadOpen && (
                 <UploadModal
                     orchardId={orchardId}
+                    staff={staff}
                     onClose={() => setUploadOpen(false)}
                     onUploaded={() => {
                         setUploadOpen(false);
@@ -186,11 +198,14 @@ const DocumentsTab: React.FC = () => {
 
 interface UploadModalProps {
     orchardId: string;
+    staff: StaffMember[];
     onClose: () => void;
     onUploaded: () => void;
 }
 
-const UploadModal: React.FC<UploadModalProps> = ({ orchardId, onClose, onUploaded }) => {
+const UploadModal: React.FC<UploadModalProps> = ({ orchardId, staff, onClose, onUploaded }) => {
+    const { appUser } = useAuth();
+    const [personId, setPersonId] = useState('');
     const [file, setFile] = useState<File | null>(null);
     const [title, setTitle] = useState('');
     const [docType, setDocType] = useState<HRDocumentType>('employment_agreement');
@@ -200,17 +215,20 @@ const UploadModal: React.FC<UploadModalProps> = ({ orchardId, onClose, onUploade
     const [err, setErr] = useState<string | null>(null);
 
     const handleSubmit = async () => {
-        if (!file || !title.trim()) {
-            setErr('Archivo y título requeridos');
+        const person = staff.find(s => s.id === personId);
+        if (!person || !file || !title.trim()) {
+            setErr('Employee, file and title are required');
             return;
         }
         setUploading(true);
         setErr(null);
         try {
             await hrDocumentsRepository.upload(file, {
-                orchardId,
-                userId: null, // orchard-level doc (no picker specific by default)
-                pickerId: null,
+                // Huerto de la persona (o el activo); plantilla → picker_id, oficina → user_id
+                orchardId: person.orchard_id || orchardId,
+                pickerId: person.source === 'staff' ? person.id : null,
+                userId: person.source === 'office' ? person.id : null,
+                uploadedBy: appUser?.id ?? null,
                 documentType: docType,
                 title: title.trim(),
                 expiresAt: expiresAt || null,
@@ -230,6 +248,21 @@ const UploadModal: React.FC<UploadModalProps> = ({ orchardId, onClose, onUploade
                 <h3 className="font-bold text-lg">Subir documento</h3>
 
                 {err && <div role="alert" className="bg-red-50 border border-red-200 text-red-800 text-sm rounded px-3 py-2">{err}</div>}
+
+                <label className="block">
+                    <span className="text-sm font-medium">Employee</span>
+                    <select
+                        data-testid="upload-person"
+                        value={personId}
+                        onChange={e => setPersonId(e.target.value)}
+                        className="mt-1 block w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                    >
+                        <option value="">Choose a person…</option>
+                        {[...staff].sort((a, b) => a.full_name.localeCompare(b.full_name)).map(s => (
+                            <option key={s.id} value={s.id}>{s.full_name}{s.code ? ` (${s.code})` : ''}</option>
+                        ))}
+                    </select>
+                </label>
 
                 <label className="block">
                     <span className="text-sm font-medium">Archivo</span>
