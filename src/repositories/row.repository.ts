@@ -6,7 +6,7 @@
  */
 import { supabase } from '@/services/supabase';
 import { logger } from '@/utils/logger';
-import type { RowAssignment } from '@/types';
+import type { RowAssignment, RowVisit } from '@/types';
 
 export const rowRepository = {
     /** Bulk update picker current_row */
@@ -33,6 +33,7 @@ export const rowRepository = {
             side: e.side,
             assigned_pickers: e.assigned_pickers,
             completion_percentage: e.completion_percentage,
+            team_leader_id: e.team_leader_id ?? null,
             status: 'active' as const,
         }));
 
@@ -52,9 +53,25 @@ export const rowRepository = {
      */
     async retireAssignments(ids: string[]) {
         if (ids.length === 0) return { error: null };
+        // Se quedan como historial: el equipo estuvo ahí hasta ahora
         const { error } = await supabase.from('row_assignments')
-            .update({ deleted_at: new Date().toISOString() }).in('id', ids);
+            .update({ status: 'moved', ended_at: new Date().toISOString() })
+            .in('id', ids).eq('status', 'active');
         return { error };
+    },
+
+    /** Recorrido de filas desde una fecha (todas las del huerto, o las de un equipo) */
+    async getHistory(orchardId: string, sinceIso: string, teamLeaderId?: string): Promise<RowVisit[]> {
+        let q = supabase.from('row_assignments')
+            .select('id, row_number, side, team_leader_id, status, assigned_at, ended_at')
+            .eq('orchard_id', orchardId)
+            .is('deleted_at', null)
+            .gte('assigned_at', sinceIso)
+            .order('assigned_at', { ascending: true });
+        if (teamLeaderId) q = q.eq('team_leader_id', teamLeaderId);
+        const { data, error } = await q;
+        if (error) throw error;
+        return (data || []) as RowVisit[];
     },
 
     /** Update row assignment progress */
@@ -67,7 +84,7 @@ export const rowRepository = {
     /** Complete a row assignment */
     async completeRow(rowId: string) {
         const { error } = await supabase.from('row_assignments')
-            .update({ completion_percentage: 100, status: 'completed' }).eq('id', rowId);
+            .update({ completion_percentage: 100, status: 'completed', ended_at: new Date().toISOString() }).eq('id', rowId);
         if (error) throw error;
     },
 };

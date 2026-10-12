@@ -24,6 +24,7 @@ import { useHarvestStore } from '@/stores/useHarvestStore';
 // Modular Views — eager (lightweight or always visible)
 import DashboardView from '@/components/views/manager/DashboardView';
 import TeamsView from '@/components/views/manager/TeamsView';
+import RowHistory from '@/components/common/row-history/RowHistory';
 import MoreMenuView from '@/components/views/manager/MoreMenuView';
 
 // Lazy-loaded views (code-split for mobile performance)
@@ -196,6 +197,10 @@ const Manager = () => {
                 setActiveTab={setActiveTab}
                 onRowClick={rowNum => setShowAssignment({ show: true, row: rowNum })}
               />
+              {/* Recorrido de filas de cada equipo */}
+              <div className="px-4 pb-6 pt-2">
+                <RowHistory title="Row history by team" />
+              </div>
             </Suspense>
           </ComponentErrorBoundary>
         );

@@ -31,6 +31,14 @@ export const createRowSlice: StateCreator<HarvestStoreState, [], [], RowSlice> =
     const orchardId = get().orchard?.id;
     if (!orchardId || rowNumbers.length === 0) return;
 
+    // Equipo: el team leader que va en el grupo o, si no, el de sus pickers
+    const crewNow = get().crew;
+    const members = crewNow.filter(p => pickerIds.includes(p.id));
+    const teamLeaderId =
+      members.find(p => p.role === 'team_leader')?.id ??
+      members.find(p => p.team_leader_id)?.team_leader_id ??
+      null;
+
     // Build one RowAssignment entry per row
     const newEntries: RowAssignment[] = rowNumbers.map(rn => ({
       id: safeUUID(),
@@ -38,6 +46,7 @@ export const createRowSlice: StateCreator<HarvestStoreState, [], [], RowSlice> =
       side,
       assigned_pickers: pickerIds,
       completion_percentage: 0,
+      team_leader_id: teamLeaderId,
     }));
 
     // Lo que había antes (para deshacer si no se guarda, y para retirar en el servidor)

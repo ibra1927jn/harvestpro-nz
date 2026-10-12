@@ -272,7 +272,7 @@ export async function fetchOrchardData(
   if (activeOrchard?.id) {
     const { data: serverAssignments, error: raError } = await supabase
       .from('row_assignments')
-      .select('id, row_number, side, assigned_pickers, completion_percentage')
+      .select('id, row_number, side, assigned_pickers, completion_percentage, team_leader_id')
       .eq('orchard_id', activeOrchard.id)
       .eq('status', 'active')
       .is('deleted_at', null);
@@ -285,6 +285,7 @@ export async function fetchOrchardData(
         side: (ra.side as 'north' | 'south') ?? 'north',
         assigned_pickers: (ra.assigned_pickers as string[]) ?? [],
         completion_percentage: (ra.completion_percentage as number) ?? 0,
+        team_leader_id: (ra.team_leader_id as string | null) ?? null,
       }));
       set({ rowAssignments: rebuiltAssignments });
       logger.info(`[Store] Loaded ${rebuiltAssignments.length} row assignments from server`);
@@ -466,12 +467,12 @@ export function setupRealtimeSubscriptions(
 
         set(state => {
           // DELETE o soft-delete: eliminar del store local
-          if (payload.eventType === 'DELETE' || record.deleted_at || record.status === 'completed') {
-            if (payload.eventType === 'DELETE' || record.deleted_at) {
-              return {
-                rowAssignments: state.rowAssignments.filter(ra => ra.id !== record.id),
-              };
-            }
+          // Ya no activa (movida, terminada o borrada): fuera de las actuales
+          // (queda en el historial de filas)
+          if (payload.eventType === 'DELETE' || record.deleted_at || (record.status && record.status !== 'active')) {
+            return {
+              rowAssignments: state.rowAssignments.filter(ra => ra.id !== record.id),
+            };
           }
 
           // INSERT o UPDATE: upsert en store local
@@ -482,6 +483,7 @@ export function setupRealtimeSubscriptions(
             side: (record.side as 'north' | 'south') ?? 'north',
             assigned_pickers: record.assigned_pickers ?? [],
             completion_percentage: record.completion_percentage ?? 0,
+            team_leader_id: (record as { team_leader_id?: string | null }).team_leader_id ?? null,
           };
 
           if (exists) {

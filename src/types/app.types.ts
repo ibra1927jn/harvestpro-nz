@@ -278,6 +278,19 @@ export interface RowAssignment {
   side: 'north' | 'south';
   assigned_pickers: string[];
   completion_percentage: number;
+  /** Equipo (team leader) al que se asignó la fila */
+  team_leader_id?: string | null;
+}
+
+/** Una fila por la que pasó un equipo (historial de filas) */
+export interface RowVisit {
+  id: string;
+  row_number: number;
+  side: 'north' | 'south';
+  team_leader_id: string | null;
+  status: 'active' | 'moved' | 'completed';
+  assigned_at: string;
+  ended_at: string | null;
 }
 
 // === ORCHARD BLOCKS (Tactical Map) ===

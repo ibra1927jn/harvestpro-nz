@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import RowHistory from '@/components/common/row-history/RowHistory';
+import { useAuth } from '@/context/AuthContext';
 import { useMessaging } from '../../../context/MessagingContext';
 import { useHarvestStore as useHarvest } from '@/stores/useHarvestStore';
 import RowAssignmentModal, { PickerForAssignment } from '../../modals/RowAssignmentModal';
@@ -8,6 +10,7 @@ import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 const TARGET_BUCKETS_PER_ROW = 60;
 
 const TasksView = () => {
+    const { appUser } = useAuth();
     const { rowAssignments, orchard, bucketRecords, assignRow, crew, settings } = useHarvest();
     const { broadcasts } = useMessaging();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -84,6 +87,9 @@ const TasksView = () => {
                             <span className="text-lg font-black text-text-main">${pieceRate.toFixed(2)}</span>
                         </div>
                     </div>
+
+                    {/* Recorrido de filas de mi equipo */}
+                    {appUser?.id && <RowHistory teamLeaderId={appUser.id} title="My team's rows" />}
 
                     {/* BROADCASTS */}
                     {latestAlert && (
