@@ -27,6 +27,8 @@ export interface PickerBreakdown {
   /** Días alternativos en lieu owed por trabajar public holidays (Holidays Act s.60). */
   alternative_holidays_owed?: number;
   piece_rate_earnings: number;
+  /** Festivo: media parte extra de lo ganado por cubetas (Holidays Act s.50) */
+  holiday_premium?: number;
   hourly_rate: number;
   minimum_required: number;
   top_up_required: number;
@@ -419,11 +421,15 @@ export const payrollService = {
       const day = dayTopUp.get(ts.picker_id);
       const pieceEarnings = Math.round(info.earnings * 100) / 100;
       const topUp = isLast ? (day?.topUp ?? 0) : 0;
+      // Festivo: las cubetas van a tiempo y medio (Holidays Act s.50)
+      const holidayPremium = isNZPublicHoliday(targetDate)
+        ? Math.round(pieceEarnings * (PAY_RULES.publicHolidayMultiplier - 1) * 100) / 100
+        : 0;
       const pay = {
         pieceEarnings,
         minimumEarnings: isLast ? (day?.minimum ?? 0) : 0,
         topUp,
-        total: Math.round((pieceEarnings + topUp) * 100) / 100,
+        total: Math.round((pieceEarnings + holidayPremium + topUp) * 100) / 100,
         belowMinimum: day?.belowMinimum ?? false,
       };
       return {

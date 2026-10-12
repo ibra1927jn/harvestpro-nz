@@ -171,6 +171,11 @@ export interface DayPayInput {
 
 export interface DayPay {
     pieceEarnings: number;
+    /**
+     * Festivo (Holidays Act 2003 s.50): tiempo y medio de la paga del día,
+     * también de lo ganado por cubetas. Es la media parte extra de las cubetas.
+     */
+    holidayPremium: number;
     /** Lo que habría cobrado a salario mínimo (con festivo aplicado) */
     minimumEarnings: number;
     /** Complemento para llegar al mínimo, ≥ 0 */
@@ -189,29 +194,32 @@ export interface DayPay {
  */
 export function dayPay(input: DayPayInput): DayPay {
     const minWage = Math.max(input.minWage || 0, PAY_RULES.minWageFloor);
-    const minWageApplied = input.isPublicHoliday
-        ? minWage * PAY_RULES.publicHolidayMultiplier
-        : minWage;
+    const multiplier = input.isPublicHoliday ? PAY_RULES.publicHolidayMultiplier : 1;
+    const minWageApplied = minWage * multiplier;
     const hours = Math.max(0, input.hours);
     const pieceEarnings = input.pieceEarnings !== undefined
         ? Math.max(0, input.pieceEarnings)
         : Math.max(0, input.buckets) * Math.max(0, input.pieceRate);
+    // Festivo: lo ganado por cubetas también va a tiempo y medio
+    const holidayPremium = pieceEarnings * (multiplier - 1);
     const minimumEarnings = hours * minWageApplied;
-    const topUp = Math.max(0, minimumEarnings - pieceEarnings);
+    const topUp = Math.max(0, minimumEarnings - pieceEarnings - holidayPremium);
     const pieceHourlyRate = hours > 0 ? pieceEarnings / hours : 0;
 
-    // El total es la suma de las dos partes YA redondeadas: así las líneas que se
-    // exportan a nómina (cubetas + complemento) suman exactamente el total.
+    // El total es la suma de las partes YA redondeadas: así las líneas que se
+    // exportan a nómina (cubetas + plus de festivo + complemento) suman el total.
     const pieceRounded = round2(pieceEarnings);
+    const premiumRounded = round2(holidayPremium);
     const topUpRounded = round2(topUp);
     return {
         pieceEarnings: pieceRounded,
+        holidayPremium: premiumRounded,
         minimumEarnings: round2(minimumEarnings),
         topUp: topUpRounded,
-        total: round2(pieceRounded + topUpRounded),
+        total: round2(pieceRounded + premiumRounded + topUpRounded),
         minWageApplied: round2(minWageApplied),
         pieceHourlyRate: round2(pieceHourlyRate),
-        belowMinimum: hours > 0 && pieceHourlyRate < minWageApplied,
+        belowMinimum: hours > 0 && pieceHourlyRate * multiplier < minWageApplied,
     };
 }
 
@@ -329,6 +337,8 @@ export interface OrchardShare {
     hours: number;
     buckets: number;
     pieceEarnings: number;
+    /** Plus de festivo de las cubetas recogidas aquí */
+    holidayPremium: number;
     topUp: number;
     total: number;
 }
@@ -349,6 +359,8 @@ export interface PayDay {
     /** Reparto del día por huerto (coste por huerto) */
     byOrchard: OrchardShare[];
     pieceEarnings: number;
+    /** Plus de festivo (media parte extra de lo ganado por cubetas) */
+    holidayPremium: number;
     topUp: number;
     total: number;
     belowMinimum: boolean;
@@ -362,6 +374,8 @@ export interface PickerRangePay {
     buckets: number;
     hours: number;
     pieceEarnings: number;
+    /** Plus de festivo de la semana */
+    holidayPremium: number;
     topUp: number;
     total: number;
     /** Días con horas o cubetas */
@@ -507,6 +521,7 @@ function splitByOrchard(
     h: { hours: number; segments: PaySegment[] },
     scans: ReadonlyArray<ScanForPay>,
     topUp: number,
+    holidayMultiplier = 1,
 ): OrchardShare[] {
     const key = (o: string | null | undefined) => o ?? '';
     const weight = new Map<string, number>();
@@ -532,6 +547,7 @@ function splitByOrchard(
         hours: round2(h.hours * share(k)),
         buckets: piece.get(k)?.buckets ?? 0,
         pieceEarnings: round2(piece.get(k)?.earnings ?? 0),
+        holidayPremium: round2((piece.get(k)?.earnings ?? 0) * (holidayMultiplier - 1)),
         topUp: round2(topUp * share(k)),
         total: 0,
     }));
@@ -545,7 +561,7 @@ function splitByOrchard(
     };
     fix('hours', h.hours);
     fix('topUp', topUp);
-    for (const o of out) o.total = round2(o.pieceEarnings + o.topUp);
+    for (const o of out) o.total = round2(o.pieceEarnings + o.holidayPremium + o.topUp);
     return out.sort((a, b) => key(a.orchardId).localeCompare(key(b.orchardId)));
 }
 
@@ -624,15 +640,16 @@ export function payForRange(params: {
         }
         const estimated = h.estimated || hasStaleOpen;
         const pieceLines = buildPieceLines(dayScans);
-        const byOrchard = splitByOrchard(h, dayScans, p.topUp);
+        const byOrchard = splitByOrchard(h, dayScans, p.topUp, holiday ? PAY_RULES.publicHolidayMultiplier : 1);
 
         const acc = byPicker.get(pickerId) ?? {
-            pickerId, buckets: 0, hours: 0, pieceEarnings: 0, topUp: 0, total: 0,
+            pickerId, buckets: 0, hours: 0, pieceEarnings: 0, holidayPremium: 0, topUp: 0, total: 0,
             days: 0, daysBelowMinimum: 0, estimatedDays: 0, dayDetails: [],
         };
         acc.buckets += dayScans.length;
         acc.hours = round2(acc.hours + h.hours);
         acc.pieceEarnings = round2(acc.pieceEarnings + p.pieceEarnings);
+        acc.holidayPremium = round2(acc.holidayPremium + p.holidayPremium);
         acc.topUp = round2(acc.topUp + p.topUp);
         acc.total = round2(acc.total + p.total);
         acc.days += 1;
@@ -649,6 +666,7 @@ export function payForRange(params: {
             pieceLines,
             byOrchard,
             pieceEarnings: p.pieceEarnings,
+            holidayPremium: p.holidayPremium,
             topUp: p.topUp,
             total: p.total,
             belowMinimum: p.belowMinimum,

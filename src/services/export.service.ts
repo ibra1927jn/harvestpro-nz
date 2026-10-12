@@ -28,6 +28,8 @@ export interface PayrollExportData {
     buckets: number;
     hours: number;
     pieceEarnings: number;
+    /** Festivo: media parte extra de lo ganado por cubetas */
+    holidayPremium?: number;
     minimumTopUp: number;
     totalEarnings: number;
     status: string;
@@ -45,13 +47,14 @@ export interface PayrollExportData {
       hours: number;
       buckets: string;
       pieceEarnings: number;
+      holidayPremium: number;
       topUp: number;
       total: number;
       estimated: boolean;
     }>;
   }>;
   /** Coste de la semana por huerto (horas, cubetas, pago) */
-  byOrchard?: Array<{ orchard: string; hours: number; buckets: number; pieceEarnings: number; topUp: number; total: number }>;
+  byOrchard?: Array<{ orchard: string; hours: number; buckets: number; pieceEarnings: number; holidayPremium: number; topUp: number; total: number }>;
   /** final = semana cerrada (lo que se paga); draft = puede cambiar todavía */
   status?: 'final' | 'draft';
   closedAt?: string | null;
@@ -109,7 +112,7 @@ export const exportService = {
     const time = (iso: string | null) => iso
       ? new Intl.DateTimeFormat('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso))
       : '—';
-    const orchardTotals = new Map<string, { orchard: string; hours: number; buckets: number; pieceEarnings: number; topUp: number; total: number }>();
+    const orchardTotals = new Map<string, { orchard: string; hours: number; buckets: number; pieceEarnings: number; holidayPremium: number; topUp: number; total: number }>();
     const crewData = [...pickers]
       .sort((a, b) => a.picker_name.localeCompare(b.picker_name))
       .map(p => {
@@ -121,6 +124,7 @@ export const exportService = {
           buckets: p.buckets,
           hours: p.hours_worked,
           pieceEarnings: p.piece_rate_earnings,
+          holidayPremium: p.holiday_premium ?? 0,
           minimumTopUp: p.top_up_required,
           totalEarnings: p.total_earnings,
           status: estimatedDays > 0
@@ -141,10 +145,11 @@ export const exportService = {
           days: (p.days ?? []).map(d => {
             for (const o of d.byOrchard ?? []) {
               const name = orchardName(o.orchardId);
-              const t = orchardTotals.get(name) ?? { orchard: name, hours: 0, buckets: 0, pieceEarnings: 0, topUp: 0, total: 0 };
+              const t = orchardTotals.get(name) ?? { orchard: name, hours: 0, buckets: 0, pieceEarnings: 0, holidayPremium: 0, topUp: 0, total: 0 };
               t.hours = round2(t.hours + o.hours);
               t.buckets += o.buckets;
               t.pieceEarnings = round2(t.pieceEarnings + o.pieceEarnings);
+              t.holidayPremium = round2(t.holidayPremium + (o.holidayPremium ?? 0));
               t.topUp = round2(t.topUp + o.topUp);
               t.total = round2(t.total + o.total);
               orchardTotals.set(name, t);
@@ -158,6 +163,7 @@ export const exportService = {
               hours: d.hours,
               buckets: Object.entries(d.bucketsByVariety).map(([v, n]) => `${n} ${v === '—' ? '(no variety)' : v}`).join(' · ') || '0',
               pieceEarnings: d.pieceEarnings,
+              holidayPremium: d.holidayPremium ?? 0,
               topUp: d.topUp,
               total: d.total,
               estimated: d.estimated,
@@ -200,6 +206,7 @@ export const exportService = {
       'Buckets',
       'Hours',
       'Piece Earnings (NZD)',
+      'Public Holiday Premium (NZD)',
       'Minimum Top-Up (NZD)',
       'Total Earnings (NZD)',
       'Status',
@@ -213,6 +220,7 @@ export const exportService = {
       p.buckets.toString(),
       p.hours.toFixed(1),
       p.pieceEarnings.toFixed(2),
+      (p.holidayPremium ?? 0).toFixed(2),
       p.minimumTopUp.toFixed(2),
       p.totalEarnings.toFixed(2),
       escCsv(p.status),
@@ -225,26 +233,27 @@ export const exportService = {
     rows.push(['Total Buckets', '', data.summary.totalBuckets.toString()]);
     rows.push(['Total Hours', '', '', data.summary.totalHours.toFixed(1)]);
     rows.push(['Total Piece Earnings', '', '', '', data.summary.totalPieceEarnings.toFixed(2)]);
-    rows.push(['Total Minimum Top-Up', '', '', '', '', data.summary.totalMinimumTopUp.toFixed(2)]);
-    rows.push(['Grand Total', '', '', '', '', '', data.summary.grandTotal.toFixed(2)]);
+    rows.push(['Total Public Holiday Premium', '', '', '', '', round2(data.crew.reduce((s, p) => s + (p.holidayPremium ?? 0), 0)).toFixed(2)]);
+    rows.push(['Total Minimum Top-Up', '', '', '', '', '', data.summary.totalMinimumTopUp.toFixed(2)]);
+    rows.push(['Grand Total', '', '', '', '', '', '', data.summary.grandTotal.toFixed(2)]);
     rows.push(['Avg Buckets/Hour', data.summary.averageBucketsPerHour.toString()]);
 
     // Detalle por día: huertos, horas de entrada/salida, descanso, trayecto, variedades
     const detail: string[][] = [[], ['DAILY DETAIL'], [
       'Employee ID', 'Name', 'Date', 'Orchards', 'In-Out', 'Break (min, unpaid)', 'Travel (min, paid)',
-      'Paid Hours', 'Buckets', 'Piece Earnings (NZD)', 'Top-Up (NZD)', 'Total (NZD)', 'Estimated',
+      'Paid Hours', 'Buckets', 'Piece Earnings (NZD)', 'Public Holiday Premium (NZD)', 'Top-Up (NZD)', 'Total (NZD)', 'Estimated',
     ]];
     for (const p of data.crew) for (const d of p.days ?? []) {
       detail.push([
         escCsv(p.employeeId), escCsv(p.name), d.date, escCsv(d.orchards), escCsv(d.times),
         String(d.breakMinutes), String(d.travelMinutes), d.hours.toFixed(2), escCsv(d.buckets),
-        d.pieceEarnings.toFixed(2), d.topUp.toFixed(2), d.total.toFixed(2), d.estimated ? 'yes' : 'no',
+        d.pieceEarnings.toFixed(2), d.holidayPremium.toFixed(2), d.topUp.toFixed(2), d.total.toFixed(2), d.estimated ? 'yes' : 'no',
       ]);
     }
     // Coste por huerto (trayecto: mitad a cada huerto; complemento según horas)
-    const orchards: string[][] = [[], ['COST BY ORCHARD'], ['Orchard', 'Paid Hours', 'Buckets', 'Piece Earnings (NZD)', 'Top-Up (NZD)', 'Total (NZD)']];
+    const orchards: string[][] = [[], ['COST BY ORCHARD'], ['Orchard', 'Paid Hours', 'Buckets', 'Piece Earnings (NZD)', 'Public Holiday Premium (NZD)', 'Top-Up (NZD)', 'Total (NZD)']];
     for (const o of data.byOrchard ?? []) {
-      orchards.push([escCsv(o.orchard), o.hours.toFixed(2), String(o.buckets), o.pieceEarnings.toFixed(2), o.topUp.toFixed(2), o.total.toFixed(2)]);
+      orchards.push([escCsv(o.orchard), o.hours.toFixed(2), String(o.buckets), o.pieceEarnings.toFixed(2), o.holidayPremium.toFixed(2), o.topUp.toFixed(2), o.total.toFixed(2)]);
     }
 
     const title = data.period

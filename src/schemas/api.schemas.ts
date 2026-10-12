@@ -28,6 +28,8 @@ export const PickerBreakdownSchema = z.object({
     // no lo devolvían.
     alternative_holidays_owed: z.number().int().nonnegative().optional(),
     piece_rate_earnings: z.number().nonnegative(),
+    // Festivo: media parte extra de lo ganado por cubetas (Holidays Act s.50)
+    holiday_premium: z.number().nonnegative().optional(),
     hourly_rate: z.number().nonnegative(),
     minimum_required: z.number().nonnegative(),
     top_up_required: z.number().nonnegative(),
@@ -59,9 +61,10 @@ export const PickerBreakdownSchema = z.object({
         })).default([]),
         byOrchard: z.array(z.object({
             orchardId: z.string().nullable(), hours: z.number(), buckets: z.number(),
-            pieceEarnings: z.number(), topUp: z.number(), total: z.number(),
+            pieceEarnings: z.number(), holidayPremium: z.number().default(0), topUp: z.number(), total: z.number(),
         })).default([]),
         pieceEarnings: z.number(),
+        holidayPremium: z.number().default(0),
         topUp: z.number(),
         total: z.number(),
         belowMinimum: z.boolean(),

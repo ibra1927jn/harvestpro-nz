@@ -44,6 +44,13 @@ export function generateXeroCSV(data: PayrollExportData): string {
                 l.earnings.toFixed(2),
             ]);
         }
+        // Festivo trabajado: la media parte extra de lo ganado por cubetas
+        if ((p.holidayPremium ?? 0) > 0) {
+            rows.push([
+                escCsv(p.employeeId), escCsv(p.name), 'Public Holiday Premium',
+                '1', (p.holidayPremium ?? 0).toFixed(2), (p.holidayPremium ?? 0).toFixed(2),
+            ]);
+        }
         if (p.minimumTopUp > 0) {
             rows.push([
                 escCsv(p.employeeId), escCsv(p.name), 'Minimum Wage Top-Up',
@@ -83,6 +90,13 @@ export function generatePaySauceCSV(data: PayrollExportData): string {
                 escCsv(p.employeeId), 'PIECE',
                 escCsv(`Harvest ${l.variety && l.variety !== '—' ? l.variety + ' ' : ''}buckets (${p.hours.toFixed(2)}h worked)`),
                 l.buckets.toString(), l.rate.toFixed(2), l.earnings.toFixed(2),
+            ]);
+        }
+        if ((p.holidayPremium ?? 0) > 0) {
+            rows.push([
+                escCsv(p.employeeId), 'PUBLIC_HOLIDAY',
+                escCsv('Public holiday premium (time and a half on piece earnings)'),
+                '1', (p.holidayPremium ?? 0).toFixed(2), (p.holidayPremium ?? 0).toFixed(2),
             ]);
         }
         if (p.minimumTopUp > 0 || lines.length === 0) {

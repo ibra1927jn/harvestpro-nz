@@ -153,3 +153,18 @@ describe('exportService — semana cerrada y detalle', () => {
         expect(xero.some(l => l.startsWith('EMP1,Ana,Minimum Wage Top-Up,8.00,') && l.endsWith(',135.10'))).toBe(true);
     });
 });
+
+describe('exportService — festivo', () => {
+    it('Xero y PaySauce llevan la línea del plus de festivo y suman el total', () => {
+        const p = {
+            picker_id: 'p1', picker_name: 'Ana', buckets: 40, hours_worked: 8, piece_rate_earnings: 300, holiday_premium: 150,
+            hourly_rate: 37.5, minimum_required: 287.4, top_up_required: 0, total_earnings: 450, is_below_minimum: false,
+        };
+        const data = exportService.preparePayrollData([p], { start: '2026-10-26', end: '2026-11-01' }, () => 'EMP1');
+        const xero = exportService.generateXeroCSV(data).split('\n');
+        expect(xero).toContain('EMP1,Ana,Public Holiday Premium,1,150.00,150.00');
+        const sum = (csv: string) => csv.split('\n').slice(1).reduce((s, l) => s + Number(l.split(',').pop()), 0);
+        expect(sum(exportService.generateXeroCSV(data))).toBeCloseTo(450, 2);
+        expect(sum(exportService.generatePaySauceCSV(data))).toBeCloseTo(450, 2);
+    });
+});

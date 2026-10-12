@@ -38,6 +38,8 @@ export interface PickerBreakdown {
     hours_ordinary: number      // horas en días normales
     hours_holiday: number       // horas en public holidays (1.5x floor)
     piece_rate_earnings: number
+    // Festivo: media parte extra de lo ganado por cubetas (Holidays Act s.50)
+    holiday_premium: number
     hourly_rate: number
     minimum_required: number    // incluye 1.5x sobre hours_holiday (informativo)
     top_up_required: number     // suma de complementos diarios
@@ -228,6 +230,7 @@ export async function computePayroll(
             hours_ordinary,
             hours_holiday,
             piece_rate_earnings: r.pieceEarnings,
+            holiday_premium: r.holidayPremium,
             hourly_rate: r.hours > 0 ? r2(r.pieceEarnings / r.hours) : 0,
             minimum_required: r2(hours_ordinary * minWageOf(r.pickerId) + hours_holiday * minWageOf(r.pickerId) * PAY_RULES.publicHolidayMultiplier),
             top_up_required: r.topUp,

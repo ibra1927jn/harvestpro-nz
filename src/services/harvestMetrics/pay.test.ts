@@ -239,8 +239,11 @@ describe('payForRange', () => {
         const attendance = [{ pickerId: 'p1', date: day, checkIn: t(day, '07:00'), checkOut: t(day, '15:30') }];
         const buckets = Array.from({ length: 10 }, () => ({ pickerId: 'p1', scannedAt: t(day, '10:00') }));
         const [r] = payForRange({ attendance, buckets, pieceRate: 6.5, minWage: 23.95 });
-        // 8 h × 23.95 × 1.5 = 287.40 − 65 = 222.40
-        expect(r.topUp).toBe(222.4);
+        // Mínimo 8 h × 23.95 × 1.5 = 287.40. Cubetas 65 + plus de festivo 32.50
+        // (tiempo y medio también sobre las cubetas) → complemento 189.90
+        expect(r.holidayPremium).toBe(32.5);
+        expect(r.topUp).toBe(189.9);
+        expect(r.total).toBe(287.4);
     });
 
     it('turno abierto de hoy: cuenta hasta ahora', () => {
@@ -390,5 +393,31 @@ describe('payForRange — líneas por variedad y reparto por huerto', () => {
         expect(a.pieceEarnings).toBe(32.5);
         expect(b.pieceEarnings).toBe(24);
         expect(Math.round((a.total + b.total) * 100) / 100).toBe(day.total);
+    });
+});
+
+describe('festivo: tiempo y medio también sobre las cubetas (Holidays Act s.50)', () => {
+    it('cubetas por encima del mínimo: cobra 1.5× lo de las cubetas', () => {
+        const p = dayPay({ buckets: 0, pieceEarnings: 300, hours: 8, pieceRate: 6.5, minWage: 23.95, isPublicHoliday: true });
+        expect(p.pieceEarnings).toBe(300);
+        expect(p.holidayPremium).toBe(150);
+        expect(p.topUp).toBe(0);
+        expect(p.total).toBe(450);
+        expect(p.belowMinimum).toBe(false);
+    });
+
+    it('cubetas por debajo: el mínimo ×1.5 manda, el complemento cubre la diferencia', () => {
+        const p = dayPay({ buckets: 0, pieceEarnings: 100, hours: 8, pieceRate: 6.5, minWage: 23.95, isPublicHoliday: true });
+        // mínimo 8 × 23.95 × 1.5 = 287.40; cubetas 100 + plus 50 → complemento 137.40
+        expect(p.holidayPremium).toBe(50);
+        expect(p.topUp).toBe(137.4);
+        expect(p.total).toBe(287.4);
+        expect(p.belowMinimum).toBe(true);
+    });
+
+    it('día normal: sin plus', () => {
+        const p = dayPay({ buckets: 0, pieceEarnings: 300, hours: 8, pieceRate: 6.5, minWage: 23.95, isPublicHoliday: false });
+        expect(p.holidayPremium).toBe(0);
+        expect(p.total).toBe(300);
     });
 });

@@ -82,6 +82,7 @@ export const PayWeekDetail: React.FC<{ picker: PickerBreakdown; onClose: () => v
                                     <span>Paid hours: <b>{d.hours.toFixed(2)}</b></span>
                                     <span>Buckets: <b>{Object.entries(d.bucketsByVariety).map(([v, n]) => `${n} ${v === '—' ? '(no variety)' : v}`).join(' · ') || '0'}</b></span>
                                     <span>Piece: <b>{money(d.pieceEarnings)}</b></span>
+                                    {(d.holidayPremium ?? 0) > 0 && <span className="text-indigo-700">Public holiday ×1.5: <b>+{money(d.holidayPremium)}</b></span>}
                                     <span className={d.topUp > 0 ? 'text-amber-600' : ''}>Top-up: <b>{money(d.topUp)}</b></span>
                                 </div>
                             </div>
