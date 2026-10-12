@@ -179,10 +179,8 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                                         <img src={avatarUrl(member.name)} alt={`${member.name} avatar`} className="w-full h-full object-cover" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-bold text-text-main text-sm truncate flex items-center gap-1.5">
-                                            <span className="truncate">{member.name}</span>
-                                            <ElsewhereBadge person={member} />
-                                        </p>
+                                        <p className="font-bold text-text-main text-sm truncate">{member.name}</p>
+                                        {member.elsewhere && <div className="mt-0.5 max-w-full overflow-hidden"><ElsewhereBadge person={member} /></div>}
                                         <div className="flex justify-between items-center mt-0.5">
                                             <div className="flex items-center gap-1.5">
                                                 <span className="text-[10px] text-slate-400 font-mono">{member.picker_id || '---'}</span>
