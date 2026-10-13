@@ -128,7 +128,7 @@ const shared: TranslationDict = {
     'ui.light_mode': 'Switch to light mode',
     'ui.dark_mode': 'Switch to dark mode',
     'ui.loading_app': 'Loading application',
-    'ui.otp_digit': 'Code digit {n}',
+    'ui.otp_digit': 'OTP digit {n}',
     'ui.loading': 'Loading',
 };
 
