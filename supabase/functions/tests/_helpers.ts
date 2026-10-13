@@ -383,9 +383,23 @@ export async function checkRoleMatrix(fn: string, allowed: Role[], invalidBody: 
     }
 }
 
-/** CORS: el origen permitido se refleja; uno ajeno no recibe Allow-Origin */
+let corsSkipWarned = false
+
+/**
+ * CORS: el origen permitido se refleja; uno ajeno no recibe Allow-Origin.
+ * El kong del Supabase LOCAL (CLI) añade su propio plugin cors con
+ * "Access-Control-Allow-Origin: *" delante de las funciones y tapa lo que
+ * responde la función; ahí no se puede comprobar y se avisa. Con el runtime
+ * directo (FUNCTIONS_URL=http://127.0.0.1:54398, scripts/dev-edge-runtime.sh)
+ * sí se comprueba.
+ */
 export async function checkCors(fn: string): Promise<void> {
     const ok = await call(fn, { method: 'OPTIONS', origin: ORIGIN })
+    if ((ok.headers.get('via') ?? '').includes('kong') || ok.headers.has('x-kong-response-latency')) {
+        if (!corsSkipWarned) console.warn('[cors] behind the local kong gateway (ACAO: *): CORS checks skipped; run against the runtime directly')
+        corsSkipWarned = true
+        return
+    }
     assertEquals(ok.status, 200, show(ok))
     assertEquals(ok.headers.get('access-control-allow-origin'), ORIGIN)
 
