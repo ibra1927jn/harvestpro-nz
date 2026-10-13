@@ -159,7 +159,12 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black flex flex-col justify-center animate-in fade-in duration-200">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Scan ${scanType}`}
+      className="fixed inset-0 z-[100] bg-black flex flex-col justify-center animate-in fade-in duration-200"
+    >
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/80 to-transparent">
         <div className="text-white">
@@ -177,6 +182,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
         </div>
         <button
           onClick={onClose}
+          aria-label="Close scanner"
           className="size-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white"
         >
           <span className="material-symbols-outlined">close</span>
