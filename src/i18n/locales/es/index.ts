@@ -18,6 +18,7 @@ import pickerDetails from './pickerDetails';
 import qc from './qc';
 import runner from './runner';
 import shared from './shared';
+import sync from './sync';
 import teamLeader from './teamLeader';
 
 // Claves propias de este idioma (sin heredar de otro: el checker exige todas)
@@ -41,6 +42,7 @@ const es: TranslationDict = {
     ...qc,
     ...runner,
     ...shared,
+    ...sync,
     ...teamLeader,
 };
 

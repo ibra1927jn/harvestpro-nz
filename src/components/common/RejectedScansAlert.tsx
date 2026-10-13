@@ -6,15 +6,14 @@
 import React, { useEffect, useState } from 'react';
 import { rejectedScansRepository, type RejectedScanRow } from '@/repositories/rejected-scans.repository';
 import { logger } from '@/utils/logger';
+import { useTranslation } from '@/i18n';
+import { formatNZDate, formatNZTime } from '@/utils/nzFormat';
 
 const nzDateTime = (iso: string | null) =>
-    iso
-        ? new Intl.DateTimeFormat('en-NZ', {
-              timeZone: 'Pacific/Auckland', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
-          }).format(new Date(iso))
-        : '—';
+    iso ? `${formatNZDate(iso, 'dayMonth')}, ${formatNZTime(iso)}` : '—';
 
 export const RejectedScansAlert: React.FC<{ orchardId: string; days?: number }> = ({ orchardId, days = 7 }) => {
+    const { t } = useTranslation();
     const [rows, setRows] = useState<RejectedScanRow[]>([]);
     const [open, setOpen] = useState(false);
 
@@ -31,8 +30,8 @@ export const RejectedScansAlert: React.FC<{ orchardId: string; days?: number }> 
     const rejected = rows.filter(r => r.kind === 'rejected').length;
     const flagged = rows.length - rejected;
     const parts = [
-        rejected > 0 ? `${rejected} bucket scan${rejected === 1 ? '' : 's'} rejected (not counted for pay)` : '',
-        flagged > 0 ? `${flagged} saved with a doubtful time` : '',
+        rejected > 0 ? t(rejected === 1 ? 'rejected.summary_one' : 'rejected.summary_other', { n: rejected }) : '',
+        flagged > 0 ? t('rejected.flagged_n', { n: flagged }) : '',
     ].filter(Boolean);
 
     return (
@@ -40,7 +39,7 @@ export const RejectedScansAlert: React.FC<{ orchardId: string; days?: number }> 
             <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between gap-3 text-left">
                 <span className="text-sm font-bold flex items-center gap-2">
                     <span aria-hidden="true" className="material-symbols-outlined text-[20px]">report</span>
-                    {parts.join(' · ')} — last {days} days
+                    {parts.join(' · ')} — {t('rejected.last_days', { n: days })}
                 </span>
                 <span aria-hidden="true" className="material-symbols-outlined text-[18px]">{open ? 'expand_less' : 'expand_more'}</span>
             </button>
@@ -48,8 +47,8 @@ export const RejectedScansAlert: React.FC<{ orchardId: string; days?: number }> 
                 <ul className="mt-2 text-sm list-disc pl-5 space-y-0.5">
                     {rows.map(r => (
                         <li key={r.id}>
-                            {r.kind === 'rejected' ? 'Rejected' : 'Check time'}: {r.pickerName ?? r.pickerCode} — scanned {nzDateTime(r.scannedAt)}
-                            {r.reportedBy ? ` by ${r.reportedBy}` : ''} — {r.reason}
+                            {r.kind === 'rejected' ? t('rejected.kind_rejected') : t('rejected.kind_check')}: {r.pickerName ?? r.pickerCode} — {t('rejected.scanned_at', { time: nzDateTime(r.scannedAt) })}
+                            {r.reportedBy ? ` ${t('rejected.by', { name: r.reportedBy })}` : ''} — {r.reason}
                         </li>
                     ))}
                 </ul>

@@ -9,6 +9,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useMessaging } from '@/context/MessagingContext';
 import { useAuth } from '@/context/AuthContext';
+import { useTranslation } from '@/i18n';
+import { relativeTime } from '@/i18n/relativeTime';
 
 export interface AppNotification {
     id: string;
@@ -28,6 +30,7 @@ interface NotificationPanelProps {
 }
 
 const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClose }) => {
+    const { t } = useTranslation();
     const { broadcasts, unreadCount, acknowledgeBroadcast } = useMessaging();
     const { appUser } = useAuth();
     const panelRef = useRef<HTMLDivElement>(null);
@@ -45,9 +48,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClos
                 items.push({
                     id: `broadcast-${b.id}`,
                     icon: b.priority === 'urgent' ? 'priority_high' : b.priority === 'high' ? 'campaign' : 'chat',
-                    title: b.title || 'Broadcast',
+                    title: b.title || t('common.broadcast'),
                     body: b.content || '',
-                    time: b.created_at ? formatRelativeTime(new Date(b.created_at)) : 'Just now',
+                    time: b.created_at ? relativeTime(t, b.created_at) : t('time.just_now'),
                     type: b.priority === 'urgent' ? 'alert' : 'message',
                     read: seen,
                 });
@@ -59,16 +62,16 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClos
             items.push({
                 id: 'welcome',
                 icon: 'waving_hand',
-                title: 'Welcome to HarvestPro',
-                body: 'You\'re all set! Alerts will appear here.',
-                time: 'Now',
+                title: t('notif.welcome_title'),
+                body: t('notif.welcome_body'),
+                time: t('time.now'),
                 type: 'info',
                 read: true,
             });
         }
 
         setNotifications(items);
-    }, [broadcasts, appUser?.id]);
+    }, [broadcasts, appUser?.id, t]);
 
     // Close on click outside
     useEffect(() => {
@@ -113,7 +116,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClos
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                     <span aria-hidden="true" className="material-symbols-outlined text-[18px] text-slate-600">notifications</span>
-                    <h3 className="text-sm font-bold text-slate-800">Notifications</h3>
+                    <h3 className="text-sm font-bold text-slate-800">{t('settings.notifications')}</h3>
                     {(unreadNotifs > 0 || unreadCount > 0) && (
                         <span className="min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                             {unreadNotifs + unreadCount}
@@ -122,7 +125,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClos
                 </div>
                 {unreadNotifs > 0 && (
                     <button onClick={markAllRead} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition-colors">
-                        Mark all read
+                        {t('notif.mark_all_read')}
                     </button>
                 )}
             </div>
@@ -137,8 +140,8 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClos
                         <span aria-hidden="true" className="material-symbols-outlined text-indigo-600 text-[18px]">chat</span>
                     </div>
                     <div className="text-left flex-1 min-w-0">
-                        <p className="text-sm font-bold text-indigo-700">{unreadCount} unread message{unreadCount > 1 ? 's' : ''}</p>
-                        <p className="text-[11px] text-indigo-500">Tap to view conversations</p>
+                        <p className="text-sm font-bold text-indigo-700">{t(unreadCount > 1 ? 'notif.unread_other' : 'notif.unread_one', { n: unreadCount })}</p>
+                        <p className="text-[11px] text-indigo-500">{t('notif.tap_to_view')}</p>
                     </div>
                     <span aria-hidden="true" className="material-symbols-outlined text-indigo-400 text-[18px]">chevron_right</span>
                 </button>
@@ -173,27 +176,12 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClos
                     onClick={() => { onViewAll?.(); onClose(); }}
                     className="w-full py-3 text-sm font-bold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-1"
                 >
-                    View All Messages
+                    {t('notif.view_all')}
                     <span aria-hidden="true" className="material-symbols-outlined text-[16px]">arrow_forward</span>
                 </button>
             </div>
         </div>
     );
 };
-
-/* ── Helpers ──────────────────────────────────────────── */
-function formatRelativeTime(date: Date): string {
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString(undefined, { timeZone: 'Pacific/Auckland' });
-}
 
 export default NotificationPanel;

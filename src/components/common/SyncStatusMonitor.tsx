@@ -5,13 +5,17 @@ import { offlineService } from '../../services/offline.service';
 import { syncService } from '../../services/sync.service';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { announce } from '../../services/announcer';
+import { useTranslation } from '@/i18n';
+import { formatNZDateTime } from '@/utils/nzFormat';
+import { syncTypeLabel } from './syncTypeLabel';
 
 const SyncStatusMonitor: React.FC = () => {
+    const { t } = useTranslation();
     const buckets = useHarvestStore((state) => state.buckets);
     // Los rechazados no están "pendientes": antes dejaban el aviso de sincronizando para siempre
     const storePending = buckets.filter(b => !b.synced && !b.failed).length;
     const [vaultPending, setVaultPending] = useState<number>(0);
-    const [lastSyncAgo, setLastSyncAgo] = useState<string | null>(null);
+    const [lastSyncAgoSec, setLastSyncAgoSec] = useState<number | null>(null);
     const [maxRetries, setMaxRetries] = useState(0);
     const [showSuccess, setShowSuccess] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
@@ -50,17 +54,8 @@ const SyncStatusMonitor: React.FC = () => {
 
                 // Update "last synced" relative time (now async — Dexie)
                 const lastSync = await syncService.getLastSyncTime();
-                if (lastSync) {
-                    const diffMs = Date.now() - lastSync;
-                    const diffSec = Math.floor(diffMs / 1000);
-                    if (diffSec < 60) {
-                        setLastSyncAgo('just now');
-                    } else if (diffSec < 3600) {
-                        setLastSyncAgo(`${Math.floor(diffSec / 60)}m ago`);
-                    } else {
-                        setLastSyncAgo(`${Math.floor(diffSec / 3600)}h ago`);
-                    }
-                }
+                // Se guarda la antigüedad en segundos; el texto se traduce al pintar
+                if (lastSync) setLastSyncAgoSec(Math.floor((Date.now() - lastSync) / 1000));
             } catch (error) {
                 logger.error('Failed to check sync status:', error);
             }
@@ -112,6 +107,10 @@ const SyncStatusMonitor: React.FC = () => {
     }, []);
 
     const isStaleSync = lastSyncMs !== null && (Date.now() - lastSyncMs) > 30 * 60 * 1000;
+    const lastSyncAgo = lastSyncAgoSec === null ? null
+        : lastSyncAgoSec < 60 ? t('sync.just_now')
+        : lastSyncAgoSec < 3600 ? t('sync.minutes_ago', { n: Math.floor(lastSyncAgoSec / 60) })
+        : t('sync.hours_ago', { n: Math.floor(lastSyncAgoSec / 3600) });
     const hasSyncError = maxRetries >= 10;
 
     // Lector de pantalla: avisar de los cambios de estado por las regiones persistentes
@@ -120,20 +119,22 @@ const SyncStatusMonitor: React.FC = () => {
         if (prevOnline.current === isOnline) return;
         prevOnline.current = isOnline;
         announce(
-            isOnline
-                ? 'Back online. Saved scans will sync now.'
-                : 'No signal. Scans are saved on this phone and will sync when you are back online.',
+            isOnline ? t('sync.sr_back_online') : t('sync.sr_offline'),
             isOnline ? 'polite' : 'assertive'
         );
+        // Solo cuando cambia la conexión
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOnline]);
     const syncErrorShown = hasSyncError && displayCount > 0;
     useEffect(() => {
-        if (syncErrorShown) announce(`Sync error. ${displayCount} items could not be sent.`, 'assertive');
+        if (syncErrorShown) announce(t('sync.sr_error', { n: displayCount }), 'assertive');
         // Solo al entrar en error, no en cada cambio del contador
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [syncErrorShown]);
     useEffect(() => {
-        if (showSuccess) announce('All scans synced.');
+        if (showSuccess) announce(t('sync.sr_all_synced'));
+        // Solo al pasar a "todo sincronizado"
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showSuccess]);
 
     // 1. Offline Warning (High Priority)
@@ -144,17 +145,17 @@ const SyncStatusMonitor: React.FC = () => {
             >
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-red-600 text-lg" aria-hidden="true">wifi_off</span>
-                    <p className="text-red-800 text-xs font-bold uppercase tracking-wide">You are Offline</p>
+                    <p className="text-red-800 text-xs font-bold uppercase tracking-wide">{t('sync.offline')}</p>
                 </div>
                 <div className="flex items-center gap-2">
                     {displayCount > 0 && (
                         <span className="text-[10px] font-bold bg-white/50 px-2 py-0.5 rounded text-red-700">
-                            {displayCount} queued
+                            {t('sync.queued_n', { n: displayCount })}
                         </span>
                     )}
                     {lastSyncAgo && (
                         <span className="text-[10px] text-red-500">
-                            Last sync: {lastSyncAgo}
+                            {t('sync.last_sync', { ago: lastSyncAgo })}
                         </span>
                     )}
                 </div>
@@ -171,18 +172,18 @@ const SyncStatusMonitor: React.FC = () => {
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-red-600 text-lg" aria-hidden="true">sync_problem</span>
                     <div>
-                        <p className="text-red-800 text-xs font-bold uppercase tracking-wide">Sync Error</p>
-                        <p className="text-[10px] text-red-600">{displayCount} items failed ({maxRetries} retries)</p>
+                        <p className="text-red-800 text-xs font-bold uppercase tracking-wide">{t('sync.error')}</p>
+                        <p className="text-[10px] text-red-600">{t('sync.items_failed', { n: displayCount, retries: maxRetries })}</p>
                     </div>
                 </div>
                 <button
                     onClick={handleManualSync}
                     disabled={isSyncing}
                     className="text-[10px] font-bold bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
-                    aria-label="Retry sync"
+                    aria-label={t('sync.retry_sync')}
                 >
                     <span aria-hidden="true" className="material-symbols-outlined text-xs">refresh</span>
-                    {isSyncing ? 'Retrying...' : 'Retry Now'}
+                    {isSyncing ? t('sync.retrying') : t('sync.retry_now')}
                 </button>
             </div>
         );
@@ -204,7 +205,7 @@ const SyncStatusMonitor: React.FC = () => {
                     <span className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-red-600 text-lg" aria-hidden="true">sync_problem</span>
                         <span className="text-red-800 text-xs font-bold">
-                            {deadLetters.length} change{deadLetters.length === 1 ? '' : 's'} could not be sent — kept on this device. Tell your manager.
+                            {t(deadLetters.length === 1 ? 'sync.dead_one' : 'sync.dead_other', { n: deadLetters.length })}
                         </span>
                     </span>
                     <span className="material-symbols-outlined text-red-600 text-base" aria-hidden="true">
@@ -215,7 +216,7 @@ const SyncStatusMonitor: React.FC = () => {
                     <ul className="mt-1 pl-7 text-[11px] text-red-700 list-disc space-y-0.5">
                         {deadLetters.map(d => (
                             <li key={d.id}>
-                                {d.type} — {d.failureReason} ({new Date(d.movedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })})
+                                {syncTypeLabel(t, d.type)} — {d.failureReason} ({formatNZDateTime(d.movedAt)})
                             </li>
                         ))}
                     </ul>
@@ -232,7 +233,7 @@ const SyncStatusMonitor: React.FC = () => {
             >
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-green-600 text-lg" aria-hidden="true">check_circle</span>
-                    <p className="text-green-800 text-xs font-bold uppercase tracking-wide">All Synced</p>
+                    <p className="text-green-800 text-xs font-bold uppercase tracking-wide">{t('sync.all_synced')}</p>
                 </div>
                 {lastSyncAgo && (
                     <span className="text-[10px] text-green-600">
@@ -252,18 +253,18 @@ const SyncStatusMonitor: React.FC = () => {
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-amber-600 text-lg" aria-hidden="true">schedule</span>
                     <div>
-                        <p className="text-amber-800 text-xs font-bold uppercase tracking-wide">Sync Stale</p>
-                        <p className="text-[10px] text-amber-600">Last synced {lastSyncAgo}</p>
+                        <p className="text-amber-800 text-xs font-bold uppercase tracking-wide">{t('sync.stale')}</p>
+                        <p className="text-[10px] text-amber-600">{t('sync.last_synced', { ago: lastSyncAgo ?? '' })}</p>
                     </div>
                 </div>
                 <button
                     onClick={handleManualSync}
                     disabled={isSyncing}
                     className="text-[10px] font-bold bg-amber-200 hover:bg-amber-300 px-3 py-1 rounded text-amber-800 transition-colors disabled:opacity-50 flex items-center gap-1"
-                    aria-label="Sync now"
+                    aria-label={t('sync.sync_now')}
                 >
                     <span aria-hidden="true" className="material-symbols-outlined text-xs">sync</span>
-                    {isSyncing ? 'Syncing...' : 'Sync Now'}
+                    {isSyncing ? t('sync.syncing') : t('sync.sync_now')}
                 </button>
             </div>
         );
@@ -278,9 +279,9 @@ const SyncStatusMonitor: React.FC = () => {
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-orange-600 text-lg" aria-hidden="true">cloud_sync</span>
                     <p className="text-orange-800 text-xs font-bold uppercase tracking-wide">
-                        Syncing {displayCount} items...
+                        {t('sync.syncing_n', { n: displayCount })}
                         {maxRetries > 0 && (
-                            <span className="text-[10px] opacity-75 ml-1">(retry {maxRetries}/50)</span>
+                            <span className="text-[10px] opacity-75 ml-1">{t('sync.retry_of', { n: maxRetries, max: 50 })}</span>
                         )}
                     </p>
                 </div>
@@ -290,9 +291,9 @@ const SyncStatusMonitor: React.FC = () => {
                         onClick={handleManualSync}
                         disabled={isSyncing}
                         className="text-[10px] font-bold bg-orange-200 hover:bg-orange-300 px-2 py-0.5 rounded text-orange-800 transition-colors disabled:opacity-50"
-                        aria-label={isSyncing ? 'Syncing in progress' : 'Sync now'}
+                        aria-label={isSyncing ? t('sync.in_progress') : t('sync.sync_now')}
                     >
-                        {isSyncing ? 'Syncing...' : 'Sync Now'}
+                        {isSyncing ? t('sync.syncing') : t('sync.sync_now')}
                     </button>
                     <div className="size-4 border-2 border-orange-200 border-t-orange-600 rounded-full animate-spin" aria-hidden="true" />
                 </div>

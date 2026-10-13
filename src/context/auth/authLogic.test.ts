@@ -99,7 +99,9 @@ describe('helpers', () => {
   });
 
   it('el mensaje de cierre con pendientes incluye el número', () => {
-    expect(pendingSignOutMessage(7)).toContain('Tienes 7 registros sin sincronizar');
+    expect(pendingSignOutMessage(7)).toContain('7 records that are not synced');
+    // Y en el idioma de la app
+    expect(pendingSignOutMessage(7, (k, p) => `${k}:${p?.n}`)).toBe('⚠️ auth.unsynced_signout:7');
   });
 
   it('el estado inicial arranca cargando y sin sesión', () => {
