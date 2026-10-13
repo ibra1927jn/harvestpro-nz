@@ -82,13 +82,13 @@ const AttendanceView = () => {
                 {mergedList.map(item => (
                     <div
                         key={item.id}
-                        className={`p-4 rounded-xl border flex items-center justify-between transition-all ${item.isPresent
+                        className={`p-4 rounded-xl border flex flex-wrap gap-3 items-center justify-between transition-all ${item.isPresent
                             ? 'bg-white border-green-200 shadow-sm'
                             : 'bg-slate-100 border-transparent opacity-80'
                             }`}
                     >
-                        <div className="flex items-center gap-4">
-                            <div className={`size-12 rounded-full flex items-center justify-center text-sm font-bold border ${item.isPresent ? 'bg-green-100 text-green-700 border-green-200' : 'bg-slate-200 text-slate-500 border-slate-300'
+                        <div className="flex items-center gap-4 min-w-0">
+                            <div className={`size-12 shrink-0 rounded-full flex items-center justify-center text-sm font-bold border ${item.isPresent ? 'bg-green-100 text-green-700 border-green-200' : 'bg-slate-200 text-slate-500 border-slate-300'
                                 }`}>
                                 {item.avatar || (item.name ? item.name.substring(0, 2).toUpperCase() : '??')}
                             </div>

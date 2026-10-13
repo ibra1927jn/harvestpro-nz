@@ -26,7 +26,7 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
                 <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500/10 blur-3xl pointer-events-none"></div>
 
                 <header className="flex-none bg-white/70 backdrop-blur-xl z-30 border-b border-white/50 shadow-[0_4px_30px_-5px_rgba(0,0,0,0.05)] pt-6">
-                    <div className="flex items-center px-6 py-4 justify-between">
+                    <div className="flex flex-wrap gap-y-2 items-center px-6 py-4 justify-between">
                         <div>
                             <h2 className="text-2xl font-black bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent tracking-tight leading-tight">Warehouse Inventory</h2>
                             <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">Stock Management</p>
@@ -57,7 +57,7 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
             <div className="absolute bottom-[10%] right-[-10%] w-[50%] h-[40%] rounded-full bg-indigo-500/10 blur-[80px] pointer-events-none"></div>
 
             <header className="flex-none bg-white/70 backdrop-blur-xl z-30 border-b border-white/50 shadow-[0_4px_30px_-5px_rgba(0,0,0,0.05)] pt-6">
-                <div className="flex items-center px-6 py-4 justify-between">
+                <div className="flex flex-wrap gap-y-2 items-center px-6 py-4 justify-between">
                     <div>
                         <h2 className="text-2xl font-black bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent tracking-tight leading-tight">Warehouse Inventory</h2>
                         <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">Stock Management</p>

@@ -27,7 +27,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ tabs, activeTab, onTabChange }) =
             aria-label="Main navigation"
         >
             {/* h-[60px] bar — buttons stretch full height → 60px touch target each */}
-            <div className="flex items-stretch justify-around h-[60px] px-1 max-w-5xl mx-auto">
+            {/* overflow-x-auto: con zoom 200% / letra grande la barra se desplaza en vez de ensanchar la página */}
+            <div className="flex items-stretch justify-around h-[60px] px-1 max-w-5xl mx-auto overflow-x-auto no-scrollbar">
                 {tabs.map((tab) => {
                     const isActive = activeTab === tab.id;
                     return (

@@ -73,8 +73,8 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-30 glass-header">
-      <div className="flex items-center px-4 py-3 justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-y-2 px-4 py-3 justify-between">
+        <div className="flex items-center gap-3 min-w-0">
           {/* Logo mark */}
           <div className="size-10 rounded-xl bg-primary shadow-md shadow-primary/20 flex items-center justify-center">
             <span aria-hidden="true" className="material-symbols-outlined text-white text-[22px]">agriculture</span>
@@ -84,7 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
             <p className="text-xs text-text-muted">{subtitle}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {/* Multi-orchard switcher — only visible with 2+ orchards */}
           <OrchardSwitcher />
           {/* Theme toggle */}

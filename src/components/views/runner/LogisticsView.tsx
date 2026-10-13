@@ -90,7 +90,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
 
       {/* Header */}
       <header className="flex-none bg-white/70 backdrop-blur-xl z-30 border-b border-white/50 shadow-[0_4px_30px_-5px_rgba(0,0,0,0.05)] pt-6">
-        <div className="flex items-center px-6 py-4 justify-between">
+        <div className="flex flex-wrap gap-y-2 items-center px-6 py-4 justify-between">
           <div>
             <h1 className="text-2xl font-black bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent tracking-tight">Logistics Hub</h1>
             <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">Runner Operations</p>
