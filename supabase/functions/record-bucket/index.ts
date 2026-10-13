@@ -8,6 +8,7 @@ import {
     BucketRecordSchema,
 } from '../_shared/security.ts'
 import { z } from 'npm:zod@^4.3.6'
+import { checkScanTime, FUTURE_TOLERANCE_MS } from '../_shared/scan-time.ts'
 
 /**
  * record-bucket — Server-side bucket/scan recording
@@ -31,7 +32,34 @@ const BatchScanSchema = z.object({
     bin_id: z.string().optional().nullable(),
     scanned_by: z.string().regex(UUID_RE).optional().nullable(),
     scanned_at: z.string().min(10),
+    /** Corrección (ms) que el móvil ya sumó a scanned_at con el desfase conocido */
+    clock_skew_ms: z.number().int().optional().nullable(),
 })
+
+type Report = {
+    id: string
+    picker_code: string
+    picker_id: string | null
+    scanned_at: string | null
+    quality_grade: string | null
+    kind: 'rejected' | 'flagged'
+    reason: string
+}
+
+/**
+ * Deja constancia para el manager (tabla rejected_scans) de lo rechazado y de
+ * lo guardado con hora dudosa. Con el JWT de quien escanea (RLS: lo suyo, su
+ * huerto). Idempotente por id. Si falla no se rompe la subida: solo se avisa.
+ * defaultToNull: false → orchard_id y reported_by toman su DEFAULT (huerto y
+ * usuario del JWT); sin eso PostgREST los manda a NULL y el RLS lo rechaza.
+ */
+// deno-lint-ignore no-explicit-any
+async function reportScans(supabase: any, reports: Report[]): Promise<void> {
+    if (reports.length === 0) return
+    const rows = reports.map(r => ({ ...r, reason: r.reason.slice(0, 500) }))
+    const { error } = await supabase.from('rejected_scans').upsert(rows, { onConflict: 'id', ignoreDuplicates: true, defaultToNull: false })
+    if (error) console.warn(`[record-bucket] Could not report ${rows.length} rejected/flagged scan(s): ${error.message}`)
+}
 
 /** Tarjeta → persona, en toda la empresa (si se repite, gana este huerto) */
 // deno-lint-ignore no-explicit-any
@@ -108,12 +136,32 @@ serve(async (req) => {
         // su motivo para no reintentarlo para siempre.
         if (Array.isArray(body?.scans)) {
             const scans = body.scans.slice(0, 200) as unknown[]
-            const results: { id: string | null; status: 'saved' | 'duplicate' | 'rejected' | 'retry'; reason?: string }[] = []
+            const results: { id: string | null; status: 'saved' | 'duplicate' | 'rejected' | 'retry'; reason?: string; flag?: string }[] = []
             const badgeCache = new Map<string, string | null>()
+            const reports: Report[] = []
+            const serverNow = Date.now()
+            const clientNow = typeof body.client_now === 'number' ? body.client_now : null
             for (const raw of scans) {
                 const scanId = typeof (raw as { id?: unknown })?.id === 'string' ? (raw as { id: string }).id : null
+                const r = (raw ?? {}) as Record<string, unknown>
+                const report = (kind: Report['kind'], reason: string, pickerId: string | null, scannedAt?: string) => {
+                    if (!scanId || !UUID_RE.test(scanId)) return
+                    reports.push({
+                        id: scanId,
+                        picker_code: String(r.picker_id ?? '?').slice(0, 100),
+                        picker_id: pickerId,
+                        scanned_at: scannedAt ?? (typeof r.scanned_at === 'string' && !Number.isNaN(Date.parse(r.scanned_at)) ? r.scanned_at : null),
+                        quality_grade: typeof r.quality_grade === 'string' ? r.quality_grade : null,
+                        kind,
+                        reason,
+                    })
+                }
+                let resolvedPicker: string | null = null
                 try {
                     const s = BatchScanSchema.parse(raw)
+                    // Hora creíble (ver _shared/scan-time.ts): futuro imposible → rechazo
+                    const time = checkScanTime(s.scanned_at, serverNow, clientNow, s.clock_skew_ms ?? 0)
+                    if (time.verdict === 'reject') throw new Error(time.reason)
                     let pickerId = s.picker_id
                     if (!UUID_RE.test(pickerId)) {
                         if (!badgeCache.has(pickerId)) badgeCache.set(pickerId, await resolveBadge(supabase, pickerId, s.orchard_id))
@@ -121,6 +169,7 @@ serve(async (req) => {
                         if (!resolved) throw new Error(`UNKNOWN_BADGE: "${pickerId}"`)
                         pickerId = resolved
                     }
+                    resolvedPicker = pickerId
                     const row = {
                         id: s.id,
                         picker_id: pickerId,
@@ -129,23 +178,32 @@ serve(async (req) => {
                         quality_grade: s.quality_grade,
                         bin_id: s.bin_id,
                         scanned_by: s.scanned_by ?? user.id,
-                        scanned_at: s.scanned_at,
+                        scanned_at: time.scannedAt,
                     }
                     const outcome = await insertScan(supabase, row)
                     if (outcome.status !== 'saved') {
+                        if (outcome.status === 'rejected') report('rejected', outcome.reason ?? 'Rejected', pickerId)
                         results.push({ id: s.id, ...outcome })
                         continue
                     }
-                    results.push({ id: s.id, status: 'saved' })
+                    if (time.verdict === 'flag') {
+                        report('flagged', time.reason, pickerId, time.scannedAt)
+                        results.push({ id: s.id, status: 'saved', flag: time.reason })
+                    } else {
+                        results.push({ id: s.id, status: 'saved' })
+                    }
                 } catch (e) {
                     const msg = e instanceof Error ? e.message : String(e)
                     const transient = msg.startsWith('Badge lookup failed')
+                    if (!transient) report('rejected', msg, resolvedPicker)
                     results.push({ id: scanId, status: transient ? 'retry' : 'rejected', reason: msg })
                 }
             }
+            await reportScans(supabase, reports)
             const saved = results.filter(x => x.status === 'saved' || x.status === 'duplicate').length
             console.info(`[record-bucket] Batch: ${saved}/${results.length} stored by ${user.id}`)
-            return jsonResponse({ results }, origin)
+            // server_time: el móvil mide el desfase de su reloj y corrige los escaneos
+            return jsonResponse({ results, server_time: new Date(serverNow).toISOString() }, origin)
         }
 
         const input = BucketRecordSchema.parse(body)
@@ -181,6 +239,9 @@ serve(async (req) => {
 
         // ── Insert Bucket Record ─────────────────────
         const scannedAt = input.scanned_at || new Date().toISOString()
+        if (Date.parse(scannedAt) > Date.now() + FUTURE_TOLERANCE_MS) {
+            throw new Error('SCAN_TIME_IN_FUTURE: scanned_at is ahead of server time (phone clock wrong?)')
+        }
 
         const { data: record, error: insertErr } = await supabase
             .from('bucket_records')
