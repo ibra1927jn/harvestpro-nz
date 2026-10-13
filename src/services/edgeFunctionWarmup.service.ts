@@ -17,6 +17,8 @@
  */
 import { logger } from '@/utils/logger';
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
+import { supabase } from '@/services/supabase';
+import { mfaRequiredFor } from '@/config/mfa';
 import { Role } from '@/types/app.types';
 
 /** 4 minutos — Supabase cold-starts tras ~5 min de inactividad */
@@ -46,9 +48,26 @@ export function warmupFunctionsFor(role: Role | null | undefined): CriticalFunct
 
 let intervalId: ReturnType<typeof setInterval> | null = null;
 let activeFunctions: CriticalFunction[] = [];
+let activeRole: Role | null | undefined = null;
+
+/**
+ * Un rol con 2FA obligatorio aún sin código (sesión aal1) recibiría 403 del
+ * servidor: no se calienta hasta que la sesión sea aal2 (lo dice el token
+ * local, sin red). El primer ping al entrar se salta; los siguientes ya van.
+ */
+async function sessionCanCall(): Promise<boolean> {
+  if (!mfaRequiredFor(activeRole)) return true;
+  try {
+    const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    return data?.currentLevel === 'aal2';
+  } catch {
+    return false;
+  }
+}
 
 async function pingAll(): Promise<void> {
   if (!navigator.onLine) return;
+  if (!(await sessionCanCall())) return;
 
   for (const fn of activeFunctions) {
     try {
@@ -71,6 +90,7 @@ export const edgeFunctionWarmupService = {
    */
   start(role: Role | null | undefined): void {
     if (intervalId !== null) return; // Ya está corriendo
+    activeRole = role;
     activeFunctions = warmupFunctionsFor(role);
     if (activeFunctions.length === 0) return;
 

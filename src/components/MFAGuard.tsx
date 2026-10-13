@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import { useMFA } from '../hooks/useMFA';
 import { supabase } from '../services/supabase';
 import { useTranslation } from '@/i18n';
+import { mfaRequiredFor } from '@/config/mfa';
 
 // Solo los roles con 2FA ven estas pantallas: fuera del bundle inicial (login/runner)
 const MFASetup = lazy(() => import('./MFASetup').then(m => ({ default: m.MFASetup })));
@@ -25,14 +26,7 @@ interface MFAGuardProps {
   children: React.ReactNode;
 }
 
-// Desactivable SOLO en desarrollo con VITE_MFA_ENFORCE=false en .env.local.
-// En build de produccion (import.meta.env.PROD) se ignora y el MFA siempre se exige.
-// La BD también lo exige (mfa_satisfied(), migración 20261014000000): en el PC
-// de desarrollo hay que apagarlo además con scripts/dev-disable-mfa.sql.
-const MFA_ENFORCED = import.meta.env.PROD || import.meta.env.VITE_MFA_ENFORCE !== 'false';
-const MFA_REQUIRED_ROLES = new Set(
-  MFA_ENFORCED ? ['manager', 'admin', 'payroll_admin', 'hr_admin'] : []
-);
+// Qué roles necesitan 2FA y el interruptor de desarrollo: src/config/mfa.ts
 
 type GuardState =
   | { kind: 'checking' }
@@ -46,7 +40,7 @@ export function MFAGuard({ children }: MFAGuardProps) {
   const { currentRole, isAuthenticated, signOut } = useAuth();
   const { checkMFAStatus } = useMFA();
   const [state, setState] = useState<GuardState>({ kind: 'checking' });
-  const required = isAuthenticated && MFA_REQUIRED_ROLES.has(currentRole ?? '');
+  const required = isAuthenticated && mfaRequiredFor(currentRole);
   // Con qué valor de `required` se calculó `state` (el efecto llega un render tarde)
   const [evaluatedForRequired, setEvaluatedForRequired] = useState(false);
 

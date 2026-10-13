@@ -4,12 +4,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
 import { edgeFunctionWarmupService, warmupFunctionsFor } from './edgeFunctionWarmup.service';
+import { supabase } from '@/services/supabase';
 import { Role } from '@/types/app.types';
+
+type AalResult = Awaited<ReturnType<typeof supabase.auth.mfa.getAuthenticatorAssuranceLevel>>;
+const aal = (level: 'aal1' | 'aal2') =>
+    vi.spyOn(supabase.auth.mfa, 'getAuthenticatorAssuranceLevel')
+        .mockResolvedValue({ data: { currentLevel: level, nextLevel: 'aal2', currentAuthenticationMethods: [] }, error: null } as AalResult);
 
 beforeEach(() => {
     vi.useFakeTimers();
     vi.restoreAllMocks();
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+    // Sesión ya con 2FA salvo que el test diga otra cosa
+    aal('aal2');
 });
 
 afterEach(() => {
@@ -18,6 +26,28 @@ afterEach(() => {
 });
 
 describe('edgeFunctionWarmupService', () => {
+    it('a privileged role still without the 2FA code (aal1) does not ping (the server would answer 403)', async () => {
+        const level = aal('aal1');
+        const invokeSpy = vi.spyOn(edgeFunctionsRepository, 'invoke').mockResolvedValue({ data: null, error: null });
+
+        edgeFunctionWarmupService.start(Role.PAYROLL_ADMIN);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(invokeSpy).not.toHaveBeenCalled();
+
+        // Ya verificó el código: la siguiente ronda sí calienta
+        level.mockResolvedValue({ data: { currentLevel: 'aal2', nextLevel: 'aal2', currentAuthenticationMethods: [] }, error: null } as AalResult);
+        await vi.advanceTimersByTimeAsync(4 * 60 * 1000);
+        expect(invokeSpy).toHaveBeenCalledWith('calculate-payroll', { _warmup: true }, { maxRetries: 0 });
+    });
+
+    it('field roles do not need 2FA: they ping with a password-only session', async () => {
+        aal('aal1');
+        const invokeSpy = vi.spyOn(edgeFunctionsRepository, 'invoke').mockResolvedValue({ data: null, error: null });
+        edgeFunctionWarmupService.start(Role.RUNNER);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(invokeSpy).toHaveBeenCalledWith('record-bucket', { _warmup: true }, { maxRetries: 0 });
+    });
+
     it('start() dispara ping inmediato a las 4 funciones críticas', async () => {
         const invokeSpy = vi.spyOn(edgeFunctionsRepository, 'invoke').mockResolvedValue({
             data: null,
