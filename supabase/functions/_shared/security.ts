@@ -291,7 +291,8 @@ export const AdminUpdateRoleSchema = z.object({
   action: z.literal('update_role'),
   user_id: z.string().uuid('user_id must be a valid UUID'),
   new_role: z.enum(['admin', 'manager', 'team_leader', 'runner', 'qc_inspector', 'payroll_admin', 'hr_admin', 'logistics'], {
-    errorMap: () => ({ message: 'Role must be admin, manager, team_leader, runner, qc_inspector, payroll_admin, hr_admin, or logistics' }),
+    // Zod 4: `error` (el `errorMap` de Zod 3 se ignoraba y salía el mensaje genérico)
+    error: 'Role must be admin, manager, team_leader, runner, qc_inspector, payroll_admin, hr_admin, or logistics',
   }),
 });
 
