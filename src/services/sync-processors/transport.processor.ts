@@ -10,6 +10,7 @@ import { transportRequestRepo } from '@/repositories/index';
 export async function processTransport(payload: TransportPayload, expectedUpdatedAt?: string): Promise<void> {
     if (payload.action === 'create') {
         const { error } = await transportRequestRepo.create({
+            ...(payload.id ? { id: payload.id } : {}),
             orchard_id: payload.orchard_id!,
             requested_by: payload.requested_by!,
             requester_name: payload.requester_name || 'Unknown',
@@ -18,6 +19,8 @@ export async function processTransport(payload: TransportPayload, expectedUpdate
             priority: (payload.priority || 'normal') as 'normal' | 'high' | 'urgent',
             notes: payload.notes || null,
         });
+        // Ya creada en un intento anterior cuya respuesta no llegó
+        if (error && payload.id && /duplicate key|23505/i.test(error)) return;
         // Sin esto el fallo se perdía y la cola lo daba por subido
         if (error) throw new Error(`Transport request not saved: ${error}`);
     } else if (payload.action === 'assign' && payload.requestId) {

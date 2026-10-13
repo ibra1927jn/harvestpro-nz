@@ -45,6 +45,8 @@ export const ContractPayloadSchema = z.object({
 
 export const TransportPayloadSchema = z.object({
   action: z.enum(['create', 'assign', 'complete', 'cancel']),
+  /** id de la petición generado en el móvil (create idempotente) */
+  id: z.string().optional(),
   requestId: z.string().optional(),
   vehicleId: z.string().optional(),
   assignedBy: z.string().optional(),
