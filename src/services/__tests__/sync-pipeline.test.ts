@@ -5,7 +5,7 @@
  *           error categorization, cross-tab locking, online/offline behavior,
  *           queue summary, multi-type processing
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import 'fake-indexeddb/auto';
 
 // ── Mock external boundaries ────────────────
@@ -104,9 +104,15 @@ describe('Sync Pipeline — Queue Operations', () => {
 });
 
 describe('Sync Pipeline — Queue Summary', () => {
+  // Sin conexion: addToQueue no dispara el envio en segundo plano, que cambiaba
+  // retryCount mientras se leia el resumen (test dependiente del tiempo)
   beforeEach(async () => {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
     await db.sync_queue.clear();
     await db.sync_meta.clear();
+  });
+  afterEach(() => {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
   });
 
   it('returns structured summary with byType breakdown', async () => {

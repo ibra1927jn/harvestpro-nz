@@ -1,0 +1,248 @@
+/**
+ * Cola offline: que pasa de verdad al procesarla (exito, reintento, corte de red,
+ * cola de errores / dead letter) con IndexedDB real (fake-indexeddb).
+ * Los procesadores y servicios remotos son el limite que se simula.
+ */
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import 'fake-indexeddb/auto';
+import fc from 'fast-check';
+
+const recordBucket = vi.fn();
+const sendMessage = vi.fn();
+const assignUserToOrchard = vi.fn();
+const processors = {
+    processContract: vi.fn(), processTransport: vi.fn(), processTimesheet: vi.fn(),
+    processAttendance: vi.fn(), processPicker: vi.fn(), processQCInspection: vi.fn(), processUnlink: vi.fn(),
+};
+
+vi.mock('../bucket-ledger.service', () => ({ bucketLedgerService: { recordBucket: (...a: unknown[]) => recordBucket(...a) } }));
+vi.mock('../simple-messaging.service', () => ({ simpleMessagingService: { sendMessage: (...a: unknown[]) => sendMessage(...a) } }));
+vi.mock('../user.service', () => ({ userService: { assignUserToOrchard: (...a: unknown[]) => assignUserToOrchard(...a) } }));
+vi.mock('../sync-processors', () => ({
+    processContract: (...a: unknown[]) => processors.processContract(...a),
+    processTransport: (...a: unknown[]) => processors.processTransport(...a),
+    processTimesheet: (...a: unknown[]) => processors.processTimesheet(...a),
+    processAttendance: (...a: unknown[]) => processors.processAttendance(...a),
+    processPicker: (...a: unknown[]) => processors.processPicker(...a),
+    processQCInspection: (...a: unknown[]) => processors.processQCInspection(...a),
+    processUnlink: (...a: unknown[]) => processors.processUnlink(...a),
+}));
+vi.mock('@/config/analytics', () => ({
+    analytics: { trackSync: vi.fn(), trackDLQError: vi.fn(), trackConflictResolved: vi.fn() },
+}));
+vi.mock('@/utils/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
+
+import type { QueuedSyncItem } from '../db';
+
+// test-setup.ts importa el store y con el, sync.service real: sin resetModules los vi.mock
+// de arriba no se aplicarian. Se importan de nuevo aqui, ya con los mocks.
+let syncService: typeof import('../sync.service')['syncService'];
+let db: typeof import('../db')['db'];
+let analytics: typeof import('@/config/analytics')['analytics'];
+beforeAll(async () => {
+    vi.resetModules();
+    ({ syncService } = await import('../sync.service'));
+    ({ db } = await import('../db'));
+    ({ analytics } = await import('@/config/analytics'));
+});
+
+const SCAN = { picker_id: 'p1', orchard_id: 'o1', scanned_by: 'runner1', quality_grade: 'A' };
+const MSG = { receiverId: 'u2', content: 'hola' };
+
+let seq = 0;
+async function queue(type: QueuedSyncItem['type'], payload: Record<string, unknown>, extra: Partial<QueuedSyncItem> = {}) {
+    seq += 1;
+    const item: QueuedSyncItem = { id: `item-${seq}`, type, payload, timestamp: Date.parse('2026-10-12T21:00:00Z') + seq * 1000, retryCount: 0, ...extra };
+    await db.sync_queue.put(item);
+    return item;
+}
+
+let online = true;
+beforeEach(async () => {
+    await db.sync_queue.clear();
+    await db.dead_letter_queue.clear();
+    await db.sync_conflicts.clear();
+    await db.sync_meta.clear();
+    online = true;
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => online });
+    for (const fn of [recordBucket, sendMessage, assignUserToOrchard, ...Object.values(processors)]) {
+        fn.mockReset();
+        fn.mockResolvedValue(undefined);
+    }
+    vi.mocked(analytics.trackSync).mockClear();
+    vi.mocked(analytics.trackDLQError).mockClear();
+});
+afterEach(() => { vi.restoreAllMocks(); });
+
+describe('processQueue — success', () => {
+    it('sends each item to its processor with the validated payload and empties the queue', async () => {
+        await queue('SCAN', SCAN, { timestamp: Date.parse('2026-10-12T21:00:05Z') });
+        await queue('MESSAGE', MSG);
+        await queue('TIMESHEET', { action: 'approve', attendanceId: 'a1', verifiedBy: 'hr1' }, { updated_at: '2026-10-12T00:00:00Z' });
+
+        await syncService.processQueue();
+        expect(await db.sync_queue.count()).toBe(0);
+        expect(recordBucket).toHaveBeenCalledTimes(1);
+        const sent = recordBucket.mock.calls[0][0] as Record<string, unknown>;
+        expect(sent).toMatchObject(SCAN);
+        // La hora del escaneo es la de la cola, en hora NZ (+13 en octubre)
+        expect(sent.scanned_at).toBe('2026-10-13T10:00:05+13:00');
+        expect(sendMessage).toHaveBeenCalledWith('u2', 'hola', 'direct');
+        expect(processors.processTimesheet).toHaveBeenCalledWith({ action: 'approve', attendanceId: 'a1', verifiedBy: 'hr1' }, '2026-10-12T00:00:00Z');
+        expect(await syncService.getLastSyncTime()).toBeGreaterThan(0);
+        expect(analytics.trackSync).toHaveBeenCalledWith(3, expect.any(Number), true);
+    });
+
+    it('does nothing while offline', async () => {
+        await queue('SCAN', SCAN);
+        online = false;
+        await syncService.processQueue();
+        expect(recordBucket).not.toHaveBeenCalled();
+        expect(await db.sync_queue.count()).toBe(1);
+        expect(await syncService.getLastSyncTime()).toBeNull();
+    });
+});
+
+describe('processQueue — failures', () => {
+    it('a failing item stays with retryCount + 1 and does not block the next ones', async () => {
+        const bad = await queue('SCAN', SCAN, { retryCount: 2 });
+        const good = await queue('MESSAGE', MSG);
+        recordBucket.mockRejectedValueOnce(new Error('something odd'));
+
+        await syncService.processQueue();
+
+        expect(await db.sync_queue.get(bad.id)).toMatchObject({ retryCount: 3 });
+        expect(await db.sync_queue.get(good.id)).toBeUndefined();
+        expect(await db.dead_letter_queue.count()).toBe(0);
+    });
+
+    it('a network error stops the run: later items are not touched', async () => {
+        const first = await queue('SCAN', SCAN);
+        const second = await queue('MESSAGE', MSG);
+        recordBucket.mockRejectedValueOnce(new Error('Failed to fetch'));
+
+        await syncService.processQueue();
+
+        expect(sendMessage).not.toHaveBeenCalled();
+        expect(await db.sync_queue.get(first.id)).toMatchObject({ retryCount: 1 });
+        expect(await db.sync_queue.get(second.id)).toMatchObject({ retryCount: 0 });
+        expect(await syncService.getLastSyncTime()).toBeNull();
+    });
+
+    it('validation errors go to the dead letter queue on the 5th attempt (not before)', async () => {
+        const fourth = await queue('SCAN', SCAN, { retryCount: 3 });
+        const fifth = await queue('SCAN', { ...SCAN, picker_id: 'p2' }, { retryCount: 4 });
+        recordBucket.mockRejectedValue(new Error('duplicate key value violates unique constraint'));
+
+        await syncService.processQueue();
+
+        expect(await db.sync_queue.get(fourth.id)).toMatchObject({ retryCount: 4 });
+        expect(await db.sync_queue.get(fifth.id)).toBeUndefined();
+        const dead = await db.dead_letter_queue.get(fifth.id);
+        expect(dead).toMatchObject({
+            type: 'SCAN', retryCount: 5, failureReason: 'validation: max retries exceeded',
+            errorCode: 'duplicate key value violates unique constraint', timestamp: fifth.timestamp,
+        });
+        expect(dead?.payload).toEqual(fifth.payload);
+        // Queda registrado como conflicto pendiente para revisarlo
+        const conflicts = await db.sync_conflicts.toArray();
+        expect(conflicts).toHaveLength(1);
+        expect(conflicts[0]).toMatchObject({ table: 'scan', record_id: fifth.id, resolution: 'pending' });
+        expect(analytics.trackDLQError).toHaveBeenCalledWith('validation', 'high');
+    });
+
+    it('other errors are retried up to 50 times before the dead letter queue', async () => {
+        const a = await queue('MESSAGE', MSG, { retryCount: 48 });
+        const b = await queue('MESSAGE', MSG, { retryCount: 49 });
+        sendMessage.mockRejectedValue(new Error('500 internal error'));
+
+        await syncService.processQueue();
+
+        expect(await db.sync_queue.get(a.id)).toMatchObject({ retryCount: 49 });
+        expect(await db.dead_letter_queue.get(b.id)).toMatchObject({ retryCount: 50, failureReason: 'server: max retries exceeded' });
+        expect(analytics.trackDLQError).toHaveBeenCalledWith('server', 'critical');
+    });
+
+    it('if writing to the dead letter queue fails the item stays in the queue (never lost)', async () => {
+        const item = await queue('SCAN', SCAN, { retryCount: 4 });
+        recordBucket.mockRejectedValue(new Error('violates foreign key'));
+        vi.spyOn(db.dead_letter_queue, 'put').mockRejectedValue(new Error('quota exceeded'));
+
+        await syncService.processQueue();
+
+        expect(await db.sync_queue.get(item.id)).toBeDefined();
+        expect(analytics.trackDLQError).not.toHaveBeenCalled();
+    });
+
+    it('a corrupt payload (fails the schema) is a permanent error: dead letter after 5 attempts', async () => {
+        const item = await queue('SCAN', { picker_id: 'p1' }, { retryCount: 4 });
+        await syncService.processQueue();
+        expect(recordBucket).not.toHaveBeenCalled();
+        expect(await db.sync_queue.get(item.id)).toBeUndefined();
+        expect(await db.dead_letter_queue.get(item.id)).toMatchObject({ failureReason: 'validation: max retries exceeded' });
+    });
+});
+
+describe('categorizeError', () => {
+    it('Postgres integrity errors (SQLSTATE class 23) are validation', () => {
+        expect(syncService.categorizeError(new Error('23505: duplicate key'))).toBe('validation');
+        expect(syncService.categorizeError({ code: '23503', message: 'fk' })).toBe('validation');
+    });
+
+    it('a "23" inside a picker code, row or time is not a validation error', () => {
+        // Antes: cualquier mensaje con "23" era 'validation' (5 reintentos y a la cola de errores)
+        expect(syncService.categorizeError(new Error('Picker LOC-023 not found'))).toBe('unknown');
+        expect(syncService.categorizeError(new Error('row 23 is closed'))).toBe('unknown');
+    });
+
+    it('being offline always counts as network', () => {
+        online = false;
+        expect(syncService.categorizeError(new Error('duplicate key'))).toBe('network');
+    });
+});
+
+describe('queue invariants (property)', () => {
+    type Outcome = 'ok' | 'unknown' | 'validation';
+    const outcome = fc.constantFrom<Outcome>('ok', 'unknown', 'validation');
+
+    it('after a run every item is exactly once in: done, queue (retry + 1) or dead letter', async () => {
+        await fc.assert(fc.asyncProperty(
+            fc.array(fc.record({ outcome, retry: fc.integer({ min: 0, max: 50 }) }), { minLength: 1, maxLength: 12 }),
+            async (items) => {
+                await db.sync_queue.clear();
+                await db.dead_letter_queue.clear();
+                const byPicker = new Map<string, Outcome>();
+                const ids: string[] = [];
+                for (const [i, it] of items.entries()) {
+                    byPicker.set(`p${i}`, it.outcome);
+                    ids.push((await queue('SCAN', { ...SCAN, picker_id: `p${i}` }, { retryCount: it.retry })).id);
+                }
+                recordBucket.mockImplementation(async (s: { picker_id: string }) => {
+                    const o = byPicker.get(s.picker_id);
+                    if (o === 'unknown') throw new Error('weird failure');
+                    if (o === 'validation') throw new Error('violates check constraint');
+                });
+
+                await syncService.processQueue();
+
+                const left = new Map((await db.sync_queue.toArray()).map(x => [x.id, x]));
+                const dead = new Map((await db.dead_letter_queue.toArray()).map(x => [x.id, x]));
+                items.forEach((it, i) => {
+                    const id = ids[i];
+                    const inQueue = left.has(id), inDead = dead.has(id);
+                    expect(inQueue && inDead).toBe(false);
+                    if (it.outcome === 'ok') {
+                        expect(inQueue || inDead).toBe(false);
+                        return;
+                    }
+                    const max = it.outcome === 'validation' ? 5 : 50;
+                    if (it.retry + 1 < max) {
+                        expect(left.get(id)?.retryCount).toBe(it.retry + 1);
+                    } else {
+                        expect(dead.get(id)?.retryCount).toBe(it.retry + 1);
+                    }
+                });
+            },
+        ), { numRuns: 40 });
+    });
+});
