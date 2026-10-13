@@ -1,0 +1,63 @@
+{
+  "comment": "Límites ~12% por encima de lo medido el 2026-10-13 (scripts/perf-budget.mjs, npm run perf:budget tras vite build). Si un cambio los supera, justificarlo o recortar.",
+  "routes": {
+    "/login": {
+      "maxJsGzipKB": 285,
+      "maxCssGzipKB": 29
+    },
+    "/runner": {
+      "maxJsGzipKB": 297,
+      "maxCssGzipKB": 29
+    }
+  },
+  "forbiddenInCriticalPath": [
+    "node_modules/@sentry/",
+    "node_modules/posthog-js/",
+    "node_modules/zod/",
+    "node_modules/papaparse/",
+    "node_modules/qr-scanner/",
+    "^src/pages/(Manager|Admin|HHRR|Payroll|LogisticsDept|QualityControl|TeamLeader|OnboardingPage)\\.tsx$",
+    "^src/components/views/(manager|hhrr|payroll|admin|logistics)/",
+    "^src/components/MFA(Setup|Verify)\\.tsx$",
+    "^src/services/(payroll|export|hhrr)\\.service\\.ts$"
+  ],
+  "assets": [
+    {
+      "pattern": "^material-symbols-subset-[\\w-]+\\.woff2$",
+      "maxKB": 50,
+      "required": true
+    },
+    {
+      "pattern": "^inter-latin-wght-[\\w-]+\\.woff2$",
+      "maxKB": 55,
+      "required": true
+    },
+    {
+      "pattern": "^inter-latin-ext-wght-[\\w-]+\\.woff2$",
+      "maxKB": 95,
+      "required": true
+    }
+  ],
+  "precache": {
+    "maxKB": 2550,
+    "forbidden": [
+      "stats\\.html",
+      "mockServiceWorker",
+      "vendor-sentry",
+      "vendor-analytics",
+      "orchard-hero"
+    ],
+    "required": [
+      "^index\\.html$",
+      "^assets/index-[\\w-]+\\.js$",
+      "^assets/index-[\\w-]+\\.css$",
+      "^assets/Login-",
+      "^assets/Runner-",
+      "^assets/LogisticsView-",
+      "^assets/ScannerModal-",
+      "^assets/material-symbols-subset-[\\w-]+\\.woff2$",
+      "^assets/inter-latin-wght-[\\w-]+\\.woff2$",
+      "^offline\\.html$"
+    ]
+  }
+}

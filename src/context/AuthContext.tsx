@@ -96,11 +96,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     loadUserDataInFlightRef.current = true;
     try {
-      logger.info('[CONN-TRACE] loadUserData start — getUserProfile (con retry)');
+      logger.info('[CONN-TRACE] loadUserData start — getUserProfile + getAllOrchards en paralelo');
+      // Huertos (multi-orchard switching) en paralelo con el perfil: no dependen de él y
+      // en serie costaban un viaje de ida y vuelta más (~2 s en 3G) en cada arranque
+      const orchardsPromise = authContextRepository.getAllOrchards().catch(() => []);
       const { stateUpdate, result } = await loadUserProfile(userId);
-      // Carga todos los huertos disponibles para multi-orchard switching
-      logger.info('[CONN-TRACE] loadUserData step 2 — getAllOrchards');
-      const allOrchards = await authContextRepository.getAllOrchards();
+      // Si el perfil no tenía huerto se acaba de autoasignar: la lista puede haber cambiado (RLS)
+      const allOrchards = result.userData?.orchard_id
+        ? await orchardsPromise
+        : await authContextRepository.getAllOrchards();
       const currentOrchard = allOrchards.find(o => o.id === stateUpdate.orchardId);
       updateAuthState({
         ...stateUpdate,

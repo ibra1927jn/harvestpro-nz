@@ -90,3 +90,44 @@ describe('analytics module', () => {
     expect(() => analytics.trackRowAssignment('p1', 5)).not.toThrow();
   });
 });
+
+describe('cola de PostHog diferido', () => {
+  it('sin clave descarta los eventos (no se encolan ni se descarga posthog-js)', async () => {
+    vi.resetModules();
+    vi.stubEnv('VITE_POSTHOG_KEY', '');
+    const m = await import('./analytics');
+    m.analytics.trackLogin('runner');
+    expect(m.pendingAnalyticsCalls()).toBe(0);
+    vi.unstubAllEnvs();
+  });
+
+  it('con clave encola antes de init y envía al inicializar', async () => {
+    vi.resetModules();
+    vi.stubEnv('VITE_POSTHOG_KEY', 'phc_test');
+    const ph = (await import('posthog-js')).default;
+    vi.mocked(ph.capture).mockClear();
+    const m = await import('./analytics');
+    m.analytics.trackLogin('runner', 'o1');
+    m.analytics.trackWebVital({
+      name: 'LCP',
+      value: 1200,
+      rating: 'good',
+      delta: 1200,
+      id: 'v1',
+      navigationType: 'navigate',
+    });
+    expect(m.pendingAnalyticsCalls()).toBe(2);
+    expect(ph.capture).not.toHaveBeenCalled();
+
+    await m.initPostHog();
+
+    expect(ph.init).toHaveBeenCalledWith('phc_test', expect.any(Object));
+    expect(ph.capture).toHaveBeenCalledWith('user_login', { role: 'runner', orchard_id: 'o1' });
+    expect(ph.capture).toHaveBeenCalledWith(
+      'web_vital',
+      expect.objectContaining({ name: 'LCP', value: 1200 })
+    );
+    expect(m.pendingAnalyticsCalls()).toBe(0);
+    vi.unstubAllEnvs();
+  });
+});
