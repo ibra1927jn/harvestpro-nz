@@ -177,9 +177,10 @@ export async function computePayroll(
             .from('daily_attendance')
             .select('picker_id, orchard_id, date, check_in, check_out, break_start, break_minutes')
             .is('deleted_at', null)
-            // Desde el día anterior: sus cubetas de después de medianoche son suyas
+            // Un día más por cada lado: las cubetas de después de medianoche son
+            // del turno que las cubre (que puede ser del día anterior o del siguiente)
             .gte('date', addDays(start_date, -1))
-            .lte('date', end_date)
+            .lte('date', addDays(end_date, 1))
         if (orchard_id) q = q.eq('orchard_id', orchard_id)
         return q.order('id').range(from, to)
     })
@@ -259,6 +260,9 @@ export async function computePayroll(
     for (const r of rows) {
         const holidayDays = r.dayDetails.filter(d => d.isPublicHoliday)
         const hours_holiday = r2(holidayDays.reduce((s, d) => s + d.hours, 0))
+        // Día alternativo solo si consta que trabajó (horas o cubetas); un turno
+        // sin cerrar y sin cubetas (0 h, "revisar") no lo genera hasta que se corrija
+        const holidaysWorked = holidayDays.filter(d => d.hours > 0 || d.buckets > 0).length
         const hours_ordinary = r2(r.hours - hours_holiday)
         const is_below_minimum = r.daysBelowMinimum > 0
         if (is_below_minimum) workers_below_minimum++
@@ -278,7 +282,7 @@ export async function computePayroll(
             total_earnings: r.total,
             is_below_minimum,
             // Holidays Act 2003 s.60: un día alternativo por festivo trabajado
-            alternative_holidays_owed: holidayDays.length,
+            alternative_holidays_owed: holidaysWorked,
             estimated_days: r.estimatedDays,
             days: r.dayDetails,
         })
@@ -287,7 +291,7 @@ export async function computePayroll(
         total_hours += r.hours
         total_piece_rate_earnings += r.pieceEarnings
         total_top_up += r.topUp
-        total_alternative_holidays_owed += holidayDays.length
+        total_alternative_holidays_owed += holidaysWorked
     }
     picker_breakdown.sort((a, b) => b.buckets - a.buckets)
 

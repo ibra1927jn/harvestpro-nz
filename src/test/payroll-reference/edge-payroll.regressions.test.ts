@@ -55,3 +55,27 @@ describe('computePayroll — tarifa de contrato', () => {
         expect(r.picker_breakdown[0].total_earnings).toBe(95.8);
     });
 });
+
+describe('computePayroll — casos del borde de la semana y festivos', () => {
+    it('cubeta del lunes 00:10 cubierta por el turno del lunes (y por el del domingo, solapado): es del lunes, fuera de la semana', async () => {
+        const attendance = [
+            { picker_id: 'p1', date: '2026-10-18', check_in: nz('2026-10-18', '22:00'), check_out: nz('2026-10-19', '00:15') },
+            { picker_id: 'p1', date: '2026-10-19', check_in: nz('2026-10-19', '00:05'), check_out: nz('2026-10-19', '00:30') },
+        ];
+        const buckets = [{ picker_id: 'p1', scanned_at: nz('2026-10-19', '00:10') }];
+        const r = await computePayroll(fakeSupabase(tables({ attendance, buckets })), { start_date: '2026-10-12', end_date: '2026-10-18' });
+        expect(r.picker_breakdown[0].buckets).toBe(0);
+    });
+
+    it('turno sin cerrar en festivo y sin cubetas (0 h, revisar): no genera día alternativo', async () => {
+        // 26-oct-2026 = Labour Day
+        const attendance = [{ picker_id: 'p1', date: '2026-10-26', check_in: nz('2026-10-26', '08:00'), check_out: null }];
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-11-03T00:00:00Z'));
+        const r = await computePayroll(fakeSupabase(tables({ attendance, buckets: [] })), { start_date: '2026-10-26', end_date: '2026-11-01' })
+            .finally(() => vi.useRealTimers());
+        expect(r.picker_breakdown[0].estimated_days).toBe(1);
+        expect(r.picker_breakdown[0].alternative_holidays_owed).toBe(0);
+        expect(r.summary.total_alternative_holidays_owed).toBe(0);
+    });
+});
