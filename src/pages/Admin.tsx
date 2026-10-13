@@ -69,6 +69,7 @@ export default function Admin() {
                         users={admin.users} userSearch={admin.userSearch} roleFilter={admin.roleFilter}
                         onSearchChange={admin.setUserSearch} onRoleFilterChange={admin.setRoleFilter}
                         onRoleChange={admin.handleRoleChange} onToggleActive={admin.handleToggleActive}
+                        actionError={admin.actionError}
                     />
                 );
             case 'compliance':

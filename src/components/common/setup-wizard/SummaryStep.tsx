@@ -19,17 +19,6 @@ const SummaryStep: React.FC<SummaryStepProps> = ({ data, error }) => (
             </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                <span className="material-symbols-outlined text-base">groups</span>
-                Teams ({data.teams.length})
-            </h3>
-            {data.teams.map((t, i) => (
-                <div key={i} className="text-sm text-blue-700">
-                    {t.name} — Leader: {t.leader_name || 'TBD'} — Max {t.max_pickers} pickers
-                </div>
-            ))}
-        </div>
 
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <h3 className="text-sm font-semibold text-amber-800 mb-3 flex items-center gap-2">

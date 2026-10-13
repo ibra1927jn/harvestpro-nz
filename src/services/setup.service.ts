@@ -58,6 +58,7 @@ export async function createOrchardSetup(data: OrchardSetupData): Promise<Result
             p_total_rows: data.orchard.total_rows,
             p_start_time: data.rates.start_time,
             p_piece_rate: data.rates.piece_rate,
+            p_variety: data.rates.variety || null,
         });
 
         if (!rpcErr && rpcResult) {

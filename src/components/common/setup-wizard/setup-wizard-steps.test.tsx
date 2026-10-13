@@ -128,9 +128,9 @@ describe('SummaryStep', () => {
         expect(screen.getByText('J&P Cherries')).toBeTruthy();
     });
 
-    it('renders teams count', () => {
+    it('does not list teams (linked later in Teams)', () => {
         render(<SummaryStep data={wizardData} error={null} />);
-        expect(screen.getByText(/Teams \(2\)/)).toBeTruthy();
+        expect(screen.queryByText(/Teams \(2\)/)).toBeNull();
     });
 
     it('renders Rates section', () => {
