@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import {
+    AuthError,
     handlePreflight,
     requireRole,
     errorResponse,
@@ -19,6 +20,11 @@ import { writeAudit } from '../_shared/audit.ts'
  *
  * Security: OWNER ONLY — prevents privilege escalation
  */
+/** Sin filas cambiadas: el usuario no existe (antes se respondía success y se auditaba) */
+function requireChanged(rows: unknown[] | null): void {
+    if (!rows || rows.length === 0) throw new AuthError('User not found', 404)
+}
+
 serve(async (req) => {
     const preflight = handlePreflight(req)
     if (preflight) return preflight
@@ -41,15 +47,17 @@ serve(async (req) => {
         if (input.action === 'update_role') {
             const { user_id, new_role } = input
 
-            const { error: updateErr } = await supabase
+            const { data: changed, error: updateErr } = await supabase
                 .from('users')
                 .update({
                     role: new_role,
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', user_id)
+                .select('id')
 
             if (updateErr) throw new Error(`Failed to update role: ${updateErr.message}`)
+            requireChanged(changed)
 
             // Audit trail
             const { error: auditErr_user_role_changed } = await writeAudit(supabase, {
@@ -70,7 +78,7 @@ serve(async (req) => {
         if (input.action === 'deactivate') {
             const { user_id } = input
 
-            const { error: deactErr } = await supabase
+            const { data: changed, error: deactErr } = await supabase
                 .from('users')
                 .update({
                     is_active: false,
@@ -78,8 +86,10 @@ serve(async (req) => {
                     deactivated_by: user.id,
                 })
                 .eq('id', user_id)
+                .select('id')
 
             if (deactErr) throw new Error(`Failed to deactivate user: ${deactErr.message}`)
+            requireChanged(changed)
 
             // Audit trail
             const { error: auditErr_user_deactivated } = await writeAudit(supabase, {
@@ -99,7 +109,7 @@ serve(async (req) => {
         if (input.action === 'reactivate') {
             const { user_id } = input
 
-            const { error: reactErr } = await supabase
+            const { data: changed, error: reactErr } = await supabase
                 .from('users')
                 .update({
                     is_active: true,
@@ -109,8 +119,10 @@ serve(async (req) => {
                     reactivated_by: user.id,
                 })
                 .eq('id', user_id)
+                .select('id')
 
             if (reactErr) throw new Error(`Failed to reactivate user: ${reactErr.message}`)
+            requireChanged(changed)
 
             // Audit trail
             const { error: auditErr_user_reactivated } = await writeAudit(supabase, {
