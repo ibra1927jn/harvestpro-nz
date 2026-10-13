@@ -12,6 +12,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { supabase } from '@/services/supabase';
 import { logger } from '@/utils/logger';
+import { initCrypto } from '@/services/dbCrypto';
 
 // Domain modules
 import { safeStorage } from './safeStorage';
@@ -75,6 +76,8 @@ export const useHarvestStore = create<HarvestStoreState>()(
       // === FETCH GLOBAL DATA ===
       fetchGlobalData: async (orchardId?: string) => {
         logger.info('[Store] Fetching global data...', orchardId ? `for orchard ${orchardId}` : '');
+        // Derivar ya la clave de cifrado (PBKDF2): el primer escaneo no espera por ella
+        void initCrypto();
         hydrateFromRecovery(set);
         await hydrateFromDexie(set);
         try {

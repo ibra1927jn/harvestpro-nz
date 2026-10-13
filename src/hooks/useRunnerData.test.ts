@@ -4,6 +4,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
+const { mockAddBucket } = vi.hoisted(() => ({ mockAddBucket: vi.fn() }));
+
 vi.mock('@/stores/useHarvestStore', () => ({
     useHarvestStore: vi.fn((selector?: (s: any) => unknown) => {
         const state = {
@@ -17,7 +19,10 @@ vi.mock('@/stores/useHarvestStore', () => ({
             inventory: [],
             fetchTodayBuckets: vi.fn(),
             fetchCollections: vi.fn(),
-            addBucket: vi.fn(),
+            addBucket: mockAddBucket,
+            rowAssignments: [],
+            buckets: [],
+            bucketRecords: [],
         };
         if (typeof selector === 'function') return selector(state);
         return state;
@@ -70,6 +75,28 @@ describe('useRunnerData', () => {
         expect(result.current.rejectedScans).toEqual([
             { id: 's1', picker_id: 'LOC-018', timestamp: '2026-10-12T10:01:00+13:00', reason: 'PAY_WEEK_CLOSED: closed' },
         ]);
+    });
+
+    it('says "Saved" only after the bucket is stored on the phone; "Saving…" until then', async () => {
+        // Antes: "Saved" salía al momento, antes de la escritura en IndexedDB
+        let finish: (ok: boolean) => void = () => undefined;
+        mockAddBucket.mockReturnValueOnce(new Promise<boolean>(r => { finish = r; }));
+        const { result } = renderHook(() => useRunnerData());
+        act(() => { result.current.handleScanComplete('101'); });
+        expect(mockAddBucket).toHaveBeenCalledTimes(1);
+        expect(result.current.toast?.message).not.toMatch(/Saved/);
+        expect(result.current.toast?.message).toMatch(/Saving 1 bucket/);
+
+        await act(async () => { finish(true); await Promise.resolve(); await Promise.resolve(); });
+        expect(result.current.toast).toEqual({ message: 'Saved 1 Bucket(s) (Offline Ready)', type: 'success' });
+    });
+
+    it('tells the runner when a bucket was NOT stored (scan again)', async () => {
+        mockAddBucket.mockResolvedValueOnce(false);
+        const { result } = renderHook(() => useRunnerData());
+        await act(async () => { result.current.handleScanComplete('101'); await Promise.resolve(); await Promise.resolve(); });
+        expect(result.current.toast?.type).toBe('error');
+        expect(result.current.toast?.message).toMatch(/NOT saved — scan again/);
     });
 
     it('provides orchard from store', () => {

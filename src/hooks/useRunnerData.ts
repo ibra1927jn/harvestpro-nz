@@ -186,6 +186,27 @@ export function useRunnerData(): UseRunnerDataResult {
     [rowAssignments]
   );
 
+  /**
+   * "Saving…" al momento y "Saved" solo cuando las cubetas ya están en el
+   * móvil (IndexedDB). Si la app se cierra antes, el runner no vio "Saved".
+   */
+  const confirmSaved = useCallback((saves: Promise<boolean>[]) => {
+    setToast({ message: `Saving ${saves.length} bucket(s)…`, type: 'info' });
+    void Promise.all(saves.map(p => Promise.resolve(p).catch(() => false))).then(results => {
+      const ok = results.filter(r => r === true).length;
+      const notSaved = results.length - ok;
+      if (ok > 0) feedbackService.triggerSuccess();
+      if (notSaved === 0) {
+        setToast({ message: `Saved ${ok} Bucket(s) (Offline Ready)`, type: 'success' });
+      } else {
+        setToast({
+          message: `${notSaved} bucket(s) NOT saved — scan again${ok > 0 ? ` (${ok} saved)` : ''}`,
+          type: 'error',
+        });
+      }
+    });
+  }, []);
+
   const handleScanComplete = useCallback(
     (scannedData: string | string[]) => {
       setShowScanner(false);
@@ -223,7 +244,7 @@ export function useRunnerData(): UseRunnerDataResult {
       }
 
       // BATCH MODO O MODO ESTÁNDAR: Procesar todos los tickets en memoria (Buckets)
-      let validCodes = 0;
+      const saves: Promise<boolean>[] = [];
       codes.forEach(code => {
         const picker = crew.find(p => p.id === code || p.picker_id === code);
         if (!picker) {
@@ -233,20 +254,18 @@ export function useRunnerData(): UseRunnerDataResult {
 
         // Para la máxima velocidad en Batch Mode, asignamos calidad 'A' por defecto.
         // (La integración original abría un modal bloqueando el progreso).
-        addBucket({
+        saves.push(addBucket({
           picker_id: code,
           quality_grade: 'A',
           timestamp: nowNZST(),
           orchard_id: orchard?.id || 'offline_pending',
           row_number: rowOf(picker.id, picker.current_row),
           bin_id: selectedBinId || null,
-        });
-        validCodes++;
+        }));
       });
 
-      if (validCodes > 0) {
-        feedbackService.triggerSuccess();
-        setToast({ message: `Saved ${validCodes} Bucket(s) (Offline Ready)`, type: 'success' });
+      if (saves.length > 0) {
+        confirmSaved(saves);
       } else if (codes.length > 0) {
         setToast({
           message: '⚠️ Pickers not checked in. Ask Team Leader to check them in first.',
@@ -254,7 +273,7 @@ export function useRunnerData(): UseRunnerDataResult {
         });
       }
     },
-    [scanType, rawInventory, crew, addBucket, orchard?.id, rowOf, selectedBinId, setBinStatus, setGlobalState]
+    [scanType, rawInventory, crew, addBucket, orchard?.id, rowOf, selectedBinId, setBinStatus, setGlobalState, confirmSaved]
   );
 
   const submitQuality = useCallback(
@@ -265,19 +284,16 @@ export function useRunnerData(): UseRunnerDataResult {
       logger.debug(`[Runner] Scanning bucket with bin_id: ${selectedBinId}`);
 
       const picker = crew.find(p => p.id === code || p.picker_id === code);
-      addBucket({
+      confirmSaved([addBucket({
         picker_id: code,
         quality_grade: grade,
         timestamp: nowNZST(),
         orchard_id: orchard?.id || 'offline_pending',
         row_number: picker ? rowOf(picker.id, picker.current_row) : undefined,
         bin_id: selectedBinId || null,
-      });
-
-      feedbackService.triggerSuccess();
-      setToast({ message: 'Bucket Saved (Offline Ready)', type: 'success' });
+      })]);
     },
-    [qualityScan, selectedBinId, addBucket, orchard?.id, crew, rowOf]
+    [qualityScan, selectedBinId, addBucket, orchard?.id, crew, rowOf, confirmSaved]
   );
 
   // Calculate real inventory data from context

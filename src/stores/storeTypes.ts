@@ -63,7 +63,11 @@ export interface BucketSlice {
     isScanning: boolean;
     lastScanTime: number | null;
     bucketRecords: BucketRecord[];
-    addBucket: (bucket: Omit<ScannedBucket, 'id' | 'synced' | 'failed' | 'failure_reason'>) => void;
+    /**
+     * Guarda un escaneo. La promesa se resuelve cuando ya está en IndexedDB
+     * (true) o si no se guardó (false): solo entonces se puede decir "Saved".
+     */
+    addBucket: (bucket: Omit<ScannedBucket, 'id' | 'synced' | 'failed' | 'failure_reason'>) => Promise<boolean>;
     markAsSynced: (id: string) => void;
     markAsFailed: (id: string, reason: string) => void;
     clearSynced: () => void;

@@ -112,6 +112,7 @@ type Action =
     | { kind: 'upload'; faults: Fault[] }
     | { kind: 'twoTabs'; faults: Fault[] }
     | { kind: 'reload' }
+    | { kind: 'kill' }
     | { kind: 'closePayWeek' };
 
 const faultArb = fc.constantFrom<Fault>('ok', 'ok', 'networkBefore', 'timeoutAfter', 'http503', 'partial', 'truncated', 'authExpired');
@@ -124,6 +125,7 @@ const actionArb: fc.Arbitrary<Action> = fc.oneof(
     { weight: 4, arbitrary: fc.record({ kind: fc.constant('upload' as const), faults: fc.array(faultArb, { maxLength: 3 }) }) },
     { weight: 1, arbitrary: fc.record({ kind: fc.constant('twoTabs' as const), faults: fc.array(faultArb, { maxLength: 2 }) }) },
     { weight: 1, arbitrary: fc.constant({ kind: 'reload' as const }) },
+    { weight: 1, arbitrary: fc.constant({ kind: 'kill' as const }) },
     { weight: 1, arbitrary: fc.constant({ kind: 'closePayWeek' as const }) },
 );
 
@@ -151,6 +153,35 @@ async function reload(): Promise<void> {
     await hydrateFromDexie(useHarvestStore.setState);
 }
 
+/**
+ * La app muere de golpe (Android la mata, batería): lo que estaba en vuelo NO
+ * llega a IndexedDB (se cierra la BD antes de que termine), la memoria se
+ * pierde, y al reabrir se lee lo que hay en IndexedDB.
+ */
+async function kill(): Promise<void> {
+    const ids = useHarvestStore.getState().buckets.map(b => b.id);
+    db.close();
+    await Promise.all(ids.map(id => offlineService.whenWritten(id)));
+    for (let i = 0; i < 20; i++) await new Promise(r => setTimeout(r, 0));
+    useHarvestStore.setState({ buckets: [] });
+    resetKeyCache();
+    await db.open();
+    await hydrateFromDexie(useHarvestStore.setState);
+}
+
+/** Escanea como la pantalla del runner: cuenta solo lo que se le confirmó ("Saved") */
+async function scanConfirmed(picker: number): Promise<string | null> {
+    const saved = useHarvestStore.getState().addBucket({
+        picker_id: PICKERS[picker],
+        quality_grade: 'A',
+        timestamp: nowNZST(),
+        orchard_id: ORCHARD,
+    });
+    const id = useHarvestStore.getState().buckets[0].id;
+    // (la versión anterior no devolvía nada y la pantalla decía "Saved" al momento)
+    return (await saved) === false ? null : id;
+}
+
 async function run(actions: Action[]): Promise<void> {
     const scanned: string[] = [];
 
@@ -158,13 +189,9 @@ async function run(actions: Action[]): Promise<void> {
         switch (a.kind) {
             case 'scan':
                 for (let i = 0; i < a.times; i++) {
-                    useHarvestStore.getState().addBucket({
-                        picker_id: PICKERS[a.picker],
-                        quality_grade: 'A',
-                        timestamp: nowNZST(),
-                        orchard_id: ORCHARD,
-                    });
-                    scanned.push(useHarvestStore.getState().buckets[0].id);
+                    const id = await scanConfirmed(a.picker);
+                    expect(id, 'scan not confirmed').not.toBeNull();
+                    if (id) scanned.push(id);
                 }
                 break;
             case 'tick':
@@ -187,6 +214,9 @@ async function run(actions: Action[]): Promise<void> {
                 break;
             case 'reload':
                 await reload();
+                break;
+            case 'kill':
+                await kill();
                 break;
             case 'closePayWeek':
                 // Payroll cierra: todo lo escaneado hasta ahora (hora del móvil) queda fuera
@@ -279,6 +309,14 @@ describe('bucket pipeline chaos', () => {
         // (servidor rápido) responde antes de que el registro esté en IndexedDB
         await run([{ kind: 'scan', picker: 0, times: 1 }, { kind: 'upload', faults: [] }]);
         expect(server.rows.size).toBe(1);
+    });
+
+    it('a scan the runner was told is saved survives the app being killed right after (first scan after start)', async () => {
+        await reset();
+        // Clave sin derivar (app recién abierta): cifrar el primer escaneo tarda.
+        // Antes "Saved" salía antes de la escritura y matar la app la perdía.
+        await run([{ kind: 'offline' }, { kind: 'scan', picker: 1, times: 1 }, { kind: 'kill' }]);
+        expect(server.rows.size, 'confirmed scan lost after kill').toBe(1);
     });
 
     it('two buckets of the same person in the same second are two scans', async () => {

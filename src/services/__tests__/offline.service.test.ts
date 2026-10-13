@@ -36,6 +36,21 @@ describe('Offline Service', () => {
             expect(pending[0].synced).toBe(0);
         });
 
+        it('rejects when the scan could not be stored at all (so the UI never says "Saved")', async () => {
+            // Antes el error se tragaba y quien llamaba creía que estaba guardado
+            const put = vi.spyOn(db.bucket_queue, 'put').mockRejectedValue(new Error('QuotaExceededError'));
+            try {
+                await expect(offlineService.queueBucket({
+                    id: 'bucket-full', picker_id: 'pk-001', orchard_id: 'orchard-001',
+                    quality_grade: 'A', timestamp: '2026-02-12T10:00:00+13:00', scanned_by: 'test-user',
+                })).rejects.toThrow('QuotaExceededError');
+            } finally {
+                put.mockRestore();
+            }
+            // whenWritten solo espera, no lanza
+            await expect(offlineService.whenWritten('bucket-full')).resolves.toBeUndefined();
+        });
+
         it('should queue multiple buckets', async () => {
             await offlineService.queueBucket({
                 id: 'b-001',
