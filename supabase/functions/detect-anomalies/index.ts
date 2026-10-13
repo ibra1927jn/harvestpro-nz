@@ -62,7 +62,27 @@ interface BucketEvent {
     picker_id: string
     row_number: number | null
     recorded_at: string
-    users: { name: string } | null
+    pickerName: string
+}
+
+// ── Hora de Nueva Zelanda ────────────────────────────
+// El runtime corre en UTC: getHours()/setHours() daban horas UTC, así que el
+// "fuera de turno" (6–19 h) y el "hoy" estaban desplazados 12–13 horas.
+const NZ_PARTS = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Pacific/Auckland', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23',
+})
+
+function nzParts(d: Date): { date: string; hour: number } {
+    const p = Object.fromEntries(NZ_PARTS.formatToParts(d).map(x => [x.type, x.value]))
+    return { date: `${p.year}-${p.month}-${p.day}`, hour: Number(p.hour) }
+}
+
+/** Instante de una hora NZ (hh:00) de un día NZ */
+function nzInstant(dateYMD: string, hour: number): Date {
+    const offset = new Intl.DateTimeFormat('en-US', { timeZone: 'Pacific/Auckland', timeZoneName: 'longOffset' })
+        .formatToParts(new Date(`${dateYMD}T12:00:00Z`))
+        .find(x => x.type === 'timeZoneName')?.value.replace('GMT', '') || '+13:00'
+    return new Date(`${dateYMD}T${String(hour).padStart(2, '0')}:00:00${offset}`)
 }
 
 serve(async (req) => {
@@ -81,21 +101,34 @@ serve(async (req) => {
         const body = await req.json()
         const { orchard_id } = AnomalyInputSchema.parse(body)
 
-        // Get today's boundaries in NZST
+        // Día de hoy en hora NZ
         const now = new Date()
-        const todayStart = new Date(now)
-        todayStart.setHours(0, 0, 0, 0)
+        const today = nzParts(now).date
+        const dayStart = nzInstant(today, 0)
+        const dayEnd = new Date(nzInstant(today, 12).getTime() + 12 * 3_600_000)
 
-        // Fetch today's bucket events with picker info
-        const { data: events, error: eventsError } = await supabase
-            .from('bucket_events')
-            .select('id, picker_id, row_number, recorded_at, users(name)')
+        // Cubetas de hoy con el nombre de la persona. Antes leía la tabla
+        // bucket_events, que no existe: la función daba siempre 400 y el panel
+        // de anomalías del manager salía vacío.
+        const { data: rows, error: eventsError } = await supabase
+            .from('bucket_records')
+            .select('id, picker_id, row_number, scanned_at, pickers(name)')
             .eq('orchard_id', orchard_id)
-            .gte('recorded_at', todayStart.toISOString())
-            .order('recorded_at', { ascending: true })
+            .is('deleted_at', null)
+            .gte('scanned_at', dayStart.toISOString())
+            .lt('scanned_at', dayEnd.toISOString())
+            .order('scanned_at', { ascending: true })
 
         if (eventsError) throw new Error(`Failed to fetch events: ${eventsError.message}`)
-        if (!events || events.length === 0) {
+        type Row = { id: string; picker_id: string; row_number: number | null; scanned_at: string; pickers: { name: string } | { name: string }[] | null }
+        const events: BucketEvent[] = ((rows ?? []) as Row[]).map(r => ({
+            id: r.id,
+            picker_id: r.picker_id,
+            row_number: r.row_number,
+            recorded_at: r.scanned_at,
+            pickerName: (Array.isArray(r.pickers) ? r.pickers[0]?.name : r.pickers?.name) || 'Unknown',
+        }))
+        if (events.length === 0) {
             return new Response(JSON.stringify({ anomalies: [], stats: { total: 0 } }), {
                 headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' },
             })
@@ -112,8 +145,7 @@ serve(async (req) => {
 
         for (const event of events) {
             const pid = event.picker_id
-            const name = (event.users as { name: string } | null)?.name || 'Unknown'
-            pickerNames.set(pid, name)
+            pickerNames.set(pid, event.pickerName)
             if (!pickerEvents.has(pid)) pickerEvents.set(pid, [])
             pickerEvents.get(pid)!.push(event)
         }
@@ -122,7 +154,7 @@ serve(async (req) => {
         for (const [pickerId, pEvents] of pickerEvents) {
             for (const event of pEvents) {
                 const scanTime = new Date(event.recorded_at)
-                const hour = scanTime.getHours()
+                const hour = nzParts(scanTime).hour
                 if (hour < CONFIG.shiftStartHour || hour >= CONFIG.shiftEndHour) {
                     anomalies.push({
                         id: makeId(),
@@ -130,7 +162,7 @@ serve(async (req) => {
                         severity: 'medium',
                         pickerId,
                         pickerName: pickerNames.get(pickerId) || 'Unknown',
-                        detail: `Scan at ${scanTime.toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })} — outside shift window (${CONFIG.shiftStartHour}:00-${CONFIG.shiftEndHour}:00).`,
+                        detail: `Scan at ${scanTime.toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit', timeZone: 'Pacific/Auckland' })} — outside shift window (${CONFIG.shiftStartHour}:00-${CONFIG.shiftEndHour}:00).`,
                         timestamp: event.recorded_at,
                         evidence: {
                             scanTime: scanTime.toISOString(),
@@ -156,8 +188,7 @@ serve(async (req) => {
 
             const rate = pEvents.length / hoursElapsed
 
-            const shiftStart = new Date(now)
-            shiftStart.setHours(CONFIG.shiftStartHour, 0, 0, 0)
+            const shiftStart = nzInstant(today, CONFIG.shiftStartHour)
             const minutesSinceShiftStart = (firstScan.getTime() - shiftStart.getTime()) / (1000 * 60)
             const inGracePeriod = minutesSinceShiftStart < CONFIG.gracePeriodMinutes
 

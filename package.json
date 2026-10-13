@@ -23,7 +23,8 @@
     "prepare": "husky",
     "test:mutation": "cross-env NODE_OPTIONS=--max-old-space-size=3072 stryker run",
     "test:assertions": "node scripts/check-test-assertions.mjs",
-    "test:mock-guard": "node scripts/check-test-mocks.mjs"
+    "test:mock-guard": "node scripts/check-test-mocks.mjs",
+    "test:functions": "deno test --allow-net --allow-env --allow-read --env-file=.env.local supabase/functions/tests/"
   },
   "dependencies": {
     "@capacitor/android": "^8.2.0",

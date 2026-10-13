@@ -5,8 +5,16 @@
  * Node (tests). Extraído de send-push/index.ts.
  */
 
+/**
+ * Bytes respaldados por un ArrayBuffer normal (lo que piden WebCrypto y
+ * fetch). Con TypeScript ≥ 5.7 un Uint8Array a secas puede ir sobre un
+ * SharedArrayBuffer y `deno check` falla; inferido así vale en ambas versiones.
+ */
+const _newBytes = (n: number) => new Uint8Array(n);
+export type Bytes = ReturnType<typeof _newBytes>;
+
 /** Decodifica base64url a Uint8Array */
-export function base64urlDecode(str: string): Uint8Array {
+export function base64urlDecode(str: string): Bytes {
   // Restaura padding y caracteres estándar
   const b64 = str.replace(/-/g, '+').replace(/_/g, '/');
   const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
@@ -15,7 +23,7 @@ export function base64urlDecode(str: string): Uint8Array {
 }
 
 /** Concatena múltiples Uint8Arrays */
-function concatBytes(...arrays: Uint8Array[]): Uint8Array {
+function concatBytes(...arrays: Bytes[]): Bytes {
   const totalLen = arrays.reduce((sum, a) => sum + a.length, 0);
   const result = new Uint8Array(totalLen);
   let offset = 0;
@@ -31,11 +39,11 @@ function concatBytes(...arrays: Uint8Array[]): Uint8Array {
  * Usa Web Crypto API disponible en Deno.
  */
 export async function hkdf(
-  salt: Uint8Array,
-  ikm: Uint8Array,
-  info: Uint8Array,
+  salt: Bytes,
+  ikm: Bytes,
+  info: Bytes,
   length: number
-): Promise<Uint8Array> {
+): Promise<Bytes> {
   // Extract: PRK = HMAC-SHA-256(salt, IKM)
   const prkKey = await crypto.subtle.importKey('raw', salt, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const prk = new Uint8Array(await crypto.subtle.sign('HMAC', prkKey, ikm));
@@ -63,10 +71,10 @@ export async function hkdf(
  * 5. Construye header aes128gcm
  */
 export async function encryptPayload(
-  plaintext: Uint8Array,
-  subscriptionPublicKey: Uint8Array,
-  subscriptionAuth: Uint8Array
-): Promise<{ encrypted: Uint8Array; localPublicKey: Uint8Array }> {
+  plaintext: Bytes,
+  subscriptionPublicKey: Bytes,
+  subscriptionAuth: Bytes
+): Promise<{ encrypted: Bytes; localPublicKey: Bytes }> {
   // 1. Generar keypair ECDH efímero
   const localKeyPair = await crypto.subtle.generateKey(
     { name: 'ECDH', namedCurve: 'P-256' },
