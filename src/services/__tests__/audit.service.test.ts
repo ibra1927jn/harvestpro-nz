@@ -30,6 +30,24 @@ describe('auditService', () => {
         mockInvoke.mockResolvedValue({ data: { inserted: 1 }, error: null });
     });
 
+    describe('offline', () => {
+        it('keeps logs while offline and sends them once the connection returns', async () => {
+            Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+            try {
+                await logAudit('system.error', 'Offline failure', { severity: 'error' });
+                expect(mockInvoke).not.toHaveBeenCalled();
+
+                Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+                window.dispatchEvent(new Event('online'));
+                await vi.waitFor(() => expect(mockInvoke).toHaveBeenCalledTimes(1));
+                const entries = (mockInvoke.mock.calls[0][1] as { entries: Array<{ action: string }> }).entries;
+                expect(entries.map(e => e.action)).toContain('Offline failure');
+            } finally {
+                Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+            }
+        });
+    });
+
     describe('logAudit — immediate flush', () => {
         it('flushes critical events immediately via Edge Function', async () => {
             await logAudit('system.error', 'Critical failure', { severity: 'critical' });
