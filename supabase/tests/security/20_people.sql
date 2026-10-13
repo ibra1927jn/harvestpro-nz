@@ -81,6 +81,11 @@ SELECT sec_test.sees(w, 'reads HR documents', $$SELECT 1 FROM hr_documents WHERE
 FROM unnest(ARRAY['A.hr_admin', 'A.admin']) AS w;
 SELECT sec_test.deny(w, 'cannot change HR document records', $$UPDATE hr_documents SET title = 'x' WHERE id = {A.hrdoc}$$)
 FROM unnest(ARRAY['anon', 'A.runner', 'A.team_leader', 'A.payroll_admin']) AS w;
+-- Cuentas dadas de baja: nada de documentos de RRHH (antes la política miraba el rol sin is_active)
+SELECT sec_test.sees(w, 'cannot read HR documents once deactivated', $$SELECT 1 FROM hr_documents WHERE id = {A.hrdoc}$$, 0)
+FROM unnest(ARRAY['A.inactive_manager', 'A.inactive_hr_admin', 'A.inactive_admin']) AS w;
+SELECT sec_test.deny(w, 'cannot change HR documents once deactivated', $$UPDATE hr_documents SET title = 'x' WHERE id = {A.hrdoc}$$)
+FROM unnest(ARRAY['A.inactive_manager', 'A.inactive_hr_admin']) AS w;
 SELECT sec_test.deny('A.runner', 'cannot upload HR document records',
     $$INSERT INTO hr_documents (orchard_id, user_id, document_type, title, storage_path) VALUES ({A}, auth.uid(), 'other', 'x', 'x')$$);
 
