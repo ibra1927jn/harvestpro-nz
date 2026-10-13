@@ -30,6 +30,10 @@ jobs:
         if: matrix.shard == '1/5'
         run: npm run lint --if-present
 
+      - name: Tests that cannot fail (no assertions / expect(true))
+        if: matrix.shard == '1/5'
+        run: npm run test:assertions
+
       - name: Test (shard ${{ matrix.shard }})
         run: npx vitest run --config vitest.config.ci.ts --shard=${{ matrix.shard }}
         env:

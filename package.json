@@ -20,7 +20,8 @@
     "test:e2e": "npx playwright test",
     "docs": "typedoc --entryPoints src/services/*.ts src/hooks/*.ts src/schemas/*.ts --out docs --exclude **/*.test.* --skipErrorChecking",
     "prepare": "husky",
-    "test:mutation": "cross-env NODE_OPTIONS=--max-old-space-size=3072 stryker run"
+    "test:mutation": "cross-env NODE_OPTIONS=--max-old-space-size=3072 stryker run",
+    "test:assertions": "node scripts/check-test-assertions.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.2.0",
