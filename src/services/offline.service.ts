@@ -30,11 +30,13 @@ export const offlineService = {
    */
   async queueBucket(bucket: Omit<QueuedBucket, 'synced'>) {
     const write = this._writeBucket(bucket);
-    inflightWrites.set(bucket.id, write);
+    // whenWritten no debe lanzar (solo espera): el error lo recibe quien encola
+    const tracked = write.catch(() => undefined);
+    inflightWrites.set(bucket.id, tracked);
     try {
       await write;
     } finally {
-      if (inflightWrites.get(bucket.id) === write) inflightWrites.delete(bucket.id);
+      if (inflightWrites.get(bucket.id) === tracked) inflightWrites.delete(bucket.id);
     }
   },
 
@@ -55,6 +57,8 @@ export const offlineService = {
         await db.bucket_queue.put(record as QueuedBucket);
       } catch (dbError) {
         logger.error('❌ [Offline] Failed to queue bucket:', dbError);
+        // No se guardó: quien llama no debe decir "Saved"
+        throw dbError;
       }
     }
   },

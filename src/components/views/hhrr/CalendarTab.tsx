@@ -23,7 +23,7 @@ const CalendarTab: React.FC = () => {
                     data-testid="calendar-fallback-banner"
                     className="lg:col-span-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3"
                 >
-                    <span className="material-symbols-outlined text-amber-600">construction</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-amber-600">construction</span>
                     <p className="text-sm font-medium text-amber-800">
                         Orchard settings incompletos — mostrando horario por defecto 07:00-17:00.
                         Configúralo en Settings → Shift Hours para ver el schedule real.
@@ -47,7 +47,7 @@ const CalendarTab: React.FC = () => {
                                 className="flex items-center gap-3 py-2.5 border-b border-border-light last:border-0"
                             >
                                 <span className="text-xs font-mono text-text-muted w-12">{item.time}</span>
-                                <span className={`material-symbols-outlined text-lg ${item.color}`}>{item.icon}</span>
+                                <span aria-hidden="true" className={`material-symbols-outlined text-lg ${item.color}`}>{item.icon}</span>
                                 <span className="text-sm text-text-primary font-medium">{item.event}</span>
                             </div>
                         ))}

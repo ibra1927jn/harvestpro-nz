@@ -25,7 +25,7 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({ className = '' }) => {
             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
             title={isDark ? 'Modo claro' : 'Modo oscuro'}
         >
-            <span
+            <span aria-hidden="true"
                 className="material-symbols-outlined text-xl transition-transform duration-300"
                 style={{ transform: isDark ? 'rotate(360deg)' : 'rotate(0deg)' }}
             >

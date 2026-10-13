@@ -23,7 +23,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fc from 'fast-check';
 
-type Scan = { id: string; picker_id: string; orchard_id: string; scanned_at: string };
+type Scan = { id: string; picker_id: string; orchard_id: string; scanned_at: string; clock_skew_ms?: number };
 type Result = { id: string | null; status: 'saved' | 'duplicate' | 'rejected' | 'retry'; reason?: string };
 type Fault = 'ok' | 'networkBefore' | 'timeoutAfter' | 'http503' | 'partial' | 'truncated' | 'authExpired';
 
@@ -35,6 +35,9 @@ class FakeServer {
     closedBefore: number | null = null;
     faults: Fault[] = [];
     calls = 0;
+    /** Reloj del servidor − reloj del móvil (ms); null = no manda server_time (versión anterior) */
+    serverOffset: number | null = null;
+    lastClientNow: unknown = undefined;
 
     private apply(s: Scan): Result {
         // Igual que en la BD: el trigger de semana cerrada va antes que la clave
@@ -49,8 +52,10 @@ class FakeServer {
         return { id: s.id, status: 'saved' };
     }
 
-    async handle(body: { scans: Scan[] }): Promise<{ data: { results: Result[] }; error: null }> {
+    async handle(body: { scans: Scan[]; client_now?: number }): Promise<{ data: { results: Result[]; server_time?: string }; error: null }> {
         this.calls++;
+        this.lastClientNow = body.client_now;
+        const serverTime = this.serverOffset === null ? {} : { server_time: new Date(Date.now() + this.serverOffset).toISOString() };
         await Promise.resolve();
         const fault = this.faults.shift() ?? 'ok';
         const scans = body.scans;
@@ -67,15 +72,15 @@ class FakeServer {
             case 'partial': {
                 // La BD cae a mitad de lote: lo primero se guarda, el resto "retry"
                 const k = Math.floor(scans.length / 2);
-                return { data: { results: scans.map((s, i) => (i < k ? this.apply(s) : { id: s.id, status: 'retry' as const, reason: 'connection reset' })) }, error: null };
+                return { data: { results: scans.map((s, i) => (i < k ? this.apply(s) : { id: s.id, status: 'retry' as const, reason: 'connection reset' })), ...serverTime }, error: null };
             }
             case 'truncated': {
                 // Se guarda todo pero la respuesta llega cortada
                 const results = scans.map(s => this.apply(s));
-                return { data: { results: results.slice(0, Math.floor(results.length / 2)) }, error: null };
+                return { data: { results: results.slice(0, Math.floor(results.length / 2)), ...serverTime }, error: null };
             }
             default:
-                return { data: { results: scans.map(s => this.apply(s)) }, error: null };
+                return { data: { results: scans.map(s => this.apply(s)), ...serverTime }, error: null };
         }
     }
 }
@@ -112,6 +117,7 @@ type Action =
     | { kind: 'upload'; faults: Fault[] }
     | { kind: 'twoTabs'; faults: Fault[] }
     | { kind: 'reload' }
+    | { kind: 'kill' }
     | { kind: 'closePayWeek' };
 
 const faultArb = fc.constantFrom<Fault>('ok', 'ok', 'networkBefore', 'timeoutAfter', 'http503', 'partial', 'truncated', 'authExpired');
@@ -124,6 +130,7 @@ const actionArb: fc.Arbitrary<Action> = fc.oneof(
     { weight: 4, arbitrary: fc.record({ kind: fc.constant('upload' as const), faults: fc.array(faultArb, { maxLength: 3 }) }) },
     { weight: 1, arbitrary: fc.record({ kind: fc.constant('twoTabs' as const), faults: fc.array(faultArb, { maxLength: 2 }) }) },
     { weight: 1, arbitrary: fc.constant({ kind: 'reload' as const }) },
+    { weight: 1, arbitrary: fc.constant({ kind: 'kill' as const }) },
     { weight: 1, arbitrary: fc.constant({ kind: 'closePayWeek' as const }) },
 );
 
@@ -151,6 +158,35 @@ async function reload(): Promise<void> {
     await hydrateFromDexie(useHarvestStore.setState);
 }
 
+/**
+ * La app muere de golpe (Android la mata, batería): lo que estaba en vuelo NO
+ * llega a IndexedDB (se cierra la BD antes de que termine), la memoria se
+ * pierde, y al reabrir se lee lo que hay en IndexedDB.
+ */
+async function kill(): Promise<void> {
+    const ids = useHarvestStore.getState().buckets.map(b => b.id);
+    db.close();
+    await Promise.all(ids.map(id => offlineService.whenWritten(id)));
+    for (let i = 0; i < 20; i++) await new Promise(r => setTimeout(r, 0));
+    useHarvestStore.setState({ buckets: [] });
+    resetKeyCache();
+    await db.open();
+    await hydrateFromDexie(useHarvestStore.setState);
+}
+
+/** Escanea como la pantalla del runner: cuenta solo lo que se le confirmó ("Saved") */
+async function scanConfirmed(picker: number): Promise<string | null> {
+    const saved = useHarvestStore.getState().addBucket({
+        picker_id: PICKERS[picker],
+        quality_grade: 'A',
+        timestamp: nowNZST(),
+        orchard_id: ORCHARD,
+    });
+    const id = useHarvestStore.getState().buckets[0].id;
+    // (la versión anterior no devolvía nada y la pantalla decía "Saved" al momento)
+    return (await saved) === false ? null : id;
+}
+
 async function run(actions: Action[]): Promise<void> {
     const scanned: string[] = [];
 
@@ -158,13 +194,9 @@ async function run(actions: Action[]): Promise<void> {
         switch (a.kind) {
             case 'scan':
                 for (let i = 0; i < a.times; i++) {
-                    useHarvestStore.getState().addBucket({
-                        picker_id: PICKERS[a.picker],
-                        quality_grade: 'A',
-                        timestamp: nowNZST(),
-                        orchard_id: ORCHARD,
-                    });
-                    scanned.push(useHarvestStore.getState().buckets[0].id);
+                    const id = await scanConfirmed(a.picker);
+                    expect(id, 'scan not confirmed').not.toBeNull();
+                    if (id) scanned.push(id);
                 }
                 break;
             case 'tick':
@@ -187,6 +219,9 @@ async function run(actions: Action[]): Promise<void> {
                 break;
             case 'reload':
                 await reload();
+                break;
+            case 'kill':
+                await kill();
                 break;
             case 'closePayWeek':
                 // Payroll cierra: todo lo escaneado hasta ahora (hora del móvil) queda fuera
@@ -257,6 +292,7 @@ async function reset(): Promise<void> {
     server.rejected.clear();
     server.closedBefore = null;
     server.faults = [];
+    server.serverOffset = null;
     online = true;
     clock = START;
     vi.setSystemTime(clock);
@@ -279,6 +315,29 @@ describe('bucket pipeline chaos', () => {
         // (servidor rápido) responde antes de que el registro esté en IndexedDB
         await run([{ kind: 'scan', picker: 0, times: 1 }, { kind: 'upload', faults: [] }]);
         expect(server.rows.size).toBe(1);
+    });
+
+    it('a scan the runner was told is saved survives the app being killed right after (first scan after start)', async () => {
+        await reset();
+        // Clave sin derivar (app recién abierta): cifrar el primer escaneo tarda.
+        // Antes "Saved" salía antes de la escritura y matar la app la perdía.
+        await run([{ kind: 'offline' }, { kind: 'scan', picker: 1, times: 1 }, { kind: 'kill' }]);
+        expect(server.rows.size, 'confirmed scan lost after kill').toBe(1);
+    });
+
+    it('the phone clock offset is measured on upload and corrects later scans (sent with the correction)', async () => {
+        await reset();
+        // Reloj del móvil 30 min atrasado. Antes clockSkew no se medía nunca
+        server.serverOffset = 30 * 60_000;
+        await run([{ kind: 'scan', picker: 0, times: 1 }, { kind: 'upload', faults: [] }]);
+        expect(server.lastClientNow, 'client_now not sent').toBe(clock);
+        expect(useHarvestStore.getState().clockSkew).toBe(30 * 60_000);
+
+        const id = await scanConfirmed(1);
+        await uploadPendingBuckets();
+        const latest = server.rows.get(id!);
+        expect(Date.parse(latest!.scanned_at)).toBe(clock + 30 * 60_000);
+        expect(latest!.clock_skew_ms).toBe(30 * 60_000);
     });
 
     it('two buckets of the same person in the same second are two scans', async () => {

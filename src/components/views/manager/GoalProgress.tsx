@@ -61,7 +61,7 @@ const GoalProgress: React.FC<GoalProgressProps> = ({
                     <div className={`flex items-center gap-1 mt-1 text-sm font-bold ${etaStatus === 'ahead' ? 'text-green-300' :
                         etaStatus === 'on_track' ? 'text-yellow-300' : 'text-red-300'
                         }`}>
-                        <span className="material-symbols-outlined text-sm">
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm">
                             {etaStatus === 'ahead' ? 'rocket_launch' :
                                 etaStatus === 'on_track' ? 'schedule' : 'warning'}
                         </span>

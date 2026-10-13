@@ -66,7 +66,7 @@ export function SecurityDashboard() {
             {/* Header */}
             <div className="mb-6">
                 <h2 className="text-2xl font-bold flex items-center gap-2">
-                    <span className="material-symbols-outlined text-2xl text-blue-600">shield</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-2xl text-blue-600">shield</span>
                     Security Dashboard
                 </h2>
                 <p className="text-text-secondary mt-1">
@@ -77,7 +77,7 @@ export function SecurityDashboard() {
                     className="mt-2 px-3 py-1 bg-surface-secondary hover:bg-surface-tertiary rounded flex items-center gap-2"
                     disabled={isLoading}
                 >
-                    <span className={`material-symbols-outlined text-sm ${isLoading ? 'animate-spin' : ''}`}>refresh</span>
+                    <span aria-hidden="true" className={`material-symbols-outlined text-sm ${isLoading ? 'animate-spin' : ''}`}>refresh</span>
                     Refresh
                 </button>
             </div>
@@ -94,7 +94,7 @@ export function SecurityDashboard() {
                     {/* Account Locks Section */}
                     <div>
                         <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                            <span className="material-symbols-outlined text-lg text-red-600">lock</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-lg text-red-600">lock</span>
                             Currently Locked Accounts ({accountLocks.length})
                         </h3>
 
@@ -139,7 +139,7 @@ export function SecurityDashboard() {
                                                         disabled={unlockingEmail === lock.email}
                                                         className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-surface-tertiary flex items-center gap-1"
                                                     >
-                                                        <span className="material-symbols-outlined text-sm">lock_open</span>
+                                                        <span aria-hidden="true" className="material-symbols-outlined text-sm">lock_open</span>
                                                         {unlockingEmail === lock.email ? 'Unlocking...' : 'Unlock'}
                                                     </button>
                                                 </td>
@@ -154,7 +154,7 @@ export function SecurityDashboard() {
                     {/* Failed Login Attempts */}
                     <div>
                         <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                            <span className="material-symbols-outlined text-lg text-orange-600">warning</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-lg text-orange-600">warning</span>
                             Recent Failed Login Attempts ({failedAttempts.length})
                         </h3>
 

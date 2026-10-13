@@ -29,7 +29,7 @@ const TeamsToolbar: React.FC<TeamsToolbarProps> = ({
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-xl font-black text-text-main flex items-center gap-2">
-                        <span className="material-symbols-outlined text-indigo-500">groups_3</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-indigo-500">groups_3</span>
                         {t('teams.header')}
                     </h2>
                     <p className="text-xs text-text-muted mt-1 flex items-center gap-2">
@@ -56,7 +56,7 @@ const TeamsToolbar: React.FC<TeamsToolbarProps> = ({
                             : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-border-light'
                             }`}
                     >
-                        <span className="material-symbols-outlined text-lg">person_add</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-lg">person_add</span>
                         {t('teams.link_staff')}
                     </button>
 
@@ -73,7 +73,7 @@ const TeamsToolbar: React.FC<TeamsToolbarProps> = ({
                             : 'bg-slate-50 text-slate-400 cursor-not-allowed border border-border-light'
                             }`}
                     >
-                        <span className="material-symbols-outlined text-base">upload</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">upload</span>
                         {t('teams.import_csv')}
                     </button>
 
@@ -84,7 +84,7 @@ const TeamsToolbar: React.FC<TeamsToolbarProps> = ({
 
             {/* Search Bar */}
             <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                <span aria-hidden="true" className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
                 <input
                     placeholder={t('teams.search_placeholder')}
                     value={search}

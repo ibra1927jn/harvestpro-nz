@@ -17,10 +17,30 @@ import { logger } from '@/utils/logger';
 
 export const BUCKET_BATCH_SIZE = 50;
 
+/** Más lento que esto (ida y vuelta) no sirve para medir el reloj */
+const MAX_RTT_FOR_SKEW_MS = 10_000;
+
+/**
+ * Desfase del reloj del móvil = hora del servidor − hora del móvil a mitad de
+ * la petición. Se guarda en el store (persistido) y addBucket lo usa para
+ * corregir la hora de los escaneos siguientes.
+ */
+export function updateClockSkew(serverTime: string | undefined, sentAt: number, receivedAt: number): void {
+    if (!serverTime) return;
+    const server = Date.parse(serverTime);
+    if (Number.isNaN(server) || receivedAt - sentAt > MAX_RTT_FOR_SKEW_MS || receivedAt < sentAt) return;
+    const skew = Math.round(server - (sentAt + receivedAt) / 2);
+    if (useHarvestStore.getState().clockSkew !== skew) {
+        useHarvestStore.setState({ clockSkew: skew });
+    }
+}
+
 export type ScanResult = {
     id: string | null;
     status: 'saved' | 'duplicate' | 'rejected' | 'retry';
     reason?: string;
+    /** Guardado pero con la hora dudosa (el manager lo ve en rejected_scans) */
+    flag?: string;
 };
 
 /** idle: nada que subir · offline: sin red · done: todo resuelto · retry: queda algo para luego */
@@ -51,14 +71,18 @@ export async function uploadPendingBuckets(): Promise<UploadOutcome> {
             scanned_at: b.timestamp,
             ...(b.row_number ? { row_number: b.row_number } : {}),
             ...(b.bin_id ? { bin_id: b.bin_id } : {}),
+            ...(b.clock_skew_ms ? { clock_skew_ms: b.clock_skew_ms } : {}),
         }));
 
-        // Si se corta a mitad y se repite, los ids evitan duplicados
-        const { data } = await edgeFunctionsRepository.invoke<{ results: ScanResult[] }>(
+        // Si se corta a mitad y se repite, los ids evitan duplicados.
+        // client_now: el servidor compara con su hora y marca lo dudoso.
+        const sentAt = Date.now();
+        const { data } = await edgeFunctionsRepository.invoke<{ results: ScanResult[]; server_time?: string }>(
             'record-bucket',
-            { scans },
+            { scans, client_now: sentAt },
             { maxRetries: 1, timeoutMs: 30_000 }
         );
+        updateClockSkew(data?.server_time, sentAt, Date.now());
         const results = data?.results ?? [];
         const byId = new Map(results.filter(r => r.id).map(r => [r.id as string, r]));
 

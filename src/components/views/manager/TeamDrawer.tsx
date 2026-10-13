@@ -2,7 +2,8 @@
  * TeamDrawer — Panel lateral con detalles de equipo: tabs Today y Members.
  * Abrir desde WeeklyReportView al hacer click en un equipo del ranking.
  */
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { Picker } from '@/types';
 import { TeamRanking } from '@/hooks/useWeeklyReport';
 
@@ -41,6 +42,9 @@ function roleLabel(role: string | undefined): string {
 }
 
 const TeamDrawer: React.FC<TeamDrawerProps> = ({ teamData, onClose }) => {
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useDialogA11y(dialogRef, { onClose });
+
     const [activeTab, setActiveTab] = useState<'today' | 'members'>('today');
 
     // Resetear tab cuando cambia el equipo
@@ -61,7 +65,7 @@ const TeamDrawer: React.FC<TeamDrawerProps> = ({ teamData, onClose }) => {
             />
 
             {/* Panel */}
-            <div className="fixed right-0 top-0 bottom-0 w-full max-w-sm bg-white shadow-2xl z-50 overflow-y-auto animate-slide-in-right">
+            <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Team details" className="fixed right-0 top-0 bottom-0 w-full max-w-sm bg-white shadow-2xl z-50 overflow-y-auto animate-slide-in-right">
 
                 {/* Header con gradiente indigo */}
                 <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-5">
@@ -70,7 +74,7 @@ const TeamDrawer: React.FC<TeamDrawerProps> = ({ teamData, onClose }) => {
                         aria-label="Close team drawer"
                         className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/70 flex items-center justify-center hover:bg-white transition-colors z-10"
                     >
-                        <span className="material-symbols-outlined text-lg text-slate-600">close</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-lg text-slate-600">close</span>
                     </button>
 
                     <div className="flex items-center gap-3 pr-10">
@@ -150,7 +154,7 @@ interface StatCardProps {
 const StatCard: React.FC<StatCardProps> = ({ label, value, icon, iconBg }) => (
     <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-2">
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconBg}`}>
-            <span className="material-symbols-outlined text-lg">{icon}</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-lg">{icon}</span>
         </div>
         <p className="text-[10px] text-text-muted uppercase tracking-wide font-bold">{label}</p>
         <p className="text-lg font-black text-text-main leading-none">{value}</p>
@@ -168,7 +172,7 @@ const MembersTab: React.FC<MembersTabProps> = ({ members }) => {
         return (
             <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                    <span className="material-symbols-outlined text-3xl text-slate-300">groups</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-3xl text-slate-300">groups</span>
                 </div>
                 <p className="text-sm font-bold text-text-sub">No members assigned</p>
                 <p className="text-xs text-text-muted mt-1">Team member data unavailable</p>

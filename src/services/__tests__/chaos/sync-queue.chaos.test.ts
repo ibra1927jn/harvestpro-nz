@@ -239,6 +239,21 @@ describe('sync queue chaos', () => {
         expect(backend.applied.get(`transport:Row 2-${seq}`)).toBe(1);
     });
 
+    it('an item of a type this version cannot process goes to the dead letter queue with the reason', async () => {
+        await reset();
+        // Cola escrita por otra versión de la app (o dato corrupto)
+        await db.sync_queue.put({
+            id: 'legacy-1', type: 'BREAK_LOG' as never, payload: { picker_id: 'p1' }, timestamp: 1, retryCount: 0,
+        });
+        await run([{ kind: 'transport', n: 3 }, { kind: 'online' }]);
+        const dead = await db.dead_letter_queue.get('legacy-1');
+        expect(dead, 'unknown item was deleted without a trace').toBeDefined();
+        expect(dead?.failureReason).toContain('BREAK_LOG');
+        expect(dead?.payload).toEqual({ picker_id: 'p1' });
+        // Lo de detrás sigue su camino
+        expect(backend.applied.get(`transport:Row 3-${seq}`)).toBe(1);
+    });
+
     it('offline actions reach the server in the order they were made', async () => {
         await reset();
         online = false;

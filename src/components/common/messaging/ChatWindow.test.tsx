@@ -122,4 +122,34 @@ describe('ChatWindow', () => {
     fireEvent.click(backButton);
     expect(onBack).toHaveBeenCalled();
   });
+
+  it('marks own messages that did not reach the server: pending, or "Not sent" with Retry', () => {
+    const onRetry = vi.fn();
+    const now = new Date().toISOString();
+    render(
+      <ChatWindow
+        selectedChat={selectedChat}
+        messages={[
+          { id: 'ok', sender_id: 'u1', content: 'sent one', created_at: now, priority: 'normal', read_by: [] },
+          { id: 'wait', sender_id: 'u1', content: 'no signal', created_at: now, priority: 'normal', read_by: [], delivery: 'pending' },
+          { id: 'bad', sender_id: 'u1', content: 'rejected one', created_at: now, priority: 'normal', read_by: [], delivery: 'failed', failure_reason: 'row-level security' },
+        ]}
+        appUserId="u1"
+        userNameMap={userNameMap}
+        isSending={false}
+        onSend={onSend}
+        onRetry={onRetry}
+        onBack={onBack}
+        isManager={true}
+      />
+    );
+    // Antes los tres se veían igual ("done_all", como entregados)
+    expect(screen.getAllByText('done_all')).toHaveLength(1);
+    expect(screen.getByLabelText('Waiting to send')).toBeTruthy();
+    const alert = screen.getByRole('alert');
+    expect(alert.textContent).toContain('Not sent');
+    expect(alert.getAttribute('title')).toBe('row-level security');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(onRetry).toHaveBeenCalledWith('bad');
+  });
 });

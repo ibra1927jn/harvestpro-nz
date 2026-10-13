@@ -8,7 +8,7 @@ const SummaryStep: React.FC<SummaryStepProps> = ({ data, error }) => (
     <div className="space-y-4">
         <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
             <h3 className="text-sm font-semibold text-emerald-800 mb-3 flex items-center gap-2">
-                <span className="material-symbols-outlined text-base">park</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-base">park</span>
                 Orchard
             </h3>
             <div className="grid grid-cols-2 gap-2 text-sm">
@@ -22,7 +22,7 @@ const SummaryStep: React.FC<SummaryStepProps> = ({ data, error }) => (
 
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <h3 className="text-sm font-semibold text-amber-800 mb-3 flex items-center gap-2">
-                <span className="material-symbols-outlined text-base">payments</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-base">payments</span>
                 Rates
             </h3>
             <div className="grid grid-cols-2 gap-2 text-sm">
@@ -34,7 +34,7 @@ const SummaryStep: React.FC<SummaryStepProps> = ({ data, error }) => (
 
         {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 flex items-center gap-2">
-                <span className="material-symbols-outlined text-base">error</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-base">error</span>
                 {error}
             </div>
         )}

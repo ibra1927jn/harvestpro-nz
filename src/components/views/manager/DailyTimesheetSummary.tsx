@@ -15,7 +15,7 @@ export default function DailyTimesheetSummary({ rows, date }: DailyTimesheetSumm
     <div className="bg-white rounded-xl border border-border-light overflow-hidden">
       <div className="bg-emerald-50 px-4 py-3 border-b border-emerald-200">
         <h3 className="font-bold text-emerald-800 flex items-center gap-2">
-          <span className="material-symbols-outlined text-lg">receipt_long</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-lg">receipt_long</span>
           Daily Timesheet Summary — {date}
         </h3>
         <p className="text-xs text-emerald-600 mt-1">

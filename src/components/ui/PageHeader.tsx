@@ -37,7 +37,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({ icon, title, subtitle, badges, 
     <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
         <div>
             <h1 className="text-2xl font-black text-text-main flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-3xl">{icon}</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-primary text-3xl">{icon}</span>
                 {title}
             </h1>
             {subtitle && (
@@ -51,7 +51,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({ icon, title, subtitle, badges, 
                             className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${BADGE_COLORS[badge.color || 'indigo']}`}
                         >
                             {badge.icon && (
-                                <span className="material-symbols-outlined text-sm">{badge.icon}</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-sm">{badge.icon}</span>
                             )}
                             {badge.label}
                         </span>

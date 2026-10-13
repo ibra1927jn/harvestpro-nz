@@ -169,6 +169,8 @@ export async function makeUser(
 
 async function deleteUserCascade(id: string): Promise<void> {
     // Lo que referencia al usuario sin ON DELETE CASCADE
+    await service.from('rejected_scans').delete().eq('reported_by', id)
+    await service.from('rejected_scans').delete().eq('picker_id', id)
     await service.from('bucket_records').delete().eq('scanned_by', id)
     await service.from('bucket_records').delete().eq('picker_id', id)
     await service.from('daily_attendance').delete().eq('picker_id', id)
@@ -197,6 +199,7 @@ export async function makeOrchard(
     createdIds.add(id)
     createdOrchards.add(id)
     onCleanup(async () => {
+        await service.from('rejected_scans').delete().eq('orchard_id', id)
         await service.from('bucket_records').delete().eq('orchard_id', id)
         await service.from('daily_attendance').delete().eq('orchard_id', id)
         await service.from('day_closures').delete().eq('orchard_id', id)
@@ -226,6 +229,7 @@ export async function makePicker(orchardId: string, opts: { status?: string } = 
     const id = data!.id as string
     createdIds.add(id)
     onCleanup(async () => {
+        await service.from('rejected_scans').delete().eq('picker_id', id)
         await service.from('bucket_records').delete().eq('picker_id', id)
         await service.from('daily_attendance').delete().eq('picker_id', id)
         await service.from('pickers').delete().eq('id', id)

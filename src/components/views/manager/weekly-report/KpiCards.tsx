@@ -21,7 +21,7 @@ const KpiCards: React.FC<{ cards: KpiCardData[] }> = ({ cards }) => (
             >
                 <div className="flex items-center gap-2 mb-2">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${card.iconBg} shadow-sm`}>
-                        <span className="material-symbols-outlined text-base">{card.icon}</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">{card.icon}</span>
                     </div>
                     <span className="text-[10px] text-text-sub uppercase font-bold tracking-wider">{card.label}</span>
                 </div>

@@ -30,7 +30,7 @@ const DashboardStatCard: React.FC<StatCardProps> = React.memo(({
                 {title}
             </span>
             <div className={`${iconBg} p-1.5 rounded-lg ${iconColor} transition-transform duration-300 group-hover:scale-110`}>
-                <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-[20px]">{icon}</span>
             </div>
         </div>
 
@@ -45,7 +45,7 @@ const DashboardStatCard: React.FC<StatCardProps> = React.memo(({
                 : 'text-red-600 bg-red-50'
                 }`}
             >
-                <span className="material-symbols-outlined text-[16px]">
+                <span aria-hidden="true" className="material-symbols-outlined text-[16px]">
                     {trend > 0 ? 'trending_up' : 'trending_down'}
                 </span>
                 <span>{trend > 0 ? '+' : ''}{trend}% vs yesterday</span>

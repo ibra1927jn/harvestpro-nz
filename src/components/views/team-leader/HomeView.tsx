@@ -1,3 +1,4 @@
+import { buttonLike } from '@/utils/pressable';
 import { useMemo } from 'react';
 import { useHarvestStore as useHarvest } from '@/stores/useHarvestStore';
 import { useAuth } from '@/context/AuthContext';
@@ -48,7 +49,7 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                 </div>
             )}
             {/* Header Section - Glassmorphic */}
-            <header className="sticky top-0 z-30 px-6 pt-12 pb-6 bg-white/70 backdrop-blur-xl border-b border-white/50 shadow-sm">
+            <div className="sticky top-0 z-30 px-6 pt-12 pb-6 bg-white/70 backdrop-blur-xl border-b border-white/50 shadow-sm">
                 <div className="flex justify-between items-start mb-6">
                     <div onClick={() => onNavigate && onNavigate('profile')} className="cursor-pointer group">
                         <h1 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 tracking-tight transition-all duration-300 group-hover:opacity-80">
@@ -59,7 +60,7 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                         </p>
                     </div>
                     <div
-                        onClick={() => onNavigate && onNavigate('profile')}
+                        {...buttonLike(() => onNavigate?.('profile'), 'Open my profile')}
                         className="size-12 rounded-full bg-gradient-to-tr from-primary/10 to-primary/5 flex items-center justify-center border border-primary/20 shadow-inner cursor-pointer hover:scale-105 transition-transform duration-300 ring-4 ring-white"
                     >
                         <span className="text-primary font-bold text-sm tracking-wider">
@@ -74,9 +75,9 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                         <KpiCard key={i} {...card} />
                     ))}
                 </div>
-            </header>
+            </div>
 
-            <main className="px-5 mt-6 space-y-6">
+            <div className="px-5 mt-6 space-y-6">
                 {/* 1. SAFETY MONITOR (REAL DATA) */}
                 <div
                     onClick={() => onNavigate && onNavigate('team')}
@@ -101,7 +102,7 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                     </div>
                     <div className={`relative z-10 size-12 rounded-full flex items-center justify-center shadow-inner ${safetyStatus === 'issue' ? 'bg-red-100 text-red-600 ring-4 ring-red-50' : 'bg-emerald-50 text-emerald-500 ring-4 ring-white'
                         }`}>
-                        <span className="material-symbols-outlined text-2xl">
+                        <span aria-hidden="true" className="material-symbols-outlined text-2xl">
                             {safetyStatus === 'issue' ? 'warning' : 'check_circle'}
                         </span>
                     </div>
@@ -143,7 +144,7 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                     <div className="flex justify-between items-center mb-4 px-1">
                         <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 tracking-tight">
                             <div className="p-1.5 bg-primary/10 rounded-lg text-primary flex items-center justify-center">
-                                <span className="material-symbols-outlined text-sm">group</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-sm">group</span>
                             </div>
                             Active Crew ({totalCrew})
                         </h3>
@@ -198,7 +199,7 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                         ))}
                     </div>
                 </section>
-            </main>
+            </div>
         </div>
     );
 };
@@ -221,7 +222,7 @@ const KpiCard = ({ label, value, icon, color }: KpiCardProps) => {
                 <div className="absolute -right-4 -top-4 size-16 bg-white opacity-10 rounded-full blur-xl"></div>
             )}
             
-            <span className={`material-symbols-outlined text-2xl mb-1.5 ${isPrimary ? 'text-white' : 'text-slate-400'}`}>
+            <span aria-hidden="true" className={`material-symbols-outlined text-2xl mb-1.5 ${isPrimary ? 'text-white' : 'text-slate-400'}`}>
                 {icon}
             </span>
             <span className="text-xl font-black tracking-tight mb-0.5">

@@ -37,7 +37,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
                     {t('auth.email')}
                 </label>
                 <div className="relative group">
-                    <span className={`material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-lg transition-all duration-300 ${emailFocused ? 'text-lilac scale-110' : 'text-lilac-glow/60'}`}>
+                    <span aria-hidden="true" className={`material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-lg transition-all duration-300 ${emailFocused ? 'text-lilac scale-110' : 'text-lilac-glow/60'}`}>
                         mail
                     </span>
                     <input
@@ -61,7 +61,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
                     {t('auth.password')}
                 </label>
                 <div className="relative group">
-                    <span className={`material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-lg transition-all duration-300 ${passwordFocused ? 'text-lilac scale-110' : 'text-lilac-glow/60'}`}>
+                    <span aria-hidden="true" className={`material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-lg transition-all duration-300 ${passwordFocused ? 'text-lilac scale-110' : 'text-lilac-glow/60'}`}>
                         lock
                     </span>
                     <input
@@ -74,12 +74,12 @@ const LoginForm: React.FC<LoginFormProps> = ({
                         className="w-full pl-12 pr-12 py-3.5 rounded-xl bg-white border-2 border-slate-200 focus:border-lilac focus:ring-4 focus:ring-lilac/10 text-slate-800 placeholder-slate-300 outline-none transition-all duration-300 font-medium"
                         required
                     />
-                    <button
+                    <button aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-lilac hover:scale-110 transition-all duration-200"
                     >
-                        <span className="material-symbols-outlined text-lg">{showPassword ? 'visibility_off' : 'visibility'}</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-lg">{showPassword ? 'visibility_off' : 'visibility'}</span>
                     </button>
                     {/* Animated underline on focus */}
                     <div className={`absolute bottom-0 left-1/2 h-[2px] bg-gradient-to-r from-lilac to-lilac-light rounded-full transition-all duration-500 ${passwordFocused ? 'w-[calc(100%-2rem)] -translate-x-1/2' : 'w-0 -translate-x-1/2'}`} />
@@ -108,7 +108,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
                     }`}
             >
                 <span className="inline-flex items-center gap-2">
-                    <span className={`material-symbols-outlined text-base transition-transform duration-300 ${isSubmitting ? 'animate-spin' : ''}`}>
+                    <span aria-hidden="true" className={`material-symbols-outlined text-base transition-transform duration-300 ${isSubmitting ? 'animate-spin' : ''}`}>
                         {isSubmitting ? 'progress_activity' : 'login'}
                     </span>
                     {isSubmitting ? t('auth.signing_in') : t('auth.sign_in')}

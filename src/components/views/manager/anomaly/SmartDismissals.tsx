@@ -24,14 +24,14 @@ const SmartDismissals: React.FC<SmartDismissalsProps> = ({ dismissed }) => {
             >
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-emerald-100 rounded-lg">
-                        <span className="material-symbols-outlined text-emerald-600">verified_user</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-emerald-600">verified_user</span>
                     </div>
                     <div className="text-left">
                         <h3 className="font-bold text-emerald-800 text-sm">Smart Dismissals</h3>
                         <p className="text-xs text-emerald-600">{dismissed.length} scenarios correctly ignored — the system understands your orchard</p>
                     </div>
                 </div>
-                <span className={`material-symbols-outlined text-emerald-500 transition-transform ${showDismissed ? 'rotate-180' : ''}`}>
+                <span aria-hidden="true" className={`material-symbols-outlined text-emerald-500 transition-transform ${showDismissed ? 'rotate-180' : ''}`}>
                     expand_more
                 </span>
             </button>
@@ -41,7 +41,7 @@ const SmartDismissals: React.FC<SmartDismissalsProps> = ({ dismissed }) => {
                     {dismissed.map((ex, i) => (
                         <div key={i} className="bg-white rounded-xl p-4 border border-emerald-100">
                             <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-emerald-500 text-lg mt-0.5 shrink-0">check_circle</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-emerald-500 text-lg mt-0.5 shrink-0">check_circle</span>
                                 <div>
                                     <p className="text-sm font-bold text-slate-700 mb-1">{ex.scenario}</p>
                                     <p className="text-xs text-slate-500">{ex.reason}</p>

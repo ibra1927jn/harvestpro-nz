@@ -39,7 +39,7 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
             )}
             <div className="flex flex-col md:flex-row gap-3">
                 <div className="relative flex-1">
-                    <span className="material-symbols-outlined text-base text-text-muted absolute left-3 top-1/2 -translate-y-1/2">search</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-base text-text-muted absolute left-3 top-1/2 -translate-y-1/2">search</span>
                     <input
                         type="text"
                         placeholder="Search users..."
@@ -67,7 +67,7 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                         <option value="logistics">Logistics</option>
                         <option value="admin">Admins</option>
                     </select>
-                    <span className="material-symbols-outlined text-sm text-text-muted absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm text-text-muted absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
                 </div>
             </div>
 
@@ -98,7 +98,7 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                                             : 'text-green-400 hover:text-green-600 hover:bg-green-50'
                                             }`}
                                     >
-                                        {user.is_active ? <span className="material-symbols-outlined text-base">person_off</span> : <span className="material-symbols-outlined text-base">person_add</span>}
+                                        {user.is_active ? <span aria-hidden="true" className="material-symbols-outlined text-base">person_off</span> : <span aria-hidden="true" className="material-symbols-outlined text-base">person_add</span>}
                                     </button>
                                     <select
                                         value={user.role}

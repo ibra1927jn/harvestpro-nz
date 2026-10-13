@@ -47,7 +47,7 @@ const InsightsView: React.FC = () => {
                             : 'text-text-sub hover:text-text-main'
                             }`}
                     >
-                        <span className="material-symbols-outlined text-lg">bar_chart</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-lg">bar_chart</span>
                         {t('insights.tabs.analytics')}
                     </button>
                     <button
@@ -57,7 +57,7 @@ const InsightsView: React.FC = () => {
                             : 'text-text-sub hover:text-text-main'
                             }`}
                     >
-                        <span className="material-symbols-outlined text-lg">summarize</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-lg">summarize</span>
                         {t('insights.tabs.report')}
                     </button>
                     <button
@@ -67,7 +67,7 @@ const InsightsView: React.FC = () => {
                             : 'text-text-sub hover:text-text-main'
                             }`}
                     >
-                        <span className="material-symbols-outlined text-lg">shield</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-lg">shield</span>
                         {t('insights.tabs.fraud')}
                     </button>
                 </div>

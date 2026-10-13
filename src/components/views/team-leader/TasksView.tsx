@@ -1,3 +1,4 @@
+import { buttonLike } from '@/utils/pressable';
 import React, { useState, useMemo } from 'react';
 import RowHistory from '@/components/common/row-history/RowHistory';
 import { useAuth } from '@/context/AuthContext';
@@ -96,7 +97,7 @@ const TasksView = () => {
                         <div className={`rounded-xl p-4 border shadow-sm relative overflow-hidden ${latestAlert.priority === 'urgent' ? 'border-primary/30 bg-primary/5' : 'border-warning/30 bg-warning/5'}`}>
                             <div className="flex items-start gap-3">
                                 <div className={`flex-shrink-0 size-8 rounded-full flex items-center justify-center mt-0.5 ${latestAlert.priority === 'urgent' ? 'bg-primary/20 text-primary' : 'bg-warning/20 text-warning'}`}>
-                                    <span className="material-symbols-outlined text-sm">campaign</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined text-sm">campaign</span>
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="text-text-main font-bold text-sm">{latestAlert.title}</h3>
@@ -110,14 +111,14 @@ const TasksView = () => {
                     <div>
                         <div className="flex justify-between items-center mb-3">
                             <h3 className="font-bold text-text-main text-lg flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary">format_list_bulleted</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-primary">format_list_bulleted</span>
                                 Active Rows
                             </h3>
                             <button
                                 onClick={() => setIsModalOpen(true)}
                                 className="text-primary-vibrant text-xs font-bold uppercase flex items-center gap-1 bg-white border border-border-light px-3 py-1.5 rounded-lg shadow-sm active:scale-95 transition-transform"
                             >
-                                <span className="material-symbols-outlined text-sm">add</span> Assign
+                                <span aria-hidden="true" className="material-symbols-outlined text-sm">add</span> Assign
                             </button>
                         </div>
 
@@ -156,8 +157,8 @@ const TasksView = () => {
                                 })}
                             </div>
                         ) : (
-                            <div onClick={() => setIsModalOpen(true)} className="text-center p-8 border-2 border-dashed border-border-light rounded-2xl bg-surface-white cursor-pointer hover:bg-slate-50 transition-colors group">
-                                <span className="material-symbols-outlined text-4xl text-text-sub mb-2 group-hover:scale-110 transition-transform">add_location_alt</span>
+                            <div {...buttonLike(() => setIsModalOpen(true))} className="text-center p-8 border-2 border-dashed border-border-light rounded-2xl bg-surface-white cursor-pointer hover:bg-slate-50 transition-colors group">
+                                <span aria-hidden="true" className="material-symbols-outlined text-4xl text-text-sub mb-2 group-hover:scale-110 transition-transform">add_location_alt</span>
                                 <p className="text-text-sub text-sm font-bold">No rows assigned.</p>
                                 <p className="text-xs text-primary-vibrant font-bold uppercase mt-1">Tap directly to start</p>
                             </div>

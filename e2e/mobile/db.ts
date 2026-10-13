@@ -53,6 +53,7 @@ export function bucketCount(pickerId: string): number {
 /** Borra el picker de prueba y todo lo que cuelga de él. */
 export function removePicker(pickerId: string): void {
   const id = lit(pickerId);
+  sql(`delete from public.rejected_scans where picker_id = ${id}`);
   sql(`delete from public.bucket_records where picker_id = ${id}`);
   sql(`delete from public.qc_inspections where picker_id = ${id}`);
   sql(`delete from public.quality_inspections where picker_id = ${id}`);
@@ -65,9 +66,21 @@ export function qcInspectionCount(pickerId: string): number {
   return Number(n);
 }
 
-/** Limpia restos de ejecuciones interrumpidas (pickers E2E Mobile*). */
+/**
+ * Limpia restos de ejecuciones interrumpidas (pickers E2E Mobile*).
+ * Solo los de hace más de 30 min: otra ejecución de la suite (otro worktree,
+ * misma BD) puede estar usando los suyos ahora mismo.
+ */
 export function removeLeftoverPickers(): void {
-  for (const id of sql(`select id from public.pickers where picker_id like 'E2EM%' and name like 'E2E Mobile %'`)) {
-    removePicker(id);
+  const old = sql(
+    `select id from public.pickers where picker_id like 'E2EM%' and name like 'E2E Mobile %'
+       and created_at < now() - interval '30 minutes'`
+  );
+  for (const id of old) {
+    try {
+      removePicker(id);
+    } catch {
+      // Un escaneo offline puede llegar justo después del borrado: se reintenta en la próxima ejecución
+    }
   }
 }

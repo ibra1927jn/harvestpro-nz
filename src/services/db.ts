@@ -12,6 +12,8 @@ export interface QueuedBucket {
   row_number?: number;
   bin_id?: string;
   failure_reason?: string;
+  /** Corrección (ms) ya sumada a timestamp por el desfase del reloj del móvil */
+  clock_skew_ms?: number;
 }
 
 export interface QueuedMessage {

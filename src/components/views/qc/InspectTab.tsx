@@ -26,25 +26,25 @@ const GRADE_CONFIG: Record<QualityGrade, GradeConfig> = {
         label: 'Grade A', sublabel: 'Export',
         color: 'text-emerald-700', bg: 'bg-emerald-50/50 hover:bg-emerald-50',
         border: 'border border-emerald-200/60 shadow-[0_4px_12px_rgba(16,185,129,0.08)]',
-        icon: <span className="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span>,
+        icon: <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span>,
     },
     B: {
         label: 'Grade B', sublabel: 'Domestic',
         color: 'text-blue-700', bg: 'bg-blue-50/50 hover:bg-blue-50',
         border: 'border border-blue-200/60 shadow-[0_4px_12px_rgba(59,130,246,0.08)]',
-        icon: <span className="material-symbols-outlined text-[20px] text-blue-500">check_circle</span>,
+        icon: <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-blue-500">check_circle</span>,
     },
     C: {
         label: 'Grade C', sublabel: 'Process',
         color: 'text-amber-700', bg: 'bg-amber-50/50 hover:bg-amber-50',
         border: 'border border-amber-200/60 shadow-[0_4px_12px_rgba(245,158,11,0.08)]',
-        icon: <span className="material-symbols-outlined text-[20px] text-amber-500">warning</span>,
+        icon: <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-amber-500">warning</span>,
     },
     reject: {
         label: 'Reject', sublabel: 'Discard',
         color: 'text-red-700', bg: 'bg-red-50/50 hover:bg-red-50',
         border: 'border border-red-200/60 shadow-[0_4px_12px_rgba(239,68,68,0.08)]',
-        icon: <span className="material-symbols-outlined text-[20px] text-red-500">cancel</span>,
+        icon: <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-red-500">cancel</span>,
     },
 };
 
@@ -103,7 +103,7 @@ export default function InspectTab({
             <div className="flex items-center justify-between bg-gradient-to-r from-orange-50/80 to-amber-50/80 backdrop-blur-md border border-orange-200/60 shadow-[0_4px_20px_rgb(249,115,22,0.05)] rounded-2xl p-4">
                 <div className="flex items-center gap-3">
                     <div className="size-10 rounded-xl bg-orange-100 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-[24px] text-orange-500">bolt</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-[24px] text-orange-500">bolt</span>
                     </div>
                     <div>
                         <p className="text-sm font-extrabold text-orange-900 tracking-tight">Turbo Mode</p>
@@ -122,14 +122,14 @@ export default function InspectTab({
             </div>
             {gradeError && (
                 <div role="alert" className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-base text-red-600">error</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-base text-red-600">error</span>
                     <span className="text-sm text-red-800">{gradeError}</span>
                 </div>
             )}
             {/* Success Toast */}
             {lastGrade && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-base text-green-600">check_circle</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-base text-green-600">check_circle</span>
                     <span className="text-sm text-green-800">
                         Logged <strong>Grade {lastGrade.grade}</strong> for {lastGrade.picker}
                     </span>
@@ -146,7 +146,7 @@ export default function InspectTab({
                 
                 <div className="p-5 space-y-4">
                     <div className="relative">
-                        <span className="material-symbols-outlined text-[20px] text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
                         <input
                             type="text"
                             placeholder="Search by name or ID..."
@@ -182,7 +182,7 @@ export default function InspectTab({
                                     </div>
                                 </div>
                                 {selectedPicker?.id === picker.id && (
-                                    <span className="material-symbols-outlined text-[24px] text-orange-500 drop-shadow-sm">check_circle</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined text-[24px] text-orange-500 drop-shadow-sm">check_circle</span>
                                 )}
                             </button>
                         ))}
@@ -231,7 +231,7 @@ export default function InspectTab({
                                     </div>
                                     {turboMode && selectedPicker && (
                                         <div className="size-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-                                            <span className="material-symbols-outlined text-[20px] text-slate-300">touch_app</span>
+                                            <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-slate-300">touch_app</span>
                                         </div>
                                     )}
                                 </button>
@@ -262,7 +262,7 @@ export default function InspectTab({
                         disabled={isCapturing}
                         className="w-full flex justify-center items-center gap-2 px-4 py-3.5 text-[12px] uppercase tracking-widest font-bold text-slate-600 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 hover:text-slate-800 transition-all shadow-sm disabled:opacity-50 active:scale-[0.98]"
                     >
-                        <span className="material-symbols-outlined text-[18px]">
+                        <span aria-hidden="true" className="material-symbols-outlined text-[18px]">
                             {isCapturing ? 'hourglass_empty' : 'photo_camera'}
                         </span>
                         {isCapturing ? 'Processing...' : 'Attach Visual Proof'}
@@ -280,7 +280,7 @@ export default function InspectTab({
                                 className="absolute -top-3 -right-3 size-8 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 hover:scale-110 transition-all active:scale-95"
                                 aria-label="Remove photo"
                             >
-                                <span className="material-symbols-outlined text-[16px]">close</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-[16px]">close</span>
                             </button>
                         </div>
                     )}

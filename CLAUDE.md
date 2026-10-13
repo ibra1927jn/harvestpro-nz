@@ -37,8 +37,8 @@ Version: 9.9.0
 - `src/schemas/` — Zod: zod.schemas.ts (boundary validation) + api.schemas.ts (Edge Function responses)
 - `src/types/` — app.types.ts + database.types.ts (auto-gen) + result.ts (Result<T>)
 - `src/config/` — env validation, sentry, analytics, queryClient, crop-profiles, nz-tax-rates
-- `src/context/` — AuthContext (session, refresh, MFA, privacy consent) + MessagingContext
-- `src/utils/` — format (NZD), regionCheck (data sovereignty)
+- `src/context/` — AuthContext (estado + signIn/signOut/switchOrchard; el resto en `context/auth/`: lifecycle, keep-alive del token, registro con whitelist, modales re-auth/privacidad) + MessagingContext
+- `src/utils/` — money (NZD), nzst (fechas/semanas NZ), csvParser, logger
 - `src/constants/` — nz-law.ts (compliance legal NZ)
 
 ### Supabase
@@ -56,9 +56,19 @@ Version: 9.9.0
 - Delta sync con 2-min buffer
 
 ### Tests
-- 365 test files (Vitest + Testing Library + fake-indexeddb)
-- ~3742 tests passing (14 files con failures por entorno CI)
-- 20 E2E specs (Playwright) en tests/e2e/
+- ~470 archivos de test Vitest en src/ (Testing Library + fake-indexeddb). Nunca la suite entera en local:
+  `npx vitest run <archivos> --pool=forks --maxWorkers=1` (Vitest 4: `--poolOptions` ya no existe).
+- TZ fija `Pacific/Auckland`, puesta en vitest.config*.ts antes de crear los workers.
+- Config local: threads, 2 workers. CI (vitest.config.ci.ts): forks, 1 worker, 5 shards.
+- Guards baratos (CI): `npm run test:assertions` (tests que no pueden fallar, incluye src/integration)
+  y `npm run test:mock-guard` (vi.mock que el setup dejaría sin efecto).
+- `src/integration/*supabase*` y `role-flows-sanity` usan el Supabase local real (se saltan sin
+  SUPABASE_SERVICE_ROLE_KEY).
+- Edge Functions: `npm run test:functions` (Deno, supabase/functions/tests/, necesita .env.local).
+- BD: `scripts/test-db-security.sh` (RLS, SECURITY DEFINER; supabase/tests/security/*.sql con ROLLBACK).
+- E2E Playwright: ~31 specs en e2e/ (`npm run test:e2e`) y 9 móviles en e2e/mobile
+  (`npm run test:e2e:mobile`, puerto 3000 o `MOBILE_PORT`; reutiliza un servidor ya levantado).
+- `npm run perf:budget` tras `vite build`: tamaño inicial por ruta, chunks prohibidos, precache SW.
 - Storybook para componentes UI
 
 ## Reglas del proyecto
@@ -70,7 +80,7 @@ Version: 9.9.0
 - Supabase RLS activo: NUNCA bypass de seguridad a nivel de row
 - NUNCA modificar migraciones existentes, solo crear nuevas
 - .env y .env.local NUNCA se commitean (hay .env.example como referencia)
-- Husky + lint-staged activo en pre-commit (lint + test)
+- Husky pre-commit: solo `npm run lint` (los tests van en CI)
 - Codigo en ingles, comentarios en espanol
 - Commits en ingles: tipo(scope): descripcion breve
 - Ver SECURITY_RULES.md para reglas de seguridad obligatorias

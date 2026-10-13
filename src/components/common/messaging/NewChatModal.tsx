@@ -1,7 +1,8 @@
 /**
  * NewChatModal — Create new DM or group conversation
  */
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { getAvatarColor, getRoleBadge } from './messagingHelpers';
 
 interface Props {
@@ -15,6 +16,9 @@ interface Props {
 const NewChatModal: React.FC<Props> = ({
     availableUsers, currentUserId, onClose, onStartDirect, onCreateGroup,
 }) => {
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useDialogA11y(dialogRef, { onClose });
+
     const [mode, setMode] = useState<'direct' | 'group'>('direct');
     const [groupName, setGroupName] = useState('');
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -35,13 +39,13 @@ const NewChatModal: React.FC<Props> = ({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" onClick={onClose}>
-            <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh] shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="New chat" className="bg-white rounded-3xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh] shadow-2xl" onClick={e => e.stopPropagation()}>
                 {/* Header */}
                 <header className="p-5 border-b border-slate-100">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2">
                             <div className="size-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-sm">
-                                <span className="material-symbols-outlined text-white text-lg">
+                                <span aria-hidden="true" className="material-symbols-outlined text-white text-lg">
                                     {mode === 'direct' ? 'person_add' : 'group_add'}
                                 </span>
                             </div>
@@ -54,17 +58,17 @@ const NewChatModal: React.FC<Props> = ({
                                 </p>
                             </div>
                         </div>
-                        <button onClick={onClose} className="size-9 flex items-center justify-center text-slate-300 hover:text-slate-500 hover:bg-slate-50 rounded-xl transition">
-                            <span className="material-symbols-outlined">close</span>
+                        <button aria-label="Close" onClick={onClose} className="size-9 flex items-center justify-center text-slate-300 hover:text-slate-500 hover:bg-slate-50 rounded-xl transition">
+                            <span aria-hidden="true" className="material-symbols-outlined">close</span>
                         </button>
                     </div>
                     {/* Mode Tabs */}
                     <div className="flex bg-slate-100 p-1 rounded-xl">
                         <button onClick={() => setMode('direct')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${mode === 'direct' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}>
-                            <span className="material-symbols-outlined text-sm">person</span>Direct
+                            <span aria-hidden="true" className="material-symbols-outlined text-sm">person</span>Direct
                         </button>
                         <button onClick={() => setMode('group')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${mode === 'group' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}>
-                            <span className="material-symbols-outlined text-sm">groups</span>Group
+                            <span aria-hidden="true" className="material-symbols-outlined text-sm">groups</span>Group
                         </button>
                     </div>
                 </header>
@@ -79,7 +83,7 @@ const NewChatModal: React.FC<Props> = ({
                         </div>
                     )}
                     <div className="relative mb-3">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg">search</span>
+                        <span aria-hidden="true" className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg">search</span>
                         <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search people..."
                             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm focus:outline-none focus:border-indigo-300 transition font-medium placeholder:text-slate-300" />
                     </div>
@@ -91,16 +95,16 @@ const NewChatModal: React.FC<Props> = ({
                                 <button key={p.id} onClick={() => { if (mode === 'direct') onStartDirect(p.id); else toggleSelection(p.id); }}
                                     className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left active:scale-[0.98] ${mode === 'group' && isSelected ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-transparent hover:bg-slate-50 hover:border-slate-100'}`}>
                                     <div className={`size-10 rounded-full bg-gradient-to-br ${getAvatarColor(p.name)} flex items-center justify-center font-bold text-white text-sm shadow-sm transition ${mode === 'group' && isSelected ? 'ring-2 ring-indigo-400 ring-offset-2' : ''}`}>
-                                        {mode === 'group' && isSelected ? <span className="material-symbols-outlined text-base">check</span> : p.name.substring(0, 2).toUpperCase()}
+                                        {mode === 'group' && isSelected ? <span aria-hidden="true" className="material-symbols-outlined text-base">check</span> : p.name.substring(0, 2).toUpperCase()}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className={`text-sm font-bold truncate ${mode === 'group' && isSelected ? 'text-indigo-700' : 'text-slate-800'}`}>{p.name}</p>
                                         <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${badge.bg}`}>
-                                            <span className="material-symbols-outlined text-[11px]">{badge.icon}</span>
+                                            <span aria-hidden="true" className="material-symbols-outlined text-[11px]">{badge.icon}</span>
                                             {p.role?.replace('_', ' ') || 'Picker'}
                                         </span>
                                     </div>
-                                    {mode === 'direct' && <span className="material-symbols-outlined text-slate-300 text-lg">arrow_forward_ios</span>}
+                                    {mode === 'direct' && <span aria-hidden="true" className="material-symbols-outlined text-slate-300 text-lg">arrow_forward_ios</span>}
                                 </button>
                             );
                         })}

@@ -24,7 +24,7 @@ const AnomalyCard: React.FC<AnomalyCardProps> = ({ anomaly, index, onViewProfile
                 <div className="flex justify-between items-start mb-4">
                     <div className="flex gap-3">
                         <div className={`p-3 ${config.bg} rounded-xl border border-slate-100`}>
-                            <span className={`material-symbols-outlined text-xl ${config.color}`}>
+                            <span aria-hidden="true" className={`material-symbols-outlined text-xl ${config.color}`}>
                                 {config.icon}
                             </span>
                         </div>
@@ -33,7 +33,7 @@ const AnomalyCard: React.FC<AnomalyCardProps> = ({ anomaly, index, onViewProfile
                                 {anomaly.pickerName}
                             </h4>
                             <p className="text-xs text-slate-400 font-mono mt-0.5 flex items-center gap-1">
-                                <span className="material-symbols-outlined text-xs">schedule</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-xs">schedule</span>
                                 {new Date(anomaly.timestamp).toLocaleTimeString([], { timeZone: 'Pacific/Auckland',
                                     hour: '2-digit',
                                     minute: '2-digit',
@@ -72,7 +72,7 @@ const AnomalyCard: React.FC<AnomalyCardProps> = ({ anomaly, index, onViewProfile
 
             <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs font-bold text-slate-400 group-hover:text-primary transition-colors">
                 <span>Inspect Profile & History</span>
-                <span className="material-symbols-outlined text-lg">chevron_right</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-lg">chevron_right</span>
             </div>
         </div>
     );

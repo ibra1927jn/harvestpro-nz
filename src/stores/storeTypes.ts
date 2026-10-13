@@ -31,6 +31,8 @@ export interface ScannedBucket {
     /** Rechazado por el servidor: no se reintenta (motivo en failure_reason) */
     failed?: boolean;
     failure_reason?: string;
+    /** Corrección (ms) ya sumada a timestamp por el desfase del reloj del móvil */
+    clock_skew_ms?: number;
 }
 
 export interface HarvestStats {
@@ -63,7 +65,11 @@ export interface BucketSlice {
     isScanning: boolean;
     lastScanTime: number | null;
     bucketRecords: BucketRecord[];
-    addBucket: (bucket: Omit<ScannedBucket, 'id' | 'synced' | 'failed' | 'failure_reason'>) => void;
+    /**
+     * Guarda un escaneo. La promesa se resuelve cuando ya está en IndexedDB
+     * (true) o si no se guardó (false): solo entonces se puede decir "Saved".
+     */
+    addBucket: (bucket: Omit<ScannedBucket, 'id' | 'synced' | 'failed' | 'failure_reason' | 'clock_skew_ms'>) => Promise<boolean>;
     markAsSynced: (id: string) => void;
     markAsFailed: (id: string, reason: string) => void;
     clearSynced: () => void;

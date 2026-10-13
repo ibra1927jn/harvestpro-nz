@@ -4,7 +4,8 @@
  * Uses React Portal to render at document root (no z-index battles).
  * Locks body scroll when open per pro-tip #4.
  */
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { createPortal } from 'react-dom';
 import { cn } from '@/utils/cn';
 
@@ -36,32 +37,24 @@ const Drawer: React.FC<DrawerProps> = ({
 }) => {
     const panelRef = useRef<HTMLDivElement>(null);
 
-    // Escape key close
-    const handleEscape = useCallback((e: KeyboardEvent) => {
-        if (e.key === 'Escape') onClose();
-    }, [onClose]);
+    // Foco dentro, Tab atrapado, Escape cierra y el foco vuelve al botón que lo abrió
+    useDialogA11y(panelRef, { onClose, enabled: isOpen });
 
-    // Lock body scroll & register escape listener
+    // Bloquear scroll del body mientras está abierto
     useEffect(() => {
         if (!isOpen) return;
         const originalOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
-        document.addEventListener('keydown', handleEscape);
-        panelRef.current?.focus();
-
         return () => {
             document.body.style.overflow = originalOverflow;
-            document.removeEventListener('keydown', handleEscape);
         };
-    }, [isOpen, handleEscape]);
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
     const drawer = (
         <div
             className="fixed inset-0 z-[200] flex justify-end"
-            aria-modal="true"
-            role="dialog"
         >
             {/* Backdrop */}
             <div
@@ -73,6 +66,9 @@ const Drawer: React.FC<DrawerProps> = ({
             <div
                 ref={panelRef}
                 tabIndex={-1}
+                role="dialog"
+                aria-modal="true"
+                aria-label={title ?? 'Panel'}
                 className={cn(
                     'relative w-full h-full bg-white shadow-2xl outline-none',
                     'animate-slide-in-right overflow-y-auto',
@@ -84,7 +80,7 @@ const Drawer: React.FC<DrawerProps> = ({
                 {title && (
                     <div className="sticky top-0 z-10 flex items-center gap-3 px-5 py-4 bg-white border-b border-slate-200">
                         {icon && (
-                            <span className="material-symbols-outlined text-indigo-600 text-xl">{icon}</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-indigo-600 text-xl">{icon}</span>
                         )}
                         <h2 className="text-lg font-bold text-slate-900 flex-1">{title}</h2>
                         <button
@@ -92,7 +88,7 @@ const Drawer: React.FC<DrawerProps> = ({
                             className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
                             aria-label="Close panel"
                         >
-                            <span className="material-symbols-outlined text-xl">close</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-xl">close</span>
                         </button>
                     </div>
                 )}

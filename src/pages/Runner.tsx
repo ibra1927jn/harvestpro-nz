@@ -132,6 +132,7 @@ const Runner = () => {
       {runner.toast && (
         <Toast
           message={runner.toast.message}
+          announcement={runner.toast.announcement}
           type={runner.toast.type}
           onClose={() => runner.setToast(null)}
         />

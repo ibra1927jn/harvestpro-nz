@@ -29,7 +29,7 @@ const PickerDrawerHistory: React.FC<PickerDrawerHistoryProps> = ({ history, isLo
     if (history === null) {
         return (
             <div className="flex flex-col items-center justify-center py-10 space-y-2">
-                <span className="material-symbols-outlined text-5xl text-slate-300">history</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-5xl text-slate-300">history</span>
                 <p className="text-sm text-text-muted">{t('panel.no_history')}</p>
             </div>
         );

@@ -11,7 +11,7 @@ const ProfileView = () => {
 
     return (
         <div className="bg-background-light min-h-screen pb-24">
-            <header className="sticky top-0 z-30 bg-surface-white/95 backdrop-blur-sm border-b border-border-light pb-3 pt-4 shadow-sm">
+            <div className="sticky top-0 z-30 bg-surface-white/95 backdrop-blur-sm border-b border-border-light pb-3 pt-4 shadow-sm">
                 <div className="flex items-center justify-between px-4 py-3">
                     <div className="flex items-center gap-3">
                         <div>
@@ -26,9 +26,9 @@ const ProfileView = () => {
                         <span className="text-xs font-semibold text-text-sub uppercase">Online</span>
                     </div>
                 </div>
-            </header>
+            </div>
 
-            <main className="px-4 mt-6 space-y-6">
+            <div className="px-4 mt-6 space-y-6">
                 {/* User Card */}
                 <div className="bg-surface-white rounded-xl p-5 border border-border-light shadow-sm flex items-start gap-4">
                     <div className="size-16 rounded-full bg-background-light flex items-center justify-center text-primary-vibrant text-2xl font-bold border border-border-light">
@@ -50,7 +50,7 @@ const ProfileView = () => {
                 {/* Day Configuration Settings (Mocked for now) */}
                 <div>
                     <h3 className="text-text-main font-bold text-sm uppercase tracking-wide mb-3 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-primary-vibrant text-lg">tune</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-primary-vibrant text-lg">tune</span>
                         Day Configuration
                     </h3>
                     <div className="bg-surface-white rounded-xl border border-border-light shadow-sm overflow-hidden p-5 space-y-5">
@@ -63,7 +63,7 @@ const ProfileView = () => {
                                     <option disabled>Switching Disabled</option>
                                 </select>
                                 <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-text-sub">
-                                    <span className="material-symbols-outlined">expand_more</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined">expand_more</span>
                                 </div>
                             </div>
                         </div>
@@ -98,7 +98,7 @@ const ProfileView = () => {
                 {/* Actions */}
                 <div className="space-y-3">
                     <button className="w-full bg-surface-white border-2 border-primary-vibrant/20 hover:border-primary-vibrant text-primary-vibrant font-bold py-3.5 px-4 rounded-xl shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                        <span className="material-symbols-outlined">flag</span>
+                        <span aria-hidden="true" className="material-symbols-outlined">flag</span>
                         End of Day Report
                     </button>
 
@@ -106,7 +106,7 @@ const ProfileView = () => {
                         onClick={logout}
                         className="w-full bg-slate-900 hover:bg-black text-white font-bold py-3.5 px-4 rounded-xl shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                     >
-                        <span className="material-symbols-outlined">logout</span>
+                        <span aria-hidden="true" className="material-symbols-outlined">logout</span>
                         Sign Out
                     </button>
                 </div>
@@ -114,7 +114,7 @@ const ProfileView = () => {
                 <p className="text-center text-[10px] text-text-sub font-mono mt-4">
                     HarvestPro NZ v1.2.0 • Build 2024
                 </p>
-            </main>
+            </div>
         </div>
     );
 };

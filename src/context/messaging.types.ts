@@ -21,6 +21,10 @@ export interface DBMessage {
     read_by: string[];
     created_at: string;
     orchard_id?: string;
+    /** Solo mensajes propios que aún no están en el servidor (bandeja de salida) */
+    delivery?: 'pending' | 'failed';
+    /** Motivo del rechazo cuando delivery = 'failed' */
+    failure_reason?: string;
 }
 
 export interface ChatGroup {
@@ -79,8 +83,10 @@ export interface MessagingContextType extends MessagingState {
     createChatGroup: (name: string, memberIds: string[]) => Promise<ChatGroup | null>;
     /** Load all chat groups for current user */
     loadChatGroups: () => Promise<void>;
-    /** Load all messages in a conversation */
+    /** Load all messages in a conversation (incl. own messages not sent yet, marked) */
     loadConversation: (conversationId: string) => Promise<DBMessage[]>;
+    /** Reintentar un mensaje propio que no se pudo enviar (mismo id: nunca duplica) */
+    retryMessage: (messageId: string) => Promise<void>;
     /** Refresh broadcasts and conversations from server */
     refreshMessages: () => Promise<void>;
     /** Set active orchard ID for filtering */

@@ -73,18 +73,18 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-30 glass-header">
-      <div className="flex items-center px-4 py-3 justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-y-2 px-4 py-3 justify-between">
+        <div className="flex items-center gap-3 min-w-0">
           {/* Logo mark */}
           <div className="size-10 rounded-xl bg-primary shadow-md shadow-primary/20 flex items-center justify-center">
-            <span className="material-symbols-outlined text-white text-[22px]">agriculture</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-white text-[22px]">agriculture</span>
           </div>
           <div>
             <h1 className="text-text-main text-lg font-bold tracking-tight">{title}</h1>
             <p className="text-xs text-text-muted">{subtitle}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {/* Multi-orchard switcher — only visible with 2+ orchards */}
           <OrchardSwitcher />
           {/* Theme toggle */}
@@ -100,7 +100,7 @@ export const Header: React.FC<HeaderProps> = ({
                 unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'
               }
             >
-              <span className="material-symbols-outlined text-[20px]">notifications</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-[20px]">notifications</span>
               {unreadCount > 0 ? (
                 <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                   {unreadCount > 99 ? '99+' : unreadCount}
@@ -141,7 +141,7 @@ export const Header: React.FC<HeaderProps> = ({
             title="Sign Out"
             aria-label={signingOut ? 'Signing out...' : 'Sign out'}
           >
-            <span className="material-symbols-outlined text-[20px]">
+            <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
               {signingOut ? 'hourglass_empty' : 'logout'}
             </span>
           </button>

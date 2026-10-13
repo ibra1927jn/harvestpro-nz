@@ -81,7 +81,7 @@ const PerformanceFocus: React.FC<PerformanceFocusProps> = ({
             {/* Top Performers */}
             <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100 dash-card-enter anim-delay" style={{ '--delay': '300ms' } as React.CSSProperties}>
                 <h4 className="text-sm font-bold text-emerald-800 mb-3 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-base">trophy</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-base">trophy</span>
                     {t('dashboard.perf.top_today').replace('{n}', String(topPerformers.length))}
                 </h4>
                 {topPerformers.length > 0 ? (
@@ -110,7 +110,7 @@ const PerformanceFocus: React.FC<PerformanceFocusProps> = ({
             {/* Needs Attention */}
             <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100 dash-card-enter anim-delay" style={{ '--delay': '400ms' } as React.CSSProperties}>
                 <h4 className="text-sm font-bold text-amber-800 mb-3 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-base">help</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-base">help</span>
                     {t('dashboard.perf.below_avg').replace('{n}', String(avgBuckets))}
                 </h4>
                 {needsAttention.length > 0 ? (

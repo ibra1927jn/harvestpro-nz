@@ -101,8 +101,8 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
             <div className="p-6 max-h-[85vh] overflow-y-auto">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-black text-text-main">Add New Picker</h3>
-                    <button onClick={onClose} className="text-text-muted hover:text-text-main transition-colors">
-                        <span className="material-symbols-outlined">close</span>
+                    <button aria-label="Close" onClick={onClose} className="text-text-muted hover:text-text-main transition-colors">
+                        <span aria-hidden="true" className="material-symbols-outlined">close</span>
                     </button>
                 </div>
                 <div className="space-y-4">
@@ -154,7 +154,7 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
                     <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
-                                <span className="material-symbols-outlined">health_and_safety</span>
+                                <span aria-hidden="true" className="material-symbols-outlined">health_and_safety</span>
                             </div>
                             <div>
                                 <h3 className="font-black text-text-main text-sm">Safety Induction</h3>
@@ -164,7 +164,7 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
 
                         <label className="flex items-center gap-3 p-4 bg-white rounded-xl border border-orange-200 cursor-pointer hover:border-orange-400 transition-all select-none group">
                             <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${allSafetyChecksPassed ? 'bg-warning border-warning' : 'border-slate-300 group-hover:border-orange-300'}`}>
-                                {allSafetyChecksPassed && <span className="material-symbols-outlined text-white text-sm font-bold">check</span>}
+                                {allSafetyChecksPassed && <span aria-hidden="true" className="material-symbols-outlined text-white text-sm font-bold">check</span>}
                             </div>
                             <input
                                 type="checkbox"

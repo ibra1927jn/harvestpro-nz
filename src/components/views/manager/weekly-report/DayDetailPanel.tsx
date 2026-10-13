@@ -21,17 +21,17 @@ const DayDetailPanel: React.FC<DayDetailPanelProps> = ({ meta, onClose }) => {
 
     return (
         <div className="relative bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-slate-200 p-5 animate-fade-in shadow-sm">
-            <button
+            <button aria-label="Close"
                 onClick={onClose}
                 className="absolute top-3 right-3 w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
             >
-                <span className="material-symbols-outlined text-sm text-slate-500">close</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-sm text-slate-500">close</span>
             </button>
 
             {/* Header */}
             <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-base text-indigo-500">calendar_today</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-base text-indigo-500">calendar_today</span>
                 </div>
                 <div>
                     <h4 className="font-bold text-slate-800">
@@ -57,7 +57,7 @@ const DayDetailPanel: React.FC<DayDetailPanelProps> = ({ meta, onClose }) => {
             {meta.teams && meta.teams.length > 0 && (
                 <div>
                     <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">groups</span> Teams on Site
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm">groups</span> Teams on Site
                     </h5>
                     <div className="space-y-2">
                         {meta.teams.map((team, idx) => {

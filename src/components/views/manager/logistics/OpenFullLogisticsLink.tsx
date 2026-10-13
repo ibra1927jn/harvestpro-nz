@@ -24,7 +24,7 @@ const OpenFullLogisticsLink: React.FC<OpenFullLogisticsLinkProps> = ({ className
       onClick={handleClick}
       className={`text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center justify-center gap-1 py-2 underline-offset-2 hover:underline ${className}`}
     >
-      <span className="material-symbols-outlined text-base">open_in_new</span>
+      <span aria-hidden="true" className="material-symbols-outlined text-base">open_in_new</span>
       {t('logistics.full_view')}
     </button>
   );

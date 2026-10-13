@@ -53,7 +53,7 @@ export default function PredictionsCard({ setActiveTab }: PredictionsCardProps) 
     <div className="bg-white rounded-2xl p-5 border border-border-light shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-bold text-text-main flex items-center gap-2">
-          <span className="material-symbols-outlined text-indigo-500">analytics</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-indigo-500">analytics</span>
           {t('dashboard.predictions.title')}
         </h3>
         <div className="flex items-center gap-2">
@@ -71,7 +71,7 @@ export default function PredictionsCard({ setActiveTab }: PredictionsCardProps) 
             className="w-7 h-7 rounded-full bg-orange-100 hover:bg-orange-200 flex items-center justify-center transition-colors"
             aria-label="View Insights & Analytics"
           >
-            <span className="material-symbols-outlined text-orange-500 text-sm">arrow_forward</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-orange-500 text-sm">arrow_forward</span>
           </button>
         </div>
       </div>

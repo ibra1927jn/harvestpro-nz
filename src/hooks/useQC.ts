@@ -4,6 +4,7 @@
  * Extracts inspection loading, grade submission, and photo upload logic
  * from QualityControl.tsx following the usePayroll pattern.
  */
+import { announce } from '@/services/announcer';
 import { useState, useCallback } from 'react';
 import { qcService, QCInspection, GradeDistribution } from '@/services/qc.service';
 import { useHarvestStore } from '@/stores/useHarvestStore';
@@ -112,12 +113,14 @@ export function useQC(): UseQCResult {
 
       if (result) {
         setLastGrade({ grade, picker: selectedPicker.name });
+        announce(`Logged Grade ${grade === 'reject' ? 'Reject' : grade} for ${selectedPicker.name}.`);
         setNotes('');
         await loadInspections();
         setTimeout(() => setLastGrade(null), 3000);
       } else {
         // Antes no se avisaba y parecía guardado
         setGradeError(`Inspection for ${selectedPicker.name} was NOT saved. Try again.`);
+        announce(`Inspection for ${selectedPicker.name} was not saved. Try again.`, 'assertive');
       }
 
       setIsSubmitting(false);

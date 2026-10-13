@@ -73,7 +73,7 @@ export default function MPIExportView() {
   return (
     <div className="p-4 space-y-4 max-w-2xl mx-auto">
       <h2 className="text-xl font-bold text-text-main flex items-center gap-2">
-        <span className="material-symbols-outlined text-emerald-600">verified</span>
+        <span aria-hidden="true" className="material-symbols-outlined text-emerald-600">verified</span>
         MPI Export Compliance
       </h2>
 
@@ -145,7 +145,7 @@ export default function MPIExportView() {
           disabled={exporting}
           className="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          <span className="material-symbols-outlined text-lg">
+          <span aria-hidden="true" className="material-symbols-outlined text-lg">
             {exporting ? 'hourglass_empty' : 'file_export'}
           </span>
           {exporting ? 'Generating...' : 'Generate MPI Report'}
@@ -181,7 +181,7 @@ export default function MPIExportView() {
             onClick={handleDownloadCSV}
             className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
           >
-            <span className="material-symbols-outlined text-lg">download</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-lg">download</span>
             Download CSV
           </button>
         </div>

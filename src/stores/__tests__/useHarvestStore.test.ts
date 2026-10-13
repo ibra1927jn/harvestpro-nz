@@ -126,33 +126,35 @@ describe('useHarvestStore - Phase 9 Validations', () => {
     });
 
     describe('addBucket - Timestamp Validation', () => {
-        it('rejects bucket if clock skew > 5 minutes', () => {
+        it('a phone clock 10 min behind corrects the scan time instead of dropping the bucket', () => {
+            // Antes: la cubeta se descartaba sin avisar (y el runner veía "Saved")
             const { result } = renderHook(() => useHarvestStore());
 
-            // Setup checked-in picker with clock skew
             act(() => {
                 result.current.crew = [createMockPicker({
                     id: 'picker-004',
                     name: 'Skew Picker',
                     checked_in_today: true,
                 })];
-                result.current.clockSkew = 10 * 60 * 1000; // 10 minutes skew
+                result.current.clockSkew = 10 * 60 * 1000; // el servidor va 10 min por delante
             });
 
             const initialBucketCount = result.current.buckets.length;
-
-            // Attempt to add bucket
+            const phoneTime = '2026-10-13T10:00:00+13:00';
             act(() => {
-                result.current.addBucket({
+                void result.current.addBucket({
                     picker_id: 'picker-004',
                     orchard_id: 'orchard-001',
                     quality_grade: 'A',
-                    timestamp: new Date().toISOString(),
+                    timestamp: phoneTime,
                 });
             });
 
-            // Bucket should NOT be added
-            expect(result.current.buckets.length).toBe(initialBucketCount);
+            expect(result.current.buckets.length).toBe(initialBucketCount + 1);
+            const added = result.current.buckets[0];
+            expect(Date.parse(added.timestamp) - Date.parse(phoneTime)).toBe(10 * 60 * 1000);
+            expect(added.timestamp).toMatch(/\+13:00$/);
+            expect(added.clock_skew_ms).toBe(10 * 60 * 1000);
         });
 
         it('accepts bucket if clock skew < 5 minutes', () => {

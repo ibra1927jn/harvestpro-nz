@@ -86,9 +86,9 @@ describe('Drawer', () => {
                 <p>Content</p>
             </Drawer>,
         );
-        // Backdrop is the first child div with bg-black class
+        // El backdrop es hermano del panel (role=dialog), no parte del diálogo
         const dialog = screen.getByRole('dialog');
-        const backdrop = dialog.querySelector('.bg-black\\/40');
+        const backdrop = dialog.parentElement?.querySelector('.bg-black\\/40');
         expect(backdrop).toBeTruthy();
         fireEvent.click(backdrop!);
         expect(onClose).toHaveBeenCalledOnce();

@@ -1,3 +1,4 @@
+import { activateOnKey } from '@/utils/pressable';
 import React, { useState, useMemo } from 'react';
 import { useHarvestStore as useHarvest } from '@/stores/useHarvestStore';
 import { Picker } from '@/types';
@@ -47,7 +48,7 @@ const TeamView = () => {
 
     return (
         <div className="relative">
-            <header className="sticky top-0 z-30 bg-white/70 backdrop-blur-xl border-b border-white/50 pb-3 pt-4 shadow-[0_4px_30px_-5px_rgba(0,0,0,0.05)]">
+            <div className="sticky top-0 z-30 bg-white/70 backdrop-blur-xl border-b border-white/50 pb-3 pt-4 shadow-[0_4px_30px_-5px_rgba(0,0,0,0.05)]">
                 <div className="flex items-center justify-between px-5 py-3">
                     <div className="flex items-center gap-3">
                         <div>
@@ -82,13 +83,13 @@ const TeamView = () => {
                         <span className="text-amber-600 text-xl font-black font-mono tracking-tight">{pendingCrew}</span>
                     </div>
                 </div>
-            </header>
+            </div>
 
-            <main className="px-5 mt-6 space-y-3 pb-24">
+            <div className="px-5 mt-6 space-y-3 pb-24">
                 {displayedCrew.length === 0 ? (
                     <div className="text-center py-12 opacity-60">
                         <div className="mx-auto size-16 bg-slate-50 rounded-2xl shadow-inner border border-slate-100 flex items-center justify-center mb-4">
-                            <span className="material-symbols-outlined text-[32px] text-slate-300">group_off</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-[32px] text-slate-300">group_off</span>
                         </div>
                         <p className="text-sm font-extrabold text-slate-500 tracking-tight">No active pickers found.</p>
                         {!showInactive && <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-2">Check "History" to see archived crew.</p>}
@@ -98,6 +99,8 @@ const TeamView = () => {
                         <div
                             key={picker.id}
                             onClick={() => setSelectedPicker(picker)}
+                            tabIndex={0}
+                            onKeyDown={activateOnKey(() => setSelectedPicker(picker))}
                             className={`bg-white/80 backdrop-blur-md rounded-2xl p-5 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden group hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:bg-white cursor-pointer transition-all duration-300 active:scale-[0.99] ${picker.status === 'inactive' ? 'opacity-60 grayscale' : ''}`}
                         >
                             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-50"></div>
@@ -110,7 +113,7 @@ const TeamView = () => {
                                         <div className="flex items-center gap-1.5">
                                             <h3 className="text-slate-800 font-extrabold text-base tracking-tight flex items-center gap-1.5 flex-wrap">{picker.name}<ElsewhereBadge person={picker} /></h3>
                                             {(picker.total_buckets_today || 0) > 20 &&
-                                                <span className="material-symbols-outlined text-amber-500 text-[16px] fill-current">star</span>
+                                                <span aria-hidden="true" className="material-symbols-outlined text-amber-500 text-[16px] fill-current">star</span>
                                             }
                                             {picker.status === 'inactive' &&
                                                 <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-lg uppercase font-bold tracking-widest ml-2 border border-slate-200">Archived</span>
@@ -135,12 +138,12 @@ const TeamView = () => {
                                         <span className="block text-2xl font-black text-slate-800 leading-none tracking-tight">{picker.total_buckets_today || 0}</span>
                                         <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 block">Buckets</span>
                                     </div>
-                                    <button
+                                    <button aria-label={`Delete or archive ${picker.name}`}
                                         onClick={(e) => handleDelete(e, picker.id, picker.name)}
                                         className="size-8 rounded-xl bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 active:scale-95 transition-all border border-red-100/50"
                                         title="Delete/Archive Picker"
                                     >
-                                        <span className="material-symbols-outlined text-base">delete</span>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-base">delete</span>
                                     </button>
                                 </div>
                             </div>
@@ -184,12 +187,12 @@ const TeamView = () => {
                             onClick={() => setIsAddModalOpen(true)}
                             className="w-full bg-primary hover:opacity-90 text-white text-sm font-black uppercase tracking-widest py-4 rounded-2xl shadow-[0_10px_30px_rgba(255,31,61,0.3)] flex items-center justify-center gap-2.5 active:scale-[0.98] transition-all border border-white/10"
                         >
-                            <span className="material-symbols-outlined text-[22px]">person_add</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-[22px]">person_add</span>
                             Add New Picker
                         </button>
                     </div>
                 </div>
-            </main>
+            </div>
 
             {isAddModalOpen && (
                 <AddPickerModal

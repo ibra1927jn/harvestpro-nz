@@ -20,7 +20,7 @@ const PwaInstallBanner: React.FC = () => {
             <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 flex items-center gap-3 max-w-lg mx-auto">
                 {/* Icon */}
                 <div className="size-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center flex-shrink-0">
-                    <span className="material-symbols-outlined text-white text-2xl">download</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-white text-2xl">download</span>
                 </div>
 
                 {/* Content */}
@@ -36,7 +36,7 @@ const PwaInstallBanner: React.FC = () => {
                         className="text-slate-400 hover:text-slate-600 p-1 transition-colors"
                         aria-label="Dismiss install banner"
                     >
-                        <span className="material-symbols-outlined text-[20px]">close</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">close</span>
                     </button>
                     <button
                         onClick={promptInstall}

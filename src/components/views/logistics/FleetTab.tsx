@@ -91,7 +91,7 @@ const FleetTab: React.FC<FleetTabProps> = ({ tractors, onUpdateTractor, readOnly
                             >
                                 <span>{zone}</span>
                                 {tractorsInZone.length > 0 && (
-                                    <span className="material-symbols-outlined text-sm mt-0.5">agriculture</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined text-sm mt-0.5">agriculture</span>
                                 )}
                             </div>
                         );
@@ -108,7 +108,7 @@ const FleetTab: React.FC<FleetTabProps> = ({ tractors, onUpdateTractor, readOnly
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-3">
                                     <div className={`size-10 rounded-lg ${s.bg} flex items-center justify-center`}>
-                                        <span className={`material-symbols-outlined ${s.text}`}>agriculture</span>
+                                        <span aria-hidden="true" className={`material-symbols-outlined ${s.text}`}>agriculture</span>
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-text-primary text-sm">{tractor.name}</h4>
@@ -134,7 +134,7 @@ const FleetTab: React.FC<FleetTabProps> = ({ tractors, onUpdateTractor, readOnly
                             </div>
                             <div className="flex items-center gap-4 text-xs text-text-secondary">
                                 <span className={`flex items-center gap-1 font-medium ${LOAD_COLORS[tractor.load_status] || 'text-text-muted'}`}>
-                                    <span className="material-symbols-outlined text-xs">inventory_2</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined text-xs">inventory_2</span>
                                     {tractor.bins_loaded}/{tractor.max_capacity} bins — {tractor.load_status}
                                 </span>
                                 <span className="ml-auto text-text-muted">

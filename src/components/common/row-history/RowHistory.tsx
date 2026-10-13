@@ -49,7 +49,7 @@ export default function RowHistory({ teamLeaderId, title = 'Row history' }: RowH
         <section className="rounded-2xl border border-border-light bg-white p-4" data-testid="row-history">
             <div className="mb-3 flex items-center justify-between">
                 <h3 className="flex items-center gap-2 text-sm font-black text-text-main">
-                    <span className="material-symbols-outlined text-base">route</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-base">route</span>
                     {title}
                 </h3>
                 <div className="flex gap-1 text-xs">

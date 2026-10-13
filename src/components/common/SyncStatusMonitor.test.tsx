@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
     getMaxRetryCount: vi.fn().mockResolvedValue(0),
     getLastSyncTime: vi.fn().mockResolvedValue(null),
     processQueue: vi.fn(),
+    getDeadLetters: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('@/utils/logger', () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
@@ -34,6 +35,7 @@ vi.mock('../../services/sync.service', () => ({
         processQueue: mocks.processQueue,
         getMaxRetryCount: mocks.getMaxRetryCount,
         getLastSyncTime: mocks.getLastSyncTime,
+        getDeadLetters: mocks.getDeadLetters,
     },
 }));
 vi.mock('../../hooks/useNetworkStatus', () => ({
@@ -45,6 +47,7 @@ vi.mock('../../hooks/useNetworkStatus', () => ({
 }));
 
 import SyncStatusMonitor from './SyncStatusMonitor';
+import { subscribeAnnouncer, resetAnnouncerForTests } from '../../services/announcer';
 
 describe('SyncStatusMonitor', () => {
     beforeEach(() => {
@@ -53,6 +56,20 @@ describe('SyncStatusMonitor', () => {
         mocks.wasOffline = false;
         mocks.buckets = [];
         mocks.getPendingCount.mockResolvedValue(0);
+        mocks.getDeadLetters.mockResolvedValue([]);
+    });
+
+    it('shows changes that could not be sent (dead letter queue) with type and reason', async () => {
+        // Antes la cola de errores no se enseñaba en ninguna pantalla
+        mocks.getDeadLetters.mockResolvedValue([
+            { id: 'q1', type: 'UNLINK', failureReason: 'validation: max retries exceeded', movedAt: Date.parse('2026-10-13T01:00:00Z') },
+            { id: 'q2', type: 'BREAK_LOG', failureReason: 'unknown_type: BREAK_LOG', movedAt: Date.parse('2026-10-13T00:00:00Z') },
+        ]);
+        render(<SyncStatusMonitor />);
+        expect(await screen.findByText(/2 changes could not be sent — kept on this device/)).toBeInTheDocument();
+        act(() => { screen.getByRole('button').click(); });
+        expect(screen.getByText(/UNLINK — validation: max retries exceeded/)).toBeInTheDocument();
+        expect(screen.getByText(/BREAK_LOG — unknown_type: BREAK_LOG/)).toBeInTheDocument();
     });
 
     it('renders nothing when online and no pending items', () => {
@@ -86,5 +103,20 @@ describe('SyncStatusMonitor', () => {
         const { container } = render(<SyncStatusMonitor />);
         const icon = container.querySelector('.material-symbols-outlined');
         expect(icon?.textContent).toBe('wifi_off');
+    });
+
+    it('tells a screen reader user when the signal drops and comes back', () => {
+        resetAnnouncerForTests();
+        const heard: string[] = [];
+        const off = subscribeAnnouncer(m => heard.push(m));
+        const { rerender } = render(<SyncStatusMonitor />);
+        expect(heard).toEqual([]);
+        mocks.isOnline = false;
+        rerender(<SyncStatusMonitor />);
+        expect(heard[0]).toMatch(/^No signal\. Scans are saved on this phone/);
+        mocks.isOnline = true;
+        rerender(<SyncStatusMonitor />);
+        off();
+        expect(heard[1]).toMatch(/^Back online/);
     });
 });

@@ -40,8 +40,8 @@ const ActivityHistoryView: React.FC<ActivityHistoryViewProps> = React.memo(({
     return (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-md p-5">
             <div className="flex items-center gap-2 mb-4">
-                <button onClick={onBack} className="text-slate-400 hover:text-slate-600 transition-colors">
-                    <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                <button aria-label="Back" onClick={onBack} className="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span aria-hidden="true" className="material-symbols-outlined text-[20px]">arrow_back</span>
                 </button>
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{sectionTitle}</p>
             </div>
@@ -108,7 +108,7 @@ ActivityHistoryView.displayName = 'ActivityHistoryView';
 /* ── Tiny helpers ── */
 const HistoryRow: React.FC<{ icon: string; label: string; value: string }> = ({ icon, label, value }) => (
     <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg">
-        <span className="material-symbols-outlined text-slate-400 text-[18px]">{icon}</span>
+        <span aria-hidden="true" className="material-symbols-outlined text-slate-400 text-[18px]">{icon}</span>
         <div className="flex-1">
             <p className="text-sm font-medium text-slate-700">{label}</p>
             <p className="text-[11px] text-slate-500">{value}</p>
@@ -118,7 +118,7 @@ const HistoryRow: React.FC<{ icon: string; label: string; value: string }> = ({ 
 
 const EmptyHistory: React.FC<{ message: string; sub?: string; icon?: string }> = ({ message, sub, icon = 'inbox' }) => (
     <div className="text-center py-8">
-        <span className="material-symbols-outlined text-slate-300 text-4xl mb-2">{icon}</span>
+        <span aria-hidden="true" className="material-symbols-outlined text-slate-300 text-4xl mb-2">{icon}</span>
         <p className="text-slate-500 font-medium">{message}</p>
         {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
     </div>

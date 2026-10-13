@@ -114,7 +114,7 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
-            <span className="material-symbols-outlined text-xl text-amber-600">schedule</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-xl text-amber-600">schedule</span>
           </div>
           <div>
             <h2 className="text-lg font-bold text-text-main">Timesheet Editor</h2>
@@ -124,7 +124,7 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
 
         {/* Date Picker */}
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-base text-text-muted">
+          <span aria-hidden="true" className="material-symbols-outlined text-base text-text-muted">
             calendar_today
           </span>
           <input
@@ -133,6 +133,7 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
             onChange={e => setSelectedDate(e.target.value)}
             max={todayNZST()}
             title="Select date"
+            aria-label="Timesheet date"
             className="px-3 py-2 border border-border-light rounded-xl text-sm font-medium text-text-sub bg-white focus:ring-2 focus:ring-amber-500 outline-none"
           />
         </div>
@@ -141,7 +142,7 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
       {/* Success Banner */}
       {successMsg && (
         <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-          <span className="material-symbols-outlined text-lg text-green-600">check_circle</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-lg text-green-600">check_circle</span>
           <span className="text-sm font-medium text-green-700">{successMsg}</span>
         </div>
       )}
@@ -149,7 +150,7 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
       {/* Loading */}
       {loading && (
         <div className="flex justify-center py-12">
-          <span className="material-symbols-outlined text-3xl text-text-muted animate-spin">
+          <span aria-hidden="true" className="material-symbols-outlined text-3xl text-text-muted animate-spin">
             progress_activity
           </span>
         </div>
@@ -158,7 +159,7 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
       {/* Empty State */}
       {!loading && records.length === 0 && (
         <div className="text-center py-12 bg-white rounded-xl border border-border-light">
-          <span className="material-symbols-outlined text-5xl mx-auto text-slate-300 mb-4">
+          <span aria-hidden="true" className="material-symbols-outlined text-5xl mx-auto text-slate-300 mb-4">
             schedule
           </span>
           <p className="text-text-muted font-medium">No attendance records for {selectedDate}</p>
@@ -220,9 +221,9 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
             className="bg-primary text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-primary/90 transition-all flex items-center gap-2 shadow-sm disabled:opacity-50"
           >
             {generatingTimesheet ? (
-              <span className="material-symbols-outlined text-lg animate-spin">progress_activity</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-lg animate-spin">progress_activity</span>
             ) : (
-              <span className="material-symbols-outlined text-lg">summarize</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-lg">summarize</span>
             )}
             Generate Complete Timesheet
           </button>
@@ -235,7 +236,7 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
       {/* Info Box */}
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
         <div className="flex items-start gap-3">
-          <span className="material-symbols-outlined text-lg text-amber-600 mt-0.5">warning</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-lg text-amber-600 mt-0.5">warning</span>
           <div>
             <p className="text-sm font-medium text-amber-800">Audit Compliance</p>
             <p className="text-xs text-amber-700 mt-1">

@@ -42,7 +42,7 @@ const HeroPanel: React.FC = () => {
                     <div className="relative">
                         <div className="absolute -inset-2 rounded-2xl border border-lilac-glow/20 animate-ping opacity-40" style={{ animationDuration: '3s' }} />
                         <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center border border-lilac-glow/30 relative z-10">
-                            <span className="material-symbols-outlined text-white text-2xl">agriculture</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-white text-2xl">agriculture</span>
                         </div>
                     </div>
                     <div>
@@ -95,7 +95,7 @@ const HeroPanel: React.FC = () => {
                         { icon: 'verified', label: 'NZ Compliant', color: 'text-lilac-light', delay: '0.3s' },
                     ].map((badge) => (
                         <div key={badge.icon} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-lilac/20 backdrop-blur-sm hover:bg-white/10 hover:border-lilac/40 transition-all duration-300 animate-slide-up" style={{ animationDelay: badge.delay, animationFillMode: 'both' }}>
-                            <span className={`material-symbols-outlined ${badge.color} text-sm`}>{badge.icon}</span>
+                            <span aria-hidden="true" className={`material-symbols-outlined ${badge.color} text-sm`}>{badge.icon}</span>
                             <span className="text-white/50 text-xs font-medium">{badge.label}</span>
                         </div>
                     ))}

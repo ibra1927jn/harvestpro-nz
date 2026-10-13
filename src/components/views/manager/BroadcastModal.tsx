@@ -1,5 +1,6 @@
 import { logger } from '@/utils/logger';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { useMessaging } from '../../../context/MessagingContext';
 
 
@@ -8,6 +9,9 @@ interface BroadcastModalProps {
 }
 
 const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose }) => {
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useDialogA11y(dialogRef, { onClose });
+
     const { sendBroadcast } = useMessaging();
     const [title, setTitle] = useState('');
     const [message, setMessage] = useState('');
@@ -38,14 +42,14 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose }) => {
 
     return (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl relative border border-border-light">
-                <button onClick={onClose} className="absolute right-4 top-4 text-text-muted hover:text-text-main">
-                    <span className="material-symbols-outlined">close</span>
+            <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Broadcast message" className="bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl relative border border-border-light">
+                <button aria-label="Close" onClick={onClose} className="absolute right-4 top-4 text-text-muted hover:text-text-main">
+                    <span aria-hidden="true" className="material-symbols-outlined">close</span>
                 </button>
 
                 <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                        <span className="material-symbols-outlined">campaign</span>
+                        <span aria-hidden="true" className="material-symbols-outlined">campaign</span>
                     </div>
                     <div>
                         <h2 className="text-xl font-black text-text-main leading-none">Broadcast Alert</h2>
@@ -103,7 +107,7 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose }) => {
                 >
                     {isSending ? 'Sending...' : (
                         <>
-                            <span className="material-symbols-outlined">send</span>
+                            <span aria-hidden="true" className="material-symbols-outlined">send</span>
                             Send Broadcast
                         </>
                     )}

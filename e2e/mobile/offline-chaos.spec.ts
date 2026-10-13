@@ -223,6 +223,8 @@ test.describe('offline chaos', () => {
     await snap(page, test.info(), 'chaos-runner-rejected');
     await expectNothingPending(page);
     expect(bucketCount(p.id)).toBe(0);
+    // Y el servidor lo dejó apuntado para el manager (antes solo estaba en este móvil)
+    expect(sql(`select kind from public.rejected_scans where picker_id = '${p.id}'`)).toEqual(['rejected', 'rejected']);
 
     // No se reintenta en bucle
     const before = requests;
@@ -255,7 +257,7 @@ test.describe('offline chaos', () => {
     const t0 = Date.now();
     await expect(row.getByRole('button', { name: /Check In/i })).toBeVisible({ timeout: 20_000 });
     test.info().annotations.push({ type: 'offline-check-in-spinner-ms', description: String(Date.now() - t0) });
-    await expect(page.getByText(/No signal — check-in not saved/)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/No signal — check-in not saved/).and(page.locator(':not([aria-live])'))).toBeVisible({ timeout: 5_000 });
     await snap(page, test.info(), 'chaos-lead-checkin-offline');
     expect(attendance()).toBe(0);
 
