@@ -8,6 +8,7 @@
  * - Event emitter for UI toast notifications
  */
 import { logger } from '@/utils/logger';
+import { classifyGatewayError, type GatewayError } from './gateway/classifyGatewayError';
 
 // ── Types ────────────────────────────────────────────
 
@@ -22,15 +23,8 @@ export interface GatewayOptions {
     operationName?: string;
 }
 
-export type GatewayErrorType = 'timeout' | 'server' | 'network' | 'auth' | 'validation' | 'unknown';
-
-export interface GatewayError {
-    type: GatewayErrorType;
-    message: string;
-    status?: number;
-    retryable: boolean;
-    originalError?: unknown;
-}
+// Tipos y clasificación en gateway/classifyGatewayError.ts (reexportados por compatibilidad)
+export type { GatewayErrorType, GatewayError } from './gateway/classifyGatewayError';
 
 // ── Event System for UI Notifications ────────────────
 
@@ -128,64 +122,8 @@ export const gatewayService = {
      * Classify any error into a GatewayError with type and retryability.
      */
     classifyError(error: unknown): GatewayError {
-        // Timeout (AbortController)
-        if (error instanceof DOMException && error.name === 'AbortError') {
-            return { type: 'timeout', message: 'Request timed out', retryable: true };
-        }
-
-        // Network offline
-        if (typeof navigator !== 'undefined' && !navigator.onLine) {
-            return { type: 'network', message: 'Sin conexión a internet', retryable: true, originalError: error };
-        }
-
-        if (error instanceof Error) {
-            const msg = error.message.toLowerCase();
-
-            // Server errors (retryable)
-            if (msg.includes('504') || msg.includes('502') || msg.includes('503') ||
-                msg.includes('gateway') || msg.includes('bad gateway')) {
-                const status = msg.includes('504') ? 504 : msg.includes('502') ? 502 : 503;
-                return { type: 'server', message: error.message, status, retryable: true, originalError: error };
-            }
-
-            // Rate limited (retryable)
-            if (msg.includes('429') || msg.includes('rate limit')) {
-                return { type: 'server', message: 'Límite de solicitudes excedido', status: 429, retryable: true, originalError: error };
-            }
-
-            // Network errors (retryable)
-            if (msg.includes('fetch') || msg.includes('network') || msg.includes('timeout') ||
-                msg.includes('aborted') || msg.includes('econnrefused') || msg.includes('dns')) {
-                return { type: 'network', message: error.message, retryable: true, originalError: error };
-            }
-
-            // Auth errors (not retryable)
-            if (msg.includes('401') || msg.includes('403') || msg.includes('unauthorized') || msg.includes('forbidden')) {
-                const status = msg.includes('403') ? 403 : 401;
-                return { type: 'auth', message: error.message, status, retryable: false, originalError: error };
-            }
-
-            // Validation errors (not retryable)
-            if (msg.includes('400') || msg.includes('422') || msg.includes('constraint') ||
-                msg.includes('violat') || msg.includes('invalid')) {
-                return { type: 'validation', message: error.message, status: 400, retryable: false, originalError: error };
-            }
-        }
-
-        // Check for Supabase FunctionsHttpError with status
-        if (typeof error === 'object' && error !== null && 'status' in error) {
-            const status = (error as { status: number }).status;
-            if (status === 502 || status === 503 || status === 504 || status === 429) {
-                return { type: 'server', message: `Server error (${status})`, status, retryable: true, originalError: error };
-            }
-        }
-
-        return {
-            type: 'unknown',
-            message: error instanceof Error ? error.message : String(error),
-            retryable: false,
-            originalError: error,
-        };
+        const online = typeof navigator === 'undefined' || navigator.onLine;
+        return classifyGatewayError(error, online);
     },
 
     /** @internal Execute with AbortController timeout */

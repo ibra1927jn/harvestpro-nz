@@ -11,7 +11,7 @@
  * Salta si credenciales no están disponibles.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js';
 import { PickerBreakdownSchema, PayrollResultSchema } from '@/schemas/api.schemas';
 
 const URL = process.env.VITE_SUPABASE_URL;
@@ -83,7 +83,9 @@ describe.skipIf(SKIP)('Payroll real Supabase integration', () => {
         // Warmup fails auth (requireRole) porque service_role no es 'manager'/'admin'.
         // Esto confirma que la función está DEPLOYADA y el auth check activo.
         // Nota: en prod el cliente SPA envía JWT de manager con login real.
-        expect(error).toBeDefined();
+        // (toBeDefined() aceptaba también null, es decir, un 200)
+        expect(error).toBeInstanceOf(FunctionsHttpError);
+        expect((error as FunctionsHttpError).context.status).toBe(401);
     });
 
     it('PayrollResultSchema valida un shape con hours_ordinary/hours_holiday/alt_days', () => {

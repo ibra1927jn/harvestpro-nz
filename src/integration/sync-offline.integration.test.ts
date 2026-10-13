@@ -1,7 +1,7 @@
 /**
  * INTEGRATION TEST: Sync Service + Offline Pipeline
  * 
- * Tests: error categorization + queue management + offline bucket flow
+ * Tests: error categorization + queue management (Dexie real con fake-indexeddb)
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -56,7 +56,7 @@ vi.mock('@/services/gateway.service', () => ({
 }));
 
 import { syncService } from '@/services/sync.service';
-import { offlineService } from '@/services/offline.service';
+import { db } from '@/services/db';
 
 // ── SYNC SERVICE: ERROR CATEGORIZATION ─────────
 
@@ -118,79 +118,37 @@ describe('Sync Service — Error Categorization', () => {
 // ── SYNC SERVICE: QUEUE MANAGEMENT ─────────────
 
 describe('Sync Service — Queue Management', () => {
+    beforeEach(async () => {
+        await db.sync_queue.clear();
+        // Sin red: addToQueue no dispara processQueue y el item se queda en la cola
+        vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    });
 
-    it('addToQueue accepts SCAN type', async () => {
-        await syncService.addToQueue('SCAN', {
+    it('addToQueue guarda el SCAN en IndexedDB y cuenta como pendiente', async () => {
+        const id = await syncService.addToQueue('SCAN', {
             id: 'b1', picker_id: 'p1', quality_grade: 'A',
             timestamp: new Date().toISOString(), orchard_id: 'o1',
         });
-        // Should not throw
-    });
-
-    it('getQueue returns array', async () => {
         const queue = await syncService.getQueue();
-        expect(Array.isArray(queue)).toBe(true);
+        expect(queue).toHaveLength(1);
+        expect(queue[0]).toMatchObject({ id, type: 'SCAN', retryCount: 0, payload: { picker_id: 'p1' } });
+        expect(await syncService.getPendingCount()).toBe(1);
     });
 
-    it('getPendingCount returns number', async () => {
-        const count = await syncService.getPendingCount();
-        expect(typeof count).toBe('number');
-        expect(count).toBeGreaterThanOrEqual(0);
+    it('getQueue devuelve los items en el orden en que se encolaron', async () => {
+        await syncService.addToQueue('SCAN', { id: 'first' });
+        await syncService.addToQueue('SCAN', { id: 'second' });
+        const queue = await syncService.getQueue();
+        expect(queue.map(q => q.payload.id)).toEqual(['first', 'second']);
+        expect(queue[1].timestamp).toBeGreaterThan(queue[0].timestamp);
     });
 
-    it('getQueueSummary returns structured data', async () => {
+    it('getQueueSummary agrupa por tipo', async () => {
+        await syncService.addToQueue('SCAN', { id: 'a' });
+        await syncService.addToQueue('SCAN', { id: 'b' });
         const summary = await syncService.getQueueSummary();
-        expect(summary).toHaveProperty('total');
-        expect(summary).toHaveProperty('byType');
-        expect(summary).toHaveProperty('maxRetry');
-        expect(typeof summary.total).toBe('number');
-    });
-
-    it('getMaxRetryCount returns number', async () => {
-        const maxRetry = await syncService.getMaxRetryCount();
-        expect(typeof maxRetry).toBe('number');
+        expect(summary.total).toBe(2);
+        expect(summary.byType).toEqual({ SCAN: 2 });
+        expect(summary.maxRetry).toBe(0);
     });
 });
-
-// ── OFFLINE SERVICE: BUCKET QUEUE ──────────────
-
-describe('Offline Service — Bucket Queue', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
-
-    it('queueBucket called with correct payload', async () => {
-        await offlineService.queueBucket({
-            id: 'b1', picker_id: 'p1', quality_grade: 'A',
-            timestamp: new Date().toISOString(), orchard_id: 'o1',
-            scanned_by: 'runner1',
-        } as any);
-
-        expect(offlineService.queueBucket).toHaveBeenCalledWith(
-            expect.objectContaining({ picker_id: 'p1', scanned_by: 'runner1' })
-        );
-    });
-
-    it('markAsSynced called with bucket ID', async () => {
-        await offlineService.markAsSynced('bucket-123');
-        expect(offlineService.markAsSynced).toHaveBeenCalledWith('bucket-123');
-    });
-
-    it('getPendingBuckets returns array', async () => {
-        const pending = await offlineService.getPendingBuckets();
-        expect(Array.isArray(pending)).toBe(true);
-    });
-
-    it('multiple queueBucket calls create separate entries', async () => {
-        for (let i = 0; i < 5; i++) {
-            await offlineService.queueBucket({
-                id: `b${i}`, picker_id: `p${i}`, quality_grade: 'A',
-                timestamp: new Date().toISOString(), orchard_id: 'o1',
-                scanned_by: 'runner1',
-            } as any);
-        }
-
-        expect(offlineService.queueBucket).toHaveBeenCalledTimes(5);
-    });
-});
-

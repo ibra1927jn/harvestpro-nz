@@ -45,10 +45,9 @@ describe.skipIf(SKIP)('hr_documents integration (real Supabase)', () => {
     });
 
     it('insertar con service role → devuelve row', async () => {
-        if (!testOrchardId || !testUserId) {
-            console.warn('[integration] Skipping: no orchard/user available');
-            return;
-        }
+        // La BD sembrada siempre tiene huerto y usuario: si faltan, el test debe fallar, no saltarse
+        expect(testOrchardId).toBeTruthy();
+        expect(testUserId).toBeTruthy();
         const { data, error } = await client
             .from('hr_documents')
             .insert({
@@ -70,7 +69,7 @@ describe.skipIf(SKIP)('hr_documents integration (real Supabase)', () => {
     });
 
     it('CHECK constraint rechaza document_type inválido', async () => {
-        if (!testOrchardId || !testUserId) return;
+        expect(testOrchardId && testUserId).toBeTruthy();
         const { error } = await client
             .from('hr_documents')
             .insert({
@@ -85,7 +84,7 @@ describe.skipIf(SKIP)('hr_documents integration (real Supabase)', () => {
     });
 
     it('target_check constraint: falla sin picker_id + sin user_id', async () => {
-        if (!testOrchardId) return;
+        expect(testOrchardId).toBeTruthy();
         const { error } = await client.from('hr_documents').insert({
             orchard_id: testOrchardId,
             document_type: 'other',

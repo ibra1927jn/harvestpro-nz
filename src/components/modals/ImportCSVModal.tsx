@@ -5,12 +5,14 @@
  * Imports pickers in bulk from a CSV file.
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 
-import { parseCSV, generateCSVTemplate, type CSVPickerRow, type ParseResult } from '@/utils/csvParser';
+import { parseCSV, generateCSVTemplate, type ParseResult } from '@/utils/csvParser';
 import { pickerService } from '@/services/picker.service';
 import { useToast } from '@/hooks/useToast';
 import ModalOverlay from '@/components/ui/ModalOverlay';
+import { failedImport, isCsvFileName, stepSubtitle, type ImportResult, type ImportStep } from './import-csv/importCsvLogic';
+import { DoneStep, ImportingStep, PreviewStep, UploadStep } from './import-csv/ImportSteps';
 
 interface ImportCSVModalProps {
     isOpen: boolean;
@@ -20,7 +22,7 @@ interface ImportCSVModalProps {
     onImportComplete: (count: number) => void;
 }
 
-type Step = 'upload' | 'preview' | 'importing' | 'done';
+type Step = ImportStep;
 
 export default function ImportCSVModal({
     isOpen,
@@ -31,10 +33,9 @@ export default function ImportCSVModal({
 }: ImportCSVModalProps) {
     const [step, setStep] = useState<Step>('upload');
     const [parseResult, setParseResult] = useState<ParseResult | null>(null);
-    const [importResult, setImportResult] = useState<{ created: number; skipped: number; errors: string[] } | null>(null);
+    const [importResult, setImportResult] = useState<ImportResult | null>(null);
     const [dragActive, setDragActive] = useState(false);
     const [fileName, setFileName] = useState('');
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const { showToast } = useToast();
 
     const reset = useCallback(() => {
@@ -55,7 +56,7 @@ export default function ImportCSVModal({
     // ========================================
 
     const processFile = useCallback(async (file: File) => {
-        if (!file.name.endsWith('.csv')) {
+        if (!isCsvFileName(file.name)) {
             showToast('Please select a CSV file (.csv)', 'warning');
             return;
         }
@@ -100,11 +101,7 @@ export default function ImportCSVModal({
             setStep('done');
             onImportComplete(result.created);
         } catch (err) {
-            setImportResult({
-                created: 0,
-                skipped: parseResult.valid.length,
-                errors: [err instanceof Error ? err.message : 'Unknown error'],
-            });
+            setImportResult(failedImport(parseResult.valid.length, err));
             setStep('done');
         }
     }, [parseResult, orchardId, onImportComplete, step]);
@@ -137,10 +134,7 @@ export default function ImportCSVModal({
                     <div>
                         <h2 className="text-lg font-bold text-text-main">Import Pickers</h2>
                         <p className="text-sm text-text-muted">
-                            {step === 'upload' && 'Upload a CSV file'}
-                            {step === 'preview' && `Preview: ${fileName}`}
-                            {step === 'importing' && 'Importing...'}
-                            {step === 'done' && 'Import Complete'}
+                            {stepSubtitle(step, fileName)}
                         </p>
                     </div>
                 </div>
@@ -151,197 +145,18 @@ export default function ImportCSVModal({
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 max-h-[60vh]">
-                {/* STEP 1: Upload */}
                 {step === 'upload' && (
-                    <div className="space-y-4">
-                        {/* Drop Zone */}
-                        <div
-                            className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors cursor-pointer ${dragActive
-                                ? 'border-primary bg-primary/5'
-                                : 'border-border-light hover:border-slate-400'
-                                }`}
-                            onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-                            onDragLeave={() => setDragActive(false)}
-                            onDrop={handleDrop}
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            <span className="material-symbols-outlined text-5xl mx-auto text-text-muted mb-4">upload</span>
-                            <p className="text-text-sub font-medium">
-                                Drag & drop your CSV file here
-                            </p>
-                            <p className="text-sm text-text-muted mt-1">
-                                or click to browse
-                            </p>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept=".csv"
-                                onChange={handleFileSelect}
-                                className="hidden"
-                                title="Select CSV file"
-                            />
-                        </div>
-
-                        {/* Template Download */}
-                        <button
-                            onClick={downloadTemplate}
-                            className="flex items-center gap-2 text-primary hover:text-primary/80 text-sm font-medium"
-                        >
-                            <span className="material-symbols-outlined text-base">download</span>
-                            Download CSV Template
-                        </button>
-
-                        {/* Format Help */}
-                        <div className="bg-slate-50 rounded-xl p-4">
-                            <p className="text-sm font-medium text-text-sub mb-2">Expected columns:</p>
-                            <div className="flex flex-wrap gap-2">
-                                {['Name *', 'Email', 'Phone', 'PickerID'].map(col => (
-                                    <span key={col} className={`px-3 py-1 rounded-full text-xs font-medium ${col.includes('*') ? 'bg-primary/10 text-primary' : 'bg-slate-200 text-text-sub'
-                                        }`}>
-                                        {col}
-                                    </span>
-                                ))}
-                            </div>
-                            <p className="text-xs text-text-muted mt-2">
-                                Column headers are flexible — &quot;Nombre&quot;, &quot;Worker Name&quot;, &quot;Full Name&quot; all work.
-                            </p>
-                        </div>
-                    </div>
+                    <UploadStep
+                        dragActive={dragActive}
+                        onDragActiveChange={setDragActive}
+                        onDrop={handleDrop}
+                        onFileSelect={handleFileSelect}
+                        onDownloadTemplate={downloadTemplate}
+                    />
                 )}
-
-                {/* STEP 2: Preview */}
-                {step === 'preview' && parseResult && (
-                    <div className="space-y-4">
-                        {/* Summary Cards */}
-                        <div className="grid grid-cols-3 gap-3">
-                            <SummaryCard
-                                icon={<span className="material-symbols-outlined text-xl text-success">check_circle</span>}
-                                label="Ready to import"
-                                value={parseResult.valid.length}
-                                color="green"
-                            />
-                            <SummaryCard
-                                icon={<span className="material-symbols-outlined text-xl text-warning">warning</span>}
-                                label="Duplicates"
-                                value={parseResult.duplicates.length}
-                                color="yellow"
-                            />
-                            <SummaryCard
-                                icon={<span className="material-symbols-outlined text-xl text-danger">cancel</span>}
-                                label="Errors"
-                                value={parseResult.errors.length}
-                                color="red"
-                            />
-                        </div>
-
-                        {/* Valid Rows Table */}
-                        {parseResult.valid.length > 0 && (
-                            <div>
-                                <h3 className="text-sm font-semibold text-text-sub mb-2">
-                                    Pickers to Import ({parseResult.valid.length})
-                                </h3>
-                                <div className="border border-border-light rounded-xl overflow-hidden max-h-60 overflow-y-auto">
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-slate-50 sticky top-0">
-                                            <tr>
-                                                <th className="text-left px-4 py-2 text-text-sub">#</th>
-                                                <th className="text-left px-4 py-2 text-text-sub">Name</th>
-                                                <th className="text-left px-4 py-2 text-text-sub">ID</th>
-                                                <th className="text-left px-4 py-2 text-text-sub">Email</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {parseResult.valid.map((row: CSVPickerRow, i: number) => (
-                                                <tr key={i} className="border-t border-border-light">
-                                                    <td className="px-4 py-2 text-text-muted">{i + 1}</td>
-                                                    <td className="px-4 py-2 font-medium text-text-main">{row.name}</td>
-                                                    <td className="px-4 py-2 text-text-muted">{row.picker_id || '—'}</td>
-                                                    <td className="px-4 py-2 text-text-muted">{row.email || '—'}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Errors */}
-                        {parseResult.errors.length > 0 && (
-                            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                                <h3 className="text-sm font-semibold text-danger mb-2">
-                                    Validation Errors ({parseResult.errors.length})
-                                </h3>
-                                <ul className="space-y-1">
-                                    {parseResult.errors.slice(0, 10).map((err, i) => (
-                                        <li key={i} className="text-sm text-danger">
-                                            Row {err.row}: {err.message}
-                                        </li>
-                                    ))}
-                                    {parseResult.errors.length > 10 && (
-                                        <li className="text-sm text-red-500 italic">
-                                            ...and {parseResult.errors.length - 10} more
-                                        </li>
-                                    )}
-                                </ul>
-                            </div>
-                        )}
-
-                        {/* Duplicates */}
-                        {parseResult.duplicates.length > 0 && (
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                                <h3 className="text-sm font-semibold text-warning mb-2">
-                                    Skipped Duplicates ({parseResult.duplicates.length})
-                                </h3>
-                                <ul className="space-y-1">
-                                    {parseResult.duplicates.map((dup, i) => (
-                                        <li key={i} className="text-sm text-yellow-600">
-                                            ID &quot;{dup.picker_id}&quot; already assigned to {dup.existingName}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* STEP 3: Importing */}
-                {step === 'importing' && (
-                    <div className="flex flex-col items-center justify-center py-16">
-                        <span className="material-symbols-outlined text-5xl text-primary animate-spin mb-4">progress_activity</span>
-                        <p className="text-text-sub font-medium">Importing {parseResult?.valid.length || 0} pickers...</p>
-                        <p className="text-sm text-text-muted mt-1">This may take a moment</p>
-                    </div>
-                )}
-
-                {/* STEP 4: Done */}
-                {step === 'done' && importResult && (
-                    <div className="space-y-4">
-                        <div className="flex flex-col items-center py-8">
-                            {importResult.created > 0 ? (
-                                <span className="material-symbols-outlined text-6xl text-success mb-4">check_circle</span>
-                            ) : (
-                                <span className="material-symbols-outlined text-6xl text-danger mb-4">cancel</span>
-                            )}
-                            <h3 className="text-xl font-bold text-text-main">
-                                {importResult.created > 0 ? 'Import Successful!' : 'Import Failed'}
-                            </h3>
-                            <p className="text-text-muted mt-1">
-                                {importResult.created} created, {importResult.skipped} skipped
-                            </p>
-                        </div>
-
-                        {importResult.errors.length > 0 && (
-                            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                                <h3 className="text-sm font-semibold text-danger mb-2">Errors</h3>
-                                <ul className="space-y-1">
-                                    {importResult.errors.map((err, i) => (
-                                        <li key={i} className="text-sm text-danger">{err}</li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-                    </div>
-                )}
+                {step === 'preview' && parseResult && <PreviewStep parseResult={parseResult} />}
+                {step === 'importing' && <ImportingStep count={parseResult?.valid.length || 0} />}
+                {step === 'done' && importResult && <DoneStep importResult={importResult} />}
             </div>
 
             {/* Footer */}
@@ -373,26 +188,5 @@ export default function ImportCSVModal({
                 )}
             </div>
         </ModalOverlay>
-    );
-}
-
-// ========================================
-// HELPER COMPONENTS
-// ========================================
-
-function SummaryCard({ icon, label, value, color }: {
-    icon: React.ReactNode;
-    label: string;
-    value: number;
-    color: 'green' | 'yellow' | 'red';
-}) {
-    const bgColors = { green: 'bg-green-50', yellow: 'bg-yellow-50', red: 'bg-red-50' };
-
-    return (
-        <div className={`${bgColors[color]} rounded-xl p-4 text-center`}>
-            <div className="flex justify-center mb-2">{icon}</div>
-            <div className="text-2xl font-bold text-text-main">{value}</div>
-            <div className="text-xs text-text-sub">{label}</div>
-        </div>
     );
 }

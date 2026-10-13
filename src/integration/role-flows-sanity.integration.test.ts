@@ -9,7 +9,7 @@
  * No ejecuta auth real — sólo sanity sobre estructura.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js';
 
 const URL = process.env.VITE_SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -121,38 +121,27 @@ describe.skipIf(SKIP)('Role flows — sanity (real Supabase)', () => {
         }
     });
 
-    // ── Cross-cutting: RLS habilitado en todas las tablas public ──
-    it('100% de tablas public tienen RLS ENABLED', async () => {
-        const { error } = await client.rpc('check_rls_coverage').select('*').limit(1).maybeSingle();
-        // Si el RPC no existe, ignora (algunas instalaciones Supabase no lo exponen)
-        if (error?.code === 'PGRST202' || error?.code === '42883') {
-            return; // RPC no disponible — skip
-        }
-        // Si data existe, validar (no critical)
-        expect(true).toBe(true);
-    });
+    // RLS en todas las tablas public: lo comprueba supabase/tests/security/01_catalog.sql
+    // (scripts/test-db-security.sh). Aquí había un test que nunca podía fallar.
 
     // ── Edge functions deployed ────────────────
-    it('calculate-payroll edge function deployed + responde con auth check', async () => {
-        const { error } = await client.functions.invoke('calculate-payroll', {
-            body: { _warmup: true },
-        });
-        // Con service_role NO es manager/admin, auth check falla, pero eso confirma
-        // que la función está deployada y funcionando.
-        expect(error).toBeDefined();
+    // Con service_role la función responde 401 (no es manager/admin): eso prueba que está
+    // desplegada y que el control de rol está activo. Un 404/500 o un 200 hacen fallar el test.
+    const expectAuthRejected = async (fn: string) => {
+        const { error } = await client.functions.invoke(fn, { body: { _warmup: true } });
+        expect(error).toBeInstanceOf(FunctionsHttpError);
+        expect((error as FunctionsHttpError).context.status).toBe(401);
+    };
+
+    it('calculate-payroll desplegada y rechaza a quien no es manager/admin', async () => {
+        await expectAuthRejected('calculate-payroll');
     });
 
-    it('record-bucket edge function responde', async () => {
-        const { error } = await client.functions.invoke('record-bucket', {
-            body: { _warmup: true },
-        });
-        expect(error).toBeDefined(); // Auth check fail confirma deploy
+    it('record-bucket desplegada y exige usuario', async () => {
+        await expectAuthRejected('record-bucket');
     });
 
-    it('manage-attendance edge function responde', async () => {
-        const { error } = await client.functions.invoke('manage-attendance', {
-            body: { _warmup: true },
-        });
-        expect(error).toBeDefined();
+    it('manage-attendance desplegada y exige usuario', async () => {
+        await expectAuthRejected('manage-attendance');
     });
 });

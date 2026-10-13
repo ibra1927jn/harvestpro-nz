@@ -4,13 +4,19 @@ import { userService } from '../../services/user.service';
 import { logger } from '@/utils/logger';
 import { useToast } from '@/hooks/useToast';
 import ModalOverlay from '@/components/ui/ModalOverlay';
+import {
+    batchAssignToast,
+    countRole,
+    emptyStaffMessage,
+    filterStaff,
+    mergeStaff,
+    selectableIds,
+    toggleId,
+    type StaffFilter,
+    type StaffInfo,
+} from './staff-selection/staffSelectionLogic';
+import { StaffRow } from './staff-selection/StaffRow';
 
-interface StaffInfo {
-    id: string;
-    full_name: string;
-    role: string;
-    orchard_id?: string;
-}
 
 interface TeamLeaderSelectionModalProps {
     isOpen?: boolean;
@@ -32,7 +38,7 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
     const [staff, setStaff] = useState<StaffInfo[]>([]);
     const [loading, setLoading] = useState(false);
     const [assigning, setAssigning] = useState(false);
-    const [filter, setFilter] = useState<'all' | 'team_leader' | 'runner'>('all');
+    const [filter, setFilter] = useState<StaffFilter>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [unlinkingId, setUnlinkingId] = useState<string | null>(null);
@@ -57,16 +63,7 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                     databaseService.getAvailableRunners(),
                 ]);
 
-                const allStaff: StaffInfo[] = [
-                    ...(leaders || []).map((l: { id: string; full_name: string; orchard_id?: string }) => ({
-                        ...l,
-                        role: 'team_leader',
-                    })),
-                    ...(runners || []).map((r: { id: string; full_name: string; orchard_id?: string }) => ({
-                        ...r,
-                        role: 'runner',
-                    })),
-                ];
+                const allStaff = mergeStaff(leaders, runners);
                 setStaff(allStaff);
             } catch (error) {
                 logger.error("Error loading staff:", error);
@@ -78,32 +75,17 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
     }, []);
 
     // Filter by role, then by search query
-    const filteredStaff = useMemo(() => {
-        let result = filter === 'all' ? staff : staff.filter(s => s.role === filter);
-        if (searchQuery.trim()) {
-            const q = searchQuery.toLowerCase().trim();
-            result = result.filter(s => s.full_name?.toLowerCase().includes(q));
-        }
-        return result;
-    }, [staff, filter, searchQuery]);
+    const filteredStaff = useMemo(
+        () => filterStaff(staff, filter, searchQuery),
+        [staff, filter, searchQuery]
+    );
 
     const toggleSelection = (id: string) => {
-        setSelectedIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) {
-                next.delete(id);
-            } else {
-                next.add(id);
-            }
-            return next;
-        });
+        setSelectedIds(prev => toggleId(prev, id));
     };
 
     const selectAll = () => {
-        const availableIds = filteredStaff
-            .filter(s => s.orchard_id !== orchardId)
-            .map(s => s.id);
-        setSelectedIds(new Set(availableIds));
+        setSelectedIds(selectableIds(filteredStaff, orchardId));
     };
 
     const clearSelection = () => {
@@ -126,11 +108,8 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
             }
         }
 
-        if (failCount > 0) {
-            showToast(`Linked ${successCount} staff. ${failCount} failed.`, 'warning');
-        } else {
-            showToast(`Successfully linked ${successCount} staff member${successCount > 1 ? 's' : ''}.`, 'success');
-        }
+        const toast = batchAssignToast(successCount, failCount);
+        showToast(toast.message, toast.type);
 
         setAssigning(false);
         onAdd(''); // trigger refresh
@@ -169,17 +148,6 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
             setUnlinkingId(null);
         }
     };
-
-    const roleLabel = (role: string) =>
-        role === 'team_leader' ? 'Team Leader' : 'Bucket Runner';
-
-    const roleColor = (role: string) =>
-        role === 'team_leader'
-            ? 'bg-indigo-100 text-indigo-700'
-            : 'bg-blue-100 text-blue-700';
-
-    const roleIcon = (role: string) =>
-        role === 'team_leader' ? 'groups' : 'local_shipping';
 
     return (
         <ModalOverlay onClose={onClose}>
@@ -272,100 +240,29 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                                 {searchQuery ? 'search_off' : 'person_off'}
                             </span>
                             <p className="text-sm font-medium">
-                                {searchQuery
-                                    ? `No results for "${searchQuery}"`
-                                    : filter === 'all'
-                                        ? 'No staff found in the system.'
-                                        : `No ${filter === 'team_leader' ? 'Team Leaders' : 'Runners'} found.`}
+                                {emptyStaffMessage(searchQuery, filter)}
                             </p>
                         </div>
                     ) : (
-                        filteredStaff.map(person => {
-                            const alreadyHere = person.orchard_id === orchardId;
-                            const isSelected = selectedIds.has(person.id);
-                            const isUnlinking = unlinkingId === person.id;
-                            const isConfirming = confirmUnlinkId === person.id;
-
-                            return (
-                                <div
-                                    key={person.id}
-                                    onClick={() => !alreadyHere && !isUnlinking && toggleSelection(person.id)}
-                                    className={`p-4 rounded-xl border flex items-center justify-between transition-all duration-200 ${alreadyHere
-                                        ? 'border-green-200 bg-green-50/30 cursor-default'
-                                        : isSelected
-                                            ? 'border-indigo-400 bg-indigo-50 shadow-sm cursor-pointer'
-                                            : 'border-border-light cursor-pointer hover:bg-indigo-50/50 hover:border-indigo-200 hover:shadow-sm'
-                                        } group`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        {/* Checkbox */}
-                                        <div className={`size-5 rounded-md border-2 flex items-center justify-center transition-all duration-200 flex-shrink-0 ${alreadyHere
-                                            ? 'border-green-400 bg-green-100'
-                                            : isSelected
-                                                ? 'border-indigo-600 bg-indigo-600'
-                                                : 'border-slate-300 group-hover:border-indigo-400'
-                                            }`}>
-                                            {(isSelected || alreadyHere) && (
-                                                <span className={`material-symbols-outlined text-xs ${alreadyHere ? 'text-green-600' : 'text-white'}`}>check</span>
-                                            )}
-                                        </div>
-
-                                        <div className="size-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-sm shadow-sm flex-shrink-0">
-                                            {person.full_name?.substring(0, 2).toUpperCase() || '??'}
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-text-main">{person.full_name}</p>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${roleColor(person.role)}`}>
-                                                    <span className="material-symbols-outlined text-[10px] mr-0.5 align-middle">{roleIcon(person.role)}</span>
-                                                    {roleLabel(person.role)}
-                                                </span>
-                                                {alreadyHere && (
-                                                    <span className="text-[10px] text-green-600 font-bold">✅ Linked</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Right side: unlink button for linked, check for selected */}
-                                    {alreadyHere ? (
-                                        <button
-                                            onClick={(e) => handleUnlink(e, person.id)}
-                                            disabled={isUnlinking}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all duration-200 ${isUnlinking
-                                                ? 'bg-slate-100 text-slate-400 cursor-wait'
-                                                : isConfirming
-                                                    ? 'bg-red-500 text-white shadow-sm hover:bg-red-600'
-                                                    : 'bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200'
-                                                }`}
-                                        >
-                                            {isUnlinking ? (
-                                                <div className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-                                            ) : isConfirming ? (
-                                                <>
-                                                    <span className="material-symbols-outlined text-xs">warning</span>
-                                                    Confirm?
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <span className="material-symbols-outlined text-sm">link_off</span>
-                                                    Unlink
-                                                </>
-                                            )}
-                                        </button>
-                                    ) : isSelected ? (
-                                        <span className="material-symbols-outlined text-indigo-600">check_circle</span>
-                                    ) : null}
-                                </div>
-                            );
-                        })
+                        filteredStaff.map(person => (
+                            <StaffRow
+                                key={person.id}
+                                person={person}
+                                alreadyHere={person.orchard_id === orchardId}
+                                isSelected={selectedIds.has(person.id)}
+                                isUnlinking={unlinkingId === person.id}
+                                isConfirming={confirmUnlinkId === person.id}
+                                onToggle={toggleSelection}
+                                onUnlink={handleUnlink}
+                            />
+                        ))
                     )}
                 </div>
 
                 {/* Footer with count + Link button */}
                 <div className="px-6 py-4 border-t border-border-light bg-slate-50/50 flex items-center justify-between">
                     <span className="text-xs text-slate-400 font-medium">
-                        {filteredStaff.length} staff • {staff.filter(s => s.role === 'team_leader').length} leaders • {staff.filter(s => s.role === 'runner').length} runners
+                        {filteredStaff.length} staff • {countRole(staff, 'team_leader')} leaders • {countRole(staff, 'runner')} runners
                     </span>
                     <div className="flex items-center gap-3">
                         {selectedIds.size > 0 && (
