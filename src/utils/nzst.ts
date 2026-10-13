@@ -117,25 +117,39 @@ export function toNZST(date: Date): string {
     return `${iso}${offsetStr}`;
 }
 
-/**
- * Desfase horario de Nueva Zelanda en una fecha YYYY-MM-DD: "+13:00" (verano)
- * o "+12:00" (invierno).
- */
-export function nzOffsetOn(dateYMD: string): string {
+/** Desfase NZ ("+13:00" / "+12:00") vigente en un instante concreto. */
+function nzOffsetAt(instant: Date): string {
   return (
-    new Intl.DateTimeFormat('en-US', { timeZone: 'Pacific/Auckland', timeZoneName: 'longOffset' })
-      .formatToParts(new Date(`${dateYMD}T12:00:00Z`))
+    new Intl.DateTimeFormat('en-US', { timeZone: NZ_TIMEZONE, timeZoneName: 'longOffset' })
+      .formatToParts(instant)
       .find(p => p.type === 'timeZoneName')
       ?.value.replace('GMT', '') || '+13:00'
   );
 }
 
+/**
+ * Desfase horario de Nueva Zelanda en una fecha YYYY-MM-DD (al mediodia): "+13:00" (verano)
+ * o "+12:00" (invierno). Ojo: en los dias de cambio de hora la medianoche tiene otro desfase;
+ * para limites de dia usar nzMidnight / nzEndOfDay.
+ */
+export function nzOffsetOn(dateYMD: string): string {
+  return nzOffsetAt(new Date(`${dateYMD}T12:00:00Z`));
+}
+
+/**
+ * Desfase vigente a una hora local NZ. Se mide en la hora local tomada como +12:00;
+ * los cambios de hora NZ son a las 02:00/03:00, asi que a medianoche y a las 23:59 es exacto.
+ */
+function nzOffsetAtLocal(dateYMD: string, hms: string): string {
+  return nzOffsetAt(new Date(`${dateYMD}T${hms}+12:00`));
+}
+
 /** Medianoche NZ de una fecha YYYY-MM-DD, con su desfase: "2026-10-05T00:00:00+13:00" */
 export function nzMidnight(dateYMD: string): string {
-  return `${dateYMD}T00:00:00${nzOffsetOn(dateYMD)}`;
+  return `${dateYMD}T00:00:00${nzOffsetAtLocal(dateYMD, '00:00:00')}`;
 }
 
 /** Último segundo del día NZ: "2026-10-05T23:59:59+13:00" */
 export function nzEndOfDay(dateYMD: string): string {
-  return `${dateYMD}T23:59:59${nzOffsetOn(dateYMD)}`;
+  return `${dateYMD}T23:59:59${nzOffsetAtLocal(dateYMD, '23:59:59')}`;
 }
