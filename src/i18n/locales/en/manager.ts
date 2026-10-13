@@ -52,6 +52,7 @@ const manager: TranslationDict = {
     'mgr.teams_on_site': 'Teams on Site',
     'mgr.close_team_drawer': 'Close team drawer',
     'mgr.block_rows': '{blockName} Rows',
+    'mgr.chart_click': 'click',
 };
 
 export default manager;

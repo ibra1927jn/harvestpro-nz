@@ -42,7 +42,7 @@ export function formatNZTime(input: DateInput): string {
     return format(input, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 }
 
-export type NZDateStyle = 'short' | 'medium' | 'long' | 'weekday' | 'weekdayShort' | 'dayMonth' | 'weekdayDay' | 'dayMonthNumeric';
+export type NZDateStyle = 'short' | 'medium' | 'long' | 'weekday' | 'weekdayShort' | 'dayMonth' | 'weekdayDay' | 'dayMonthNumeric' | 'monthYear';
 const DATE_STYLES: Record<NZDateStyle, Intl.DateTimeFormatOptions> = {
     short: { day: '2-digit', month: '2-digit', year: 'numeric' },            // 13/10/2026
     medium: { day: 'numeric', month: 'short', year: 'numeric' },             // 13 Oct 2026
@@ -52,6 +52,7 @@ const DATE_STYLES: Record<NZDateStyle, Intl.DateTimeFormatOptions> = {
     dayMonth: { day: 'numeric', month: 'short' },                            // 13 Oct
     weekdayDay: { weekday: 'short', day: 'numeric' },                        // Tue 13
     dayMonthNumeric: { day: 'numeric', month: 'numeric' },                   // 13/10
+    monthYear: { month: 'short', year: 'numeric' },                          // Oct 2026
 };
 
 /** Fecha en NZ: "13/10/2026" (short) por defecto */

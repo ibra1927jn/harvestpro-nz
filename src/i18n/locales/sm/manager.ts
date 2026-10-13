@@ -52,6 +52,7 @@ const manager: TranslationDict = {
     'mgr.teams_on_site': 'Vaega o iai',
     'mgr.close_team_drawer': 'Tapuni le vaega',
     'mgr.block_rows': 'Laina o {blockName}',
+    'mgr.chart_click': 'oomi',
 };
 
 export default manager;

@@ -52,6 +52,7 @@ const manager: TranslationDict = {
     'mgr.teams_on_site': 'Timi ʻi he feituʻu',
     'mgr.close_team_drawer': 'Tāpuni ʻa e timi',
     'mgr.block_rows': 'Laine ʻo {blockName}',
+    'mgr.chart_click': 'lomi',
 };
 
 export default manager;

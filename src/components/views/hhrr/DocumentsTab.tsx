@@ -20,6 +20,8 @@ import { useHarvestStore } from '@/stores/useHarvestStore';
 import { logger } from '@/utils/logger';
 import { userRepository2, type StaffMember } from '@/repositories/user.repository';
 import { useAuth } from '@/context/AuthContext';
+import { docTypeLabel } from './docTypeLabel';
+import { useTranslation } from '@/i18n';
 
 function daysUntil(iso: string | null): number | null {
     if (!iso) return null;
@@ -35,6 +37,7 @@ function formatBytes(bytes: number | null): string {
 }
 
 const DocumentsTab: React.FC = () => {
+    const { t } = useTranslation();
     const orchardId = useHarvestStore(s => s.orchard?.id);
     const [docs, setDocs] = useState<HRDocumentRow[]>([]);
     const [loading, setLoading] = useState(true);
@@ -59,24 +62,24 @@ const DocumentsTab: React.FC = () => {
             setErr(null);
         } catch (e) {
             logger.error('[DocumentsTab] load failed:', e);
-            setErr(e instanceof Error ? e.message : 'Load failed');
+            setErr(e instanceof Error ? e.message : t('hr.docs.load_failed'));
         } finally {
             setLoading(false);
         }
-    }, [orchardId]);
+    }, [orchardId, t]);
 
     useEffect(() => {
         reload();
     }, [reload]);
 
     const handleDelete = async (doc: HRDocumentRow) => {
-        if (!confirm(`Eliminar "${doc.title}"?`)) return;
+        if (!confirm(t('hr.docs.confirm_delete', { title: doc.title }))) return;
         try {
             await hrDocumentsRepository.softDelete(doc.id, doc.storage_path);
             setDocs(prev => prev.filter(d => d.id !== doc.id));
         } catch (e) {
             logger.error('[DocumentsTab] delete failed:', e);
-            setErr(e instanceof Error ? e.message : 'Delete failed');
+            setErr(e instanceof Error ? e.message : t('hr.docs.delete_failed'));
         }
     };
 
@@ -86,14 +89,14 @@ const DocumentsTab: React.FC = () => {
             window.open(url, '_blank');
         } catch (e) {
             logger.error('[DocumentsTab] download failed:', e);
-            setErr(e instanceof Error ? e.message : 'Download failed');
+            setErr(e instanceof Error ? e.message : t('hr.docs.download_failed'));
         }
     };
 
     if (!orchardId) {
         return (
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                <p className="text-sm font-medium text-amber-800">Selecciona un orchard primero.</p>
+                <p className="text-sm font-medium text-amber-800">{t('hr.docs.select_orchard')}</p>
             </div>
         );
     }
@@ -110,8 +113,8 @@ const DocumentsTab: React.FC = () => {
             <div className="bg-white rounded-xl p-6 shadow-sm border border-border-light">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h3 className="font-bold text-text-primary mb-1">Document Storage</h3>
-                        <p className="text-sm text-text-secondary">Contratos, visas, certificados</p>
+                        <h3 className="font-bold text-text-primary mb-1">{t('hr.docs.title')}</h3>
+                        <p className="text-sm text-text-secondary">{t('hr.docs.subtitle')}</p>
                     </div>
                     <button
                         data-testid="hr-docs-upload-btn"
@@ -119,19 +122,19 @@ const DocumentsTab: React.FC = () => {
                         className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition-colors"
                     >
                         <span aria-hidden="true" className="material-symbols-outlined text-base align-middle mr-1">cloud_upload</span>
-                        Upload
+                        {t('hr.docs.upload')}
                     </button>
                 </div>
             </div>
 
             {loading && (
-                <div data-testid="hr-docs-loading" className="text-center py-8 text-text-secondary">Loading…</div>
+                <div data-testid="hr-docs-loading" className="text-center py-8 text-text-secondary">{t('common.loading')}</div>
             )}
 
             {!loading && docs.length === 0 && (
                 <div data-testid="hr-docs-empty" className="bg-slate-50 rounded-xl p-8 text-center border border-dashed border-slate-200">
                     <span aria-hidden="true" className="material-symbols-outlined text-5xl text-slate-300 mb-2 block">folder_open</span>
-                    <p className="text-sm text-text-secondary">No hay documentos subidos todavía.</p>
+                    <p className="text-sm text-text-secondary">{t('hr.docs.empty')}</p>
                 </div>
             )}
 
@@ -141,8 +144,8 @@ const DocumentsTab: React.FC = () => {
                         const days = daysUntil(doc.expires_at);
                         const expBadge =
                             days === null ? null :
-                            days < 0 ? <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">Vencido {Math.abs(days)}d</span> :
-                            days < 60 ? <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">Expira en {days}d</span> :
+                            days < 0 ? <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">{t('hr.docs.expired_days', { n: Math.abs(days) })}</span> :
+                            days < 60 ? <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">{t('hr.docs.expires_in', { n: days })}</span> :
                             <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">OK</span>;
                         return (
                             <div key={doc.id} data-testid={`hr-doc-${doc.id}`} className="bg-white rounded-xl p-4 shadow-sm border border-border-light flex items-center gap-3">
@@ -155,22 +158,22 @@ const DocumentsTab: React.FC = () => {
                                         {expBadge}
                                     </h4>
                                     <p className="text-xs text-text-secondary">
-                                        {nameOf(doc)} · {HR_DOCUMENT_TYPE_LABELS[doc.document_type]} · {formatBytes(doc.file_size_bytes)}
+                                        {nameOf(doc)} · {docTypeLabel(t, doc.document_type)} · {formatBytes(doc.file_size_bytes)}
                                     </p>
                                 </div>
-                                <button aria-label="Download"
+                                <button aria-label={t('hr.docs.download')}
                                     data-testid={`hr-doc-download-${doc.id}`}
                                     onClick={() => handleDownload(doc)}
                                     className="text-indigo-600 hover:text-indigo-800 p-1"
-                                    title="Descargar"
+                                    title={t('hr.docs.download')}
                                 >
                                     <span aria-hidden="true" className="material-symbols-outlined">download</span>
                                 </button>
-                                <button aria-label="Delete"
+                                <button aria-label={t('hr.docs.delete')}
                                     data-testid={`hr-doc-delete-${doc.id}`}
                                     onClick={() => handleDelete(doc)}
                                     className="text-red-500 hover:text-red-700 p-1"
-                                    title="Eliminar"
+                                    title={t('hr.docs.delete')}
                                 >
                                     <span aria-hidden="true" className="material-symbols-outlined">delete</span>
                                 </button>
@@ -205,6 +208,7 @@ interface UploadModalProps {
 }
 
 const UploadModal: React.FC<UploadModalProps> = ({ orchardId, staff, onClose, onUploaded }) => {
+    const { t } = useTranslation();
     const dialogRef = useRef<HTMLDivElement>(null);
     useDialogA11y(dialogRef, { onClose });
     const { appUser } = useAuth();
@@ -220,7 +224,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ orchardId, staff, onClose, on
     const handleSubmit = async () => {
         const person = staff.find(s => s.id === personId);
         if (!person || !file || !title.trim()) {
-            setErr('Employee, file and title are required');
+            setErr(t('hr.docs.required'));
             return;
         }
         setUploading(true);
@@ -239,7 +243,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ orchardId, staff, onClose, on
             });
             onUploaded();
         } catch (e) {
-            setErr(e instanceof Error ? e.message : 'Upload failed');
+            setErr(e instanceof Error ? e.message : t('hr.docs.upload_failed'));
         } finally {
             setUploading(false);
         }
@@ -248,19 +252,19 @@ const UploadModal: React.FC<UploadModalProps> = ({ orchardId, staff, onClose, on
     return (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
             <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="hr-upload-title" className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4">
-                <h3 id="hr-upload-title" className="font-bold text-lg">Subir documento</h3>
+                <h3 id="hr-upload-title" className="font-bold text-lg">{t('hr.docs.upload_title')}</h3>
 
                 {err && <div role="alert" className="bg-red-50 border border-red-200 text-red-800 text-sm rounded px-3 py-2">{err}</div>}
 
                 <label className="block">
-                    <span className="text-sm font-medium">Employee</span>
+                    <span className="text-sm font-medium">{t('hr.docs.employee')}</span>
                     <select
                         data-testid="upload-person"
                         value={personId}
                         onChange={e => setPersonId(e.target.value)}
                         className="mt-1 block w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
                     >
-                        <option value="">Choose a person…</option>
+                        <option value="">{t('hr.docs.choose_person')}</option>
                         {[...staff].sort((a, b) => a.full_name.localeCompare(b.full_name)).map(s => (
                             <option key={s.id} value={s.id}>{s.full_name}{s.code ? ` (${s.code})` : ''}</option>
                         ))}
@@ -268,7 +272,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ orchardId, staff, onClose, on
                 </label>
 
                 <label className="block">
-                    <span className="text-sm font-medium">Archivo</span>
+                    <span className="text-sm font-medium">{t('hr.docs.file')}</span>
                     <input
                         data-testid="upload-file"
                         type="file"
@@ -278,7 +282,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ orchardId, staff, onClose, on
                 </label>
 
                 <label className="block">
-                    <span className="text-sm font-medium">Título</span>
+                    <span className="text-sm font-medium">{t('broadcast.title_label')}</span>
                     <input
                         data-testid="upload-title"
                         type="text"
@@ -289,21 +293,21 @@ const UploadModal: React.FC<UploadModalProps> = ({ orchardId, staff, onClose, on
                 </label>
 
                 <label className="block">
-                    <span className="text-sm font-medium">Tipo</span>
+                    <span className="text-sm font-medium">{t('hr.docs.type')}</span>
                     <select
                         data-testid="upload-type"
                         value={docType}
                         onChange={e => setDocType(e.target.value as HRDocumentType)}
                         className="mt-1 block w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
                     >
-                        {Object.entries(HR_DOCUMENT_TYPE_LABELS).map(([value, label]) => (
-                            <option key={value} value={value}>{label}</option>
+                        {Object.keys(HR_DOCUMENT_TYPE_LABELS).map(value => (
+                            <option key={value} value={value}>{docTypeLabel(t, value)}</option>
                         ))}
                     </select>
                 </label>
 
                 <label className="block">
-                    <span className="text-sm font-medium">Vence (opcional)</span>
+                    <span className="text-sm font-medium">{t('hr.docs.expires_optional')}</span>
                     <input
                         data-testid="upload-expires"
                         type="date"
@@ -314,7 +318,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ orchardId, staff, onClose, on
                 </label>
 
                 <label className="block">
-                    <span className="text-sm font-medium">Notas</span>
+                    <span className="text-sm font-medium">{t('hr.docs.notes')}</span>
                     <textarea
                         data-testid="upload-notes"
                         rows={2}
@@ -330,7 +334,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ orchardId, staff, onClose, on
                         disabled={uploading}
                         className="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-sm font-medium"
                     >
-                        Cancelar
+                        {t('common.cancel')}
                     </button>
                     <button
                         data-testid="upload-submit"
@@ -338,7 +342,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ orchardId, staff, onClose, on
                         disabled={uploading}
                         className="flex-1 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold disabled:opacity-50"
                     >
-                        {uploading ? 'Subiendo…' : 'Subir'}
+                        {uploading ? t('hr.docs.uploading') : t('hr.docs.upload')}
                     </button>
                 </div>
             </div>

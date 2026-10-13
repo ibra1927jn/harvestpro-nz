@@ -5,9 +5,11 @@
  * con shift_start_time/shift_end_time reales.
  */
 import React from 'react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import CalendarTab from './CalendarTab';
+import { setCurrentLocale, translate } from '@/i18n';
+import { docTypeLabel } from './docTypeLabel';
 
 // Mock del store — devolvemos diferentes settings por test.
 const storeState = {
@@ -26,7 +28,7 @@ describe('CalendarTab', () => {
     it('renders fallback banner when settings missing', () => {
         render(<CalendarTab />);
         expect(screen.getByTestId('calendar-fallback-banner')).toBeTruthy();
-        expect(screen.getByText(/horario por defecto 07:00-17:00/)).toBeTruthy();
+        expect(screen.getByText(/default 07:00–17:00 hours/)).toBeTruthy();
     });
 
     it("renders Today's Schedule heading", () => {
@@ -65,5 +67,23 @@ describe('CalendarTab', () => {
         expect(screen.getByText('Upcoming Leave')).toBeTruthy();
         expect(screen.getByText(/not tracked in the app yet/)).toBeTruthy();
         expect(screen.queryByText('Aroha W.')).toBeNull();
+    });
+
+    describe('en otro idioma', () => {
+        afterEach(() => setCurrentLocale('en'));
+
+        it('el horario sale en el idioma de la app (antes siempre en inglés)', () => {
+            setCurrentLocale('es');
+            render(<CalendarTab />);
+            expect(screen.getByText('Inicio de turno — todos los equipos')).toBeTruthy();
+            expect(screen.getAllByText('Descanso (10 min pagados)').length).toBeGreaterThan(0);
+            expect(screen.queryByText(/Shift Start/)).toBeNull();
+        });
+
+        it('los tipos de documento se traducen y un tipo desconocido no rompe', () => {
+            setCurrentLocale('es');
+            expect(docTypeLabel(translate, 'work_visa')).toBe('Visado de trabajo');
+            expect(docTypeLabel(translate, 'mystery')).toBe('mystery');
+        });
     });
 });

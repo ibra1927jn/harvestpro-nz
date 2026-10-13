@@ -14,6 +14,7 @@ import orchardMap from './orchardMap';
 import assignModal from './assignModal';
 import logistics from './logistics';
 import chat from './chat';
+import hr from './hr';
 import legal from './legal';
 import login from './login';
 import logistics2 from './logistics2';
@@ -43,6 +44,7 @@ const tl: TranslationDict = {
     ...assignModal,
     ...logistics,
     ...chat,
+    ...hr,
     ...legal,
     ...login,
     ...logistics2,

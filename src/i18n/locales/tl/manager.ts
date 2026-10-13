@@ -52,6 +52,7 @@ const manager: TranslationDict = {
     'mgr.teams_on_site': 'Mga team sa site',
     'mgr.close_team_drawer': 'Isara ang team panel',
     'mgr.block_rows': 'Mga hanay ng {blockName}',
+    'mgr.chart_click': 'i-tap',
 };
 
 export default manager;

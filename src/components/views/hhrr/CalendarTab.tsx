@@ -9,10 +9,24 @@
  * aún (deuda técnica anotada en PROGRESS.md).
  */
 import React from 'react';
-import { useOrchardSchedule } from '@/hooks/useOrchardSchedule';
+import { useOrchardSchedule, type ScheduleEntry } from '@/hooks/useOrchardSchedule';
+import { NZ_REST_BREAK_DURATION_MINUTES, NZ_MEAL_BREAK_DURATION_MINUTES } from '@/constants/nz-law';
+import type { TFunction } from '@/i18n';
+import { useTranslation } from '@/i18n';
+
+/** Texto de cada tramo del horario en el idioma de la app */
+function scheduleText(t: TFunction, kind: ScheduleEntry['kind']): string {
+    switch (kind) {
+        case 'shift_start': return t('hr.cal.shift_start');
+        case 'rest': return t('hr.cal.rest_break', { min: NZ_REST_BREAK_DURATION_MINUTES });
+        case 'meal': return t('hr.cal.meal_break', { min: NZ_MEAL_BREAK_DURATION_MINUTES });
+        case 'shift_end': return t('hr.cal.shift_end');
+    }
+}
 
 
 const CalendarTab: React.FC = () => {
+    const { t } = useTranslation();
     const { schedule, isFallback } = useOrchardSchedule();
 
     return (
@@ -25,18 +39,17 @@ const CalendarTab: React.FC = () => {
                 >
                     <span aria-hidden="true" className="material-symbols-outlined text-amber-600">construction</span>
                     <p className="text-sm font-medium text-amber-800">
-                        Orchard settings incompletos — mostrando horario por defecto 07:00-17:00.
-                        Configúralo en Settings → Shift Hours para ver el schedule real.
+                        {t('hr.cal.fallback')}
                     </p>
                 </div>
             )}
 
             {/* Today's Schedule — derivado de harvest_settings */}
             <div className="bg-white rounded-xl p-5 shadow-sm border border-border-light">
-                <h3 className="font-bold text-text-primary mb-4">Today's Schedule</h3>
+                <h3 className="font-bold text-text-primary mb-4">{t('hr.cal.today')}</h3>
                 {schedule.length === 0 ? (
                     <p className="text-sm text-text-muted">
-                        No schedule configurado — revisa shift_start_time/shift_end_time en settings.
+                        {t('hr.cal.no_schedule')}
                     </p>
                 ) : (
                     <div data-testid="calendar-schedule" className="space-y-1">
@@ -48,7 +61,7 @@ const CalendarTab: React.FC = () => {
                             >
                                 <span className="text-xs font-mono text-text-muted w-12">{item.time}</span>
                                 <span aria-hidden="true" className={`material-symbols-outlined text-lg ${item.color}`}>{item.icon}</span>
-                                <span className="text-sm text-text-primary font-medium">{item.event}</span>
+                                <span className="text-sm text-text-primary font-medium">{scheduleText(t, item.kind)}</span>
                             </div>
                         ))}
                     </div>
@@ -57,9 +70,9 @@ const CalendarTab: React.FC = () => {
 
             {/* Vacaciones: aún no se registran en la app (antes salían nombres de ejemplo) */}
             <div className="bg-white rounded-xl p-5 shadow-sm border border-border-light">
-                <h3 className="font-bold text-text-primary mb-2">Upcoming Leave</h3>
+                <h3 className="font-bold text-text-primary mb-2">{t('hr.cal.leave')}</h3>
                 <p className="text-sm text-text-secondary">
-                    Leave requests are not tracked in the app yet.
+                    {t('hr.cal.leave_none')}
                 </p>
             </div>
         </div>

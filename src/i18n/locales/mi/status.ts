@@ -38,7 +38,7 @@ const status: TranslationDict = {
     'status.sent': 'Kua tukuna',
     'status.permanent': 'Pūmau',
     'status.seasonal': 'Ā-wā',
-    'status.casual': 'Tūao',
+    'status.casual': 'Wā poto',
     'status.fixed_term': 'Wā pūmau',
 };
 

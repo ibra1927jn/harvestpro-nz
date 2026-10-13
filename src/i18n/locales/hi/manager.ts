@@ -52,6 +52,7 @@ const manager: TranslationDict = {
     'mgr.teams_on_site': 'साइट पर टीमें',
     'mgr.close_team_drawer': 'टीम पैनल बंद करें',
     'mgr.block_rows': '{blockName} पंक्तियाँ',
+    'mgr.chart_click': 'टैप',
 };
 
 export default manager;

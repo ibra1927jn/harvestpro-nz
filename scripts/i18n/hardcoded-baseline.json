@@ -1,6 +1,5 @@
 {
   "src/components/AuditLogViewer.tsx": 36,
-  "src/components/charts/TrendLineChart.tsx": 1,
   "src/components/common/setup-wizard/OrchardStep.tsx": 7,
   "src/components/common/setup-wizard/RatesStep.tsx": 5,
   "src/components/common/setup-wizard/SummaryStep.tsx": 9,
@@ -12,12 +11,6 @@
   "src/components/modals/TeamLeaderSelectionModal.tsx": 20,
   "src/components/SecurityDashboard.tsx": 22,
   "src/components/settings/WageRatesPanel.tsx": 22,
-  "src/components/views/hhrr/CalendarTab.tsx": 5,
-  "src/components/views/hhrr/ContractsTab.tsx": 22,
-  "src/components/views/hhrr/DocumentsTab.tsx": 24,
-  "src/components/views/hhrr/EmployeesTab.tsx": 8,
-  "src/components/views/hhrr/PayrollTab.tsx": 7,
-  "src/components/views/hhrr/SeasonalPlanningTab.tsx": 17,
   "src/components/views/manager/AnomalyDetectionView.tsx": 20,
   "src/components/views/manager/APIKeysView.tsx": 26,
   "src/components/views/manager/DailyTimesheetSummary.tsx": 13,
@@ -36,13 +29,11 @@
   "src/components/views/payroll/PayWeekDetail.tsx": 24,
   "src/components/views/payroll/TimesheetsTab.tsx": 12,
   "src/components/views/payroll/WageCalculatorTab.tsx": 8,
-  "src/components/views/team-leader/ProfileView.tsx": 1,
   "src/hooks/usePayroll.ts": 3,
   "src/pages/Admin.tsx": 2,
   "src/pages/admin/AdminComplianceTab.tsx": 5,
   "src/pages/admin/AdminOrchardsTab.tsx": 8,
   "src/pages/admin/AdminUsersTab.tsx": 32,
-  "src/pages/HHRR.tsx": 6,
   "src/pages/OnboardingPage.tsx": 41,
   "src/pages/Payroll.tsx": 24
 }

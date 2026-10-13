@@ -52,6 +52,7 @@ const manager: TranslationDict = {
     'mgr.teams_on_site': 'Equipos en el huerto',
     'mgr.close_team_drawer': 'Cerrar panel del equipo',
     'mgr.block_rows': 'Hileras de {blockName}',
+    'mgr.chart_click': 'toca',
 };
 
 export default manager;

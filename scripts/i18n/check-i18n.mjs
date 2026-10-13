@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console -- herramienta de línea de comandos: su salida es la consola */
 /**
  * check-i18n — guardia barata de traducciones (solo lee el AST con TypeScript).
  *
@@ -227,9 +228,12 @@ export function findHardcoded(text, file, allow) {
     const lines = text.split('\n');
     const isTsx = file.endsWith('.tsx');
     const findings = [];
+    // i18n-ignore en la línea del texto o en la anterior (para texto JSX: desde la etiqueta que lo abre)
     const ignored = (node) => {
-        const l = sf.getLineAndCharacterOfPosition(node.getStart()).line;
-        return /i18n-ignore/.test(lines[l] ?? '') || /i18n-ignore/.test(lines[l - 1] ?? '');
+        const from = sf.getLineAndCharacterOfPosition(node.pos).line - 1;
+        const to = sf.getLineAndCharacterOfPosition(node.getStart()).line;
+        for (let l = Math.max(0, from); l <= to; l++) if (/i18n-ignore/.test(lines[l] ?? '')) return true;
+        return false;
     };
     const add = (node, raw, kind) => {
         if (!isUserText(raw, allow) || ignored(node)) return;

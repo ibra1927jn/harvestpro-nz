@@ -8,6 +8,10 @@ import EmptyState from '@/components/ui/EmptyState';
 import FilterBar from '@/components/ui/FilterBar';
 import InlineSelect from '@/components/ui/InlineSelect';
 import { Employee, ComplianceAlert } from '@/services/hhrr.service';
+import { formatNZDate } from '@/utils/nzFormat';
+import { roleLabel } from '@/i18n/roleLabel';
+import type { TFunction } from '@/i18n';
+import { useTranslation } from '@/i18n';
 
 const ROLE_BADGES: Record<string, string> = {
     team_leader: 'bg-indigo-50 text-indigo-700',
@@ -29,10 +33,10 @@ const VISA_COLORS: Record<string, string> = {
     not_recorded: 'text-slate-400',
 };
 
-const visaLabel = (emp: Employee) =>
+const visaLabel = (t: TFunction, emp: Employee) =>
     emp.visa_status === 'work_visa'
-        ? `visa${emp.visa_expiry ? ` until ${new Date(emp.visa_expiry + 'T12:00:00Z').toLocaleDateString('en-NZ', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' })}` : ''}`
-        : emp.visa_status === 'expired' ? 'visa expired' : 'no visa on file';
+        ? (emp.visa_expiry ? t('hr.visa_until', { date: formatNZDate(emp.visa_expiry, 'medium') }) : t('hr.visa'))
+        : emp.visa_status === 'expired' ? t('hr.visa_expired') : t('hr.visa_none');
 
 interface EmployeesTabProps {
     employees: Employee[];
@@ -44,6 +48,7 @@ interface EmployeesTabProps {
 }
 
 const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdateEmployee, onAddPicker }) => {
+    const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = useState('');
     const [saveError, setSaveError] = useState<string | null>(null);
     const update = async (emp: Employee, changes: Partial<Employee>) => {
@@ -79,7 +84,7 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
                         className="px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold flex items-center gap-2 hover:bg-indigo-700"
                     >
                         <span aria-hidden="true" className="material-symbols-outlined text-base">person_add</span>
-                        Add picker
+                        {t('hr.add_picker')}
                     </button>
                 </div>
             )}
@@ -89,11 +94,11 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
             <FilterBar
                 searchValue={searchQuery}
                 onSearchChange={setSearchQuery}
-                searchPlaceholder="Search employees..."
+                searchPlaceholder={t('hr.search_employees')}
                 filters={[
-                    { key: 'role', label: 'Role', options: filterOptions.roles, icon: 'badge' },
-                    { key: 'status', label: 'Status', options: filterOptions.statuses, icon: 'toggle_on' },
-                    { key: 'visa_status', label: 'Visa', options: filterOptions.visas, icon: 'public' },
+                    { key: 'role', label: t('hr.role'), options: filterOptions.roles, icon: 'badge' },
+                    { key: 'status', label: t('hr.status'), options: filterOptions.statuses, icon: 'toggle_on' },
+                    { key: 'visa_status', label: t('hr.visa'), options: filterOptions.visas, icon: 'public' },
                 ]}
                 activeFilters={activeFilters}
                 onFilterChange={(key, value) => setActiveFilters(prev => ({ ...prev, [key]: value }))}
@@ -118,7 +123,7 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
                                     <div className="flex items-center gap-3 mb-1.5">
                                         <h3 className="font-bold text-slate-800 text-sm truncate">{emp.full_name}</h3>
                                         <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full shadow-sm ${ROLE_BADGES[emp.role] || 'bg-slate-100 text-slate-700'}`}>
-                                            {emp.role.replace('_', ' ')}
+                                            {roleLabel(t, emp.role)}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
@@ -130,13 +135,13 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
                                         />
                                         <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/50 border border-slate-100 ${VISA_COLORS[emp.visa_status] || 'text-slate-500'}`}>
                                             <span aria-hidden="true" className="material-symbols-outlined text-[14px]">public</span>
-                                            {visaLabel(emp)}
+                                            {visaLabel(t, emp)}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100/60">
                                         <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
                                             <span aria-hidden="true" className="material-symbols-outlined text-[14px]">event</span>
-                                            Hired {new Date(emp.hire_date).toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', month: 'short', day: 'numeric', year: 'numeric' })}
+                                            {t('hr.hired', { date: formatNZDate(emp.hire_date, 'medium') })}
                                         </div>
                                     </div>
                                 </div>
@@ -152,8 +157,8 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
             {filtered.length === 0 && (
                 <EmptyState
                     icon="person_search"
-                    title="No employees found"
-                    subtitle="Try adjusting your search or filters"
+                    title={t('hr.no_employees')}
+                    subtitle={t('hr.adjust_filters')}
                     compact
                 />
             )}
@@ -161,7 +166,7 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
             {/* Compliance Alerts */}
             {alerts.length > 0 && (
                 <div className="space-y-3 mt-6">
-                    <h3 className="text-sm font-extrabold text-slate-800 tracking-tight ml-1">Compliance Alerts</h3>
+                    <h3 className="text-sm font-extrabold text-slate-800 tracking-tight ml-1">{t('hr.compliance_alerts')}</h3>
                     {alerts.map(alert => (
                         <div key={alert.id} className={`bg-white/80 backdrop-blur-xl rounded-3xl p-4 flex items-center gap-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border ${
                             alert.severity === 'critical' ? 'border-red-200/60' :

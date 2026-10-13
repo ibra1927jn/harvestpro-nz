@@ -75,7 +75,7 @@ describe('DocumentsTab', () => {
             },
         ]);
         render(<DocumentsTab />);
-        await waitFor(() => expect(screen.getByText(/Vencido/)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/Expired \d+d/)).toBeInTheDocument());
     });
 
     it('badge amarillo "Expira en" cuando < 60 días', async () => {
@@ -90,7 +90,7 @@ describe('DocumentsTab', () => {
             },
         ]);
         render(<DocumentsTab />);
-        await waitFor(() => expect(screen.getByText(/Expira en/)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/Expires in \d+d/)).toBeInTheDocument());
     });
 
     it('click upload-btn abre modal', async () => {
@@ -106,7 +106,7 @@ describe('DocumentsTab', () => {
             (sel: (s: unknown) => unknown) => sel({ orchard: null }),
         );
         render(<DocumentsTab />);
-        expect(screen.getByText(/Selecciona un orchard/)).toBeInTheDocument();
+        expect(screen.getByText(/Select an orchard first/)).toBeInTheDocument();
     });
 
     it('muestra error inline cuando list falla', async () => {

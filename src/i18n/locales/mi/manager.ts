@@ -52,6 +52,7 @@ const manager: TranslationDict = {
     'mgr.teams_on_site': 'Ngā rōpū kei te wāhi',
     'mgr.close_team_drawer': 'Katia te paewhiri rōpū',
     'mgr.block_rows': 'Ngā rārangi o {blockName}',
+    'mgr.chart_click': 'pāwhiri',
 };
 
 export default manager;

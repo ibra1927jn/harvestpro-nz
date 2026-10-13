@@ -197,7 +197,7 @@ export const TrendLineChart: React.FC<TrendLineChartProps> = ({
                                 <text x={cx} y={cy + 22} textAnchor="middle"
                                     className="text-[9px] font-bold opacity-0 group-hover:opacity-40 transition-opacity"
                                     fill="#64748b">
-                                    click
+                                    {t('mgr.chart_click')}
                                 </text>
                             )}
 
