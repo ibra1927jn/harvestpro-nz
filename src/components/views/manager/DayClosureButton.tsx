@@ -7,6 +7,7 @@ import { payrollService, PayrollResult } from '@/services/payroll.service';
 import Toast from '@/components/ui/Toast';
 import { useTranslation } from '@/i18n';
 import { formatNZD } from '@/utils/nzFormat';
+import { withBold } from '@/i18n/withBold';
 
 interface ClosureConfirmModalProps {
     summary: PayrollResult;
@@ -14,10 +15,6 @@ interface ClosureConfirmModalProps {
     onCancel: () => void;
     isLoading: boolean;
 }
-
-/** "texto <b>negrita</b> texto" → mismo texto con <strong> (la traducción decide qué va en negrita) */
-const withBold = (text: string) =>
-    text.split(/<b>(.*?)<\/b>/).map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : part));
 
 const ClosureConfirmModal = ({ summary, onConfirm, onCancel, isLoading }: ClosureConfirmModalProps) => {
     const { t } = useTranslation();

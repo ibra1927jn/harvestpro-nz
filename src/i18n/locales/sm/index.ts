@@ -26,6 +26,7 @@ import payroll from './payroll';
 import pickerDetails from './pickerDetails';
 import qc from './qc';
 import runner from './runner';
+import settings2 from './settings2';
 import shared from './shared';
 import status from './status';
 import sync from './sync';
@@ -60,6 +61,7 @@ const sm: TranslationDict = {
     ...pickerDetails,
     ...qc,
     ...runner,
+    ...settings2,
     ...shared,
     ...status,
     ...sync,

@@ -66,7 +66,7 @@ vi.mock('@/i18n', async (importOriginal) => {
             locale: 'en' as const,
             setLocale: vi.fn(),
             localeInfo: actual.SUPPORTED_LOCALES[0],
-            t: (key: string) => actual.translations['en']?.[key] ?? key,
+            t: (key: string, params?: Record<string, string | number>) => actual.translate(key, params, 'en'),
         }),
     };
 });
@@ -141,7 +141,7 @@ describe('SettingsView', () => {
     it('renders user name and role', () => {
         render(<SettingsView />);
         expect(screen.getByText('John Manager')).toBeTruthy();
-        expect(screen.getByText(/manager/)).toBeTruthy();
+        expect(screen.getByText(/Manager ·/)).toBeTruthy();
     });
 
     it('renders orchard name', () => {

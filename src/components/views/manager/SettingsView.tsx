@@ -23,6 +23,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import { SettingsSection, FormField, ReadonlyField, ToggleRow } from './settings/SettingsFormComponents';
 import { VarietyRatesEditor } from './settings/VarietyRatesEditor';
 import { LockedField, ComplianceTargetField, OrchardSelector } from './settings/SettingsFields';
+import { roleLabel } from '@/i18n/roleLabel';
 
 
 const SettingsView: React.FC = () => {
@@ -43,8 +44,8 @@ const SettingsView: React.FC = () => {
                                 {s.initials}
                             </div>
                             <div>
-                                <h3 className="text-sm font-bold text-white truncate leading-tight">{s.currentUser?.name || 'Manager'}</h3>
-                                <p className="text-[10px] text-white/60 capitalize leading-tight">{s.currentUser?.role || 'manager'} · {s.orchard?.name || 'No Orchard'}</p>
+                                <h3 className="text-sm font-bold text-white truncate leading-tight">{s.currentUser?.name || t('settings.banner.role')}</h3>
+                                <p className="text-[10px] text-white/60 capitalize leading-tight">{t('settings.banner.orchard_line', { role: roleLabel(t, s.currentUser?.role || 'manager'), orchard: s.orchard?.name || t('settings.no_orchard') })}</p>
                             </div>
                         </div>
                         {/* Quick stats en el banner derecho */}
@@ -108,7 +109,7 @@ const SettingsView: React.FC = () => {
                             type="time"
                             value={s.formData.shift_start_time}
                             onChange={(e) => s.handleChange('shift_start_time', e.target.value)}
-                            aria-label="Shift start time"
+                            aria-label={t('settings.harvest.shift_start')}
                             className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-text-main font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
                         />
                     </div>
@@ -121,7 +122,7 @@ const SettingsView: React.FC = () => {
                             type="time"
                             value={s.formData.shift_end_time}
                             onChange={(e) => s.handleChange('shift_end_time', e.target.value)}
-                            aria-label="Shift end time"
+                            aria-label={t('settings.harvest.shift_end')}
                             className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-text-main font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
                         />
                     </div>
@@ -161,17 +162,17 @@ const SettingsView: React.FC = () => {
             </SettingsSection>
 
             {/* ── Notifications ────────────────────────── */}
-            <SettingsSection icon="notifications_active" iconBg="bg-amber-50" iconColor="text-amber-600" title="Notifications" subtitle="Push alerts & monitoring" accentColor="border-l-amber-500" stagger={5}>
-                <ToggleRow label="Enable Push Notifications" description="Receive browser alerts for critical events" checked={s.notifEnabled} onChange={s.handleNotifToggle} icon="notifications" />
+            <SettingsSection icon="notifications_active" iconBg="bg-amber-50" iconColor="text-amber-600" title={t('settings.notifications')} subtitle={t('settings.notif.subtitle')} accentColor="border-l-amber-500" stagger={5}>
+                <ToggleRow label={t('settings.notif.enable')} description={t('settings.notif.enable_desc')} checked={s.notifEnabled} onChange={s.handleNotifToggle} icon="notifications" />
                 {s.notifEnabled && (
                     <>
                         <div className="border-t border-slate-100 pt-3 mt-1">
-                            <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest mb-3">Alert Types</p>
+                            <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest mb-3">{t('settings.notif.types')}</p>
                             <div className="space-y-3">
-                                <ToggleRow label="Visa Expiry (7-day warning)" checked={s.notifTypes.visa_expiry} onChange={(v) => s.handleNotifType('visa_expiry', v)} icon="badge" compact />
-                                <ToggleRow label="QC Reject Rate (>15%)" checked={s.notifTypes.qc_reject} onChange={(v) => s.handleNotifType('qc_reject', v)} icon="error" compact />
-                                <ToggleRow label="Transport Pending (>30 min)" checked={s.notifTypes.transport} onChange={(v) => s.handleNotifType('transport', v)} icon="local_shipping" compact />
-                                <ToggleRow label="Attendance Alerts" checked={s.notifTypes.attendance} onChange={(v) => s.handleNotifType('attendance', v)} icon="assignment_late" compact />
+                                <ToggleRow label={t('settings.notif.visa')} checked={s.notifTypes.visa_expiry} onChange={(v) => s.handleNotifType('visa_expiry', v)} icon="badge" compact />
+                                <ToggleRow label={t('settings.notif.qc')} checked={s.notifTypes.qc_reject} onChange={(v) => s.handleNotifType('qc_reject', v)} icon="error" compact />
+                                <ToggleRow label={t('settings.notif.transport')} checked={s.notifTypes.transport} onChange={(v) => s.handleNotifType('transport', v)} icon="local_shipping" compact />
+                                <ToggleRow label={t('settings.notif.attendance')} checked={s.notifTypes.attendance} onChange={(v) => s.handleNotifType('attendance', v)} icon="assignment_late" compact />
                             </div>
                         </div>
                         <div className="pt-2">
@@ -180,7 +181,7 @@ const SettingsView: React.FC = () => {
                                 className={`px-4 py-2.5 text-sm font-semibold rounded-xl transition-all flex items-center gap-2 ${s.notifTestSent ? 'text-green-700 bg-green-50 border border-green-200' : 'text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 active:scale-[0.97]'}`}
                             >
                                 <span aria-hidden="true" className="material-symbols-outlined text-base">{s.notifTestSent ? 'check_circle' : 'send'}</span>
-                                {s.notifTestSent ? 'Test Sent ✓' : 'Send Test Notification'}
+                                {s.notifTestSent ? `${t('settings.notif.test_sent')} ✓` : t('settings.notif.send_test')}
                             </button>
                         </div>
                     </>
@@ -220,16 +221,16 @@ const SettingsView: React.FC = () => {
                     <span aria-hidden="true" className={`material-symbols-outlined text-base ${s.isSaving ? 'animate-spin' : ''}`}>
                         {s.isSaving ? 'refresh' : 'save'}
                     </span>
-                    {s.isSaving ? 'Saving...' : s.hasChanges ? 'Save Changes' : 'All Changes Saved'}
+                    {s.isSaving ? t('hr.saving') : s.hasChanges ? t('settings.save_changes') : t('settings.saved_banner')}
                 </button>
                 {s.saveStatus === 'saved' && (
                     <div className="flex items-center justify-center gap-2 text-sm text-green-600 animate-slide-up">
-                        <span aria-hidden="true" className="material-symbols-outlined text-base">check_circle</span>Settings saved successfully
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">check_circle</span>{t('settings.saved_ok')}
                     </div>
                 )}
                 {s.saveStatus === 'error' && (
                     <div className="flex items-center justify-center gap-2 text-sm text-red-600 animate-slide-up">
-                        <span aria-hidden="true" className="material-symbols-outlined text-base">error</span>{s.saveError || 'Failed to save. Please try again.'}
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">error</span>{s.saveError || t('settings.save_failed')}
                     </div>
                 )}
             </div>
@@ -280,7 +281,7 @@ const SettingsView: React.FC = () => {
                 <p className="text-xs font-bold text-text-muted">
                     HarvestPro NZ<span className="text-text-muted/50 mx-1.5">•</span>v9.9.0
                 </p>
-                <p className="text-[11px] text-text-muted/60">© 2026 HarvestPro. Built for NZ Orchards.</p>
+                <p className="text-[11px] text-text-muted/60">{t('settings.copyright')}</p>
             </div>
         </div>
     );

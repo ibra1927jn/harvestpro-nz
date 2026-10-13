@@ -8,12 +8,8 @@
   "src/components/modals/import-csv/ImportSteps.tsx": 27,
   "src/components/modals/ImportCSVModal.tsx": 10,
   "src/components/SecurityDashboard.tsx": 22,
-  "src/components/settings/WageRatesPanel.tsx": 22,
   "src/components/views/manager/AnomalyDetectionView.tsx": 20,
   "src/components/views/manager/MPIExportView.tsx": 14,
-  "src/components/views/manager/settings/SettingsFields.tsx": 6,
-  "src/components/views/manager/settings/VarietyRatesEditor.tsx": 15,
-  "src/components/views/manager/SettingsView.tsx": 22,
   "src/components/views/manager/weekly-report/ExportModal.tsx": 20,
   "src/pages/OnboardingPage.tsx": 41
 }
