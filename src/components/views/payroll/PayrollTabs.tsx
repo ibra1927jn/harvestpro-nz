@@ -18,7 +18,7 @@ import { loadOrchardNames } from '@/repositories/pay-rates.repository';
 export const SummaryCard: React.FC<{ icon: string; iconColor: string; label: string; value: string; highlight?: boolean }> = ({ icon, iconColor, label, value, highlight }) => (
     <div className={`rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border ${highlight ? 'bg-orange-50/90 border-orange-200 backdrop-blur-md' : 'bg-white/80 border-white/60 backdrop-blur-xl'}`}>
         <div className="flex items-center gap-3 mb-2">
-            <span className={`material-symbols-outlined text-[20px] ${iconColor}`}>{icon}</span>
+            <span aria-hidden="true" className={`material-symbols-outlined text-[20px] ${iconColor}`}>{icon}</span>
             <span className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">{label}</span>
         </div>
         <p className={`text-3xl font-black tracking-tight ${highlight ? 'text-orange-600' : 'text-slate-800'}`}>{value}</p>
@@ -44,7 +44,7 @@ export const PayrollDashboard: React.FC<{ pickers: PickerBreakdown[]; settings: 
 
             {pickers.length === 0 ? (
                 <div className="text-center py-10 text-slate-400 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                    <span className="material-symbols-outlined text-5xl mb-3 block opacity-50">payments</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-5xl mb-3 block opacity-50">payments</span>
                     <p className="font-bold text-slate-500">No payroll data yet</p>
                     <p className="text-[11px] uppercase tracking-widest mt-1">Data will appear when scans are submitted</p>
                 </div>
@@ -99,11 +99,11 @@ export const PayrollDashboard: React.FC<{ pickers: PickerBreakdown[]; settings: 
                                 <td className="py-3 px-4 text-center">
                                     {p.is_below_minimum ? (
                                         <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-100 uppercase tracking-widest">
-                                            <span className="material-symbols-outlined text-[14px]">shield</span> Shield
+                                            <span aria-hidden="true" className="material-symbols-outlined text-[14px]">shield</span> Shield
                                         </span>
                                     ) : (
                                         <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-widest">
-                                            <span className="material-symbols-outlined text-[14px]">check</span> OK
+                                            <span aria-hidden="true" className="material-symbols-outlined text-[14px]">check</span> OK
                                         </span>
                                     )}
                                 </td>
@@ -169,7 +169,7 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
         <div className="space-y-4 relative">
             {toast && (
                 <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] text-[13px] font-bold flex items-center gap-2 ${toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
-                    <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[18px]">check_circle</span>
                     {toast.message}
                 </div>
             )}
@@ -187,7 +187,7 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                     </div>
                 ) : pending.length === 0 ? (
                     <div className="text-center py-8 text-text-muted">
-                        <span className="material-symbols-outlined text-4xl mb-2 block">task_alt</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-4xl mb-2 block">task_alt</span>
                         <p className="font-medium">All timesheets approved</p>
                     </div>
                 ) : (
@@ -208,10 +208,10 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                                 </div>
                                 <div className="flex gap-2">
                                     <button onClick={() => handleApprove(t.id, t.picker_name)} className="flex-1 py-2.5 rounded-xl bg-emerald-50 text-emerald-600 text-[11px] uppercase tracking-widest font-bold hover:bg-emerald-500 hover:text-white transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm">
-                                        <span className="material-symbols-outlined text-[16px]">check</span>Approve
+                                        <span aria-hidden="true" className="material-symbols-outlined text-[16px]">check</span>Approve
                                     </button>
                                     <button onClick={() => handleReject(t.id, t.picker_name)} className="flex-1 py-2.5 rounded-xl bg-red-50 text-red-600 text-[11px] uppercase tracking-widest font-bold hover:bg-red-500 hover:text-white transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm">
-                                        <span className="material-symbols-outlined text-[16px]">close</span>Reject
+                                        <span aria-hidden="true" className="material-symbols-outlined text-[16px]">close</span>Reject
                                     </button>
                                 </div>
                             </div>
@@ -230,7 +230,7 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                                 <div className="flex items-center justify-between mb-2">
                                     <h4 className="font-bold text-slate-800 text-sm tracking-tight">{t.picker_name}</h4>
                                     <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-100/50 text-emerald-600 uppercase tracking-widest border border-emerald-100">
-                                        <span className="material-symbols-outlined text-[14px]">check</span> Verified
+                                        <span aria-hidden="true" className="material-symbols-outlined text-[14px]">check</span> Verified
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">
@@ -290,7 +290,7 @@ export const WageCalculatorTab: React.FC<{ settings: { bucket_rate: number; min_
                     {topUp > 0 && (
                         <div className="flex justify-between py-1.5 text-amber-500 bg-amber-50/50 -mx-3 px-3 rounded-lg">
                             <span className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5">
-                                <span className="material-symbols-outlined text-[16px]">shield</span>Wage Shield Top-Up
+                                <span aria-hidden="true" className="material-symbols-outlined text-[16px]">shield</span>Wage Shield Top-Up
                             </span>
                             <span className="text-sm font-bold">+${topUp.toFixed(2)}</span>
                         </div>
@@ -400,7 +400,7 @@ export const ExportTab: React.FC<{
                         className="group bg-white/80 backdrop-blur-xl rounded-2xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-white/60 flex items-center gap-4 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:bg-white transition-all duration-300 text-left disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <div className="size-12 rounded-xl bg-orange-50 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
-                            <span className="material-symbols-outlined text-[24px] text-orange-500">{exp.icon}</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-[24px] text-orange-500">{exp.icon}</span>
                         </div>
                         <div>
                             <h4 className="font-extrabold text-slate-800 text-sm tracking-tight">{exp.label}</h4>

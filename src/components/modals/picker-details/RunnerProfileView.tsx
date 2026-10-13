@@ -59,7 +59,7 @@ const RunnerProfileView: React.FC<RunnerProfileViewProps> = React.memo(({
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                 <div className="flex items-center justify-between mb-3">
                     <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Details</p>
-                    {!isEditing && <button onClick={() => setIsEditing(true)} className="text-amber-600 text-xs font-bold hover:text-amber-800 transition-colors flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">edit</span>Edit</button>}
+                    {!isEditing && <button onClick={() => setIsEditing(true)} className="text-amber-600 text-xs font-bold hover:text-amber-800 transition-colors flex items-center gap-1"><span aria-hidden="true" className="material-symbols-outlined text-[14px]">edit</span>Edit</button>}
                 </div>
                 {isEditing ? (
                     <div className="space-y-3">

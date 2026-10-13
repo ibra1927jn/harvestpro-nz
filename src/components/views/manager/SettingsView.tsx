@@ -27,12 +27,12 @@ import { VarietyRatesEditor } from './settings/VarietyRatesEditor';
 const LockedField: React.FC<{ label: string; value: string; tooltip: string }> = ({ label, value, tooltip }) => (
     <div className="flex items-center justify-between py-1">
         <span className="text-sm font-medium text-text-sub flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm text-amber-500">lock</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-sm text-amber-500">lock</span>
             {label}
         </span>
         <span title={tooltip} className="text-sm text-text-muted font-medium bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-help">
             {value}
-            <span className="material-symbols-outlined text-[13px] text-amber-400">info</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[13px] text-amber-400">info</span>
         </span>
     </div>
 );
@@ -69,7 +69,7 @@ const ComplianceTargetField: React.FC<ComplianceTargetFieldProps> = ({ value, fl
                 />
             </div>
             <p className={`text-[11px] font-medium flex items-center gap-1 ${isAtFloor ? 'text-amber-600' : 'text-emerald-600'}`}>
-                <span className="material-symbols-outlined text-sm">{isAtFloor ? 'warning' : 'check_circle'}</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-sm">{isAtFloor ? 'warning' : 'check_circle'}</span>
                 {/* Fórmula visible: ceil(minWage / pieceRate) */}
                 {t('settings.harvest.min_warning').replace('${wage}', String(minWage)).replace('${rate}', String(pieceRate)).replace('{floor}', String(floor))}
                 {!isAtFloor && <span className="text-text-muted ml-1">(override: {value})</span>}
@@ -90,7 +90,7 @@ interface OrchardSelectorProps {
 const OrchardSelector: React.FC<OrchardSelectorProps> = ({ orchards, selectedId, onSelect }) => (
     <div className="flex items-center justify-between py-1">
         <span className="text-sm font-medium text-text-sub flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm text-text-muted">location_on</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-sm text-text-muted">location_on</span>
             {/* OrchardSelector is rendered inside SettingsView which has translation context */}
             Orchard
         </span>
@@ -190,7 +190,7 @@ const SettingsView: React.FC = () => {
                     <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest mb-3">{t('settings.harvest.shift_hours')}</p>
                     <div className="flex items-center justify-between py-1">
                         <label className="text-sm font-medium text-text-sub flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-sm text-indigo-400">schedule</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-sm text-indigo-400">schedule</span>
                             {t('settings.harvest.shift_start')}
                         </label>
                         <input
@@ -203,7 +203,7 @@ const SettingsView: React.FC = () => {
                     </div>
                     <div className="flex items-center justify-between py-1">
                         <label className="text-sm font-medium text-text-sub flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-sm text-indigo-400">schedule</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-sm text-indigo-400">schedule</span>
                             {t('settings.harvest.shift_end')}
                         </label>
                         <input
@@ -236,14 +236,14 @@ const SettingsView: React.FC = () => {
                 {/* Audit Trail — siempre activo, no es toggle interactivo */}
                 <div className="flex items-center justify-between py-1">
                     <div className="flex items-start gap-2 flex-1">
-                        <span className="material-symbols-outlined text-sm text-slate-400 mt-0.5">history</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-slate-400 mt-0.5">history</span>
                         <div>
                             <p className="text-sm font-medium text-text-sub">{t('settings.compliance.audit_trail')}</p>
                             <p className="text-[11px] text-text-muted">{t('settings.compliance.audit_trail_desc')}</p>
                         </div>
                     </div>
                     <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[10px] font-bold text-emerald-700 shrink-0">
-                        <span className="material-symbols-outlined text-xs">lock</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-xs">lock</span>
                         {t('settings.compliance.always_on')}
                     </span>
                 </div>
@@ -268,7 +268,7 @@ const SettingsView: React.FC = () => {
                                 onClick={s.handleSendTest}
                                 className={`px-4 py-2.5 text-sm font-semibold rounded-xl transition-all flex items-center gap-2 ${s.notifTestSent ? 'text-green-700 bg-green-50 border border-green-200' : 'text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 active:scale-[0.97]'}`}
                             >
-                                <span className="material-symbols-outlined text-base">{s.notifTestSent ? 'check_circle' : 'send'}</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-base">{s.notifTestSent ? 'check_circle' : 'send'}</span>
                                 {s.notifTestSent ? 'Test Sent ✓' : 'Send Test Notification'}
                             </button>
                         </div>
@@ -289,7 +289,7 @@ const SettingsView: React.FC = () => {
                             <span className={`text-xs font-semibold ${locale === loc.code ? 'text-violet-700' : 'text-text-sub'}`}>{loc.nativeName}</span>
                             {locale === loc.code && (
                                 <span className="text-[10px] text-violet-500 font-bold flex items-center gap-0.5">
-                                    <span className="material-symbols-outlined text-xs">check_circle</span>{t('settings.language.active')}
+                                    <span aria-hidden="true" className="material-symbols-outlined text-xs">check_circle</span>{t('settings.language.active')}
                                 </span>
                             )}
                         </button>
@@ -306,19 +306,19 @@ const SettingsView: React.FC = () => {
                     disabled={s.isSaving || !s.hasChanges}
                     className={`w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-bold text-sm transition-all active:scale-[0.97] ${s.hasChanges ? 'gradient-primary glow-primary text-white hover:scale-[1.01]' : 'bg-slate-100 text-text-muted cursor-not-allowed'}`}
                 >
-                    <span className={`material-symbols-outlined text-base ${s.isSaving ? 'animate-spin' : ''}`}>
+                    <span aria-hidden="true" className={`material-symbols-outlined text-base ${s.isSaving ? 'animate-spin' : ''}`}>
                         {s.isSaving ? 'refresh' : 'save'}
                     </span>
                     {s.isSaving ? 'Saving...' : s.hasChanges ? 'Save Changes' : 'All Changes Saved'}
                 </button>
                 {s.saveStatus === 'saved' && (
                     <div className="flex items-center justify-center gap-2 text-sm text-green-600 animate-slide-up">
-                        <span className="material-symbols-outlined text-base">check_circle</span>Settings saved successfully
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">check_circle</span>Settings saved successfully
                     </div>
                 )}
                 {s.saveStatus === 'error' && (
                     <div className="flex items-center justify-center gap-2 text-sm text-red-600 animate-slide-up">
-                        <span className="material-symbols-outlined text-base">error</span>{s.saveError || 'Failed to save. Please try again.'}
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">error</span>{s.saveError || 'Failed to save. Please try again.'}
                     </div>
                 )}
             </div>
@@ -328,7 +328,7 @@ const SettingsView: React.FC = () => {
                 <div className="px-5 py-4 border-b border-slate-100 bg-red-50/50">
                     <div className="flex items-center gap-3">
                         <div className="bg-red-100 p-2 rounded-xl">
-                            <span className="material-symbols-outlined text-base text-red-600">warning</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-base text-red-600">warning</span>
                         </div>
                         <div>
                             <h3 className="text-sm font-bold text-text-main">{t('settings.danger.title')}</h3>
@@ -339,7 +339,7 @@ const SettingsView: React.FC = () => {
                 <div className="px-5 py-4 space-y-4">
                     <div>
                         <div className="flex items-start gap-3 mb-3">
-                            <span className="material-symbols-outlined text-base text-text-muted mt-0.5">lock_clock</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-base text-text-muted mt-0.5">lock_clock</span>
                             <div>
                                 <p className="text-sm font-semibold text-text-main">{t('settings.danger.day_closure')}</p>
                                 <p className="text-xs text-text-muted">{t('settings.danger.day_closure_desc')}</p>
@@ -350,7 +350,7 @@ const SettingsView: React.FC = () => {
                     <div className="border-t border-red-100 pt-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-base text-text-muted mt-0.5">delete_sweep</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-base text-text-muted mt-0.5">delete_sweep</span>
                                 <div>
                                     <p className="text-sm font-semibold text-text-main">{t('settings.danger.reset_title')}</p>
                                     <p className="text-xs text-text-muted">{t('settings.danger.reset_desc')}</p>

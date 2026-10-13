@@ -232,28 +232,28 @@ const DeadLetterQueueView: React.FC = () => {
                                     )}
                                 </div>
                                 <div className="flex gap-1">
-                                    <button
+                                    <button aria-label="Retry sync"
                                         onClick={() => handleRetry(item)}
                                         disabled={loading}
                                         className="p-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
                                         title="Retry sync"
                                     >
-                                        <span className="material-symbols-outlined text-sm">refresh</span>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-sm">refresh</span>
                                     </button>
-                                    <button
+                                    <button aria-label="Edit payload and retry"
                                         onClick={() => handleStartEdit(item)}
                                         disabled={loading}
                                         className="p-1.5 bg-amber-500 text-white rounded hover:bg-amber-600 transition-colors disabled:opacity-50"
                                         title="Edit payload & retry"
                                     >
-                                        <span className="material-symbols-outlined text-sm">edit</span>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-sm">edit</span>
                                     </button>
-                                    <button
+                                    <button aria-label="Discard item"
                                         onClick={() => handleDiscard(item)}
                                         className="p-1.5 bg-slate-200 text-text-sub rounded hover:bg-slate-300 transition-colors"
                                         title="Discard item"
                                     >
-                                        <span className="material-symbols-outlined text-sm">cancel</span>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-sm">cancel</span>
                                     </button>
                                 </div>
                             </div>
@@ -313,7 +313,7 @@ const DeadLetterQueueView: React.FC = () => {
             <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined text-2xl text-amber-600">warning</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-2xl text-amber-600">warning</span>
                         <h2 className="text-2xl font-bold text-text-main">Dead Letter Queue</h2>
                     </div>
                     {totalErrors > 0 && (
@@ -321,7 +321,7 @@ const DeadLetterQueueView: React.FC = () => {
                             onClick={() => handleDiscardAll('all')}
                             className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
                         >
-                            <span className="material-symbols-outlined text-base">delete</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-base">delete</span>
                             Discard All ({totalErrors})
                         </button>
                     )}
@@ -344,7 +344,7 @@ const DeadLetterQueueView: React.FC = () => {
                     {renderErrorSection(
                         'Critical Errors',
                         deadLetters.critical,
-                        <span className="material-symbols-outlined text-xl text-red-600">error</span>,
+                        <span aria-hidden="true" className="material-symbols-outlined text-xl text-red-600">error</span>,
                         'border-red-300',
                         'bg-red-100',
                         'text-red-700'
@@ -353,7 +353,7 @@ const DeadLetterQueueView: React.FC = () => {
                     {renderErrorSection(
                         'Warnings',
                         deadLetters.warnings,
-                        <span className="material-symbols-outlined text-xl text-amber-600">warning</span>,
+                        <span aria-hidden="true" className="material-symbols-outlined text-xl text-amber-600">warning</span>,
                         'border-amber-300',
                         'bg-amber-100',
                         'text-amber-700'
@@ -362,7 +362,7 @@ const DeadLetterQueueView: React.FC = () => {
                     {renderErrorSection(
                         'Recent Failures',
                         deadLetters.recent,
-                        <span className="material-symbols-outlined text-xl text-blue-600">info</span>,
+                        <span aria-hidden="true" className="material-symbols-outlined text-xl text-blue-600">info</span>,
                         'border-blue-300',
                         'bg-blue-100',
                         'text-blue-700'

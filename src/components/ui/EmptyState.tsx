@@ -35,7 +35,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
     <div className={`flex flex-col items-center justify-center text-center ${compact ? 'py-8 px-4' : 'py-16 px-6'}`}>
         {/* Icon container with subtle background */}
         <div className={`rounded-full bg-surface-secondary flex items-center justify-center mb-4 ${compact ? 'w-14 h-14' : 'w-20 h-20'}`}>
-            <span className={`material-symbols-outlined ${iconColor} ${compact ? 'text-2xl' : 'text-4xl'}`}>
+            <span aria-hidden="true" className={`material-symbols-outlined ${iconColor} ${compact ? 'text-2xl' : 'text-4xl'}`}>
                 {icon}
             </span>
         </div>
@@ -59,7 +59,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
                 className="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600 font-medium text-sm hover:bg-indigo-100 transition-colors active:scale-95"
             >
                 {action.icon && (
-                    <span className="material-symbols-outlined text-base">{action.icon}</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-base">{action.icon}</span>
                 )}
                 {action.label}
             </button>

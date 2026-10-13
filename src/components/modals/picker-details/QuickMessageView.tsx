@@ -45,8 +45,8 @@ const QuickMessageView: React.FC<QuickMessageViewProps> = React.memo(({
     return (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-md p-5">
             <div className="flex items-center gap-2 mb-4">
-                <button onClick={onBack} className="text-slate-400 hover:text-slate-600 transition-colors">
-                    <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                <button aria-label="Back" onClick={onBack} className="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span aria-hidden="true" className="material-symbols-outlined text-[20px]">arrow_back</span>
                 </button>
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
                     Message to {pickerName}
@@ -55,7 +55,7 @@ const QuickMessageView: React.FC<QuickMessageViewProps> = React.memo(({
 
             {messageSent ? (
                 <div className="text-center py-8">
-                    <span className="material-symbols-outlined text-emerald-500 text-4xl mb-2">check_circle</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-emerald-500 text-4xl mb-2">check_circle</span>
                     <p className="text-emerald-700 font-bold">Message Sent!</p>
                     <p className="text-sm text-slate-500 mt-1">Returning to profile...</p>
                 </div>
@@ -88,7 +88,7 @@ const QuickMessageView: React.FC<QuickMessageViewProps> = React.memo(({
                         disabled={!messageText.trim()}
                         className={`w-full mt-3 py-3 ${accent.btn} text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-40`}
                     >
-                        <span className="material-symbols-outlined text-[20px]">send</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">send</span>
                         Send Message
                     </button>
                 </>

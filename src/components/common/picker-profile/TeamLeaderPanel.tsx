@@ -86,7 +86,7 @@ const TeamLeaderPanel: React.FC<TeamLeaderPanelProps> = ({ leader, crew, pieceRa
             {belowMin.length > 0 && (
                 <div className="bg-red-50 border border-red-100 rounded-xl p-3">
                     <div className="flex items-center gap-2 mb-1">
-                        <span className="material-symbols-outlined text-sm text-red-500">warning</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-red-500">warning</span>
                         <p className="text-xs font-bold text-red-700">{belowMinLabel}</p>
                     </div>
                     <p className="text-[10px] text-red-600">{belowMin.map(p => p.name).join(', ')}</p>
@@ -121,11 +121,11 @@ const TeamLeaderPanel: React.FC<TeamLeaderPanelProps> = ({ leader, crew, pieceRa
             {/* Acciones */}
             <div className="flex gap-2">
                 <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-indigo-50 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-colors shadow-sm">
-                    <span className="material-symbols-outlined text-sm">chat</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm">chat</span>
                     {t('panel.tl.message_manager')}
                 </button>
                 <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-purple-50 text-xs font-bold text-purple-700 hover:bg-purple-100 transition-colors shadow-sm">
-                    <span className="material-symbols-outlined text-sm">campaign</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm">campaign</span>
                     {t('panel.tl.broadcast')}
                 </button>
             </div>

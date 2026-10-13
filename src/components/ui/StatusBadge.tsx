@@ -63,7 +63,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
         )}
     >
         {icon ? (
-            <span className="material-symbols-outlined text-[14px] leading-none">{icon}</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[14px] leading-none">{icon}</span>
         ) : (
             <span className={cn('w-1.5 h-1.5 rounded-full', STATUS_DOTS[status])} />
         )}

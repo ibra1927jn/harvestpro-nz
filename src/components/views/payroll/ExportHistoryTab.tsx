@@ -98,7 +98,7 @@ const ExportHistoryTab: React.FC = () => {
             {/* Empty State */}
             {history.length === 0 ? (
                 <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-8 text-center">
-                    <span className="material-symbols-outlined text-slate-300 text-4xl mb-2 block">history</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-slate-300 text-4xl mb-2 block">history</span>
                     <p className="text-sm text-text-muted">No exports yet</p>
                     <p className="text-xs text-text-muted mt-1">Export history will appear here after your first payroll export</p>
                 </div>
@@ -107,7 +107,7 @@ const ExportHistoryTab: React.FC = () => {
                     {history.map(record => (
                         <div key={record.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 flex items-center gap-4 hover:shadow-md transition-shadow">
                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${formatColor(record.format)}`}>
-                                <span className="material-symbols-outlined text-lg">{formatIcon(record.format)}</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-lg">{formatIcon(record.format)}</span>
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold text-text-main truncate">{record.filename}</p>
@@ -123,12 +123,12 @@ const ExportHistoryTab: React.FC = () => {
                                     {new Date(record.timestamp).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })}
                                 </p>
                             </div>
-                            <button
+                            <button aria-label="Delete"
                                 onClick={() => handleDelete(record.id)}
                                 className="text-slate-300 hover:text-red-500 transition-colors"
                                 title="Delete"
                             >
-                                <span className="material-symbols-outlined text-lg">delete</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-lg">delete</span>
                             </button>
                         </div>
                     ))}

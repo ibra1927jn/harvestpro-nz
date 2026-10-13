@@ -86,7 +86,7 @@ const BlockCard: React.FC<BlockCardProps> = ({ block, stats, varieties, index, o
                     ${block.status === 'complete' ? 'bg-white/20 text-white' : ''}
                     ${block.status === 'alert' ? 'bg-white/20 text-white animate-breathe' : ''}
                 `}>
-                    <span className="material-symbols-outlined text-sm">{statusInfo.icon}</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm">{statusInfo.icon}</span>
                     {statusLabel}
                 </div>
             </div>
@@ -122,7 +122,7 @@ const BlockCard: React.FC<BlockCardProps> = ({ block, stats, varieties, index, o
             {/* Drill-in hint */}
             <div className="mt-3 flex items-center justify-end gap-1 text-xs font-semibold dynamic-text-color opacity-60">
                 <span>{t('orchardMap.block.view_rows')}</span>
-                <span className="material-symbols-outlined text-sm">chevron_right</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-sm">chevron_right</span>
             </div>
         </button>
     );

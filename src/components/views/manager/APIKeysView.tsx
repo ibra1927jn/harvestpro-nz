@@ -70,14 +70,14 @@ export default function APIKeysView() {
     <div className="p-4 space-y-4 max-w-2xl mx-auto">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-text-main flex items-center gap-2">
-          <span className="material-symbols-outlined text-indigo-600">key</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-indigo-600">key</span>
           API Keys
         </h2>
         <button
           onClick={() => setShowCreate(true)}
           className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-xl font-medium hover:bg-indigo-700 transition-colors flex items-center gap-1"
         >
-          <span className="material-symbols-outlined text-base">add</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-base">add</span>
           New Key
         </button>
       </div>
@@ -139,7 +139,7 @@ export default function APIKeysView() {
                       onChange={() => toggleScope(s.scope)}
                       className="sr-only"
                     />
-                    <span className="material-symbols-outlined text-sm">
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm">
                       {newKeyScopes.includes(s.scope) ? 'check_box' : 'check_box_outline_blank'}
                     </span>
                     {s.label}
@@ -191,7 +191,7 @@ export default function APIKeysView() {
         </div>
       ) : keys.length === 0 ? (
         <div className="text-center py-12 text-slate-400">
-          <span className="material-symbols-outlined text-4xl mb-2 block">key_off</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-4xl mb-2 block">key_off</span>
           <p className="text-sm">No API keys yet. Create one to enable integrations.</p>
         </div>
       ) : (
@@ -203,7 +203,7 @@ export default function APIKeysView() {
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg text-slate-400">key</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-lg text-slate-400">key</span>
                   <span className="font-medium text-sm">{key.name}</span>
                   <code className="text-xs bg-slate-100 px-2 py-0.5 rounded">
                     {key.key_prefix}...

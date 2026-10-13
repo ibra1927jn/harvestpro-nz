@@ -28,12 +28,12 @@ const TrendChartCard: React.FC<TrendChartCardProps> = ({
 }) => (
     <div className={`glass-card card-hover p-5 relative overflow-hidden group section-enter ${staggerClass}`}>
         <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity duration-500">
-            <span className={`material-symbols-outlined text-7xl ${bgIconClass}`}>{icon}</span>
+            <span aria-hidden="true" className={`material-symbols-outlined text-7xl ${bgIconClass}`}>{icon}</span>
         </div>
         <div className="relative z-10">
             <h3 className="font-bold text-text-main mb-1 flex items-center gap-2">
                 <div className={`w-8 h-8 rounded-lg ${iconBgClass} flex items-center justify-center shadow-sm`}>
-                    <span className={`material-symbols-outlined text-base ${iconTextClass}`}>{icon}</span>
+                    <span aria-hidden="true" className={`material-symbols-outlined text-base ${iconTextClass}`}>{icon}</span>
                 </div>
                 {title}
             </h3>

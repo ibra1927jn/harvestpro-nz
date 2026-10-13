@@ -63,7 +63,7 @@ const AnomalyDetectionView: React.FC = () => {
             <div className="space-y-6 animate-fade-in pb-20">
                 {/* ─── Header Banner ─── */}
                 <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
-                    <span className="material-symbols-outlined absolute -right-8 -top-8 text-[200px] text-white/5 pointer-events-none select-none">
+                    <span aria-hidden="true" className="material-symbols-outlined absolute -right-8 -top-8 text-[200px] text-white/5 pointer-events-none select-none">
                         shield
                     </span>
 
@@ -71,7 +71,7 @@ const AnomalyDetectionView: React.FC = () => {
                         <div>
                             <h2 className="text-2xl font-bold flex items-center gap-3 mb-1">
                                 <div className="p-2 bg-rose-500/20 rounded-lg border border-rose-500/30">
-                                    <span className="material-symbols-outlined text-xl text-rose-400">shield</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined text-xl text-rose-400">shield</span>
                                 </div>
                                 Fraud Shield
                                 {isLive && (
@@ -109,13 +109,13 @@ const AnomalyDetectionView: React.FC = () => {
                     </div>
 
                     {/* Refresh button */}
-                    <button
+                    <button aria-label="Refresh anomalies"
                         onClick={loadAnomalies}
                         disabled={loading}
                         className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white transition-colors disabled:opacity-50 z-20"
                         title="Refresh anomalies"
                     >
-                        <span className={`material-symbols-outlined text-xl ${loading ? 'animate-spin' : ''}`}>
+                        <span aria-hidden="true" className={`material-symbols-outlined text-xl ${loading ? 'animate-spin' : ''}`}>
                             refresh
                         </span>
                     </button>
@@ -151,7 +151,7 @@ const AnomalyDetectionView: React.FC = () => {
                 {/* ─── Filter Chips ─── */}
                 {!loading && (
                     <div className="flex gap-2 overflow-x-auto pb-2 items-center">
-                        <span className="material-symbols-outlined text-slate-400 text-xl shrink-0 mr-1">filter_list</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-slate-400 text-xl shrink-0 mr-1">filter_list</span>
                         {(Object.keys(FILTER_LABELS) as FilterType[]).map(f => (
                             <button
                                 key={f}
@@ -177,7 +177,7 @@ const AnomalyDetectionView: React.FC = () => {
                     <>
                         {filtered.length === 0 ? (
                             <div className="text-center py-16 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                                <span className="material-symbols-outlined text-5xl text-emerald-400 mb-3 block">verified_user</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-5xl text-emerald-400 mb-3 block">verified_user</span>
                                 <p className="text-lg font-bold text-slate-700">No anomalies detected</p>
                                 <p className="text-sm text-slate-400 mt-1">All scan patterns look normal for this filter</p>
                             </div>

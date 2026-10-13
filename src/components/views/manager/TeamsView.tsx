@@ -94,7 +94,7 @@ const TeamsView: React.FC<TeamsViewProps> = ({
                         <section className="glass-card p-5 section-enter stagger-3">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-lg font-black flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-orange-500">groups</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined text-orange-500">groups</span>
                                     {t('teams.harvest_teams')}
                                 </h3>
                                 <span className="text-xs bg-orange-50 text-orange-600 px-3 py-1 rounded-full font-bold">
@@ -136,7 +136,7 @@ const TeamsView: React.FC<TeamsViewProps> = ({
                         {unassigned.length > 0 && (
                             <section className="glass-card p-5" data-testid="unassigned-pickers">
                                 <h3 className="text-lg font-black flex items-center gap-2 mb-3">
-                                    <span className="material-symbols-outlined text-amber-500">person_off</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined text-amber-500">person_off</span>
                                     Without team leader
                                     <span className="text-xs bg-amber-50 text-amber-700 px-3 py-1 rounded-full font-bold">{unassigned.length}</span>
                                 </h3>

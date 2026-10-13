@@ -102,7 +102,7 @@ const TeamLeaderProfileView: React.FC<TeamLeaderProfileViewProps> = React.memo((
                 {tlStats.belowMin > 0 && (
                     <div className="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-200">
                         <div className="flex items-start gap-2">
-                            <span className="material-symbols-outlined text-amber-600 text-[20px] shrink-0 mt-0.5">warning</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-amber-600 text-[20px] shrink-0 mt-0.5">warning</span>
                             <div>
                                 <p className="text-sm text-amber-700 font-medium">{tlStats.belowMin} picker{tlStats.belowMin > 1 ? 's' : ''} below minimum wage</p>
                                 <p className="text-xs text-amber-600 mt-0.5">{tlStats.belowMinNames.join(', ')}</p>
@@ -116,7 +116,7 @@ const TeamLeaderProfileView: React.FC<TeamLeaderProfileViewProps> = React.memo((
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                 <div className="flex items-center justify-between mb-3">
                     <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Details</p>
-                    {!isEditing && <button onClick={() => setIsEditing(true)} className="text-emerald-600 text-xs font-bold hover:text-emerald-800 transition-colors flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">edit</span>Edit</button>}
+                    {!isEditing && <button onClick={() => setIsEditing(true)} className="text-emerald-600 text-xs font-bold hover:text-emerald-800 transition-colors flex items-center gap-1"><span aria-hidden="true" className="material-symbols-outlined text-[14px]">edit</span>Edit</button>}
                 </div>
                 {isEditing ? (
                     <div className="space-y-3">
@@ -151,14 +151,14 @@ const TeamLeaderProfileView: React.FC<TeamLeaderProfileViewProps> = React.memo((
                                         {`R${uniqueRows.join(', R')}`}
                                     </p>
                                     {onAssignRow && (
-                                        <span className="material-symbols-outlined text-emerald-400 text-[14px]">add</span>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-emerald-400 text-[14px]">add</span>
                                     )}
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-1">
                                     {onAssignRow ? (
                                         <>
-                                            <span className="material-symbols-outlined text-primary text-[14px]">add_circle</span>
+                                            <span aria-hidden="true" className="material-symbols-outlined text-primary text-[14px]">add_circle</span>
                                             <p className="text-sm font-bold text-primary">Assign rows</p>
                                         </>
                                     ) : (
@@ -177,8 +177,8 @@ const TeamLeaderProfileView: React.FC<TeamLeaderProfileViewProps> = React.memo((
                     <div className="mt-4 p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
                         <div className="flex items-center justify-between">
                             <p className="text-xs font-bold text-primary uppercase">Add Row</p>
-                            <button onClick={() => setShowRowAssigner(false)} className="text-slate-400 hover:text-slate-600">
-                                <span className="material-symbols-outlined text-sm">close</span>
+                            <button aria-label="Close row assignment" onClick={() => setShowRowAssigner(false)} className="text-slate-400 hover:text-slate-600">
+                                <span aria-hidden="true" className="material-symbols-outlined text-sm">close</span>
                             </button>
                         </div>
                         <div className="flex gap-3">

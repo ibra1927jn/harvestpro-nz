@@ -20,7 +20,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history, dailyBuckets }) => {
             {history.teamLeadersWorkedWith.length > 0 && (
                 <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
                     <h4 className="text-xs font-bold text-text-main mb-2 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm text-indigo-500">groups</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-indigo-500">groups</span>
                         {t('panel.history.tl_worked_with')}
                     </h4>
                     <div className="flex flex-wrap gap-1.5">
@@ -33,7 +33,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history, dailyBuckets }) => {
             {history.varietiesPicked.length > 0 && (
                 <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
                     <h4 className="text-xs font-bold text-text-main mb-2 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm text-pink-500">eco</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-pink-500">eco</span>
                         {t('panel.history.varieties')}
                     </h4>
                     <div className="flex flex-wrap gap-1.5">
@@ -45,7 +45,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history, dailyBuckets }) => {
             )}
             <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
                 <h4 className="text-xs font-bold text-text-main p-4 pb-2 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm text-emerald-500">calendar_month</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm text-emerald-500">calendar_month</span>
                     {t('panel.history.daily_records')}
                 </h4>
                 {history.dailyRecords.length === 0 ? (

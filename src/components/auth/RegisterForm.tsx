@@ -36,7 +36,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         <form onSubmit={onSubmit} className="space-y-5">
             {/* HR Authorization Notice */}
             <div className="p-4 bg-lilac-50 border border-lilac/15 rounded-xl flex items-start gap-3 animate-slide-up">
-                <span className="material-symbols-outlined text-lilac text-lg mt-0.5 animate-pulse">info</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-lilac text-lg mt-0.5 animate-pulse">info</span>
                 <p className="text-xs text-lilac-dark leading-relaxed">
                     {t('auth.register_hr_notice_full')}
                 </p>
@@ -48,7 +48,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
                     {t('auth.full_name')}
                 </label>
                 <div className="relative group">
-                    <span className={`material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-lg transition-all duration-300 ${isFocused('name') ? 'text-lilac scale-110' : 'text-lilac-glow/60'}`}>
+                    <span aria-hidden="true" className={`material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-lg transition-all duration-300 ${isFocused('name') ? 'text-lilac scale-110' : 'text-lilac-glow/60'}`}>
                         person
                     </span>
                     <input
@@ -71,7 +71,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
                     {t('auth.email')}
                 </label>
                 <div className="relative group">
-                    <span className={`material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-lg transition-all duration-300 ${isFocused('email') ? 'text-lilac scale-110' : 'text-lilac-glow/60'}`}>
+                    <span aria-hidden="true" className={`material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-lg transition-all duration-300 ${isFocused('email') ? 'text-lilac scale-110' : 'text-lilac-glow/60'}`}>
                         mail
                     </span>
                     <input
@@ -94,7 +94,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
                     {t('auth.password')}
                 </label>
                 <div className="relative group">
-                    <span className={`material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-lg transition-all duration-300 ${isFocused('pass') ? 'text-lilac scale-110' : 'text-lilac-glow/60'}`}>
+                    <span aria-hidden="true" className={`material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-lg transition-all duration-300 ${isFocused('pass') ? 'text-lilac scale-110' : 'text-lilac-glow/60'}`}>
                         lock
                     </span>
                     <input
@@ -108,12 +108,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
                         required
                         minLength={6}
                     />
-                    <button
+                    <button aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-lilac hover:scale-110 transition-all duration-200"
                     >
-                        <span className="material-symbols-outlined text-lg">{showPassword ? 'visibility_off' : 'visibility'}</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-lg">{showPassword ? 'visibility_off' : 'visibility'}</span>
                     </button>
                     <div className={`absolute bottom-0 left-1/2 h-[2px] bg-gradient-to-r from-lilac to-lilac-light rounded-full transition-all duration-500 ${isFocused('pass') ? 'w-[calc(100%-2rem)] -translate-x-1/2' : 'w-0 -translate-x-1/2'}`} />
                 </div>
@@ -134,7 +134,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
                     </span>
                 ) : (
                     <span className="inline-flex items-center gap-2">
-                        <span className="material-symbols-outlined text-base">person_add</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">person_add</span>
                         {t('auth.create_account')}
                     </span>
                 )}

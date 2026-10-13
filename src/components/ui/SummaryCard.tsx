@@ -54,7 +54,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
                 <div className="absolute inset-0 bg-gradient-to-br from-slate-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
             )}
             <div className="flex items-center gap-2 mb-2 relative z-10">
-                <span className={`material-symbols-outlined text-[20px] ${iconColor}`}>{icon}</span>
+                <span aria-hidden="true" className={`material-symbols-outlined text-[20px] ${iconColor}`}>{icon}</span>
                 <span className="text-xs text-slate-500 font-bold uppercase tracking-wide">{label}</span>
             </div>
             <p className={`text-3xl font-black relative z-10 tracking-tight ${highlight ? '' : 'text-slate-800'}`}>

@@ -192,15 +192,15 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                             Select staff to assign — you can link multiple at once
                         </p>
                     </div>
-                    <button onClick={onClose} className="text-text-muted hover:text-text-main transition-colors">
-                        <span className="material-symbols-outlined">close</span>
+                    <button aria-label="Close" onClick={onClose} className="text-text-muted hover:text-text-main transition-colors">
+                        <span aria-hidden="true" className="material-symbols-outlined">close</span>
                     </button>
                 </div>
 
                 {/* Search Bar */}
                 <div className="px-6 py-3 border-b border-border-light">
                     <div className="relative">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+                        <span aria-hidden="true" className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
                         <input
                             ref={searchRef}
                             type="text"
@@ -211,11 +211,11 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                             className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-border-light bg-white text-sm text-text-main placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-all"
                         />
                         {searchQuery && (
-                            <button
+                            <button aria-label="Clear search"
                                 onClick={() => { setSearchQuery(''); searchRef.current?.focus(); }}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-text-main transition-colors"
                             >
-                                <span className="material-symbols-outlined text-lg">close</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-lg">close</span>
                             </button>
                         )}
                     </div>
@@ -237,7 +237,7 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                                     : 'bg-white text-slate-500 border border-border-light hover:bg-slate-100'
                                     }`}
                             >
-                                <span className="material-symbols-outlined text-sm">{tab.icon}</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-sm">{tab.icon}</span>
                                 {tab.label}
                             </button>
                         ))}
@@ -268,7 +268,7 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                         </div>
                     ) : filteredStaff.length === 0 ? (
                         <div className="text-center py-8 text-text-muted">
-                            <span className="material-symbols-outlined text-3xl mb-2 opacity-30">
+                            <span aria-hidden="true" className="material-symbols-outlined text-3xl mb-2 opacity-30">
                                 {searchQuery ? 'search_off' : 'person_off'}
                             </span>
                             <p className="text-sm font-medium">
@@ -306,7 +306,7 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                                                 : 'border-slate-300 group-hover:border-indigo-400'
                                             }`}>
                                             {(isSelected || alreadyHere) && (
-                                                <span className={`material-symbols-outlined text-xs ${alreadyHere ? 'text-green-600' : 'text-white'}`}>check</span>
+                                                <span aria-hidden="true" className={`material-symbols-outlined text-xs ${alreadyHere ? 'text-green-600' : 'text-white'}`}>check</span>
                                             )}
                                         </div>
 
@@ -317,7 +317,7 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                                             <p className="font-bold text-text-main">{person.full_name}</p>
                                             <div className="flex items-center gap-2 mt-0.5">
                                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${roleColor(person.role)}`}>
-                                                    <span className="material-symbols-outlined text-[10px] mr-0.5 align-middle">{roleIcon(person.role)}</span>
+                                                    <span aria-hidden="true" className="material-symbols-outlined text-[10px] mr-0.5 align-middle">{roleIcon(person.role)}</span>
                                                     {roleLabel(person.role)}
                                                 </span>
                                                 {alreadyHere && (
@@ -343,18 +343,18 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                                                 <div className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
                                             ) : isConfirming ? (
                                                 <>
-                                                    <span className="material-symbols-outlined text-xs">warning</span>
+                                                    <span aria-hidden="true" className="material-symbols-outlined text-xs">warning</span>
                                                     Confirm?
                                                 </>
                                             ) : (
                                                 <>
-                                                    <span className="material-symbols-outlined text-sm">link_off</span>
+                                                    <span aria-hidden="true" className="material-symbols-outlined text-sm">link_off</span>
                                                     Unlink
                                                 </>
                                             )}
                                         </button>
                                     ) : isSelected ? (
-                                        <span className="material-symbols-outlined text-indigo-600">check_circle</span>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-indigo-600">check_circle</span>
                                     ) : null}
                                 </div>
                             );
@@ -390,7 +390,7 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                                 </>
                             ) : (
                                 <>
-                                    <span className="material-symbols-outlined text-sm">link</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined text-sm">link</span>
                                     Link {selectedIds.size > 0 ? `(${selectedIds.size})` : 'Selected'}
                                 </>
                             )}

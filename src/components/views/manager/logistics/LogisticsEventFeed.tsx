@@ -51,7 +51,7 @@ const LogisticsEventFeed: React.FC<LogisticsEventFeedProps> = ({ events }) => {
           {visible.map(event => (
             <li key={event.id} className="flex items-center gap-3 py-2.5">
               {/* Icono de tipo */}
-              <span
+              <span aria-hidden="true"
                 className={`material-symbols-outlined text-xl flex-shrink-0 ${EVENT_COLORS[event.type]}`}
               >
                 {EVENT_ICONS[event.type]}

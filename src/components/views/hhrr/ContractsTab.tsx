@@ -100,7 +100,7 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
             {toast && (
                 <div className={`fixed top-4 right-4 z-[100] px-5 py-3.5 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] text-sm font-extrabold tracking-tight flex items-center gap-3 backdrop-blur-md border
                     ${toast.type === 'success' ? 'bg-emerald-600/90 border-emerald-500/50 text-white' : 'bg-red-600/90 border-red-500/50 text-white'}`}>
-                    <span className="material-symbols-outlined text-[20px]">
+                    <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
                         {toast.type === 'success' ? 'check_circle' : 'warning'}
                     </span>
                     {toast.message}
@@ -111,7 +111,7 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
             {summary.pendingContracts > 0 && (
                 <div className="bg-gradient-to-r from-amber-50/80 to-orange-50/80 backdrop-blur-md border border-amber-200/60 shadow-[0_4px_20px_rgb(245,158,11,0.05)] rounded-3xl p-5 flex items-center gap-4">
                     <div className="size-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-[24px] text-amber-600">info</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-[24px] text-amber-600">info</span>
                     </div>
                     <div>
                         <p className="text-sm font-extrabold text-amber-900 tracking-tight">{summary.pendingContracts} contracts need renewal within 30 days</p>
@@ -149,7 +149,7 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                         </div>
                         <div className="flex items-center gap-5 text-xs text-slate-500 font-bold mb-4 bg-slate-50/50 rounded-2xl p-3 border border-slate-100/50 relative z-10">
                             <span className="flex items-center gap-1.5">
-                                <span className="material-symbols-outlined text-[16px] text-slate-400">event</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-[16px] text-slate-400">event</span>
                                 {new Date(emp.contract_start).toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', month: 'short', year: 'numeric' })}
                                 {emp.contract_id && emp.contract_end && (
                                     <>
@@ -164,7 +164,7 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                             </span>
                             <span className="w-px h-4 bg-slate-200"></span>
                             <span className="flex items-center gap-1.5">
-                                <span className="material-symbols-outlined text-[16px] text-slate-400">attach_money</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-[16px] text-slate-400">attach_money</span>
                                 {emp.contract_id ? (
                                     <InlineEdit
                                         value={String(emp.hourly_rate)}
@@ -193,7 +193,7 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                                     onClick={() => setCreatingFor(emp.id)}
                                     className="relative z-10 w-full py-3 rounded-2xl bg-indigo-50 text-indigo-700 text-[11px] uppercase tracking-widest font-bold hover:bg-indigo-100 flex items-center justify-center gap-1.5 border border-indigo-100"
                                 >
-                                    <span className="material-symbols-outlined text-[16px]">add</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined text-[16px]">add</span>
                                     Create contract
                                 </button>
                             )
@@ -207,7 +207,7 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                                 disabled={busy === emp.id}
                                 className="flex-1 py-3 rounded-2xl bg-emerald-50/50 text-emerald-700 text-[11px] uppercase tracking-widest font-bold hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1.5 border border-emerald-100/50"
                             >
-                                <span className="material-symbols-outlined text-[16px]">autorenew</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-[16px]">autorenew</span>
                                 Renew
                             </button>
                             {confirmId === emp.id ? (
@@ -231,7 +231,7 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                                     onClick={() => setConfirmId(emp.id)}
                                     className="flex-1 py-3 rounded-2xl bg-red-50/50 text-red-700 text-[11px] uppercase tracking-widest font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-1.5 border border-red-100/50"
                                 >
-                                    <span className="material-symbols-outlined text-[16px]">cancel</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined text-[16px]">cancel</span>
                                     Terminate
                                 </button>
                             )}

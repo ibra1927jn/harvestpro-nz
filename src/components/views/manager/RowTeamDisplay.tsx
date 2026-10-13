@@ -91,7 +91,7 @@ const RowTeamDisplay: React.FC<RowTeamDisplayProps> = ({ teamsOnRow, totalPeople
                                                 </p>
                                             </div>
                                             {onViewPicker && (
-                                                <span className="material-symbols-outlined text-slate-300 text-sm">chevron_right</span>
+                                                <span aria-hidden="true" className="material-symbols-outlined text-slate-300 text-sm">chevron_right</span>
                                             )}
                                         </div>
                                     </div>

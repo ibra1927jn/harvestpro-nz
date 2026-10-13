@@ -89,7 +89,7 @@ const InlineSelect: React.FC<InlineSelectProps> = ({
             title="Click to change"
         >
             {displayLabel}
-            <span className="material-symbols-outlined text-[10px] opacity-0 group-hover:opacity-70 transition-opacity">
+            <span aria-hidden="true" className="material-symbols-outlined text-[10px] opacity-0 group-hover:opacity-70 transition-opacity">
                 expand_more
             </span>
         </button>

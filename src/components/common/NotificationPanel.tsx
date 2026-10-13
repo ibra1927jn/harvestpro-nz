@@ -112,7 +112,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClos
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[18px] text-slate-600">notifications</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[18px] text-slate-600">notifications</span>
                     <h3 className="text-sm font-bold text-slate-800">Notifications</h3>
                     {(unreadNotifs > 0 || unreadCount > 0) && (
                         <span className="min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
@@ -134,13 +134,13 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClos
                     className="w-full flex items-center gap-3 px-4 py-3 bg-indigo-50 hover:bg-indigo-100 transition-colors border-b border-slate-100"
                 >
                     <div className="size-9 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                        <span className="material-symbols-outlined text-indigo-600 text-[18px]">chat</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-indigo-600 text-[18px]">chat</span>
                     </div>
                     <div className="text-left flex-1 min-w-0">
                         <p className="text-sm font-bold text-indigo-700">{unreadCount} unread message{unreadCount > 1 ? 's' : ''}</p>
                         <p className="text-[11px] text-indigo-500">Tap to view conversations</p>
                     </div>
-                    <span className="material-symbols-outlined text-indigo-400 text-[18px]">chevron_right</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-indigo-400 text-[18px]">chevron_right</span>
                 </button>
             )}
 
@@ -151,7 +151,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClos
                         className={`flex items-start gap-3 px-4 py-3 border-b border-slate-50 last:border-0 transition-colors ${!notif.read ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
                     >
                         <div className={`size-9 rounded-xl flex items-center justify-center flex-shrink-0 ${typeIcon(notif.type)}`}>
-                            <span className="material-symbols-outlined text-[18px]">{notif.icon}</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-[18px]">{notif.icon}</span>
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className={`text-sm ${!notif.read ? 'font-bold text-slate-800' : 'font-medium text-slate-700'} truncate`}>
@@ -174,7 +174,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClos
                     className="w-full py-3 text-sm font-bold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-1"
                 >
                     View All Messages
-                    <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[16px]">arrow_forward</span>
                 </button>
             </div>
         </div>

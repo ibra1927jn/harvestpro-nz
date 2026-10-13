@@ -69,7 +69,7 @@ const RunnersSection: React.FC<RunnersSectionProps> = ({ runners, onSelectUser, 
         <section className="glass-card p-5">
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-black text-text-main flex items-center gap-2">
-                    <span className="material-symbols-outlined text-blue-500">local_shipping</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-blue-500">local_shipping</span>
                     {t('teams.active_runners')}
                 </h3>
                 <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-bold">
@@ -115,13 +115,13 @@ const RunnersSection: React.FC<RunnersSectionProps> = ({ runners, onSelectUser, 
                                                 }`}
                                             title={confirmId === runner.id ? t('teams.confirm_q') : 'Unlink from orchard'}
                                         >
-                                            <span className="material-symbols-outlined text-sm">
+                                            <span aria-hidden="true" className="material-symbols-outlined text-sm">
                                                 {unlinking === runner.id ? 'hourglass_top' : 'link_off'}
                                             </span>
                                             {confirmId === runner.id && <span className="text-[10px]">{t('teams.confirm_q')}</span>}
                                         </button>
                                     )}
-                                    <span className="material-symbols-outlined text-slate-300 group-hover:text-blue-500 transition-colors">
+                                    <span aria-hidden="true" className="material-symbols-outlined text-slate-300 group-hover:text-blue-500 transition-colors">
                                         chevron_right
                                     </span>
                                 </div>

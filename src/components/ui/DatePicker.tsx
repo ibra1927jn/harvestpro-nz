@@ -67,13 +67,13 @@ const DatePicker: React.FC<DatePickerProps> = ({
                         placeholder-slate-400 dark:placeholder-slate-500
                     `}
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none material-symbols-outlined text-lg">
+                <span aria-hidden="true" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none material-symbols-outlined text-lg">
                     calendar_today
                 </span>
             </div>
             {error && (
                 <p className="text-xs text-red-500 mt-0.5 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">error</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-xs">error</span>
                     {error}
                 </p>
             )}

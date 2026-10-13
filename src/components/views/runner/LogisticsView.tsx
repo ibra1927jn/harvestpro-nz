@@ -96,11 +96,11 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
             <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">Runner Operations</p>
           </div>
           <div className="flex items-center gap-3">
-            <button
+            <button aria-label="Notifications"
               onClick={() => onBroadcast?.('Notification center requested')}
               className="relative flex items-center justify-center rounded-2xl size-11 bg-white/80 border border-white/60 shadow-sm text-slate-500 hover:text-primary transition-colors hover:shadow-md"
             >
-              <span className="material-symbols-outlined text-[22px]">notifications</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-[22px]">notifications</span>
               <span className="absolute top-3 right-3 size-2 bg-primary rounded-full shadow-[0_0_8px_rgba(37,99,235,0.8)]"></span>
             </button>
             <div className="size-11 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden border border-white/60 shadow-sm">
@@ -118,7 +118,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
           <div className="bg-orange-50/90 backdrop-blur-md border-y border-orange-200/50 px-6 py-3 flex items-center justify-between shadow-inner">
             <div className="flex items-center gap-2">
               <div className="size-6 rounded-full bg-orange-100 flex items-center justify-center">
-                <span className="material-symbols-outlined text-orange-600 text-[14px]">cloud_off</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-orange-600 text-[14px]">cloud_off</span>
               </div>
               <p className="text-orange-800 text-sm font-bold tracking-tight">Offline Sync Pending</p>
             </div>
@@ -126,7 +126,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
               data-testid="sync-badge"
               className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-full shadow-sm border border-orange-100"
             >
-              <span className="material-symbols-outlined text-orange-500 text-sm animate-spin-slow">sync</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-orange-500 text-sm animate-spin-slow">sync</span>
               <span className="text-[10px] font-black text-orange-800 uppercase tracking-widest">
                 {pendingUploads} Pending
               </span>
@@ -228,7 +228,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
         <div className="bg-white/80 backdrop-blur-md rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="size-14 rounded-2xl bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center text-orange-500 border border-orange-200/50 shadow-inner">
-              <span className="material-symbols-outlined text-[28px] material-icon-filled">wb_sunny</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-[28px] material-icon-filled">wb_sunny</span>
             </div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -282,7 +282,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
             onClick={handleRefillRequest}
             className="w-full bg-slate-800 hover:bg-slate-700 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-[0_8px_16px_rgba(15,23,42,0.15)]"
           >
-            <span className="material-symbols-outlined text-[18px]">local_shipping</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[18px]">local_shipping</span>
             Request Refill
           </button>
         </div>
@@ -295,14 +295,14 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
             onClick={() => onScan('BIN')}
             className="flex-1 flex flex-col items-center justify-center py-4 bg-white/90 backdrop-blur-md border-2 border-primary/20 text-primary rounded-[1.25rem] font-black text-xs uppercase tracking-widest active:scale-95 shadow-[0_8px_30px_rgba(37,99,235,0.1)] hover:border-primary/50 transition-all"
           >
-            <span className="material-symbols-outlined mb-1.5 text-[28px]">crop_free</span>
+            <span aria-hidden="true" className="material-symbols-outlined mb-1.5 text-[28px]">crop_free</span>
             Scan Bin
           </button>
           <button
             onClick={() => onScan('BUCKET')}
             className="flex-1 flex flex-col items-center justify-center py-4 bg-gradient-to-r from-primary to-blue-500 text-white rounded-[1.25rem] font-black text-xs uppercase tracking-widest shadow-[0_8px_20px_rgba(37,99,235,0.3)] hover:shadow-[0_12px_25px_rgba(37,99,235,0.4)] active:scale-95 transition-all"
           >
-            <span className="material-symbols-outlined mb-1.5 text-[28px]">label</span>
+            <span aria-hidden="true" className="material-symbols-outlined mb-1.5 text-[28px]">label</span>
             Scan Sticker
           </button>
         </div>

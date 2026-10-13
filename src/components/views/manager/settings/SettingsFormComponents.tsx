@@ -28,7 +28,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
         <div className="px-5 py-3.5 border-b border-slate-100">
             <div className="flex items-center gap-3">
                 <div className={`${iconBg} p-2 rounded-xl`}>
-                    <span className={`material-symbols-outlined text-base ${iconColor}`}>{icon}</span>
+                    <span aria-hidden="true" className={`material-symbols-outlined text-base ${iconColor}`}>{icon}</span>
                 </div>
                 <div>
                     <h3 className="text-sm font-bold text-text-main">{title}</h3>
@@ -138,7 +138,7 @@ export const FormField: React.FC<FormFieldProps> = ({
 export const ReadonlyField: React.FC<{ label: string; value: string; icon?: string }> = ({ label, value, icon }) => (
     <div className="flex items-center justify-between py-1">
         <span className="text-sm font-medium text-text-sub flex items-center gap-2">
-            {icon && <span className="material-symbols-outlined text-sm text-text-muted">{icon}</span>}
+            {icon && <span aria-hidden="true" className="material-symbols-outlined text-sm text-text-muted">{icon}</span>}
             {label}
         </span>
         <span className="text-sm text-text-muted font-medium bg-slate-50 px-3 py-1.5 rounded-lg">{value}</span>
@@ -161,14 +161,14 @@ export const ToggleRow: React.FC<ToggleRowProps> = ({ label, description, checke
     <div className={`flex items-center justify-between ${compact ? '' : 'py-0.5'}`}>
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
             {icon && (
-                <span className={`material-symbols-outlined text-sm ${locked ? 'text-text-muted/50' : 'text-text-muted'}`}>
+                <span aria-hidden="true" className={`material-symbols-outlined text-sm ${locked ? 'text-text-muted/50' : 'text-text-muted'}`}>
                     {icon}
                 </span>
             )}
             <div className="min-w-0">
                 <span className={`text-sm font-medium ${locked ? 'text-text-sub/60' : 'text-text-sub'} flex items-center gap-1.5`}>
                     {label}
-                    {locked && <span className="material-symbols-outlined text-[11px] text-text-muted/50">lock</span>}
+                    {locked && <span aria-hidden="true" className="material-symbols-outlined text-[11px] text-text-muted/50">lock</span>}
                 </span>
                 {description && !compact && (
                     <p className="text-[11px] text-text-muted leading-tight mt-0.5">{description}</p>

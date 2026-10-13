@@ -30,7 +30,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history }) => (
                     </div>
                     <div className="flex items-center gap-2 text-xs text-text-secondary">
                         <span className="font-medium">{log.from_zone}</span>
-                        <span className="material-symbols-outlined text-xs text-text-muted">arrow_forward</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-xs text-text-muted">arrow_forward</span>
                         <span className="font-medium">{log.to_zone}</span>
                         <span>•</span>
                         <span>{log.bins_count} bins</span>

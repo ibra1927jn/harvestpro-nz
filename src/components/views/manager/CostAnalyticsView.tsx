@@ -44,7 +44,7 @@ const CostAnalyticsView: React.FC = () => {
             {/* Cost Breakdown with Donut */}
             <div className="bg-white rounded-2xl p-5 shadow-lg shadow-slate-200/50 border border-slate-100 dash-card-enter anim-delay" style={{ '--delay': '200ms' } as React.CSSProperties}>
                 <h3 className="font-bold text-text-main mb-1 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-indigo-500">donut_large</span>{t('insights.cost_breakdown.title')}
+                    <span aria-hidden="true" className="material-symbols-outlined text-indigo-500">donut_large</span>{t('insights.cost_breakdown.title')}
                 </h3>
                 <p className="text-xs text-text-muted mb-4">{t('insights.cost_breakdown.subtitle')}</p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
@@ -70,12 +70,12 @@ const CostAnalyticsView: React.FC = () => {
             {/* Daily Cost Trend */}
             <div className="glass-card card-hover p-5 relative overflow-hidden group section-enter stagger-3">
                 <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity duration-500">
-                    <span className="material-symbols-outlined text-7xl text-rose-400">trending_up</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-7xl text-rose-400">trending_up</span>
                 </div>
                 <div className="relative z-10">
                     <h3 className="font-bold text-text-main mb-1 flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center shadow-sm">
-                            <span className="material-symbols-outlined text-base text-rose-500">trending_up</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-base text-rose-500">trending_up</span>
                         </div>
                         {t('insights.trend.title')}
                     </h3>
@@ -105,13 +105,13 @@ const CostAnalyticsView: React.FC = () => {
             {/* Cost Per Team */}
             <div className="bg-white rounded-2xl p-5 shadow-lg shadow-slate-200/50 border border-slate-100 dash-card-enter anim-delay" style={{ '--delay': '300ms' } as React.CSSProperties}>
                 <h3 className="font-bold text-text-main mb-1 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-purple-500">groups</span>{t('insights.team_cost.title')}
+                    <span aria-hidden="true" className="material-symbols-outlined text-purple-500">groups</span>{t('insights.team_cost.title')}
                 </h3>
                 <p className="text-xs text-text-muted mb-4">{t('insights.team_cost.subtitle')}</p>
                 {ca.teamCosts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8 bg-gradient-to-b from-slate-50/50 to-white rounded-xl">
                         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center mb-3 shadow-sm">
-                            <span className="material-symbols-outlined text-2xl text-indigo-400">analytics</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-2xl text-indigo-400">analytics</span>
                         </div>
                         <p className="text-sm font-bold text-text-sub">{t('insights.team_cost.empty')}</p>
                         <p className="text-xs text-text-muted mt-1">{t('insights.team_cost.empty_desc')}</p>
@@ -129,12 +129,12 @@ const CostAnalyticsView: React.FC = () => {
                 ].map(panel => (
                     <div key={panel.title} className="bg-white rounded-2xl p-5 shadow-lg shadow-slate-200/50 border border-slate-100 dash-card-enter anim-delay" style={{ '--delay': `${panel.delay}ms` } as React.CSSProperties}>
                         <h3 className="font-bold text-text-main mb-1 flex items-center gap-2">
-                            <span className={`material-symbols-outlined ${panel.iconColor}`}>{panel.icon}</span>{panel.title}
+                            <span aria-hidden="true" className={`material-symbols-outlined ${panel.iconColor}`}>{panel.icon}</span>{panel.title}
                         </h3>
                         <p className="text-xs text-text-muted mb-3">{panel.subtitle}</p>
                         {panel.items.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-6">
-                                <span className={`material-symbols-outlined text-2xl ${panel.iconColor} opacity-30 mb-1`}>{panel.icon}</span>
+                                <span aria-hidden="true" className={`material-symbols-outlined text-2xl ${panel.iconColor} opacity-30 mb-1`}>{panel.icon}</span>
                                 <p className="text-sm text-text-muted">{panel.emptyMsg}</p>
                             </div>
                         ) : panel.items.map((p, i) => {
@@ -157,7 +157,7 @@ const CostAnalyticsView: React.FC = () => {
                                         <span className={`text-xs font-bold ${panel.badgeText} ${panel.badgeBg} px-2 py-0.5 rounded-full`}>
                                             ${costBin.toFixed(2)}{t('insights.per_bin')}
                                         </span>
-                                        <span className="material-symbols-outlined text-[14px] text-slate-300">chevron_right</span>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-[14px] text-slate-300">chevron_right</span>
                                     </div>
                                 </button>
                             );

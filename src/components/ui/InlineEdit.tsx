@@ -119,7 +119,7 @@ const InlineEdit: React.FC<InlineEditProps> = ({
                 {value || placeholder}
             </span>
             {suffix && <span className="text-xs text-text-muted font-medium">{suffix}</span>}
-            <span className="material-symbols-outlined text-xs text-text-disabled opacity-0 group-hover:opacity-100 transition-opacity">
+            <span aria-hidden="true" className="material-symbols-outlined text-xs text-text-disabled opacity-0 group-hover:opacity-100 transition-opacity">
                 edit
             </span>
         </button>

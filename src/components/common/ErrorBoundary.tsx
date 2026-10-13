@@ -73,7 +73,7 @@ class ErrorBoundary extends Component<Props, State> {
                 <div className="flex flex-col items-center justify-center min-h-screen bg-background-light p-4 text-center">
                     <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-border-light">
                         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <span className="material-symbols-outlined text-3xl text-red-600">error</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-3xl text-red-600">error</span>
                         </div>
 
                         <h1 className="text-2xl font-black text-text-primary mb-2">{t('error.title')}</h1>
@@ -99,7 +99,7 @@ class ErrorBoundary extends Component<Props, State> {
                                 onClick={this.handleClearCache}
                                 className="w-full py-3 bg-white border border-border-light text-text-secondary rounded-xl font-bold hover:bg-background-light transition-colors flex items-center justify-center gap-2"
                             >
-                                <span className="material-symbols-outlined text-sm">delete_history</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-sm">delete_history</span>
                                 {t('error.clearCache')}
                             </button>
 
@@ -110,7 +110,7 @@ class ErrorBoundary extends Component<Props, State> {
                                 )}`}
                                 className="w-full py-3 bg-white border border-border-light text-text-secondary rounded-xl font-bold hover:bg-background-light transition-colors flex items-center justify-center gap-2"
                             >
-                                <span className="material-symbols-outlined text-sm">bug_report</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-sm">bug_report</span>
                                 Report Issue
                             </a>
                         </div>

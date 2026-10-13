@@ -23,7 +23,7 @@ const TeamLeadersSidebar: React.FC<TeamLeadersSidebarProps> = ({
     return (
     <div className="glass-card p-5">
         <h3 className="font-bold text-text-main mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-indigo-500">groups</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-indigo-500">groups</span>
             {t('dashboard.team_leaders.title')}
         </h3>
         <div className="space-y-3">

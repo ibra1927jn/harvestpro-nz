@@ -66,7 +66,7 @@ export const TrendLineChart: React.FC<TrendLineChartProps> = ({
             <div className="w-full flex items-center justify-center bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-400 text-sm font-medium"
                 style={{ height }}>
                 <div className="text-center">
-                    <span className="material-symbols-outlined text-3xl text-slate-300 block mb-1">show_chart</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-3xl text-slate-300 block mb-1">show_chart</span>
                     <span>No trend data available</span>
                 </div>
             </div>

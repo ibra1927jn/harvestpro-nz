@@ -63,8 +63,8 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
                         <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">Stock Management</p>
                     </div>
                     <div className="flex items-center justify-end gap-3">
-                        <button className="relative flex items-center justify-center rounded-2xl size-11 bg-white/80 border border-white/60 shadow-sm text-slate-500 hover:text-primary transition-colors hover:shadow-md">
-                            <span className="material-symbols-outlined text-[22px]">notifications</span>
+                        <button aria-label="Notifications" className="relative flex items-center justify-center rounded-2xl size-11 bg-white/80 border border-white/60 shadow-sm text-slate-500 hover:text-primary transition-colors hover:shadow-md">
+                            <span aria-hidden="true" className="material-symbols-outlined text-[22px]">notifications</span>
                         </button>
                         <div className="size-11 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden border border-white/60 shadow-sm">
                             <img src={avatarUrl('Warehouse')} alt="Avatar" className="w-full h-full object-cover" />
@@ -85,7 +85,7 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
                             <h2 className="text-2xl font-black text-slate-800 tracking-tight">Full Cherry Bins</h2>
                         </div>
                         <div className="size-14 rounded-2xl bg-gradient-to-br from-primary/5 to-blue-500/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
-                            <span className="material-symbols-outlined text-[28px]">inventory_2</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-[28px]">inventory_2</span>
                         </div>
                     </div>
                     <div className="mt-8 flex items-baseline gap-2.5 pl-3">
@@ -94,7 +94,7 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
                     </div>
                     <div className="mt-6 pt-5 border-t border-slate-100/50 flex items-center justify-between pl-3">
                         <div className="flex items-center gap-2">
-                            <span className={`material-symbols-outlined text-xl ${fullBins > 0 ? 'text-emerald-500' : 'text-slate-400'}`}>check_circle</span>
+                            <span aria-hidden="true" className={`material-symbols-outlined text-xl ${fullBins > 0 ? 'text-emerald-500' : 'text-slate-400'}`}>check_circle</span>
                             <span className={`text-xs font-bold uppercase tracking-wider ${fullBins > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>{fullBins > 0 ? 'Ready for Pickup' : 'Awaiting Harvest'}</span>
                         </div>
                     </div>
@@ -105,7 +105,7 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
                     <div className="bg-white/80 backdrop-blur-md rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 flex flex-col h-full hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all">
                         <div className="flex items-start justify-between mb-5">
                             <div className="size-12 rounded-xl bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center text-orange-500 border border-orange-200/50 shadow-inner">
-                                <span className="material-symbols-outlined text-[24px]">grid_view</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-[24px]">grid_view</span>
                             </div>
                             <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${emptyBins < 5 ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
                                 {emptyBins < 5 ? 'Critical' : 'Stock OK'}
@@ -119,7 +119,7 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
                     <div className="bg-white/80 backdrop-blur-md rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 flex flex-col h-full hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all">
                         <div className="flex items-start justify-between mb-5">
                             <div className="size-12 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center text-blue-500 border border-blue-200/50 shadow-inner">
-                                <span className="material-symbols-outlined text-[24px]">shopping_basket</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-[24px]">shopping_basket</span>
                             </div>
                             <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-blue-50 text-blue-600 uppercase tracking-widest border border-blue-100">IN-FLOW</span>
                         </div>
@@ -133,7 +133,7 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
                 {/* Truck Info */}
                 <div className="bg-gradient-to-br from-slate-50/80 to-slate-100/50 rounded-[1.5rem] p-5 flex gap-4 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
                     <div className="size-12 rounded-full bg-white flex items-center justify-center text-slate-400 shadow-sm border border-slate-100 shrink-0">
-                        <span className="material-symbols-outlined text-[24px]">local_shipping</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-[24px]">local_shipping</span>
                     </div>
                     <div className="flex-1">
                         <p className="text-xs font-black text-slate-800 uppercase tracking-widest mb-1.5">Transport</p>
@@ -151,7 +151,7 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
                     disabled={fullBins === 0}
                     className="w-full h-14 bg-slate-900 border border-slate-800 text-white rounded-2xl shadow-[0_10px_20px_rgba(15,23,42,0.2)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all group disabled:opacity-50 disabled:shadow-none hover:bg-slate-800"
                 >
-                    <span className="material-symbols-outlined text-[24px] text-emerald-400 group-active:scale-90 transition-transform">local_shipping</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[24px] text-emerald-400 group-active:scale-90 transition-transform">local_shipping</span>
                     <span className="text-sm font-black uppercase tracking-widest">Request Transport</span>
                 </button>
             </div>

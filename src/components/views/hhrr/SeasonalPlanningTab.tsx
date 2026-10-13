@@ -112,7 +112,7 @@ const SeasonalPlanningTab: React.FC<SeasonalPlanningTabProps> = ({ employees }) 
             <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 relative overflow-hidden">
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-50"></div>
                 <h3 className="text-sm font-extrabold text-slate-800 tracking-tight mb-1 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[20px] text-amber-500">event_upcoming</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-amber-500">event_upcoming</span>
                     Contract Expiry Forecast
                 </h3>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-5">Contracts expiring in the next 90 days</p>
@@ -162,7 +162,7 @@ const SeasonalPlanningTab: React.FC<SeasonalPlanningTabProps> = ({ employees }) 
             <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 relative overflow-hidden">
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-50"></div>
                 <h3 className="text-sm font-extrabold text-slate-800 tracking-tight mb-1 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[20px] text-red-500">flight</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-red-500">flight</span>
                     Visa Expiry Alerts
                 </h3>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-5">Work visas expiring in the next 90 days</p>
@@ -176,7 +176,7 @@ const SeasonalPlanningTab: React.FC<SeasonalPlanningTabProps> = ({ employees }) 
                                 const days = daysUntil(emp.visa_expiry!);
                                 return (
                                     <div key={emp.id} className={`flex items-center gap-4 p-3.5 rounded-2xl border bg-white/50 backdrop-blur-sm ${urgencyColor(days)} shadow-sm`}>
-                                        <span className="material-symbols-outlined text-[20px] opacity-80">badge</span>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-[20px] opacity-80">badge</span>
                                         <div className="flex-1">
                                             <p className="text-sm font-extrabold tracking-tight">{emp.full_name}</p>
                                             <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mt-0.5">{emp.visa_status}</p>
@@ -196,7 +196,7 @@ const SeasonalPlanningTab: React.FC<SeasonalPlanningTabProps> = ({ employees }) 
             <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 relative overflow-hidden">
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-50"></div>
                 <h3 className="text-sm font-extrabold text-slate-800 tracking-tight mb-1 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[20px] text-indigo-500">trending_down</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-indigo-500">trending_down</span>
                     Projected Headcount
                 </h3>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-6">If no contracts are renewed</p>

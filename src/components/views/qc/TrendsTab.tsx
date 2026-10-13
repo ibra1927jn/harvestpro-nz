@@ -107,7 +107,7 @@ const TrendsTab: React.FC<TrendsTabProps> = ({ orchardId }) => {
       {/* 7-Day Grade Distribution */}
       <div className="bg-white rounded-lg border border-border-light shadow-sm p-5">
         <h3 className="text-sm font-semibold text-text-primary mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-indigo-500 text-base">trending_up</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-indigo-500 text-base">trending_up</span>
           7-Day Grade Distribution
         </h3>
         <div className="grid grid-cols-7 gap-2">

@@ -31,7 +31,7 @@ export const PayWeekCloseBar: React.FC<PayWeekCloseBarProps> = ({
             <div data-testid="pay-week-closed" className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 mb-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="text-sm font-bold text-emerald-900 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[20px]">lock</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">lock</span>
                         Week closed {nzDateTime(closedInfo.closed_at)} — these are the figures that were paid. Timesheets and buckets of this week can't be changed.
                     </p>
                     {canManageWeek && !reopening && (
@@ -69,7 +69,7 @@ export const PayWeekCloseBar: React.FC<PayWeekCloseBarProps> = ({
     if (!weekFinished) {
         return (
             <p data-testid="pay-week-open" className="text-xs font-bold text-slate-500 mb-4 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[16px]">schedule</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-[16px]">schedule</span>
                 Week in progress — it can be closed once it ends (Monday).
             </p>
         );
@@ -79,7 +79,7 @@ export const PayWeekCloseBar: React.FC<PayWeekCloseBarProps> = ({
         <div data-testid="pay-week-ready" className="rounded-2xl border border-orange-200 bg-orange-50 px-5 py-3 mb-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm font-bold text-orange-900 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[20px]">lock_open</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[20px]">lock_open</span>
                     Week finished, not closed yet. Closing saves what is paid and locks this week's timesheets and buckets.
                 </p>
                 {canManageWeek && !confirming && (

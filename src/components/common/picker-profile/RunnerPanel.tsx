@@ -65,11 +65,11 @@ const RunnerPanel: React.FC<RunnerPanelProps> = ({ member, crew }) => {
             {/* Acciones */}
             <div className="flex gap-2">
                 <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-indigo-50 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-colors shadow-sm">
-                    <span className="material-symbols-outlined text-sm">chat</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm">chat</span>
                     {t('panel.runner.message_tl')}
                 </button>
                 <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-amber-50 text-xs font-bold text-amber-700 hover:bg-amber-100 transition-colors shadow-sm">
-                    <span className="material-symbols-outlined text-sm">check_circle</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm">check_circle</span>
                     {t('panel.runner.complete_route')}
                 </button>
             </div>

@@ -52,14 +52,14 @@ const Payroll: React.FC = () => {
             {/* Semana de pago: la nómina es semanal y se cierra el lunes siguiente */}
             <div className="flex items-center justify-between gap-3 mb-4" data-testid="pay-week-selector">
                 <button type="button" onClick={() => pay.goToWeek(-1)} aria-label="Previous pay week" className="p-2 rounded-xl hover:bg-slate-100">
-                    <span className="material-symbols-outlined">chevron_left</span>
+                    <span aria-hidden="true" className="material-symbols-outlined">chevron_left</span>
                 </button>
                 <div className="text-center">
                     <p className="text-sm font-extrabold text-slate-800">Pay week {pay.week.start} → {pay.week.end}</p>
                     <p className="text-[11px] uppercase tracking-widest font-bold text-slate-400">Closes Monday {pay.week.closesOn}</p>
                 </div>
                 <button type="button" onClick={() => pay.goToWeek(1)} aria-label="Next pay week" className="p-2 rounded-xl hover:bg-slate-100">
-                    <span className="material-symbols-outlined">chevron_right</span>
+                    <span aria-hidden="true" className="material-symbols-outlined">chevron_right</span>
                 </button>
             </div>
 
@@ -95,7 +95,7 @@ const Payroll: React.FC = () => {
                     data-testid="payroll-alt-days-banner"
                     className="bg-violet-50/80 backdrop-blur-md border border-violet-200/60 rounded-2xl px-5 py-3 flex items-center gap-3 mb-5"
                 >
-                    <span className="material-symbols-outlined text-[20px] text-violet-600">event_available</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-violet-600">event_available</span>
                     <p className="text-sm font-bold text-violet-900">
                         {pay.summary.total_alternative_holidays_owed} alternative day{(pay.summary.total_alternative_holidays_owed ?? 0) === 1 ? '' : 's'} owed
                         <span className="ml-2 text-[11px] font-semibold uppercase tracking-widest text-violet-600">
@@ -109,7 +109,7 @@ const Payroll: React.FC = () => {
                 <div className="bg-amber-50/80 backdrop-blur-md border border-amber-200/60 rounded-2xl px-5 py-4 flex items-center gap-4 mb-5 shadow-[0_4px_20px_rgb(245,158,11,0.06)] relative overflow-hidden">
                     <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent"></div>
                     <div className="size-10 rounded-xl bg-amber-100/80 flex items-center justify-center shrink-0 shadow-inner border border-amber-200/50">
-                        <span className="material-symbols-outlined text-[20px] text-amber-600">shield</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-amber-600">shield</span>
                     </div>
                     <div className="flex-1">
                         <p className="text-sm font-extrabold text-amber-900 tracking-tight">

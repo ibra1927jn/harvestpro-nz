@@ -80,7 +80,7 @@ export function MFAVerify({ factorId, onSuccess, onCancel }: MFAVerifyProps) {
                         disabled={isLoading}
                         className="flex items-center gap-1.5 text-sm text-text-muted hover:text-indigo-600 mb-6 transition-colors disabled:opacity-50"
                     >
-                        <span className="material-symbols-outlined text-base">arrow_back</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">arrow_back</span>
                         {t('auth.twoFactor.back')}
                     </button>
                 )}
@@ -90,7 +90,7 @@ export function MFAVerify({ factorId, onSuccess, onCancel }: MFAVerifyProps) {
                     {/* Icon */}
                     <div className="flex justify-center mb-5">
                         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                            <span className="material-symbols-outlined text-3xl text-white">shield_lock</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-3xl text-white">shield_lock</span>
                         </div>
                     </div>
 
@@ -134,7 +134,7 @@ export function MFAVerify({ factorId, onSuccess, onCancel }: MFAVerifyProps) {
                     >
                         {isLoading ? (
                             <>
-                                <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-base animate-spin">progress_activity</span>
                                 {t('auth.twoFactor.verifying')}
                             </>
                         ) : (

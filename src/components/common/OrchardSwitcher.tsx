@@ -42,11 +42,11 @@ export default function OrchardSwitcher() {
         aria-expanded={isOpen ? 'true' : 'false'}
         aria-haspopup="listbox"
       >
-        <span className="material-symbols-outlined text-base text-primary">park</span>
+        <span aria-hidden="true" className="material-symbols-outlined text-base text-primary">park</span>
         <span className="max-w-[140px] truncate text-text-main">
           {orchardName || 'Select Orchard'}
         </span>
-        <span className="material-symbols-outlined text-base text-text-muted">
+        <span aria-hidden="true" className="material-symbols-outlined text-base text-text-muted">
           {isOpen ? 'expand_less' : 'expand_more'}
         </span>
       </button>
@@ -74,7 +74,7 @@ export default function OrchardSwitcher() {
                   isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
-                <span className="material-symbols-outlined text-lg">
+                <span aria-hidden="true" className="material-symbols-outlined text-lg">
                   {isActive ? 'check_circle' : 'park'}
                 </span>
                 <div className="flex-1 min-w-0">

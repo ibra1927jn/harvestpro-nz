@@ -91,7 +91,7 @@ const WeeklyReportView: React.FC = () => {
                     onClick={() => report.setShowExportModal(true)}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-xl gradient-primary glow-primary text-white font-bold text-sm hover:scale-105 transition-all active:scale-95 shadow-lg"
                 >
-                    <span className="material-symbols-outlined text-lg">download</span> {t('insights.weekly.export')}
+                    <span aria-hidden="true" className="material-symbols-outlined text-lg">download</span> {t('insights.weekly.export')}
                 </button>
             </div>
 
@@ -122,12 +122,12 @@ const WeeklyReportView: React.FC = () => {
             {/* Team Rankings */}
             <div className="bg-white rounded-2xl p-5 shadow-lg shadow-slate-200/50 border border-slate-100 dash-card-enter anim-delay" style={{ '--delay': '250ms' } as React.CSSProperties}>
                 <h3 className="font-bold text-text-main mb-4 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-amber-500">emoji_events</span> {t('insights.weekly.team_rankings')}
+                    <span aria-hidden="true" className="material-symbols-outlined text-amber-500">emoji_events</span> {t('insights.weekly.team_rankings')}
                 </h3>
                 {report.teamRankings.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8">
                         <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                            <span className="material-symbols-outlined text-3xl text-slate-300">leaderboard</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-3xl text-slate-300">leaderboard</span>
                         </div>
                         <p className="text-sm font-bold text-text-sub">{t('insights.weekly.no_teams')}</p>
                         <p className="text-xs text-text-muted mt-1">Rankings appear as data flows in</p>
@@ -160,12 +160,12 @@ const WeeklyReportView: React.FC = () => {
             {/* Top 10 Pickers */}
             <div className="bg-white rounded-2xl p-5 shadow-lg shadow-slate-200/50 border border-slate-100 dash-card-enter" style={{ animationDelay: '350ms' }}>
                 <h3 className="font-bold text-text-main mb-4 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-emerald-500">star</span> {t('insights.weekly.top10')}
+                    <span aria-hidden="true" className="material-symbols-outlined text-emerald-500">star</span> {t('insights.weekly.top10')}
                 </h3>
                 {report.pickers.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8">
                         <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                            <span className="material-symbols-outlined text-3xl text-slate-300">person_search</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-3xl text-slate-300">person_search</span>
                         </div>
                         <p className="text-sm font-bold text-text-sub">{t('insights.weekly.no_pickers')}</p>
                         <p className="text-xs text-text-muted mt-1">Picker stats appear as scans are submitted</p>
