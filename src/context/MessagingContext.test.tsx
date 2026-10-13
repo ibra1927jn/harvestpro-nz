@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
     getBroadcasts: vi.fn().mockResolvedValue([]),
     getStaffList: vi.fn().mockResolvedValue([]),
     messageQueueAdd: vi.fn(),
+    outboxForConversation: vi.fn(),
+    outboxRetry: vi.fn(),
 }));
 
 vi.mock('@/services/config.service', () => ({
@@ -47,7 +49,13 @@ vi.mock('@/services/supabase', () => ({
     },
 }));
 vi.mock('@/services/message-outbox.service', () => ({
-    messageOutbox: { queue: mocks.messageQueueAdd, flush: vi.fn().mockResolvedValue(0) },
+    messageOutbox: {
+        queue: mocks.messageQueueAdd,
+        flush: vi.fn().mockResolvedValue(0),
+        forConversation: (...a: unknown[]) => mocks.outboxForConversation(...a),
+        retry: (...a: unknown[]) => mocks.outboxRetry(...a),
+        subscribe: () => () => undefined,
+    },
 }));
 vi.mock('@/utils/logger', () => ({
     logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
@@ -82,6 +90,8 @@ const wrapper = ({ children }: { children: React.ReactNode }) => <MessagingProvi
 describe('MessagingContext', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mocks.outboxForConversation.mockResolvedValue([]);
+        mocks.outboxRetry.mockResolvedValue(undefined);
         // Mock navigator.onLine
         Object.defineProperty(navigator, 'onLine', { value: true, writable: true, configurable: true });
     });
@@ -393,6 +403,24 @@ describe('MessagingContext', () => {
             });
 
             expect(messages).toEqual(mockMessages);
+        });
+
+        it('includes own messages that did not reach the server, marked failed or pending', async () => {
+            // Antes un mensaje rechazado (bandeja synced=-1) no se veía: parecía enviado
+            mocks.getConversationMessages.mockResolvedValue([
+                { id: 'm1', sender_id: 'u1', content: 'Hi', priority: 'normal', read_by: [], created_at: '2026-03-05T10:00:00Z' },
+            ]);
+            mocks.outboxForConversation.mockResolvedValue([
+                { id: 'q1', channel_type: 'direct', recipient_id: 'conv-1', sender_id: 'u1', content: 'Rejected', timestamp: '2026-03-05T10:01:00Z', synced: -1, status: 'failed', failure_reason: 'RLS' },
+            ]);
+            const { result } = renderHook(() => useMessaging(), { wrapper });
+            let messages: Array<{ id: string; delivery?: string; failure_reason?: string }> = [];
+            await act(async () => {
+                messages = await result.current.loadConversation('conv-1');
+            });
+            expect(mocks.outboxForConversation).toHaveBeenCalledWith('conv-1');
+            expect(messages.map(m => [m.id, m.delivery])).toEqual([['m1', undefined], ['q1', 'failed']]);
+            expect(messages[1].failure_reason).toBe('RLS');
         });
 
         it('returns empty array on error', async () => {

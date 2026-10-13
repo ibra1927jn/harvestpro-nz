@@ -40,6 +40,7 @@ import { resetKeyCache } from '../../dbCrypto';
 type Action =
     | { kind: 'write'; text: string }
     | { kind: 'flush'; faults: Fault[] }
+    | { kind: 'retryFailed'; faults: Fault[] }
     | { kind: 'offline' }
     | { kind: 'online' }
     | { kind: 'reload'; rotate: boolean; chromeUpdate: boolean };
@@ -47,6 +48,7 @@ type Action =
 const actionArb: fc.Arbitrary<Action> = fc.oneof(
     { weight: 4, arbitrary: fc.record({ kind: fc.constant('write' as const), text: fc.string({ minLength: 1, maxLength: 40 }) }) },
     { weight: 3, arbitrary: fc.record({ kind: fc.constant('flush' as const), faults: fc.array(fc.constantFrom<Fault>('ok', 'network', 'lostResponse', 'rejected'), { maxLength: 3 }) }) },
+    { weight: 1, arbitrary: fc.record({ kind: fc.constant('retryFailed' as const), faults: fc.array(fc.constantFrom<Fault>('ok', 'network', 'lostResponse', 'rejected'), { maxLength: 2 }) }) },
     { weight: 1, arbitrary: fc.constant({ kind: 'offline' as const }) },
     { weight: 1, arbitrary: fc.constant({ kind: 'online' as const }) },
     { weight: 2, arbitrary: fc.record({ kind: fc.constant('reload' as const), rotate: fc.boolean(), chromeUpdate: fc.boolean() }) },
@@ -75,6 +77,13 @@ async function run(actions: Action[]): Promise<void> {
                 chat.faults.push(...a.faults);
                 await messageOutbox.flush();
                 break;
+            case 'retryFailed': {
+                // Quien escribió ve "Not sent" en la conversación y pulsa Retry
+                chat.faults.push(...a.faults);
+                const shown = await messageOutbox.forConversation('conv-1');
+                for (const m of shown.filter(x => x.status === 'failed')) await messageOutbox.retry(m.id);
+                break;
+            }
             case 'offline': online = false; break;
             case 'online': online = true; break;
             case 'reload':
@@ -90,14 +99,19 @@ async function run(actions: Action[]): Promise<void> {
     for (let i = 0; i < 5 && (await messageOutbox.pendingCount()) > 0; i++) await messageOutbox.flush();
     expect(await messageOutbox.pendingCount()).toBe(0);
 
-    const failed = new Map((await db.message_queue.where('synced').equals(-1).toArray()).map(m => [m.id, m]));
+    // Lo que ve quien escribió en la conversación: lo no entregado sale como
+    // "Not sent" con su texto y motivo (antes no se enseñaba: parecía enviado)
+    const shown = new Map((await messageOutbox.forConversation('conv-1')).map(m => [m.id, m]));
     for (const [id, text] of written) {
         const got = chat.delivered.get(id);
         if (got) {
             expect(got, `message ${id} delivered with wrong content`).toEqual([text]);
-            expect(failed.has(id)).toBe(false);
+            expect(shown.has(id), `message ${id} delivered but still shown as not sent`).toBe(false);
         } else {
-            expect(failed.get(id)?.failure_reason, `message ${id} lost`).toBeTruthy();
+            const m = shown.get(id);
+            expect(m?.status, `message ${id} not delivered and not shown to the sender`).toBe('failed');
+            expect(m?.failure_reason).toBeTruthy();
+            expect(m?.content).toBe(text);
         }
     }
 }
@@ -114,6 +128,22 @@ beforeEach(() => {
 afterEach(() => resetKeyCache());
 
 describe('message outbox chaos', () => {
+    it('a rejected message is shown to the sender as failed; Retry delivers it exactly once', async () => {
+        await db.message_queue.clear();
+        chat.delivered.clear();
+        online = true;
+        chat.faults = ['rejected'];
+        await run([{ kind: 'write', text: 'bins at row 4' }, { kind: 'flush', faults: [] }]);
+        const [m] = await messageOutbox.forConversation('conv-1');
+        expect(m.status).toBe('failed');
+        // Reintento con la respuesta perdida, y otro: llega una sola vez
+        chat.faults = ['lostResponse'];
+        await messageOutbox.retry(m.id);
+        await messageOutbox.flush();
+        expect(chat.delivered.get(m.id)).toEqual(['bins at row 4']);
+        expect(await messageOutbox.forConversation('conv-1')).toEqual([]);
+    });
+
     it(`exactly once, with its own text, or visibly failed (seed ${SEED}, ${RUNS} runs)`, async () => {
         await fc.assert(
             fc.asyncProperty(fc.array(actionArb, { minLength: 1, maxLength: 25 }), async actions => {

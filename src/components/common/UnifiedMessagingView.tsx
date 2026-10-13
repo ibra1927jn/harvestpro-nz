@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Role, MessagePriority } from '../../types';
 import BroadcastModal from '../modals/BroadcastModal';
 import { simpleMessagingService } from '../../services/simple-messaging.service';
+import { messageOutbox } from '../../services/message-outbox.service';
 import { logger } from '../../utils/logger';
 import MessagingSidebar from './messaging/MessagingSidebar';
 import ChatWindow from './messaging/ChatWindow';
@@ -19,6 +20,7 @@ const UnifiedMessagingView = () => {
     broadcasts,
     chatGroups,
     loadConversation,
+    retryMessage,
     sendMessage,
     sendBroadcast,
     getOrCreateConversation,
@@ -84,7 +86,16 @@ const UnifiedMessagingView = () => {
         setMessages(prev => [...prev, dbMsg]);
       }
     });
-    return () => unsubscribe();
+    // Bandeja de salida: al enviarse, fallar o reintentar un mensaje propio,
+    // la conversación se recarga (sale como enviado / "Not sent")
+    const chatId = selectedChat.id;
+    const unsubscribeOutbox = messageOutbox.subscribe(() => {
+      loadConversation(chatId).then(setMessages);
+    });
+    return () => {
+      unsubscribe();
+      unsubscribeOutbox();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChat?.id, loadConversation]);
 
@@ -131,6 +142,15 @@ const UnifiedMessagingView = () => {
       }
     },
     [selectedChat, isSending, sendMessage]
+  );
+
+  const handleRetry = useCallback(
+    (messageId: string) => {
+      // Al momento: vuelve a "pendiente"; la recarga llega por la suscripción
+      setMessages(prev => prev.map(m => (m.id === messageId ? { ...m, delivery: 'pending', failure_reason: undefined } : m)));
+      retryMessage(messageId).catch(e => logger.warn('[Messaging] Retry failed:', e));
+    },
+    [retryMessage]
   );
 
   const handleStartDirectChat = useCallback(
@@ -187,6 +207,7 @@ const UnifiedMessagingView = () => {
             userNameMap={userNameMap}
             isSending={isSending}
             onSend={handleSend}
+            onRetry={handleRetry}
             onBack={() => {
               setSelectedChat(null);
               setIsSidebarOpen(true);

@@ -30,6 +30,7 @@ import {
   type ConversationRow,
 } from './messagingLogic';
 import { useMessagingRealtime } from './useMessagingRealtime';
+import { mergeOutbox } from './messagingOutbox';
 
 // Types extracted to messaging.types.ts for reuse
 import type { DBMessage, ChatGroup, MessagingState, MessagingContextType } from './messaging.types';
@@ -126,7 +127,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
         priority,
       });
 
-      return optimisticMsg;
+      return { ...optimisticMsg, delivery: 'pending' };
     }
   };
 
@@ -269,14 +270,25 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   const loadConversation = async (conversationId: string): Promise<DBMessage[]> => {
+    let serverMessages: DBMessage[] = [];
     try {
-      const data = await messagingRepository.getConversationMessages(conversationId);
-      return data || [];
+      serverMessages = (await messagingRepository.getConversationMessages(conversationId)) || [];
     } catch (error) {
       logger.error('[MessagingContext] Error loading conversation:', error);
-      return [];
+    }
+    // Lo propio que aún no llegó (sin red o rechazado) también se ve, marcado
+    try {
+      const outbox = await messageOutbox.forConversation(conversationId);
+      return mergeOutbox(serverMessages, outbox);
+    } catch (error) {
+      logger.warn('[MessagingContext] Outbox not readable:', error);
+      return serverMessages;
     }
   };
+
+  const retryMessage = useCallback(async (messageId: string) => {
+    await messageOutbox.retry(messageId);
+  }, []);
 
   const refreshMessages = useCallback(async () => {
     if (!orchardIdRef.current || !userIdRef.current) return;
@@ -341,6 +353,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
     createChatGroup,
     loadChatGroups,
     loadConversation,
+    retryMessage,
     refreshMessages,
     setOrchardId,
     setUserId,

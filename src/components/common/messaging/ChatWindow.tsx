@@ -18,11 +18,13 @@ interface Props {
     userNameMap: Record<string, string>;
     isSending: boolean;
     onSend: (content: string) => void;
+    /** Reintentar un mensaje propio que no se envió */
+    onRetry?: (messageId: string) => void;
     onBack: () => void;
 }
 
 const ChatWindow: React.FC<Props> = ({
-    selectedChat, messages, appUserId, userNameMap, isSending, onSend, onBack,
+    selectedChat, messages, appUserId, userNameMap, isSending, onSend, onRetry, onBack,
 }) => {
     const [newMessage, setNewMessage] = useState('');
     const [showQuickReplies, setShowQuickReplies] = useState(false);
@@ -152,7 +154,18 @@ const ChatWindow: React.FC<Props> = ({
                                             )}
                                             <div className={`flex items-center gap-1 mt-0.5 px-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
                                                 <span className="text-[9px] font-medium text-slate-400">{formatTime(m.created_at)}</span>
-                                                {isMe && <span className="material-symbols-outlined text-[12px] text-blue-400">done_all</span>}
+                                                {isMe && m.delivery === 'pending' && (
+                                                    <span className="material-symbols-outlined text-[12px] text-slate-400" title="Waiting for signal — will send automatically" aria-label="Waiting to send">schedule</span>
+                                                )}
+                                                {isMe && m.delivery === 'failed' && (
+                                                    <span role="alert" className="flex items-center gap-1 text-[10px] font-bold text-red-600" title={m.failure_reason}>
+                                                        Not sent
+                                                        {onRetry && (
+                                                            <button type="button" onClick={() => onRetry(m.id)} className="underline">Retry</button>
+                                                        )}
+                                                    </span>
+                                                )}
+                                                {isMe && !m.delivery && <span className="material-symbols-outlined text-[12px] text-blue-400">done_all</span>}
                                             </div>
                                             {hoveredMsg === msgId && (
                                                 <div className={`absolute top-0 ${isMe ? '-left-24' : '-right-24'} flex gap-0.5 msg-enter`}>
