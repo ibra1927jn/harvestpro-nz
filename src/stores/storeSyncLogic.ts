@@ -46,7 +46,7 @@ export interface OpenShiftElsewhere {
 }
 
 /** Margen al pedir cambios por delta (evita perder filas por desfase de reloj) */
-export const DELTA_SAFETY_MS = 120_000;
+const DELTA_SAFETY_MS = 120_000;
 
 const NZ_DAY_FMT = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' });
 
@@ -119,7 +119,7 @@ export function startOfNZDay(todayNZ: string, nzNowISO: string): string {
 }
 
 /** Aplica un delta sobre una lista por id: los marcados como baja salen */
-export function mergeById<T extends { id: string }, R = T>(
+function mergeById<T extends { id: string }, R = T>(
   current: T[],
   incoming: R[],
   opts: { isRemoved: (row: R) => boolean; toItem: (row: R) => T; idOf: (row: R) => string }
@@ -170,7 +170,7 @@ export function applyElsewhere(crew: Picker[], elsewhere: OpenShiftElsewhere[]):
 /* ── Row assignments ──────────────────────── */
 
 /** Fila del servidor → RowAssignment del store (valores por defecto incluidos) */
-export function mapServerRowAssignment(ra: ServerRowAssignment): RowAssignment {
+function mapServerRowAssignment(ra: ServerRowAssignment): RowAssignment {
   return {
     id: ra.id,
     row_number: ra.row_number,

@@ -10,7 +10,7 @@ import type { DailyTimesheetRecord, TimesheetEntry } from './payroll.types';
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 /** Horas por encima de las cuales una hoja de horas pide revisión */
-export const REVIEW_HOURS_THRESHOLD = 14;
+const REVIEW_HOURS_THRESHOLD = 14;
 
 /**
  * Horas de cada tramo cerrado = su parte de las horas pagables del día

@@ -22,7 +22,7 @@ export interface LastMessageRow {
 }
 
 /** Longitud máxima de la vista previa del último mensaje */
-export const PREVIEW_MAX_CHARS = 40;
+const PREVIEW_MAX_CHARS = 40;
 
 const timeNZ = (iso: string): string =>
   new Date(iso).toLocaleTimeString([], { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' });
