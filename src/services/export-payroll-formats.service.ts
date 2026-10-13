@@ -13,6 +13,21 @@ const escCsv = (val: string): string => {
     return s;
 };
 
+/**
+ * Cantidad y tarifa de la línea de complemento al mínimo, de forma que
+ * cantidad × tarifa dé EXACTAMENTE el importe (si el programa de nómina
+ * recalcula la línea, no puede perder céntimos). Cantidad = horas con tarifa
+ * de 4 decimales; si aun así no cuadra (o no hay horas), 1 × importe.
+ */
+export function topUpQuantityRate(hours: number, amount: number): [string, string] {
+    const qty = Number(hours.toFixed(2));
+    if (qty > 0) {
+        const rate = (amount / qty).toFixed(4);
+        if (Math.round(qty * Number(rate) * 100) === Math.round(amount * 100)) return [qty.toFixed(2), rate];
+    }
+    return ['1', amount.toFixed(2)];
+}
+
 // =============================================
 // XERO PAYROLL FORMAT
 // =============================================
@@ -55,8 +70,7 @@ export function generateXeroCSV(data: PayrollExportData): string {
         if (p.minimumTopUp > 0) {
             rows.push([
                 escCsv(p.employeeId), escCsv(p.name), 'Minimum Wage Top-Up',
-                p.hours.toFixed(2),
-                (p.minimumTopUp / Math.max(p.hours, 0.01)).toFixed(2),
+                ...topUpQuantityRate(p.hours, p.minimumTopUp),
                 p.minimumTopUp.toFixed(2),
             ]);
         }
@@ -104,8 +118,7 @@ export function generatePaySauceCSV(data: PayrollExportData): string {
             rows.push([
                 escCsv(p.employeeId), 'MIN_WAGE_TOPUP',
                 escCsv(`Minimum wage top-up (${p.hours.toFixed(2)}h)`),
-                p.hours.toFixed(2),
-                (p.minimumTopUp / Math.max(p.hours, 0.01)).toFixed(2),
+                ...topUpQuantityRate(p.hours, p.minimumTopUp),
                 p.minimumTopUp.toFixed(2),
             ]);
         }
