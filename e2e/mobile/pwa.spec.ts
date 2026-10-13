@@ -4,7 +4,7 @@
  * (vite preview); con el dev server no hay service worker y se omite.
  */
 import { test, expect } from './fixtures';
-import { loginAs } from './helpers';
+import { loginAs, navOrMenu } from './helpers';
 
 const DEV = process.env.MOBILE_SERVER === 'dev';
 
@@ -58,7 +58,7 @@ test.describe('PWA', () => {
     await context.setOffline(true);
     await page.reload();
     await expect(page).toHaveURL(/\/runner/);
-    await expect(page.locator('nav[aria-label="Main navigation"]')).toBeVisible({ timeout: 30_000 });
+    await expect(navOrMenu(page)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(/You are Offline/i).first()).toBeVisible();
     await context.setOffline(false);
   });

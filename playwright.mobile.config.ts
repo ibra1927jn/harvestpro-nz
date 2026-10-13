@@ -86,8 +86,9 @@ export default defineConfig({
       },
     },
     {
+      // iPhone SE 2ª/3ª gen (375x667); el perfil 'iPhone SE' de Playwright es el de 320px
       name: 'iphone-se',
-      use: iphoneOnChromium('iPhone SE'),
+      use: { ...iphoneOnChromium('iPhone SE'), viewport: { width: 375, height: 667 }, deviceScaleFactor: 2 },
     },
     {
       name: 'iphone-14-pro',

@@ -4,7 +4,7 @@
  * cobertura — si no, un runner en el huerto se queda fuera hasta tener señal.
  */
 import { test, expect } from './fixtures';
-import { loginAs, waitForAppIdle } from './helpers';
+import { loginAs, waitForAppIdle, navOrMenu } from './helpers';
 
 test('runner stays logged in after the app is closed and reopened', async ({ page, context }) => {
   await loginAs(page, 'runner');
@@ -15,7 +15,7 @@ test('runner stays logged in after the app is closed and reopened', async ({ pag
   await reopened.goto('/');
   await expect(reopened).toHaveURL(/\/runner/, { timeout: 30_000 });
   await waitForAppIdle(reopened);
-  await expect(reopened.locator('nav[aria-label="Main navigation"]')).toBeVisible();
+  await expect(navOrMenu(reopened)).toBeVisible();
 });
 
 test('runner can reopen the app with no signal after it was killed', async ({ page, context }) => {
@@ -40,8 +40,6 @@ test('runner can reopen the app with no signal after it was killed', async ({ pa
   const reopened = await context.newPage();
   await reopened.goto('/runner');
   await expect(reopened).toHaveURL(/\/runner/, { timeout: 30_000 });
-  await expect(reopened.locator('nav[aria-label="Main navigation"]')).toBeVisible({
-    timeout: 30_000,
-  });
+  await expect(navOrMenu(reopened)).toBeVisible({ timeout: 30_000 });
   await context.setOffline(false);
 });

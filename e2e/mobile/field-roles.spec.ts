@@ -3,7 +3,7 @@
  * consulta su equipo y el historial de filas.
  */
 import { test, expect } from './fixtures';
-import { loginAs, collectErrors, snap, layoutReport } from './helpers';
+import { loginAs, collectErrors, snap, layoutReport, mainNav } from './helpers';
 import { createCheckedInPicker, qcInspectionCount, removePicker, type TestPicker } from './db';
 
 let picker: TestPicker | null = null;
@@ -44,8 +44,12 @@ test('team leader sees the team and the row history', async ({ page }) => {
   await loginAs(page, 'lead');
   await snap(page, test.info(), 'lead-home-team');
 
-  await page.locator('nav[aria-label="Main navigation"]').or(page.getByRole('button', { name: 'Open menu' })).first().waitFor();
-  const bottom = page.locator('nav[aria-label="Main navigation"] button[aria-label="Map"]');
+  await mainNav(page)
+    .or(page.getByRole('button', { name: 'Open menu' }))
+    .filter({ visible: true })
+    .first()
+    .waitFor();
+  const bottom = mainNav(page).locator('button[aria-label="Map"]');
   if (await bottom.isVisible()) {
     await bottom.click();
   } else {

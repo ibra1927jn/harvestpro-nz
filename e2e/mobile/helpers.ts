@@ -129,6 +129,8 @@ export interface LayoutReport {
   hiddenBehindChrome: { el: string; by: string }[];
   /** Interactivos dentro del viewport tapados por otro elemento (no tocables) */
   covered: { el: string; by: string }[];
+  /** Interactivos bajo un botón flotante (FAB); informativo */
+  floating: { el: string; by: string }[];
 }
 
 /**
@@ -245,6 +247,7 @@ export async function layoutReport(page: Page): Promise<LayoutReport> {
 
     // Interactivos visibles en pantalla cuyo centro queda bajo otro elemento
     const covered: LayoutReport['covered'] = [];
+    const floating: LayoutReport['floating'] = [];
     const dialogOpen = !!document.querySelector('[role="dialog"], [aria-modal="true"]');
     document.querySelectorAll(interactiveSel).forEach(el => {
       if (!visible(el) || covered.length >= 10) return;
@@ -271,10 +274,22 @@ export async function layoutReport(page: Page): Promise<LayoutReport> {
         const pos = getComputedStyle(chrome).position;
         if (pos === 'fixed' || pos === 'sticky') return;
       }
+      // Botón flotante (FAB): tapa contenido que se puede desplazar por debajo.
+      // Se registra aparte; una barra fija a todo el ancho sí cuenta como tapado.
+      let fixedAncestor: Element | null = top;
+      while (fixedAncestor && getComputedStyle(fixedAncestor).position !== 'fixed')
+        fixedAncestor = fixedAncestor.parentElement;
+      if (fixedAncestor) {
+        const fr = fixedAncestor.getBoundingClientRect();
+        if (fr.width < vw * 0.7 && fr.width * fr.height < vw * vh * 0.15) {
+          floating.push({ el: describe(el), by: describe(fixedAncestor) });
+          return;
+        }
+      }
       covered.push({ el: describe(el), by: describe(top) });
     });
 
-    return { overflowX, smallTargets, smallInputs, hiddenBehindChrome, covered };
+    return { overflowX, smallTargets, smallInputs, hiddenBehindChrome, covered, floating };
   });
 }
 
@@ -329,5 +344,14 @@ export function recordFinding(info: TestInfo, screen: string, data: Record<strin
 
 /** Pestañas de la barra inferior (o sidebar en escritorio). */
 export function mainNav(page: Page) {
-  return page.locator('nav[aria-label="Main navigation"]');
+  // :visible — en escritorio/landscape hay un nav oculto en el sidebar
+  return page.locator('nav[aria-label="Main navigation"]:visible');
+}
+
+/** Navegación principal visible: barra inferior o botón de menú (>= 768px). */
+export function navOrMenu(page: Page) {
+  return mainNav(page)
+    .or(page.getByRole('button', { name: 'Open menu' }))
+    .filter({ visible: true })
+    .first();
 }

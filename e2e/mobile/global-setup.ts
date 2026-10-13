@@ -8,6 +8,7 @@
 import { spawn, type ChildProcess } from 'child_process';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 import { resolve } from 'path';
+import { removeLeftoverPickers } from './db';
 
 const SHIM_PORT = Number(process.env.MOBILE_FN_SHIM_PORT ?? 54399);
 const FUNCTIONS = [
@@ -55,10 +56,11 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   const findings = process.env.MOBILE_FINDINGS_FILE ?? '/home/claude/reports/mobile-findings.jsonl';
   mkdirSync(screens, { recursive: true });
   if (existsSync(findings)) rmSync(findings);
+  removeLeftoverPickers();
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL ?? 'http://127.0.0.1:54321';
   if (process.env.MOBILE_FN_SHIM === '0' || (await edgeRuntimeWorks(supabaseUrl))) {
-    return async () => undefined;
+    return async () => removeLeftoverPickers();
   }
 
   const support = resolve(process.cwd(), 'e2e/mobile/support');
@@ -97,5 +99,6 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
 
   return async () => {
     child.kill('SIGTERM');
+    removeLeftoverPickers();
   };
 }

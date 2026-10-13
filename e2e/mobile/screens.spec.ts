@@ -35,7 +35,9 @@ for (const role of ROLE_ORDER) {
     const nav = mainNav(page);
     const hamburger = page.getByRole('button', { name: 'Open menu' });
     const drawerNav = page.locator('div.fixed.inset-0 nav');
-    await expect(nav.or(hamburger).first()).toBeVisible({ timeout: 30_000 });
+    await expect(nav.or(hamburger).filter({ visible: true }).first()).toBeVisible({
+      timeout: 30_000,
+    });
     const useBottomNav = await nav.isVisible();
     if (!useBottomNav) await expect(hamburger, 'no bottom nav and no menu button').toBeVisible();
 
@@ -80,6 +82,7 @@ for (const role of ROLE_ORDER) {
         smallInputs: layout.smallInputs,
         hiddenBehindChrome: layout.hiddenBehindChrome,
         covered: layout.covered,
+        floating: layout.floating,
         axe,
         errors: [...errs.errors],
       });

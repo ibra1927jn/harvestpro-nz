@@ -64,3 +64,10 @@ export function qcInspectionCount(pickerId: string): number {
   const [n] = sql(`select count(*) from public.qc_inspections where picker_id = ${lit(pickerId)}`);
   return Number(n);
 }
+
+/** Limpia restos de ejecuciones interrumpidas (pickers E2E Mobile*). */
+export function removeLeftoverPickers(): void {
+  for (const id of sql(`select id from public.pickers where picker_id like 'E2EM%' and name like 'E2E Mobile %'`)) {
+    removePicker(id);
+  }
+}
