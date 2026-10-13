@@ -35,8 +35,9 @@ const AttendanceView = () => {
         try {
             await checkOut(attendanceId);
         } catch (err) {
-
+            // Antes solo iba al log: sin red el botón no hacía nada y nadie se enteraba
             logger.error(err);
+            showToast((err as Error)?.message || 'Failed to check out', 'error');
         }
     };
 
