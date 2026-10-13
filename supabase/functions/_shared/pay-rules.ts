@@ -210,7 +210,10 @@ export function dayPay(input: DayPayInput): DayPay {
     // exportan a nómina (cubetas + plus de festivo + complemento) suman el total.
     const pieceRounded = round2(pieceEarnings);
     const premiumRounded = round2(holidayPremium);
-    const topUpRounded = round2(topUp);
+    // El complemento se redondea HACIA ARRIBA al céntimo: redondeado al más
+    // cercano podía quedar medio céntimo por debajo del mínimo (5.5 h × 23.95 =
+    // 131.725 pagaba 131.72). El −1e-6 evita subir por ruido de coma flotante.
+    const topUpRounded = topUp > 0 ? Math.ceil(topUp * 100 - 1e-6) / 100 : 0;
     return {
         pieceEarnings: pieceRounded,
         holidayPremium: premiumRounded,
@@ -425,9 +428,14 @@ function dayHours(
     }
 
     let estimated = false;
-    const ranges: { start: number; end: number; row: AttendanceRow }[] = [];
+    const ranges: { start: number; end: number; row: AttendanceRow; contained: boolean }[] = [];
+    // Fin más tardío hasta ahora: un tramo que se solapa con el anterior (error
+    // al corregir la hoja) empieza donde acabó aquel; si no, el rato solapado
+    // se pagaba dos veces
+    let coveredUntil = -Infinity;
     sorted.forEach((r, i) => {
-        const start = toMs(r.checkIn) as number;
+        const rawStart = toMs(r.checkIn) as number;
+        const start = Math.max(rawStart, coveredUntil);
         const out = toMs(r.checkOut);
         const nextStart = i + 1 < sorted.length ? (toMs(sorted[i + 1].checkIn) as number) : Infinity;
         let end: number;
@@ -447,18 +455,27 @@ function dayHours(
             end = last;
             estimated = true;
         }
-        ranges.push({ start, end, row: r });
+        // Tramo entero dentro de otro: no cuenta (tampoco para trayectos)
+        const contained = coveredUntil > rawStart && end <= coveredUntil;
+        end = Math.max(start, end);
+        coveredUntil = Math.max(coveredUntil, end);
+        ranges.push({ start, end, row: r, contained });
     });
 
     // Trayectos entre huertos distintos: mitad para cada tramo
     const travelMs = ranges.map(() => 0);
     let totalTravelMs = 0;
-    for (let i = 1; i < ranges.length; i++) {
-        const prev = ranges[i - 1], cur = ranges[i];
+    let prevIdx = -1;
+    for (let i = 0; i < ranges.length; i++) {
+        if (ranges[i].contained) continue;
+        const p = prevIdx;
+        prevIdx = i;
+        if (p < 0) continue;
+        const prev = ranges[p], cur = ranges[i];
         const a = prev.row.orchardId, b = cur.row.orchardId;
         if (!a || !b || a === b) continue;
         const gap = Math.max(0, cur.start - prev.end);
-        travelMs[i - 1] += gap / 2;
+        travelMs[p] += gap / 2;
         travelMs[i] += gap / 2;
         totalTravelMs += gap;
     }
@@ -597,12 +614,28 @@ export function payForRange(params: {
         shifts.set(k, list);
     }
 
+    // Tramos cerrados de cada persona: una cubeta escaneada dentro de un tramo
+    // que cruza la medianoche es del día de ese tramo (horas y cubetas juntas;
+    // antes se iba al día siguiente y allí se estimaban horas otra vez)
+    const closedByPicker = new Map<string, { start: number; end: number; date: string }[]>();
+    for (const a of attendance) {
+        const start = toMs(a.checkIn), end = toMs(a.checkOut);
+        if (start === null || end === null || end <= start) continue;
+        const list = closedByPicker.get(a.pickerId) ?? [];
+        list.push({ start, end, date: a.date });
+        closedByPicker.set(a.pickerId, list);
+    }
+
     const scans = new Map<string, ScanForPay[]>();
     for (const b of buckets) {
         if (b.qualityGrade === 'reject') continue;
         const ms = toMs(b.scannedAt);
         if (ms === null) continue;
-        const k = key(b.pickerId, nzDateOf(b.scannedAt));
+        const scanDate = nzDateOf(b.scannedAt);
+        const covering = (closedByPicker.get(b.pickerId) ?? []).filter(x => ms >= x.start && ms <= x.end);
+        // Si un tramo de su propio día la cubre, se queda en su día
+        const shift = covering.some(x => x.date === scanDate) ? undefined : [...covering].sort((x, y) => x.date.localeCompare(y.date))[0];
+        const k = key(b.pickerId, shift ? shift.date : scanDate);
         const list = scans.get(k) ?? [];
         list.push({
             ms,
