@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { checkIconSubset } from './scripts/icons/check-icons.mjs';
+import { routePreloadPlugin } from './scripts/route-preload.mjs';
 
 /** Falla el build si el código usa un icono que no está en la fuente subconjunto. */
 function iconSubsetGuard(): Plugin {
@@ -29,6 +30,7 @@ export default defineConfig(() => {
     },
     plugins: [
       iconSubsetGuard(),
+      routePreloadPlugin(),
       react(),
       VitePWA({
         registerType: 'autoUpdate',
@@ -126,6 +128,8 @@ export default defineConfig(() => {
       }),
     ],
     build: {
+      // manifest.json: lo usa scripts/perf-budget.mjs para calcular el JS inicial por ruta
+      manifest: true,
       rollupOptions: {
         // Capacitor plugins are native-only — never bundle them for web
         external: ['@capacitor-community/barcode-scanner'],
