@@ -54,6 +54,13 @@ export function bucketCount(pickerId: string): number {
 export function removePicker(pickerId: string): void {
   const id = lit(pickerId);
   sql(`delete from public.bucket_records where picker_id = ${id}`);
+  sql(`delete from public.qc_inspections where picker_id = ${id}`);
+  sql(`delete from public.quality_inspections where picker_id = ${id}`);
   sql(`delete from public.daily_attendance where picker_id = ${id}`);
   sql(`delete from public.pickers where id = ${id}`);
+}
+
+export function qcInspectionCount(pickerId: string): number {
+  const [n] = sql(`select count(*) from public.qc_inspections where picker_id = ${lit(pickerId)}`);
+  return Number(n);
 }
