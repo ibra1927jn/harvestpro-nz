@@ -48,3 +48,28 @@ export function statusLabelKey(status: string): 'panel.status.active' | 'panel.s
     if (status === 'on_break') return 'panel.status.break';
     return 'panel.status.away';
 }
+
+/** Lo que el panel muestra de la persona, con sus valores de reserva */
+export interface DrawerProfile {
+    displayName: string;
+    displayPickerId: string;
+    currentStatus: string;
+    /** Ni en la cuadrilla, ni historial, ni escaneos hoy: "no encontrado" */
+    notFound: boolean;
+}
+
+export function drawerProfileOf(
+    pickerId: string,
+    picker: { name?: string; picker_id?: string; status?: string } | undefined,
+    history: { profile: { name?: string; picker_id?: string; status?: string } } | null,
+    isHistoryLoading: boolean,
+    todayEmpty: boolean,
+): DrawerProfile {
+    return {
+        // Nombre: preferir crew (en memoria) sobre history (backend)
+        displayName: picker?.name ?? history?.profile.name ?? 'Unknown',
+        displayPickerId: picker?.picker_id ?? history?.profile.picker_id ?? pickerId,
+        currentStatus: picker?.status ?? history?.profile.status ?? 'active',
+        notFound: !picker && !history && !isHistoryLoading && todayEmpty,
+    };
+}
