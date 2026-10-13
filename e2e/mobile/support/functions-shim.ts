@@ -33,4 +33,5 @@ Deno.serve({ port: Number(portArg), hostname: '127.0.0.1' }, req => {
   if (!h) return new Response(`unknown function ${name}`, { status: 404 });
   return h(req);
 });
+// eslint-disable-next-line no-console -- script de Deno: el arranque se anuncia por consola
 console.log(`[shim] serving ${names.join(', ')} on ${portArg}`);
