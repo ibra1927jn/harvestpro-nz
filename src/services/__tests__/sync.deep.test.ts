@@ -39,7 +39,7 @@ describe('syncService', () => {
 
     it('categorizeError classifies server errors', () => {
         const err = new Error('500 Internal Server Error');
-        expect(syncService.categorizeError(err)).toBeDefined();
+        expect(syncService.categorizeError(err)).toBe('server');
     });
 
     it('categorizeError returns unknown for random errors', () => {
@@ -68,8 +68,17 @@ describe('syncService', () => {
         expect(summary).toHaveProperty('maxRetry');
     });
 
-    it('addToQueue does not throw', async () => {
-        await expect(syncService.addToQueue('SCAN', { id: 'b1', picker_id: 'p1' })).resolves.not.toThrow();
+    it('addToQueue stores the item while offline', async () => {
+        // Sin conexión: no se lanza processQueue en segundo plano
+        Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+        try {
+            const before = await syncService.getPendingCount();
+            const id = await syncService.addToQueue('SCAN', { id: 'b1', picker_id: 'p1' });
+            expect(await syncService.getPendingCount()).toBe(before + 1);
+            expect((await syncService.getQueue()).find(i => i.id === id)?.type).toBe('SCAN');
+        } finally {
+            Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
+        }
     });
 });
 
