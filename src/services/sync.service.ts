@@ -7,7 +7,6 @@ import { logger } from '@/utils/logger';
 import { db } from './db';
 import { analytics } from '@/config/analytics';
 import type { QueuedSyncItem } from './db';
-import { z } from 'zod';
 
 import { safeUUID } from '@/utils/uuid';
 import {
@@ -23,87 +22,15 @@ import type { PendingItem, SyncPayload, AttendancePayload, PickerPayload, QCInsp
 
 export type { PendingItem };
 
-// 🔧 BUG-3 fix: Zod schemas for sync queue payload validation
-// Replaces unsafe `as unknown as` double-casts that silenced corrupt payloads
-const ScanPayloadSchema = z
-  .object({
-    picker_id: z.string(),
-    orchard_id: z.string(),
-    row_number: z.number().optional(),
-    quality_grade: z.string().optional(),
-    bin_id: z.string().optional(),
-    scanned_by: z.string(),
-  })
-  .passthrough();
-
-const AssignmentPayloadSchema = z.object({
-  userId: z.string(),
-  orchardId: z.string(),
-});
-
-const MessagePayloadSchema = z.object({
-  receiverId: z.string(),
-  content: z.string(),
-  type: z.string().optional(),
-});
-
-// 🔧 BUG-3 fix continued: Zod schemas for remaining sync payload types
-const ContractPayloadSchema = z.object({
-  action: z.enum(['create', 'update']),
-  contractId: z.string().optional(),
-  employee_id: z.string().optional(),
-  orchard_id: z.string().optional(),
-  type: z.string().optional(),
-  status: z.string().optional(),
-  start_date: z.string().optional(),
-  end_date: z.string().optional(),
-  hourly_rate: z.number().optional(),
-  notes: z.string().optional(),
-});
-
-const TransportPayloadSchema = z.object({
-  action: z.enum(['create', 'assign', 'complete', 'cancel']),
-  requestId: z.string().optional(),
-  vehicleId: z.string().optional(),
-  assignedBy: z.string().optional(),
-  orchard_id: z.string().optional(),
-  requested_by: z.string().optional(),
-  requester_name: z.string().optional(),
-  zone: z.string().optional(),
-  bins_count: z.number().optional(),
-  priority: z.string().optional(),
-  notes: z.string().optional(),
-});
-
-const TimesheetPayloadSchema = z.object({
-  action: z.enum(['approve', 'reject']),
-  attendanceId: z.string(),
-  verifiedBy: z.string(),
-  notes: z.string().optional(),
-});
-
-const PickerPayloadSchema = z.object({
-  id: z.string(),
-  picker_id: z.string(),
-  name: z.string(),
-  orchard_id: z.string(),
-  status: z.string().optional(),
-  role: z.string().optional(),
-  team_leader_id: z.string().nullable().optional(),
-}).passthrough();
-
-const QCInspectionPayloadSchema = z.object({
-  orchard_id: z.string(),
-  picker_id: z.string(),
-  inspector_id: z.string(),
-  grade: z.enum(['A', 'B', 'C', 'reject']),
-  notes: z.string().nullable().optional(),
-  photo_url: z.string().nullable().optional(),
-});
-
-const UnlinkPayloadSchema = z.object({
-  userId: z.string(),
-});
+/** ZodError sin importar zod (name + issues, como lo construye zod 4). */
+function isZodError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { name?: unknown }).name === 'ZodError' &&
+    Array.isArray((error as { issues?: unknown }).issues)
+  );
+}
 
 // 🔧 R8-Fix1: Cross-tab mutex using Web Locks API
 // The old `let isProcessing` only guarded within ONE tab.
@@ -174,6 +101,8 @@ export const syncService = {
     const syncStartTime = Date.now(); // M-3: capture actual start time for analytics
     const queue = await this.getQueue();
     if (queue.length === 0) return;
+    // Zod (~45 KB gzip) solo se carga cuando hay algo que sincronizar, no en el arranque
+    const schemas = await import('./sync.schemas');
 
     const processedIds: string[] = [];
 
@@ -182,7 +111,7 @@ export const syncService = {
         switch (item.type) {
           case 'SCAN': {
             // 🔧 BUG-3 fix: validate payload before processing
-            const scanData = ScanPayloadSchema.parse(item.payload);
+            const scanData = schemas.ScanPayloadSchema.parse(item.payload);
             await bucketLedgerService.recordBucket({
               ...scanData,
               scanned_at: toNZST(new Date(item.timestamp)),
@@ -195,13 +124,13 @@ export const syncService = {
             break;
 
           case 'ASSIGNMENT': {
-            const assignData = AssignmentPayloadSchema.parse(item.payload);
+            const assignData = schemas.AssignmentPayloadSchema.parse(item.payload);
             await userService.assignUserToOrchard(assignData.userId, assignData.orchardId);
             break;
           }
 
           case 'MESSAGE': {
-            const msgData = MessagePayloadSchema.parse(item.payload);
+            const msgData = schemas.MessagePayloadSchema.parse(item.payload);
             await simpleMessagingService.sendMessage(
               msgData.receiverId,
               msgData.content,
@@ -212,27 +141,27 @@ export const syncService = {
 
           // Delegated to extracted Strategy processors (with Zod validation)
           case 'CONTRACT':
-            await processContract(ContractPayloadSchema.parse(item.payload), item.updated_at);
+            await processContract(schemas.ContractPayloadSchema.parse(item.payload), item.updated_at);
             break;
 
           case 'TRANSPORT':
-            await processTransport(TransportPayloadSchema.parse(item.payload), item.updated_at);
+            await processTransport(schemas.TransportPayloadSchema.parse(item.payload), item.updated_at);
             break;
 
           case 'TIMESHEET':
-            await processTimesheet(TimesheetPayloadSchema.parse(item.payload), item.updated_at);
+            await processTimesheet(schemas.TimesheetPayloadSchema.parse(item.payload), item.updated_at);
             break;
 
           case 'PICKER':
-            await processPicker(PickerPayloadSchema.parse(item.payload) as PickerPayload);
+            await processPicker(schemas.PickerPayloadSchema.parse(item.payload) as PickerPayload);
             break;
 
           case 'QC_INSPECTION':
-            await processQCInspection(QCInspectionPayloadSchema.parse(item.payload) as QCInspectionPayload);
+            await processQCInspection(schemas.QCInspectionPayloadSchema.parse(item.payload) as QCInspectionPayload);
             break;
 
           case 'UNLINK':
-            await processUnlink(UnlinkPayloadSchema.parse(item.payload));
+            await processUnlink(schemas.UnlinkPayloadSchema.parse(item.payload));
             break;
 
           default:
@@ -375,8 +304,9 @@ export const syncService = {
   categorizeError(error: unknown): 'network' | 'server' | 'validation' | 'unknown' {
     if (!navigator.onLine) return 'network';
 
-    // Payload que no pasa el esquema: no se arregla reintentando
-    if (error instanceof z.ZodError) return 'validation';
+    // Payload que no pasa el esquema: no se arregla reintentando.
+    // Comprobación estructural: zod se carga bajo demanda (sync.schemas.ts)
+    if (isZodError(error)) return 'validation';
 
     if (error instanceof Error) {
       const msg = error.message.toLowerCase();

@@ -240,6 +240,16 @@ describe('Sync Service (Dexie)', () => {
             expect(syncService.categorizeError(new Error('optimistic lock failed'))).toBe('validation');
         });
 
+        it('returns "validation" for a real ZodError from a queued payload', async () => {
+            // zod ya no se importa en sync.service (carga bajo demanda): la detección es estructural
+            const { ScanPayloadSchema } = await import('../sync.schemas');
+            const r = ScanPayloadSchema.safeParse({ picker_id: 1 });
+            expect(r.success).toBe(false);
+            expect(syncService.categorizeError(r.error)).toBe('validation');
+            // un error cualquiera que se llame igual pero sin issues no cuenta
+            expect(syncService.categorizeError({ name: 'ZodError' })).toBe('unknown');
+        });
+
         it('returns "validation" for 23xxx Supabase code errors', () => {
             expect(syncService.categorizeError({ code: '23505' })).toBe('validation');
         });

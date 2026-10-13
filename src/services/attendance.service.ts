@@ -4,11 +4,6 @@ import type { SupabasePicker, SupabasePerformanceStat } from '../types/database.
 import { attendanceRepository } from '@/repositories/attendance.repository';
 import { pickerRepository } from '@/repositories/picker.repository';
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
-import {
-  CheckInResponseSchema,
-  CheckOutResponseSchema,
-  validateResponse,
-} from '@/schemas/api.schemas';
 import { analytics } from '@/config/analytics';
 
 export const attendanceService = {
@@ -32,6 +27,8 @@ export const attendanceService = {
       });
 
       if (error) throw new Error(error.message);
+      // Esquemas (zod) bajo demanda: no van en el bundle inicial
+      const { CheckInResponseSchema, validateResponse } = await import('@/schemas/api.schemas');
       const result = validateResponse(CheckInResponseSchema, data, 'checkInPicker');
       // 📊 PostHog: Track picker check-in event
       analytics.trackCheckIn(pickerId);
@@ -53,6 +50,7 @@ export const attendanceService = {
       });
 
       if (error) throw new Error(error.message);
+      const { CheckOutResponseSchema, validateResponse } = await import('@/schemas/api.schemas');
       return validateResponse(CheckOutResponseSchema, data, 'checkOutPicker');
     } catch (err) {
       logger.error('[Attendance] Check-out via Edge Function failed:', err);
