@@ -26,38 +26,34 @@ export async function processTransport(payload: TransportPayload, expectedUpdate
             assigned_by: payload.assignedBy,
             status: 'assigned' as const,
         };
-        if (expectedUpdatedAt) {
-            const result = await withOptimisticLock({
-                table: 'transport_requests',
-                recordId: payload.requestId,
-                expectedUpdatedAt,
-                updates,
-            });
-            if (!result.success) {
-                throw new Error(`Optimistic lock conflict on transport ${payload.requestId}`);
-            }
-        } else {
-            const { error } = await transportRequestRepo.update(payload.requestId, updates);
-            if (error) throw new Error(`Transport ${payload.requestId} not updated: ${error}`);
-        }
+        await updateRequest(payload.requestId, updates, expectedUpdatedAt);
     } else if ((payload.action === 'complete' || payload.action === 'cancel') && payload.requestId) {
         // Cancelar no es completar: queda como cancelado y sin hora de fin
         const updates = payload.action === 'cancel'
             ? { status: 'cancelled' as const }
             : { status: 'completed' as const, completed_at: nowNZST() };
-        if (expectedUpdatedAt) {
-            const result = await withOptimisticLock({
-                table: 'transport_requests',
-                recordId: payload.requestId,
-                expectedUpdatedAt,
-                updates,
-            });
-            if (!result.success) {
-                throw new Error(`Optimistic lock conflict on transport ${payload.requestId}`);
-            }
-        } else {
-            const { error } = await transportRequestRepo.update(payload.requestId, updates);
-            if (error) throw new Error(`Transport ${payload.requestId} not updated: ${error}`);
+        await updateRequest(payload.requestId, updates, expectedUpdatedAt);
+    }
+}
+
+/** Actualiza una solicitud: con bloqueo optimista si se conoce su updated_at */
+async function updateRequest(
+    requestId: string,
+    updates: Record<string, unknown>,
+    expectedUpdatedAt?: string,
+): Promise<void> {
+    if (expectedUpdatedAt) {
+        const result = await withOptimisticLock({
+            table: 'transport_requests',
+            recordId: requestId,
+            expectedUpdatedAt,
+            updates,
+        });
+        if (!result.success) {
+            throw new Error(`Optimistic lock conflict on transport ${requestId}`);
         }
+    } else {
+        const { error } = await transportRequestRepo.update(requestId, updates);
+        if (error) throw new Error(`Transport ${requestId} not updated: ${error}`);
     }
 }

@@ -2,11 +2,10 @@
  * wizard.types.ts — Shared types and constants for SetupWizard
  */
 
-export interface WizardData {
-    orchard: { code: string; name: string; location: string; total_rows: number; };
-    teams: { name: string; leader_name: string; max_pickers: number; }[];
-    rates: { variety: string; piece_rate: number; start_time: string; };
-}
+import type { OrchardSetupData } from '@/services/setup.service';
+
+/** Datos del asistente = lo que recibe setup.service (una sola definición) */
+export type WizardData = OrchardSetupData;
 
 export interface StepProps {
     data: WizardData;
