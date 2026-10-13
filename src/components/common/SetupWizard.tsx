@@ -11,7 +11,6 @@ import { logger } from '@/utils/logger';
 import { createOrchardSetup, type OrchardSetupData } from '@/services/setup.service';
 import { STEPS, INITIAL_DATA, type WizardData } from './setup-wizard/wizard.types';
 import OrchardStep from './setup-wizard/OrchardStep';
-import TeamsStep from './setup-wizard/TeamsStep';
 import RatesStep from './setup-wizard/RatesStep';
 import SummaryStep from './setup-wizard/SummaryStep';
 
@@ -30,25 +29,8 @@ export default function SetupWizard({ onComplete, onCancel }: SetupWizardProps) 
         setData(prev => ({ ...prev, orchard: { ...prev.orchard, [field]: value } }));
     };
 
-    const updateTeam = (idx: number, field: keyof WizardData['teams'][0], value: string | number) => {
-        setData(prev => {
-            const teams = [...prev.teams];
-            teams[idx] = { ...teams[idx], [field]: value };
-            return { ...prev, teams };
-        });
-    };
 
-    const addTeam = () => {
-        setData(prev => ({
-            ...prev,
-            teams: [...prev.teams, { name: `Team ${String.fromCharCode(65 + prev.teams.length)}`, leader_name: '', max_pickers: 15 }],
-        }));
-    };
 
-    const removeTeam = (idx: number) => {
-        if (data.teams.length <= 1) return;
-        setData(prev => ({ ...prev, teams: prev.teams.filter((_, i) => i !== idx) }));
-    };
 
     const updateRates = (field: keyof WizardData['rates'], value: string | number) => {
         setData(prev => ({ ...prev, rates: { ...prev.rates, [field]: value } }));
@@ -57,7 +39,7 @@ export default function SetupWizard({ onComplete, onCancel }: SetupWizardProps) 
     const canProceed = (): boolean => {
         switch (step) {
             case 0: return !!(data.orchard.code.trim() && data.orchard.name.trim());
-            case 1: return data.teams.every(t => t.name.trim().length > 0);
+            case 1: return true;
             case 2: return data.rates.piece_rate > 0;
             default: return true;
         }
@@ -92,7 +74,14 @@ export default function SetupWizard({ onComplete, onCancel }: SetupWizardProps) 
     const renderStep = () => {
         switch (step) {
             case 0: return <OrchardStep data={data} onUpdate={updateOrchard} />;
-            case 1: return <TeamsStep data={data} onUpdateTeam={updateTeam} onAddTeam={addTeam} onRemoveTeam={removeTeam} />;
+            // Los equipos son team leaders con cuenta: se vinculan después en
+            // Equipos → Link Staff (antes este paso pedía nombres que no se guardaban)
+            case 1: return (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800" data-testid="teams-info-step">
+                    <p className="font-semibold mb-1">Teams are set up after the orchard is created</p>
+                    <p>Each team is led by a team leader with their own app account. Once the orchard exists, go to <strong>Teams → Link Staff</strong> to add team leaders and runners; team leaders then add their pickers.</p>
+                </div>
+            );
             case 2: return <RatesStep data={data} onUpdate={updateRates} />;
             case 3: return <SummaryStep data={data} error={error} />;
             default: return null;

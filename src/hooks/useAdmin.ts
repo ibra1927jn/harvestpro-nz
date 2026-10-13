@@ -4,7 +4,7 @@
  * Extracts data fetching and user management actions from Admin.tsx
  * following the usePayroll pattern.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { adminService, OrchardOverview, UserRecord } from '@/services/admin.service';
 import { logger } from '@/utils/logger';
 
@@ -22,6 +22,8 @@ export interface UseAdminResult {
     handleRoleChange: (userId: string, newRole: string) => Promise<void>;
     handleToggleActive: (user: UserRecord) => Promise<void>;
     reload: () => Promise<void>;
+    /** Último cambio que no se pudo guardar */
+    actionError: string | null;
 }
 
 export function useAdmin(): UseAdminResult {
@@ -30,9 +32,13 @@ export function useAdmin(): UseAdminResult {
     const [userSearch, setUserSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [actionError, setActionError] = useState<string | null>(null);
+    // Esqueleto solo en la primera carga: al buscar se cambiaba toda la página
+    // por el esqueleto y la caja de búsqueda perdía el foco en cada letra
+    const loadedOnce = useRef(false);
 
     const reload = useCallback(async () => {
-        setIsLoading(true);
+        if (!loadedOnce.current) setIsLoading(true);
         try {
             const [orchardData, userData] = await Promise.all([
                 adminService.getAllOrchards(),
@@ -44,6 +50,7 @@ export function useAdmin(): UseAdminResult {
             logger.warn('[Admin] Failed to load admin data:', err);
         } finally {
             setIsLoading(false);
+            loadedOnce.current = true;
         }
     }, [roleFilter, userSearch]);
 
@@ -52,8 +59,10 @@ export function useAdmin(): UseAdminResult {
     }, [reload]);
 
     const handleRoleChange = useCallback(async (userId: string, newRole: string) => {
+        setActionError(null);
         const success = await adminService.updateUserRole(userId, newRole);
         if (success) reload();
+        else setActionError('Role not changed — please try again');
     }, [reload]);
 
     const handleToggleActive = useCallback(async (user: UserRecord) => {
@@ -61,6 +70,7 @@ export function useAdmin(): UseAdminResult {
             ? await adminService.deactivateUser(user.id)
             : await adminService.reactivateUser(user.id);
         if (success) reload();
+        else setActionError(`${user.full_name}: could not ${user.is_active ? 'deactivate' : 'reactivate'} — please try again`);
     }, [reload]);
 
     const activeUsers = users.filter(u => u.is_active).length;
@@ -72,6 +82,6 @@ export function useAdmin(): UseAdminResult {
 
     return {
         orchards, users, userSearch, roleFilter, isLoading, activeUsers, complianceRate,
-        setUserSearch, setRoleFilter, handleRoleChange, handleToggleActive, reload,
+        setUserSearch, setRoleFilter, handleRoleChange, handleToggleActive, reload, actionError,
     };
 }

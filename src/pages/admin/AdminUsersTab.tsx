@@ -13,6 +13,8 @@ const ROLE_LABELS: Record<string, { label: string; color: string }> = {
     qc_inspector: { label: 'QC Inspector', color: 'bg-amber-100 text-amber-700' },
     payroll_admin: { label: 'Payroll Admin', color: 'bg-indigo-100 text-indigo-700' },
     admin: { label: 'Admin', color: 'bg-red-100 text-red-700' },
+    hr_admin: { label: 'HR', color: 'bg-pink-100 text-pink-700' },
+    logistics: { label: 'Logistics', color: 'bg-sky-100 text-sky-700' },
 };
 
 interface AdminUsersTabProps {
@@ -23,14 +25,18 @@ interface AdminUsersTabProps {
     onRoleFilterChange: (value: string) => void;
     onRoleChange: (userId: string, newRole: string) => void;
     onToggleActive: (user: UserRecord) => void;
+    actionError?: string | null;
 }
 
 const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
     users, userSearch, roleFilter,
-    onSearchChange, onRoleFilterChange, onRoleChange, onToggleActive,
+    onSearchChange, onRoleFilterChange, onRoleChange, onToggleActive, actionError,
 }) => (
     <ComponentErrorBoundary componentName="Users">
         <div className="space-y-4">
+            {actionError && (
+                <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">{actionError}</div>
+            )}
             <div className="flex flex-col md:flex-row gap-3">
                 <div className="relative flex-1">
                     <span className="material-symbols-outlined text-base text-text-muted absolute left-3 top-1/2 -translate-y-1/2">search</span>
@@ -56,6 +62,9 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                         <option value="team_leader">Team Leaders</option>
                         <option value="runner">Runners</option>
                         <option value="qc_inspector">QC Inspectors</option>
+                        <option value="payroll_admin">Payroll</option>
+                        <option value="hr_admin">HR</option>
+                        <option value="logistics">Logistics</option>
                         <option value="admin">Admins</option>
                     </select>
                     <span className="material-symbols-outlined text-sm text-text-muted absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
@@ -103,6 +112,8 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                                         <option value="runner">Runner</option>
                                         <option value="qc_inspector">QC Inspector</option>
                                         <option value="payroll_admin">Payroll Admin</option>
+                                        <option value="hr_admin">HR</option>
+                                        <option value="logistics">Logistics</option>
                                         <option value="admin">Admin</option>
                                     </select>
                                 </div>

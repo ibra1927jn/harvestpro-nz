@@ -5,6 +5,7 @@
  * Handles the multi-step signup form state and submission.
  */
 import { supabase } from '@/services/supabase';
+import { readableError } from '@/repositories/edge-functions.repository';
 
 export interface OnboardingData {
   // Step 1: Organisation
@@ -53,7 +54,10 @@ export const onboardingService = {
     );
 
     if (error) {
-      return { success: false, error: error.message };
+      // El motivo real viene en el cuerpo de la respuesta (antes salía
+      // "Edge Function returned a non-2xx status code")
+      const readable = await readableError(error, 'provision-orchard');
+      return { success: false, error: readable.message };
     }
 
     return result ?? { success: false, error: 'No response from server' };

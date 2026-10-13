@@ -12,7 +12,7 @@ import { gatewayService, GatewayOptions } from '@/services/gateway.service';
  * del genérico "Edge Function returned a non-2xx status code". Los errores de
  * servidor (5xx) conservan su código para que se reintenten.
  */
-async function readableError(error: { message?: string; context?: unknown }, functionName: string): Promise<Error> {
+export async function readableError(error: { message?: string; context?: unknown }, functionName: string): Promise<Error> {
     const fallback = error.message || `Edge Function ${functionName} failed`;
     const ctx = error.context;
     if (!(ctx instanceof Response)) return new Error(fallback);

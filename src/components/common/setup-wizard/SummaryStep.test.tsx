@@ -31,19 +31,9 @@ describe('SummaryStep', () => {
         expect(getByText('—')).toBeInTheDocument();
     });
 
-    it('heading Teams con count', () => {
-        const { getByText } = render(<SummaryStep data={data} error={null} />);
-        expect(getByText('Teams (2)')).toBeInTheDocument();
-    });
-
-    it('team leader "TBD" cuando leader_name vacío', () => {
-        const { getByText } = render(<SummaryStep data={data} error={null} />);
-        expect(getByText(/Bravo — Leader: TBD/)).toBeInTheDocument();
-    });
-
-    it('team con leader_name se muestra', () => {
-        const { getByText } = render(<SummaryStep data={data} error={null} />);
-        expect(getByText(/Alpha — Leader: Alice/)).toBeInTheDocument();
+    it('no muestra equipos (se vinculan después en Equipos → Link Staff)', () => {
+        const { queryByText } = render(<SummaryStep data={data} error={null} />);
+        expect(queryByText(/Teams \(/)).toBeNull();
     });
 
     it('rates variety + formato $X.XX/bucket + start_time', () => {
