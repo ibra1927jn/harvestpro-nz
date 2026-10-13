@@ -245,10 +245,10 @@ export async function encryptRecord<T extends Record<string, unknown>>(
   const encrypted = { ...record };
   for (const field of fields) {
     if (encrypted[field] !== undefined && encrypted[field] !== null) {
-      const value =
-        typeof encrypted[field] === 'string'
-          ? (encrypted[field] as string)
-          : JSON.stringify(encrypted[field]);
+      // Siempre JSON, también los textos: al leer se hace JSON.parse, y un texto
+      // guardado tal cual que pareciera JSON cambiaba ("4 " → 4, "null" → null,
+      // "\"ok\"" → ok): un mensaje en cola llegaba distinto o se rechazaba.
+      const value = JSON.stringify(encrypted[field]);
       (encrypted as Record<string, unknown>)[field] = await encryptValue(value);
     }
   }

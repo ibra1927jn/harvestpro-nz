@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 vi.mock('@/utils/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
 
 import { db } from '../db';
-import { encryptValue, decryptValue, resetKeyCache } from '../dbCrypto';
+import { encryptValue, decryptValue, encryptRecord, decryptRecord, resetKeyCache } from '../dbCrypto';
 
 const originalUA = navigator.userAgent;
 const setUA = (ua: string) => Object.defineProperty(navigator, 'userAgent', { configurable: true, get: () => ua });
@@ -67,5 +67,16 @@ describe('dbCrypto key stability', () => {
 
         resetKeyCache();
         expect(await decryptValue(old)).toBe('old-scan');
+    });
+});
+
+describe('dbCrypto record round trip', () => {
+    it('a text field comes back exactly as written, even when it looks like JSON', async () => {
+        for (const content of ['4 ', '12', 'null', 'true', '"ok"', '[1,2]', '{"a":1}', 'hola']) {
+            const stored = await encryptRecord('message_queue', { id: 'm1', content });
+            expect(String(stored.content).startsWith('v2:')).toBe(true);
+            const back = await decryptRecord('message_queue', stored);
+            expect(back.content).toBe(content);
+        }
     });
 });
