@@ -13,6 +13,11 @@ SELECT sec_test.allow('A.runner', 'updates own name', $$UPDATE users SET full_na
 SELECT sec_test.deny(w, 'cannot make self admin', $$UPDATE users SET role = 'admin' WHERE id = auth.uid()$$)
 FROM unnest(ARRAY['A.runner', 'A.team_leader', 'A.manager', 'A.hr_admin', 'A.payroll_admin']) AS w;
 SELECT sec_test.deny('A.inactive_manager', 'cannot reactivate self', $$UPDATE users SET is_active = true WHERE id = auth.uid()$$);
+-- Cuenta de RRHH / admin dada de baja: tampoco se reactiva ni cambia su rol
+SELECT sec_test.deny(w, 'cannot reactivate self', $$UPDATE users SET is_active = true WHERE id = auth.uid()$$)
+FROM unnest(ARRAY['A.inactive_hr_admin', 'A.inactive_admin']) AS w;
+SELECT sec_test.deny('A.inactive_admin', 'cannot change own role', $$UPDATE users SET role = 'manager' WHERE id = auth.uid()$$);
+SELECT sec_test.deny('A.inactive_hr_admin', 'cannot deactivate others', $$UPDATE users SET is_active = false WHERE id = {A.runner}$$);
 SELECT sec_test.deny('A.runner', 'cannot edit another user', $$UPDATE users SET full_name = 'Hacked' WHERE id = {A.runner2}$$);
 SELECT sec_test.deny('A.manager', 'cannot change someone''s role', $$UPDATE users SET role = 'admin' WHERE id = {A.runner}$$);
 SELECT sec_test.deny('A.manager', 'cannot deactivate a runner (team leader / HR do it)', $$UPDATE users SET is_active = false WHERE id = {A.runner}$$);

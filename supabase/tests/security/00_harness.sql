@@ -251,6 +251,8 @@ DO $$ BEGIN PERFORM sec_test.make_user('B.' || r, r, 'B')
 FROM unnest(ARRAY['admin', 'manager', 'team_leader', 'runner', 'qc_inspector', 'logistics', 'hr_admin', 'payroll_admin']) AS r; END $$;
 DO $$ BEGIN
     PERFORM sec_test.make_user('A.inactive_manager', 'manager', 'A', false);
+    PERFORM sec_test.make_user('A.inactive_hr_admin', 'hr_admin', 'A', false);
+    PERFORM sec_test.make_user('A.inactive_admin', 'admin', 'A', false);
     PERFORM sec_test.make_user('A.team_leader2', 'team_leader', 'A');
 END $$;
 
