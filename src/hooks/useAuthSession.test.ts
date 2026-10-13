@@ -27,7 +27,7 @@ vi.mock('@/repositories/auth-context.repository', () => ({
   },
 }));
 
-import { resolveRole, loadUserProfile } from './useAuthSession';
+import { resolveRole, loadUserProfile, isTransientProfileError } from './useAuthSession';
 
 describe('resolveRole', () => {
   it('maps manager role', () => {
@@ -149,5 +149,24 @@ describe('loadUserProfile', () => {
       error: null,
     });
     await expect(loadUserProfile('u1')).rejects.toThrow('Access Denied');
+  });
+});
+
+describe('isTransientProfileError', () => {
+  it('timeouts de PostgREST (PGRST002/003) son transitorios', () => {
+    expect(isTransientProfileError({ code: 'PGRST002', message: 'x' })).toBe(true);
+    expect(isTransientProfileError({ code: 'PGRST003' })).toBe(true);
+  });
+
+  it('5xx, timeout y fallos de red son transitorios (sin distinguir mayúsculas)', () => {
+    for (const message of ['504 Gateway', 'HTTP 502', '503', 'Request TIMEOUT', 'Failed to fetch', 'NetworkError']) {
+      expect(isTransientProfileError({ message })).toBe(true);
+    }
+  });
+
+  it('perfil inexistente o sin error no son transitorios', () => {
+    expect(isTransientProfileError({ code: 'PGRST116', message: 'JSON object requested, 0 rows' })).toBe(false);
+    expect(isTransientProfileError(null)).toBe(false);
+    expect(isTransientProfileError({})).toBe(false);
   });
 });

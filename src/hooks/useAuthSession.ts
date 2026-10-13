@@ -39,6 +39,25 @@ export function resolveRole(dbRole: string | undefined | null): Role | null {
 }
 
 // =============================================
+// TRANSIENT ERRORS (pure)
+// =============================================
+const TRANSIENT_MESSAGE_PARTS = ['504', '502', '503', 'timeout', 'gateway', 'fetch', 'network'];
+
+/**
+ * ¿El fallo al leer el perfil es del servidor/red (transitorio) y no "usuario inexistente"?
+ * PGRST002 = timeout del pool, PGRST003 = timeout de sentencia.
+ */
+export function isTransientProfileError(
+  error: { message?: string | null; code?: string | number | null } | null | undefined
+): boolean {
+  if (!error) return false;
+  const code = String(error.code || '');
+  if (code === 'PGRST002' || code === 'PGRST003') return true;
+  const msg = error.message?.toLowerCase() || '';
+  return TRANSIENT_MESSAGE_PARTS.some(part => msg.includes(part));
+}
+
+// =============================================
 // USER DATA LOADER (extracted from AuthContext)
 // =============================================
 export interface LoadUserResult {
@@ -60,21 +79,7 @@ export async function loadUserProfile(userId: string): Promise<{
   const { data: userData, error: userError } = await authContextRepository.getUserProfile(userId);
 
   if (userError || !userData) {
-    const errMsg = userError?.message?.toLowerCase() || '';
-    const errCode = String(userError?.code || '');
-    // PGRST002 = pool timeout, PGRST003 = statement timeout — transitorio, no es "user not found"
-    const isServerError =
-      errCode === 'PGRST002' ||
-      errCode === 'PGRST003' ||
-      errMsg.includes('504') ||
-      errMsg.includes('502') ||
-      errMsg.includes('503') ||
-      errMsg.includes('timeout') ||
-      errMsg.includes('gateway') ||
-      errMsg.includes('fetch') ||
-      errMsg.includes('network');
-
-    if (isServerError) {
+    if (isTransientProfileError(userError)) {
       logger.error('[useAuthSession] Supabase server unreachable:', userError);
       throw new Error('Servidor no disponible. Comprueba tu conexión e inténtalo de nuevo.');
     }
