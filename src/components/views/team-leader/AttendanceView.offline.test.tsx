@@ -1,7 +1,7 @@
 /**
  * Roll call sin cobertura: un fichaje que no sale se avisa, no se pierde en silencio.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 const checkIn = vi.fn().mockRejectedValue(new Error('Failed to send a request to the Edge Function'));
@@ -25,7 +25,18 @@ vi.mock('@/utils/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error
 
 import AttendanceView from './AttendanceView';
 
+afterEach(() => {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
+});
+
 describe('AttendanceView without signal', () => {
+    it('says plainly that nothing was saved when there is no signal', async () => {
+        Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+        render(<AttendanceView />);
+        fireEvent.click(screen.getByRole('button', { name: /Check In/i }));
+        expect(await screen.findByText('No signal — check-in not saved. Try again when you have signal.')).toBeInTheDocument();
+    });
+
     it('a check-out that fails is shown to the team leader', async () => {
         render(<AttendanceView />);
         fireEvent.click(screen.getByRole('button', { name: /Check Out/i }));
