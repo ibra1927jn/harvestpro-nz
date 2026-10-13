@@ -10,6 +10,7 @@ import { expect, type Page, type TestInfo, type ConsoleMessage } from '@playwrig
 import AxeBuilder from '@axe-core/playwright';
 import { mkdirSync, appendFileSync } from 'fs';
 import { resolve } from 'path';
+import { ensureTotp, nextCode } from './support/totp';
 
 export const PASSWORD = process.env.TEST_DEMO_PASSWORD ?? '111111';
 
@@ -33,49 +34,28 @@ export const FINDINGS_FILE = resolve(
   process.env.MOBILE_FINDINGS_FILE ?? '/home/claude/reports/mobile-findings.jsonl'
 );
 
-/** Login por UI y espera a la ruta de inicio del rol. */
+/** Login por UI y espera a la ruta de inicio del rol. Los roles con 2FA
+ * obligatorio pasan por la pantalla de código con un TOTP real. */
 export async function loginAs(page: Page, role: RoleKey): Promise<void> {
   const r = ROLES[role];
+  const mfa = MFA_ROLES.has(role);
+  if (mfa) await ensureTotp(r.email, PASSWORD);
   await page.goto('/login');
   await page.locator('input[type="email"]').fill(r.email);
   await page.locator('input[type="password"]').fill(PASSWORD);
   await page.locator('button[type="submit"]').click();
+  if (mfa) {
+    const first = page.getByLabel('OTP digit 1');
+    await first.waitFor({ timeout: 45_000 });
+    await first.click();
+    await page.keyboard.type(await nextCode(r.email));
+    await expect(first).toHaveCount(0, { timeout: 20_000 });
+  }
   await page.waitForURL(r.home, { timeout: 45_000 });
-  if (MFA_ROLES.has(role)) await trustThisDevice(page);
   await waitForAppIdle(page);
 }
 
 const MFA_ROLES = new Set<RoleKey>(['manager', 'hr', 'payroll', 'admin']);
-
-/**
- * Roles con MFA obligatorio: simula un móvil que ya pasó el MFA (token de
- * confianza de dispositivo que guarda MFAGuard), sin tocar los factores de los
- * usuarios sembrados que comparten otros agentes/tests.
- */
-async function trustThisDevice(page: Page): Promise<void> {
-  const userId = await page.waitForFunction(
-    () => {
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i) ?? '';
-        if (/^sb-harvestpro-auth-tab_[^-]+$/.test(k)) {
-          const v = JSON.parse(localStorage.getItem(k) ?? '{}') as { user?: { id?: string } };
-          if (v.user?.id) return v.user.id;
-        }
-      }
-      return null;
-    },
-    undefined,
-    { timeout: 20_000 }
-  );
-  const id = (await userId.jsonValue()) as string;
-  await page.evaluate(uid => {
-    localStorage.setItem(
-      `mfa_device_trust_${uid}`,
-      JSON.stringify({ userId: uid, expiresAt: Date.now() + 3_600_000 })
-    );
-  }, id);
-  await page.reload();
-}
 
 /** Espera a que desaparezcan splash y loaders de página. */
 export async function waitForAppIdle(page: Page, timeout = 20_000): Promise<void> {
