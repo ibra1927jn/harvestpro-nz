@@ -1,5 +1,5 @@
 /**
- * Pantallas de campo en otro idioma (por defecto el más largo, español):
+ * Pantallas de campo (y nómina/RR. HH.) en otro idioma (por defecto el más largo, español):
  * que el texto traducido sale, que no queda texto inglés a la vista y que
  * nada se sale ni se corta en un móvil de 360px.
  *
@@ -21,9 +21,16 @@ async function switchLanguage(page: Page, locale: Locale): Promise<void> {
   await expect(page.locator('html')).toHaveAttribute('lang', locale);
 }
 
-/** Textos visibles recortados (overflow oculto, con … o cortados) */
-async function clippedTexts(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
+/**
+ * Textos de la app (traducciones) recortados: overflow oculto, con … o cortados.
+ * Solo cuenta el texto visible (no iconos ocultos) y solo si es una traducción:
+ * un nombre de persona largo que se corta con … es diseño, no un problema de idioma.
+ */
+async function clippedTexts(page: Page, locale: Locale): Promise<string[]> {
+  const values = Object.values(translations[locale]).filter(v => v.length >= 3 && !v.includes('{'));
+  return page.evaluate((texts) => {
+    // Igual a una traducción, o la contiene como palabras completas ("bin" no cuenta dentro de "Robinson")
+    const isTranslation = (s: string) => texts.some(v => s === v || (` ${s} `).includes(` ${v} `));
     const out: string[] = [];
     document.querySelectorAll('body *').forEach(el => {
       const h = el as HTMLElement;
@@ -34,8 +41,34 @@ async function clippedTexts(page: Page): Promise<string[]> {
       if (r.width === 0 || r.height === 0 || r.bottom < 0 || r.top > innerHeight) return;
       if (h.closest('[aria-hidden="true"], .sr-only, .material-symbols-outlined')) return;
       const cs = getComputedStyle(h);
-      const clipsX = h.scrollWidth > h.clientWidth + 1 && /(hidden|clip)/.test(cs.overflowX + cs.textOverflow);
-      if (clipsX) out.push(`${h.tagName.toLowerCase()}[${(h.innerText || '').trim().slice(0, 50)}] ${h.scrollWidth}>${h.clientWidth}`);
+      if (!/(hidden|clip)/.test(cs.overflowX + cs.textOverflow)) return;
+      // Medir sin los iconos ocultos (no son texto que se lea)
+      const hidden = [...h.querySelectorAll<HTMLElement>('[aria-hidden="true"], .material-symbols-outlined')];
+      const prev = hidden.map(x => x.style.display);
+      hidden.forEach(x => { x.style.display = 'none'; });
+      const clipsX = h.scrollWidth > h.clientWidth + 1;
+      hidden.forEach((x, i) => { x.style.display = prev[i]; });
+      const text = (h.innerText || '').replace(/\s+/g, ' ').trim();
+      if (clipsX && isTranslation(text)) out.push(`${h.tagName.toLowerCase()}[${text.slice(0, 50)}] ${h.scrollWidth}>${h.clientWidth}`);
+    });
+    return out;
+  }, values);
+}
+
+/** Nombres de la barra inferior que no caben en su botón (se montan sobre el de al lado; 2px de margen) */
+async function navLabelOverflow(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const out: string[] = [];
+    document.querySelectorAll('nav[aria-label] button').forEach(b => {
+      const btn = b as HTMLElement;
+      if (!btn.offsetParent) return;
+      const br = btn.getBoundingClientRect();
+      btn.querySelectorAll('span').forEach(sp => {
+        const el = sp as HTMLElement;
+        if (el.closest('[aria-hidden="true"], .material-symbols-outlined') || !(el.textContent ?? '').trim()) return;
+        const r = el.getBoundingClientRect();
+        if (r.left < br.left - 2 || r.right > br.right + 2) out.push(`nav[${(el.textContent ?? '').trim()}] ${Math.round(r.width)}>${Math.round(br.width)}`);
+      });
     });
     return out;
   });
@@ -53,7 +86,7 @@ async function checkScreen(page: Page, info: TestInfo, locale: Locale, name: str
     }
   }
   const layout = await layoutReport(page);
-  const clipped = await clippedTexts(page);
+  const clipped = [...await clippedTexts(page, locale), ...await navLabelOverflow(page)];
   await snap(page, info, `i18n-${locale}-${name}`);
   recordFinding(info, `i18n-${locale}-${name}`, { overflowX: layout.overflowX, clipped });
   expect(layout.overflowX, JSON.stringify(layout.overflowX)).toBeNull();
@@ -129,5 +162,19 @@ for (const locale of LOCALES) {
 
     // Errores de consola: solo se apuntan (el cambio de idioma recarga y corta peticiones en vuelo)
     recordFinding(test.info(), `i18n-${locale}-console`, { errors: errs.errors });
+  });
+
+  test(`payroll screens in ${locale}`, async ({ page }) => {
+    await loginAs(page, 'payroll');
+    await switchLanguage(page, locale);
+    await checkScreen(page, test.info(), locale, 'payroll-dashboard', ['pay.total_buckets', 'pay.top_up_required', 'pay.picker_breakdown']);
+    await openTab(page, t['nav.wage_calculator']);
+    await checkScreen(page, test.info(), locale, 'payroll-calculator', ['pay.calc.title', 'pay.calc.total']);
+  });
+
+  test(`HR screens in ${locale}`, async ({ page }) => {
+    await loginAs(page, 'hr');
+    await switchLanguage(page, locale);
+    await checkScreen(page, test.info(), locale, 'hr-home', ['hr.active_workers', 'hr.pending_contracts']);
   });
 }
