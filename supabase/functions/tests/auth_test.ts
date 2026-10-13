@@ -14,7 +14,7 @@
 import { assert, assertEquals } from 'https://deno.land/std@0.168.0/testing/asserts.ts'
 import {
     ANON_KEY, type Role, SEEDED, call, checkCors, checkInputValidation, checkRoleMatrix, cleanupAll,
-    loginAal1, makeUser, seededToken, show, spoofMetadataRole, testOpts, assertNoLeak, assertCleanRejection,
+    loginAal1, makeUser, seededToken, withMfaEnforced, show, spoofMetadataRole, testOpts, assertNoLeak, assertCleanRejection,
 } from './_helpers.ts'
 import { MFA_ROLES, aalOf } from './_totp.ts'
 
@@ -94,7 +94,7 @@ Deno.test({ name: 'edge functions: auth, roles, validation and CORS', ...testOpt
                 }
             })
 
-            await t.step(`${fn}: privileged role without 2FA (password-only session) → 403`, async () => {
+            await t.step(`${fn}: privileged role without 2FA (password-only session) → 403`, () => withMfaEnforced(async () => {
                 for (const role of allowed.filter(r => MFA_ROLES.has(r))) {
                     const aal1 = await loginAal1(SEEDED[role])
                     assertEquals(aalOf(aal1), 'aal1')
@@ -108,7 +108,7 @@ Deno.test({ name: 'edge functions: auth, roles, validation and CORS', ...testOpt
                     const r = await call(fn, { token: await loginAal1(SEEDED[role]), body: { _invalid: true } })
                     assertEquals(r.status, 400, `${role} aal1: ${show(r)}`)
                 }
-            })
+            }))
 
             await t.step(`${fn}: deactivated user → 403`, async () => {
                 const r = await call(fn, { token: inactiveAdmin.token, body: { _invalid: true } })

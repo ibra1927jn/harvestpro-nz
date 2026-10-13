@@ -99,6 +99,17 @@ Deno.test('requireRole accepts the role stored in public.users (with 2FA)', asyn
 })
 
 Deno.test('requireRole rejects a privileged role with a password-only (aal1) session', async () => {
+    // Exigido durante la prueba aunque esta BD lo tenga apagado (PC de desarrollo)
+    const { data: before } = await admin.from('security_settings').select('enforce_mfa').eq('id', true).single()
+    await admin.from('security_settings').update({ enforce_mfa: true }).eq('id', true)
+    try {
+        await rejectsAal1ForEveryPrivilegedRole()
+    } finally {
+        await admin.from('security_settings').update({ enforce_mfa: before?.enforce_mfa ?? true }).eq('id', true)
+    }
+})
+
+async function rejectsAal1ForEveryPrivilegedRole(): Promise<void> {
     for (const role of ['admin', 'manager', 'payroll_admin', 'hr_admin']) {
         const user = await makeUser(role)
         try {
@@ -111,7 +122,7 @@ Deno.test('requireRole rejects a privileged role with a password-only (aal1) ses
             await admin.auth.admin.deleteUser(user.id)
         }
     }
-})
+}
 
 Deno.test('requireRole lets field roles in without 2FA', async () => {
     const user = await makeUser('team_leader')

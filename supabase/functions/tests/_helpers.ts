@@ -90,6 +90,22 @@ export async function login(email: string, password = SEED_PASSWORD): Promise<st
     return finalToken
 }
 
+/**
+ * Ejecuta `fn` con el 2FA del servidor EXIGIDO aunque esta BD lo tenga
+ * apagado (PC de desarrollo: scripts/dev-disable-mfa.sql) y deja el ajuste
+ * como estaba. Para las pruebas que comprueban que aal1 se rechaza.
+ */
+export async function withMfaEnforced<T>(fn: () => Promise<T>): Promise<T> {
+    const { data } = await service.from('security_settings').select('enforce_mfa').eq('id', true).maybeSingle()
+    const before = (data as { enforce_mfa?: boolean } | null)?.enforce_mfa ?? true
+    if (!before) must(await service.from('security_settings').update({ enforce_mfa: true }).eq('id', true), 'enable 2FA')
+    try {
+        return await fn()
+    } finally {
+        if (!before) await service.from('security_settings').update({ enforce_mfa: false }).eq('id', true)
+    }
+}
+
 const aal1Cache = new Map<string, string>()
 
 /** Sesión SIN 2FA (solo contraseña), para comprobar que el servidor la rechaza */

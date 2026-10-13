@@ -175,7 +175,7 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
       {/* Descansos sin anotar: solo se descuenta lo anotado, hay que anotarlos antes de cerrar el día */}
       {!loading && breaksMissing > 0 && (
         <div role="status" className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <span aria-hidden="true" className="material-symbols-outlined text-lg text-amber-600">free_breakfast</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-lg text-amber-600">warning</span>
           <span className="text-sm font-medium text-amber-800">{t('tse.break_missing_banner', { n: breaksMissing })}</span>
         </div>
       )}
