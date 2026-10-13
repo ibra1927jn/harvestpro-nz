@@ -21,16 +21,24 @@ test('runner stays logged in after the app is closed and reopened', async ({ pag
 test('runner can reopen the app with no signal after it was killed', async ({ page, context }) => {
   await loginAs(page, 'runner');
   // Primera visita completa: el service worker cachea el shell (solo build)
-  await page.waitForTimeout(3_000);
+  const hasSw = await page.evaluate(async () => {
+    if (!('serviceWorker' in navigator)) return false;
+    const reg = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<null>(r => setTimeout(() => r(null), 15_000)),
+    ]);
+    return !!reg;
+  });
+  test.skip(!hasSw, 'No service worker (dev server)');
+  await page.reload();
+  await expect
+    .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller), { timeout: 30_000 })
+    .toBe(true);
   await page.close();
 
   await context.setOffline(true);
   const reopened = await context.newPage();
-  await reopened.goto('/runner').catch(() => undefined);
-  test.skip(
-    (await reopened.content()).includes('ERR_INTERNET_DISCONNECTED'),
-    'App shell not cached (dev server has no service worker)'
-  );
+  await reopened.goto('/runner');
   await expect(reopened).toHaveURL(/\/runner/, { timeout: 30_000 });
   await expect(reopened.locator('nav[aria-label="Main navigation"]')).toBeVisible({
     timeout: 30_000,

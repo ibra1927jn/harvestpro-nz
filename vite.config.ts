@@ -27,6 +27,11 @@ export default defineConfig(() => {
           description: 'Harvest workforce management platform for New Zealand orchards',
           theme_color: '#16a34a',
           background_color: '#1a1a2e',
+          // Antes en public/manifest.json (había dos manifests y solo valía el primero)
+          start_url: '/',
+          display: 'standalone',
+          orientation: 'portrait-primary',
+          categories: ['business', 'productivity'],
           icons: [
             {
               src: '/icons/icon.svg',
