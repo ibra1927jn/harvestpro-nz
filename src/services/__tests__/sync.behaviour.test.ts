@@ -246,3 +246,64 @@ describe('queue invariants (property)', () => {
         ), { numRuns: 40 });
     });
 });
+
+describe('processQueue — every item type reaches its processor; bad enums are rejected', () => {
+    const valid: Array<[QueuedSyncItem['type'], Record<string, unknown>, () => ReturnType<typeof vi.fn>]> = [
+        ['ATTENDANCE', { action: 'check_in', userId: 'u1' }, () => processors.processAttendance],
+        ['ASSIGNMENT', { userId: 'u1', orchardId: 'o1' }, () => assignUserToOrchard],
+        ['CONTRACT', { action: 'update', contractId: 'c1' }, () => processors.processContract],
+        ['TRANSPORT', { action: 'assign', requestId: 'r1', vehicleId: 'v1' }, () => processors.processTransport],
+        ['PICKER', { id: 'p1', picker_id: 'LOC-1', name: 'Ana', orchard_id: 'o1' }, () => processors.processPicker],
+        ['QC_INSPECTION', { orchard_id: 'o1', picker_id: 'p1', inspector_id: 'q1', grade: 'B' }, () => processors.processQCInspection],
+        ['UNLINK', { userId: 'u1' }, () => processors.processUnlink],
+    ];
+
+    it('valid payloads are processed and removed', async () => {
+        for (const [type, payload] of valid) await queue(type, payload);
+        await syncService.processQueue();
+        for (const [type, payload, fn] of valid) {
+            expect(fn(), type).toHaveBeenCalledTimes(1);
+            const firstArg = fn().mock.calls[0][0];
+            if (type === 'ASSIGNMENT') expect(fn().mock.calls[0]).toEqual(['u1', 'o1']);
+            else expect(firstArg, type).toMatchObject(payload);
+        }
+        expect(await db.sync_queue.count()).toBe(0);
+    });
+
+    it('values outside the allowed enums or missing required fields never reach the processor', async () => {
+        const bad: Array<[QueuedSyncItem['type'], Record<string, unknown>]> = [
+            ['CONTRACT', { action: 'delete' }],
+            ['TRANSPORT', { action: 'teleport' }],
+            ['TIMESHEET', { action: 'maybe', attendanceId: 'a1', verifiedBy: 'hr1' }],
+            ['QC_INSPECTION', { orchard_id: 'o1', picker_id: 'p1', inspector_id: 'q1', grade: 'D' }],
+            ['ASSIGNMENT', { userId: 'u1' }],
+            ['PICKER', { id: 'p1' }],
+            ['UNLINK', {}],
+        ];
+        for (const [type, payload] of bad) await queue(type, payload, { retryCount: 4 });
+        await syncService.processQueue();
+        for (const fn of [processors.processContract, processors.processTransport, processors.processTimesheet, processors.processQCInspection, processors.processPicker, processors.processUnlink, assignUserToOrchard]) {
+            expect(fn).not.toHaveBeenCalled();
+        }
+        // Errores de esquema = validacion: al 5o intento van a la cola de errores
+        expect(await db.dead_letter_queue.count()).toBe(bad.length);
+    });
+
+    it('addToQueue starts sending right away when online, not when offline', async () => {
+        online = false;
+        await syncService.addToQueue('UNLINK', { userId: 'u9' });
+        expect(processors.processUnlink).not.toHaveBeenCalled();
+        online = true;
+        await syncService.addToQueue('UNLINK', { userId: 'u8' });
+        await vi.waitFor(() => expect(processors.processUnlink).toHaveBeenCalledTimes(2));
+    });
+
+    it('queue summary reports the highest retry count and the oldest item', async () => {
+        await queue('UNLINK', { userId: 'a' }, { retryCount: 2, timestamp: 2000 });
+        await queue('UNLINK', { userId: 'b' }, { retryCount: 9, timestamp: 1000 });
+        online = false;
+        const s = await syncService.getQueueSummary();
+        expect(s).toMatchObject({ total: 2, byType: { UNLINK: 2 }, maxRetry: 9, oldestTimestamp: 1000 });
+        expect(await syncService.getMaxRetryCount()).toBe(9);
+    });
+});

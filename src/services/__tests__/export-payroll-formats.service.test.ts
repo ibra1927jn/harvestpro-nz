@@ -123,6 +123,32 @@ describe('payroll CSV — exact lines', () => {
         ]);
     });
 
+    it('PaySauce: variety lines, holiday premium, no top-up line when not owed, zero-bucket lines skipped', () => {
+        const csv = generatePaySauceCSV({
+            date: 'w', crew: [
+                person({
+                    employeeId: 'E5', buckets: 21, hours: 8, pieceEarnings: 140, holidayPremium: 70, minimumTopUp: 0, totalEarnings: 210,
+                    pieceLines: [
+                        { variety: 'Gala', rate: 6.5, buckets: 20, earnings: 130 },
+                        { variety: '—', rate: 10, buckets: 1, earnings: 10 },
+                        { variety: 'Envy', rate: 7, buckets: 0, earnings: 0 },
+                    ],
+                }),
+                // Sin lineas por variedad: precio medio de sus cubetas
+                person({ employeeId: 'E6', buckets: 4, hours: 0, pieceEarnings: 26, minimumTopUp: 0, totalEarnings: 26 }),
+                // Solo ganancias (sin horas ni cubetas): se exporta igualmente
+                person({ employeeId: 'E7', totalEarnings: 5, minimumTopUp: 5 }),
+            ],
+        });
+        expect(parse(csv).slice(1)).toEqual([
+            ['E5', 'PIECE', 'Harvest Gala buckets (8.00h worked)', '20', '6.50', '130.00'],
+            ['E5', 'PIECE', 'Harvest buckets (8.00h worked)', '1', '10.00', '10.00'],
+            ['E5', 'PUBLIC_HOLIDAY', 'Public holiday premium (time and a half on piece earnings)', '1', '70.00', '70.00'],
+            ['E6', 'PIECE', 'Harvest buckets (0.00h worked)', '4', '6.50', '26.00'],
+            ['E7', 'MIN_WAGE_TOPUP', 'Minimum wage top-up (0.00h)', '0.00', '500.00', '5.00'],
+        ]);
+    });
+
     it('formula-looking cells are neutralised and still quoted when they contain commas', () => {
         const csv = generateXeroCSV({ date: 'w', crew: [person({ name: '=HYPERLINK("http://x"),"y"', employeeId: '+E1', buckets: 1, pieceEarnings: 6.5, totalEarnings: 6.5 })] });
         const rows = parse(csv);

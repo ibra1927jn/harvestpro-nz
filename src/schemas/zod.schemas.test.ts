@@ -347,3 +347,37 @@ describe('safeParseArray', () => {
         expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
     });
 });
+
+// ── Mensajes y limites exactos en la frontera ──────────────────────────────
+
+describe('boundary schemas — exact messages and anchors', () => {
+    const uuid = '6f9619ff-8b86-4d01-b42d-00cf4fc964ff';
+
+    it('QR errors say which field failed and why', () => {
+        expect(safeParse(QRPayloadSchema, { picker_id: '' })).toEqual({ success: false, error: 'picker_id: Picker ID cannot be empty' });
+        expect(safeParse(QRPayloadSchema, { picker_id: 'x'.repeat(101), orchard_id: 'nope' })).toEqual({
+            success: false, error: 'picker_id: Picker ID too long — likely a scan error; orchard_id: Invalid orchard ID format',
+        });
+    });
+
+    it('picker id and name messages', () => {
+        expect(safeParse(PickerSchema, { id: '', name: '' })).toEqual({ success: false, error: 'id: Picker ID required; name: Picker name required' });
+    });
+
+    it('attendance date must be exactly YYYY-MM-DD (no prefix, no time)', () => {
+        const base = { id: uuid, picker_id: uuid, orchard_id: uuid };
+        expect(AttendanceRecordSchema.safeParse({ ...base, date: '2026-10-05' }).success).toBe(true);
+        expect(safeParse(AttendanceRecordSchema, { ...base, date: 'x2026-10-05' })).toEqual({ success: false, error: 'date: Date must be YYYY-MM-DD' });
+        expect(AttendanceRecordSchema.safeParse({ ...base, date: '2026-10-05T00:00' }).success).toBe(false);
+    });
+
+    it('settings: negative or absurd rates are rejected with a clear message; limits are inclusive', () => {
+        const ok = { min_wage_rate: 23.95, piece_rate: 6.5, min_buckets_per_hour: 4, target_tons: 10 };
+        expect(safeParse(HarvestSettingsSchema, { ...ok, min_wage_rate: -1 })).toEqual({ success: false, error: 'min_wage_rate: Wage rate cannot be negative' });
+        expect(safeParse(HarvestSettingsSchema, { ...ok, min_wage_rate: 500.01 })).toEqual({ success: false, error: 'min_wage_rate: Wage rate seems unreasonably high' });
+        expect(safeParse(HarvestSettingsSchema, { ...ok, piece_rate: -0.01 })).toEqual({ success: false, error: 'piece_rate: Piece rate cannot be negative' });
+        expect(safeParse(HarvestSettingsSchema, { ...ok, piece_rate: 100.5 })).toEqual({ success: false, error: 'piece_rate: Piece rate seems unreasonably high' });
+        expect(HarvestSettingsSchema.safeParse({ ...ok, min_wage_rate: 500, piece_rate: 100, min_buckets_per_hour: 200, target_tons: 10000 }).success).toBe(true);
+        expect(HarvestSettingsSchema.safeParse({ ...ok, min_buckets_per_hour: 3.5 }).success).toBe(false);
+    });
+});

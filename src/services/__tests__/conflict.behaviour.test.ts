@@ -114,3 +114,53 @@ describe('cleanup', () => {
         expect(await conflictService.getPendingCount()).toBe(0);
     });
 });
+
+describe('conflict store limits and mappings', () => {
+    const pad = (i: number) => String(i).padStart(2, '0');
+
+    it('at exactly 50 nothing is evicted', async () => {
+        await db.sync_conflicts.bulkPut(Array.from({ length: 49 }, (_, i) => stored(`c${pad(i)}`, `2026-10-01T10:${pad(i)}:00+13:00`, 'keep_server')));
+        await conflictService.detect('pickers', 'new', '2026-10-12T10:00:00Z', '2026-10-12T11:00:00Z', {}, {});
+        expect(await db.sync_conflicts.count()).toBe(50);
+        expect(await db.sync_conflicts.get('c00')).toBeDefined();
+    });
+
+    it('over the cap only resolved conflicts among the oldest overflow are evicted', async () => {
+        // 52 guardados + 1 nuevo = 53 -> sobran 3: c00 (pendiente), c01 (resuelto), c02 (pendiente)
+        await db.sync_conflicts.bulkPut(Array.from({ length: 52 }, (_, i) =>
+            stored(`c${pad(i)}`, `2026-10-01T10:${pad(i)}:00+13:00`, i === 1 ? 'merged' : 'pending')));
+        await conflictService.detect('pickers', 'new', '2026-10-12T10:00:00Z', '2026-10-12T11:00:00Z', {}, {});
+        expect(await db.sync_conflicts.get('c01')).toBeUndefined();
+        expect(await db.sync_conflicts.get('c00')).toBeDefined();
+        expect(await db.sync_conflicts.get('c02')).toBeDefined();
+        expect(await db.sync_conflicts.count()).toBe(52);
+    });
+
+    it('keep_local maps every known table to its sync type and is tracked', async () => {
+        const { analytics } = await import('@/config/analytics');
+        const map: Record<string, string> = {
+            daily_attendance: 'ATTENDANCE', bucket_records: 'SCAN', contracts: 'CONTRACT', transport_requests: 'TRANSPORT',
+            pickers: 'PICKER', qc_inspections: 'QC_INSPECTION', messages: 'MESSAGE',
+        };
+        for (const [table, type] of Object.entries(map)) {
+            addToQueue.mockClear();
+            await db.sync_conflicts.put(stored(`c-${table}`, '2026-10-12T10:00:00+13:00', 'pending', table));
+            await conflictService.resolve(`c-${table}`, 'keep_local');
+            expect(addToQueue, table).toHaveBeenCalledWith(type, { name: 'local', id: `rec-c-${table}` });
+            expect(analytics.trackConflictResolved).toHaveBeenLastCalledWith(table, 'keep_local');
+        }
+    });
+
+    it('getPendingConflicts returns only pending ones', async () => {
+        await db.sync_conflicts.bulkPut([stored('p1', '2026-10-12T10:00:00+13:00'), stored('r1', '2026-10-12T10:00:00+13:00', 'merged')]);
+        expect((await conflictService.getPendingConflicts()).map(c => c.id)).toEqual(['p1']);
+        expect(await conflictService.getPendingCount()).toBe(1);
+    });
+
+    it('a resolved conflict exactly at the age limit is kept', async () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-10-12T22:00:00Z'));
+        await db.sync_conflicts.put(stored('edge', '2026-10-06T11:00:00+13:00', 'merged')); // = 2026-10-05T22:00Z
+        expect(await conflictService.cleanup(7)).toBe(0);
+    });
+});

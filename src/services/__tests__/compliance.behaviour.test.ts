@@ -137,3 +137,43 @@ describe('checkPickerCompliance', () => {
         expect(ok.isCompliant).toBe(true);
     });
 });
+
+describe('checkPickerCompliance — exact thresholds', () => {
+    const base = {
+        pickerId: 'p1', bucketCount: 100, hoursWorked: 2, consecutiveMinutesWorked: 30, totalMinutesToday: 120,
+        lastRestBreakAt: null, lastMealBreakAt: null, lastHydrationAt: null,
+    };
+    const at = (iso: string) => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date(iso)); };
+    const start = new Date('2026-10-12T07:00:00+13:00');
+
+    it('wage violation from exactly 1 hour worked', () => {
+        at('2026-10-12T08:00:00+13:00');
+        const r = checkPickerCompliance({ ...base, bucketCount: 1, hoursWorked: 1, workStartTime: start });
+        expect(r.violations.find(v => v.type === 'wage_below_minimum')?.message).toBe('Effective rate $6.5/hr is below minimum wage $23.95/hr');
+    });
+
+    it('rest break exactly 30 min overdue is medium, 31 is high; details carry break type and due time', () => {
+        at('2026-10-12T09:30:00+13:00');
+        const r = checkPickerCompliance({ ...base, workStartTime: start, lastHydrationAt: new Date('2026-10-12T09:20:00+13:00') });
+        const rest = r.violations.find(v => v.type === 'break_overdue');
+        expect(rest).toMatchObject({ severity: 'medium', details: { breakType: 'rest', dueAt: new Date('2026-10-12T09:00:00+13:00') } });
+        at('2026-10-12T09:31:00+13:00');
+        const r2 = checkPickerCompliance({ ...base, workStartTime: start, lastHydrationAt: new Date('2026-10-12T09:20:00+13:00') });
+        expect(r2.violations.find(v => v.type === 'break_overdue')?.severity).toBe('high');
+    });
+
+    it('meal break overdue carries its type; hydration reminder only after 15 min overdue', () => {
+        at('2026-10-12T11:16:00+13:00');
+        const r = checkPickerCompliance({
+            ...base, workStartTime: start, lastRestBreakAt: new Date('2026-10-12T11:00:00+13:00'),
+            lastHydrationAt: new Date('2026-10-12T10:16:00+13:00'), // vence 11:01 -> 15 min: aun no
+        });
+        expect(r.violations.map(v => v.type)).toEqual(['break_overdue']);
+        expect(r.violations[0]).toMatchObject({ severity: 'high', details: { breakType: 'meal' } });
+        const r2 = checkPickerCompliance({
+            ...base, workStartTime: start, lastRestBreakAt: new Date('2026-10-12T11:00:00+13:00'),
+            lastHydrationAt: new Date('2026-10-12T10:15:00+13:00'), // 16 min
+        });
+        expect(r2.violations.find(v => v.type === 'hydration_reminder')?.message).toBe('Hydration reminder - 16 minutes since last water break');
+    });
+});
