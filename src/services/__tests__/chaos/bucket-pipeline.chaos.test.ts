@@ -23,7 +23,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fc from 'fast-check';
 
-type Scan = { id: string; picker_id: string; orchard_id: string; scanned_at: string };
+type Scan = { id: string; picker_id: string; orchard_id: string; scanned_at: string; clock_skew_ms?: number };
 type Result = { id: string | null; status: 'saved' | 'duplicate' | 'rejected' | 'retry'; reason?: string };
 type Fault = 'ok' | 'networkBefore' | 'timeoutAfter' | 'http503' | 'partial' | 'truncated' | 'authExpired';
 
@@ -35,6 +35,9 @@ class FakeServer {
     closedBefore: number | null = null;
     faults: Fault[] = [];
     calls = 0;
+    /** Reloj del servidor − reloj del móvil (ms); null = no manda server_time (versión anterior) */
+    serverOffset: number | null = null;
+    lastClientNow: unknown = undefined;
 
     private apply(s: Scan): Result {
         // Igual que en la BD: el trigger de semana cerrada va antes que la clave
@@ -49,8 +52,10 @@ class FakeServer {
         return { id: s.id, status: 'saved' };
     }
 
-    async handle(body: { scans: Scan[] }): Promise<{ data: { results: Result[] }; error: null }> {
+    async handle(body: { scans: Scan[]; client_now?: number }): Promise<{ data: { results: Result[]; server_time?: string }; error: null }> {
         this.calls++;
+        this.lastClientNow = body.client_now;
+        const serverTime = this.serverOffset === null ? {} : { server_time: new Date(Date.now() + this.serverOffset).toISOString() };
         await Promise.resolve();
         const fault = this.faults.shift() ?? 'ok';
         const scans = body.scans;
@@ -67,15 +72,15 @@ class FakeServer {
             case 'partial': {
                 // La BD cae a mitad de lote: lo primero se guarda, el resto "retry"
                 const k = Math.floor(scans.length / 2);
-                return { data: { results: scans.map((s, i) => (i < k ? this.apply(s) : { id: s.id, status: 'retry' as const, reason: 'connection reset' })) }, error: null };
+                return { data: { results: scans.map((s, i) => (i < k ? this.apply(s) : { id: s.id, status: 'retry' as const, reason: 'connection reset' })), ...serverTime }, error: null };
             }
             case 'truncated': {
                 // Se guarda todo pero la respuesta llega cortada
                 const results = scans.map(s => this.apply(s));
-                return { data: { results: results.slice(0, Math.floor(results.length / 2)) }, error: null };
+                return { data: { results: results.slice(0, Math.floor(results.length / 2)), ...serverTime }, error: null };
             }
             default:
-                return { data: { results: scans.map(s => this.apply(s)) }, error: null };
+                return { data: { results: scans.map(s => this.apply(s)), ...serverTime }, error: null };
         }
     }
 }
@@ -287,6 +292,7 @@ async function reset(): Promise<void> {
     server.rejected.clear();
     server.closedBefore = null;
     server.faults = [];
+    server.serverOffset = null;
     online = true;
     clock = START;
     vi.setSystemTime(clock);
@@ -317,6 +323,21 @@ describe('bucket pipeline chaos', () => {
         // Antes "Saved" salía antes de la escritura y matar la app la perdía.
         await run([{ kind: 'offline' }, { kind: 'scan', picker: 1, times: 1 }, { kind: 'kill' }]);
         expect(server.rows.size, 'confirmed scan lost after kill').toBe(1);
+    });
+
+    it('the phone clock offset is measured on upload and corrects later scans (sent with the correction)', async () => {
+        await reset();
+        // Reloj del móvil 30 min atrasado. Antes clockSkew no se medía nunca
+        server.serverOffset = 30 * 60_000;
+        await run([{ kind: 'scan', picker: 0, times: 1 }, { kind: 'upload', faults: [] }]);
+        expect(server.lastClientNow, 'client_now not sent').toBe(clock);
+        expect(useHarvestStore.getState().clockSkew).toBe(30 * 60_000);
+
+        const id = await scanConfirmed(1);
+        await uploadPendingBuckets();
+        const latest = server.rows.get(id!);
+        expect(Date.parse(latest!.scanned_at)).toBe(clock + 30 * 60_000);
+        expect(latest!.clock_skew_ms).toBe(30 * 60_000);
     });
 
     it('two buckets of the same person in the same second are two scans', async () => {

@@ -10,10 +10,11 @@ import { offlineService } from '@/services/offline.service';
 import { auditService } from '@/services/audit.service';
 import { analytics } from '@/config/analytics';
 import { logger } from '@/utils/logger';
+import { toNZST } from '@/utils/nzst';
 import type { HarvestStoreState, BucketSlice, ScannedBucket } from '../storeTypes';
 
-// Max allowed clock skew for anti-fraud (5 minutes)
-const MAX_ALLOWED_SKEW = 5 * 60 * 1000;
+// Desfase del reloj a partir del cual se corrige la hora de los escaneos (2 min)
+const CLOCK_CORRECTION_THRESHOLD = 2 * 60 * 1000;
 
 // --- Slice Creator ---
 export const createBucketSlice: StateCreator<
@@ -42,15 +43,21 @@ export const createBucketSlice: StateCreator<
             logger.warn(`[Store] Bucket for picker ${bucketData.picker_id} who is NOT checked in — allowing with warning`);
         }
 
-        // 🔴 VALIDATION: Reject if clock skew > 5 minutes (anti-fraud)
-        const clockSkew = get().clockSkew;
-        if (Math.abs(clockSkew) > MAX_ALLOWED_SKEW) {
-            logger.error(`[Store] Rejected bucket: clock skew ${clockSkew}ms exceeds ${MAX_ALLOWED_SKEW}ms`);
-            return false;
+        // Reloj del móvil desfasado (medido con la hora del servidor al subir):
+        // se corrige la hora del escaneo. Antes se descartaba la cubeta sin
+        // avisar (y clockSkew nunca se medía, así que no pasaba nunca).
+        const clockSkew = get().clockSkew || 0;
+        const correct = Math.abs(clockSkew) > CLOCK_CORRECTION_THRESHOLD;
+        const scannedMs = Date.parse(bucketData.timestamp);
+        if (correct) {
+            logger.warn(`[Store] Phone clock off by ${Math.round(clockSkew / 1000)}s — correcting scan time`);
         }
 
         const newBucket: ScannedBucket = {
             ...bucketData,
+            ...(correct && !Number.isNaN(scannedMs)
+                ? { timestamp: toNZST(new Date(scannedMs + clockSkew)), clock_skew_ms: clockSkew }
+                : {}),
             id: crypto.randomUUID(),
             synced: false,
         };
@@ -100,6 +107,7 @@ export const createBucketSlice: StateCreator<
                 scanned_by: get().currentUser?.id || 'unknown',
                 ...(newBucket.row_number ? { row_number: newBucket.row_number } : {}),
                 ...(newBucket.bin_id ? { bin_id: newBucket.bin_id } : {}),
+                ...(newBucket.clock_skew_ms ? { clock_skew_ms: newBucket.clock_skew_ms } : {}),
             });
             return true;
         } catch (e) {
