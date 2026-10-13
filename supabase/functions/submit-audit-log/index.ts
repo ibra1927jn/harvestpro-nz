@@ -1,8 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
     handlePreflight,
-    corsHeaders,
+    requireRole,
     errorResponse,
     jsonResponse,
     checkRateLimit,
@@ -17,7 +16,7 @@ import {
  * - Adds server-verified timestamp and IP address
  * - Prevents suppression of audit logs
  *
- * Security: Any authenticated user can submit logs (for their own actions)
+ * Security: any active user can submit logs (for their own actions)
  */
 serve(async (req) => {
     const preflight = handlePreflight(req)
@@ -26,28 +25,12 @@ serve(async (req) => {
     const origin = req.headers.get('Origin')
 
     try {
-        // ── Auth (any role) ──────────────────────────
-        const authHeader = req.headers.get('Authorization')
-        if (!authHeader) {
-            return new Response(
-                JSON.stringify({ error: 'Missing authorization header' }),
-                { status: 401, headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' } }
-            )
-        }
-
-        const supabase = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-            { global: { headers: { Authorization: authHeader } } }
-        )
-
-        const { data: { user }, error: authErr } = await supabase.auth.getUser()
-        if (authErr || !user) {
-            return new Response(
-                JSON.stringify({ error: 'Invalid or expired token' }),
-                { status: 401, headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' } }
-            )
-        }
+        // ── Auth (cualquier rol, cuenta activa) ──────
+        // requireRole lee rol y estado de public.users: una cuenta desactivada
+        // ya no puede escribir en la auditoría (antes bastaba un JWT válido).
+        const { user, supabase } = await requireRole(req, [
+            'admin', 'manager', 'team_leader', 'runner', 'qc_inspector', 'payroll_admin', 'hr_admin', 'logistics',
+        ])
 
         checkRateLimit(user.id, { maxRequests: 100, windowMs: 60_000 })
 
