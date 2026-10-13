@@ -66,3 +66,16 @@ test('team leader sees the team and the row history', async ({ page }) => {
   expect(layout.covered, JSON.stringify(layout.covered)).toEqual([]);
   expect(errs.errors, errs.errors.join('\n')).toEqual([]);
 });
+
+test('chat shows the conversation list full width on a phone', async ({ page }) => {
+  await loginAs(page, 'runner');
+  const vw = page.viewportSize()!.width;
+  test.skip(vw >= 768, 'split view is intended on tablets / landscape');
+  await mainNav(page).locator('button[aria-label="Chat"]').click();
+  const list = page.locator('aside').filter({ hasText: 'Chats' }).first();
+  await expect(list).toBeVisible();
+  const box = await list.boundingBox();
+  // Antes: lista y panel vacío lado a lado, la lista con ~180px en un móvil
+  expect(box!.width).toBeGreaterThanOrEqual(vw - 2);
+  await snap(page, test.info(), 'runner-chat-list');
+});
