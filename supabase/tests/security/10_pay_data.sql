@@ -71,6 +71,14 @@ SELECT sec_test.deny('A.team_leader', 'cannot delete own timesheet', $$DELETE FR
 SELECT sec_test.allow('A.manager', 'corrects a team leader timesheet', $$UPDATE daily_attendance SET hours_worked = 7.5 WHERE id = {A.att_tl}$$);
 SELECT sec_test.deny('A.manager', 'cannot change a timesheet of a closed pay week',
     $$UPDATE daily_attendance SET hours_worked = 9 WHERE id = {A.att_closed_week}$$, ARRAY['42501', 'P0001']);
+-- manage-attendance: al fichar en otro huerto se cierra el turno abierto del anterior
+SELECT sec_test.allow('B.team_leader', 'closes an open shift left in another orchard',
+    $$UPDATE daily_attendance SET check_out = now(), notes = 'Auto-closed' WHERE id = {A.att_rotated}$$);
+SELECT sec_test.deny('B.team_leader', 'cannot move a timesheet to another orchard',
+    $$UPDATE daily_attendance SET orchard_id = {B} WHERE id = {A.att_rotated}$$);
+-- approve-timesheet (manager/admin)
+SELECT sec_test.allow(w, 'approves a timesheet', $$UPDATE daily_attendance SET verified_by = auth.uid() WHERE id = {A.att}$$)
+FROM unnest(ARRAY['A.manager', 'A.admin']) AS w;
 SELECT sec_test.deny('A.runner', 'cannot delete attendance', $$DELETE FROM daily_attendance WHERE id = {A.att}$$);
 
 -- RPCs antiguas de fichaje (SECURITY DEFINER, sin control de rol): solo servidor
@@ -110,6 +118,15 @@ SELECT sec_test.deny(w, 'cannot change piece rates', $$UPDATE variety_rates SET 
 FROM unnest(ARRAY['anon', 'A.runner', 'A.team_leader', 'A.qc_inspector', 'A.logistics', 'A.payroll_admin', 'A.inactive_manager']) AS w;
 
 SELECT sec_test.allow('A.manager', 'updates orchard piece rate', $$UPDATE harvest_settings SET piece_rate = 6.75 WHERE orchard_id = {A}$$);
+-- Cambiar la tarifa queda auditado (el disparador fallaba en tablas sin columna id)
+SELECT sec_test.allow('A.manager', 'piece rate change is written to the audit log', $q$
+    DO $x$ BEGIN
+        UPDATE harvest_settings SET piece_rate = 6.81 WHERE orchard_id = {A};
+        IF NOT EXISTS (SELECT 1 FROM audit_logs WHERE table_name = 'harvest_settings'
+                       AND record_id = {A} AND new_values ->> 'piece_rate' = '6.81') THEN
+            RAISE EXCEPTION 'no audit entry for the piece rate change';
+        END IF;
+    END $x$$q$, 0);
 SELECT sec_test.deny(w, 'cannot change orchard pay settings', $$UPDATE harvest_settings SET piece_rate = 99 WHERE orchard_id = {A}$$)
 FROM unnest(ARRAY['anon', 'A.runner', 'A.team_leader', 'A.qc_inspector', 'A.logistics', 'A.hr_admin', 'A.inactive_manager', 'B.manager']) AS w;
 

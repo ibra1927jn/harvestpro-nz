@@ -21,6 +21,12 @@ SELECT sec_test.allow('A.admin', 'changes a role', $$UPDATE users SET role = 'te
 SELECT sec_test.deny('A.runner', 'cannot create another account',
     $$INSERT INTO users (id, email, role, orchard_id) VALUES ({B.runner}, 'x@example.test', 'admin', {A})$$, ARRAY['42501', '23505']);
 
+-- Alta con invitación (AuthContext → users.insert): rol y huerto de la invitación
+SELECT sec_test.allow('A.invitee', 'registers with the invited role',
+    $$INSERT INTO users (id, email, full_name, role, orchard_id) VALUES (auth.uid(), 'sectest.invite-a@example.test', 'New', 'runner', {A})$$);
+SELECT sec_test.deny('A.invitee', 'cannot register with a higher role than invited',
+    $$INSERT INTO users (id, email, full_name, role, orchard_id) VALUES (auth.uid(), 'sectest.invite-a@example.test', 'New', 'admin', {A})$$);
+
 -- ── pickers: regla del dueño (el manager no da de alta/baja ni mueve gente) ─
 SELECT sec_test.sees('anon', 'cannot read pickers', $$SELECT 1 FROM pickers$$, 0);
 SELECT sec_test.allow(w, 'adds a picker',

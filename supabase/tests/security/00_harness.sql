@@ -410,6 +410,29 @@ BEGIN
     INSERT INTO sec_test.ids VALUES ('payweek', v_id);
 END $$;
 
+-- Recolector que ya pertenece a B pero dejó un turno abierto en A (rota entre huertos)
+DO $$
+DECLARE v_id uuid; v_att uuid;
+BEGIN
+    INSERT INTO public.pickers (picker_id, name, orchard_id, role, status)
+    VALUES ('SECTEST-ROT-' || substr(gen_random_uuid()::text, 1, 6), 'SecTest rotated', sec_test.id_of('B'), 'picker', 'active')
+    RETURNING id INTO v_id;
+    INSERT INTO sec_test.ids VALUES ('B.rotated_picker', v_id);
+    INSERT INTO public.daily_attendance (picker_id, orchard_id, date, check_in, status)
+    VALUES (v_id, sec_test.id_of('A'), (now() AT TIME ZONE 'Pacific/Auckland')::date, now() - interval '3 hours', 'present')
+    RETURNING id INTO v_att;
+    INSERT INTO sec_test.ids VALUES ('A.att_rotated', v_att);
+END $$;
+
+-- Persona invitada (A.invite, rol runner) que acaba de crear su cuenta de
+-- acceso pero aún no tiene perfil en public.users
+DO $$
+DECLARE v_id uuid := gen_random_uuid();
+BEGIN
+    INSERT INTO auth.users (id, email, aud, role) VALUES (v_id, 'sectest.invite-a@example.test', 'authenticated', 'authenticated');
+    INSERT INTO sec_test.who VALUES ('A.invitee', v_id, 'sectest.invite-a@example.test');
+END $$;
+
 -- Bloqueo de cuenta e intentos de acceso (de un email de prueba)
 INSERT INTO public.account_locks (email, locked_until) VALUES ('sectest.locked@example.test', now() + interval '10 minutes');
 INSERT INTO public.login_attempts (email, success) VALUES ('sectest.locked@example.test', false);
