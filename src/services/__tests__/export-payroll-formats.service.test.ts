@@ -107,7 +107,7 @@ describe('payroll CSV — exact lines', () => {
             ['E1', 'Ana', 'Piece Rate - Gala', '20', '6.10', '122.00'],
             ['E1', 'Ana', 'Piece Rate Earnings', '1', '3.10', '3.10'],
             ['E1', 'Ana', 'Public Holiday Premium', '1', '15.50', '15.50'],
-            ['E1', 'Ana', 'Minimum Wage Top-Up', '16.00', '9.65', '154.40'],
+            ['E1', 'Ana', 'Minimum Wage Top-Up', '16.00', '9.6500', '154.40'],
         ]);
     });
 
@@ -119,7 +119,7 @@ describe('payroll CSV — exact lines', () => {
             ],
         });
         expect(parse(csv).slice(1)).toEqual([
-            ['E2', 'MIN_WAGE_TOPUP', 'Minimum wage top-up (4.00h)', '4.00', '23.95', '95.80'],
+            ['E2', 'MIN_WAGE_TOPUP', 'Minimum wage top-up (4.00h)', '4.00', '23.9500', '95.80'],
         ]);
     });
 
@@ -145,7 +145,8 @@ describe('payroll CSV — exact lines', () => {
             ['E5', 'PIECE', 'Harvest buckets (8.00h worked)', '1', '10.00', '10.00'],
             ['E5', 'PUBLIC_HOLIDAY', 'Public holiday premium (time and a half on piece earnings)', '1', '70.00', '70.00'],
             ['E6', 'PIECE', 'Harvest buckets (0.00h worked)', '4', '6.50', '26.00'],
-            ['E7', 'MIN_WAGE_TOPUP', 'Minimum wage top-up (0.00h)', '0.00', '500.00', '5.00'],
+            // Sin horas: 1 × importe (antes 0.00 × 500.00 = 5.00, que no cuadraba)
+            ['E7', 'MIN_WAGE_TOPUP', 'Minimum wage top-up (0.00h)', '1', '5.00', '5.00'],
         ]);
     });
 
@@ -173,5 +174,24 @@ describe('payroll CSV — exact lines', () => {
                 expect(sum).toBe(Math.round(p.totalEarnings * 100));
             }
         }), { numRuns: 300 });
+    });
+});
+
+describe('topUpQuantityRate — quantity × rate is exactly the amount', () => {
+    it('1.87 h with 28.34 $: a 2-decimal rate (15.16) gave 28.35; the 4-decimal rate gives 28.34', async () => {
+        const { topUpQuantityRate } = await import('../export-payroll-formats.service');
+        const [qty, rate] = topUpQuantityRate(1.87, 28.34);
+        expect([qty, rate]).toEqual(['1.87', '15.1551']);
+        expect(Math.round(Number(qty) * Number(rate) * 100)).toBe(2834);
+    });
+
+    it('any weekly hours and amount add up to the cent', async () => {
+        const { topUpQuantityRate } = await import('../export-payroll-formats.service');
+        for (let h = 0; h <= 7000; h += 37) {
+            for (const amount of [0.01, 1.73, 28.34, 154.4, 999.99]) {
+                const [qty, rate] = topUpQuantityRate(h / 100, amount);
+                expect(Math.round(Number(qty) * Number(rate) * 100)).toBe(Math.round(amount * 100));
+            }
+        }
     });
 });

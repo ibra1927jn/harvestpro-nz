@@ -27,12 +27,12 @@ describe('NZ Law Constants — Minimum Wage Orders', () => {
     expect(NZ_MINIMUM_WAGE_2026).toBe(23.95);
   });
 
-  it('2025 adult minimum wage is $23.15/hr (as of 1 April 2025)', () => {
-    expect(NZ_MINIMUM_WAGE_2025).toBe(23.15);
+  it('2025 adult minimum wage is $23.50/hr (Minimum Wage Order 2025, from 1 April 2025)', () => {
+    expect(NZ_MINIMUM_WAGE_2025).toBe(23.5);
   });
 
-  it('2024 alias equals 2025 rate (backcompat)', () => {
-    expect(NZ_MINIMUM_WAGE_2024).toBe(NZ_MINIMUM_WAGE_2025);
+  it('2024 adult minimum wage is $23.15/hr (from 1 April 2024)', () => {
+    expect(NZ_MINIMUM_WAGE_2024).toBe(23.15);
   });
 
   it('2026 starting-out wage is 80% of adult rate ($19.16)', () => {
@@ -40,13 +40,14 @@ describe('NZ Law Constants — Minimum Wage Orders', () => {
     expect(NZ_STARTING_OUT_WAGE_2026 / NZ_MINIMUM_WAGE_2026).toBeCloseTo(0.8, 1);
   });
 
-  it('2025 starting-out wage is 80% of adult rate ($18.52)', () => {
-    expect(NZ_STARTING_OUT_WAGE_2025).toBe(18.52);
+  it('2025 starting-out wage is 80% of adult rate ($18.80)', () => {
+    expect(NZ_STARTING_OUT_WAGE_2025).toBe(18.8);
     expect(NZ_STARTING_OUT_WAGE_2025 / NZ_MINIMUM_WAGE_2025).toBeCloseTo(0.8, 1);
   });
 
-  it('starting-out 2024 alias equals 2025 rate', () => {
-    expect(NZ_STARTING_OUT_WAGE_2024).toBe(NZ_STARTING_OUT_WAGE_2025);
+  it('2024 starting-out wage is $18.52', () => {
+    expect(NZ_STARTING_OUT_WAGE_2024).toBe(18.52);
+    expect(NZ_STARTING_OUT_WAGE_2024).toBe(Math.round(NZ_MINIMUM_WAGE_2024 * 0.8 * 100) / 100);
   });
 });
 
