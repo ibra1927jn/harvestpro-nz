@@ -146,8 +146,20 @@ export async function requireRole(
     throw new AuthError('Invalid or expired token', 401);
   }
 
-  // Check role from user metadata
-  const userRole = user.user_metadata?.role as string | undefined;
+  // Rol y estado desde public.users (la fila propia es legible por RLS).
+  // NUNCA desde user_metadata: el usuario la cambia con auth.updateUser().
+  const { data: profile, error: profileError } = await supabase
+    .from('users')
+    .select('role, is_active')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (profileError) {
+    throw new Error(`Role lookup failed: ${profileError.message}`);
+  }
+  if (!profile || profile.is_active !== true) {
+    throw new AuthError('Account is not active', 403);
+  }
+  const userRole = profile.role as string | undefined;
   if (!userRole || !roles.includes(userRole as AllowedRole)) {
     throw new AuthError(
       `Insufficient permissions. Required: ${roles.join('|')}. Got: ${userRole || 'none'}`,
