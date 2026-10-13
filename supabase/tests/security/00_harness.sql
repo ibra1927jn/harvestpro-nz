@@ -400,6 +400,10 @@ BEGIN
             'closed', sec_test.id_of('A.manager'), now() - interval '200 days' + interval '1 minute')
     ON CONFLICT (orchard_id, date) DO UPDATE SET status = 'closed', closed_at = EXCLUDED.closed_at;
 
+    -- Las semanas ya cerradas en la BD (datos reales) bloquearían los fichajes
+    -- de prueba de hoy: dentro de esta transacción (ROLLBACK) se reabren
+    UPDATE public.pay_weeks SET status = 'reopened' WHERE status = 'closed';
+
     -- Semana de pago cerrada (lejos en el pasado para no afectar a nada más)
     INSERT INTO public.daily_attendance (picker_id, orchard_id, date, check_in, check_out, status, hours_worked)
     VALUES (sec_test.id_of('A.picker'), sec_test.id_of('A'), DATE '2020-01-07',
