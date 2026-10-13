@@ -2,7 +2,7 @@
  * conflictService con IndexedDB real (fake-indexeddb): limite de 50, resolucion
  * y limpieza por antiguedad.
  */
-import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import 'fake-indexeddb/auto';
 
 const addToQueue = vi.fn();
@@ -10,16 +10,8 @@ vi.mock('../sync.service', () => ({ syncService: { addToQueue: (...a: unknown[])
 vi.mock('@/config/analytics', () => ({ analytics: { trackConflictResolved: vi.fn() } }));
 vi.mock('@/utils/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
 
-import type { StoredConflict } from '../db';
-
-// test-setup.ts ya cargo los modulos reales: se recargan para que apliquen los vi.mock
-let conflictService: typeof import('../conflict.service')['conflictService'];
-let db: typeof import('../db')['db'];
-beforeAll(async () => {
-    vi.resetModules();
-    ({ conflictService } = await import('../conflict.service'));
-    ({ db } = await import('../db'));
-});
+import { db, type StoredConflict } from '../db';
+import { conflictService } from '../conflict.service';
 
 const stored = (id: string, detected_at: string, resolution: StoredConflict['resolution'] = 'pending', table = 'pickers'): StoredConflict => ({
     id, table, record_id: `rec-${id}`, local_updated_at: detected_at, server_updated_at: detected_at,

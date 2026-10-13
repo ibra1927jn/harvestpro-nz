@@ -16,7 +16,7 @@ import { createCrewSlice } from './crewSlice';
 import { pickerCrudRepository } from '@/repositories/picker-crud.repository';
 import { beforeEach } from 'vitest';
 
-// El store ya cargó el repositorio real (test-setup): se espía en vez de mockear el módulo
+// Se espían los métodos del repositorio real
 beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(pickerCrudRepository, 'insert').mockResolvedValue({} as never);

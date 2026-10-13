@@ -12,7 +12,7 @@ import { createRowSlice } from './rowSlice';
 import { rowRepository } from '@/repositories/row.repository';
 import { beforeEach } from 'vitest';
 
-// El store ya cargó el repositorio real (test-setup), así que se espían sus métodos
+// Se espían los métodos del repositorio real
 beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(rowRepository, 'updatePickerRows').mockResolvedValue({ error: null } as never);
