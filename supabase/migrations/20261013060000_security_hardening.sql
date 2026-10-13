@@ -169,6 +169,11 @@ CREATE TRIGGER trg_guard_user_changes
 -- 4) Invitaciones: cada uno solo ve la suya ("Public check registration").
 --    El alta (antes de tener sesión) consulta UN email con esta función.
 DROP POLICY IF EXISTS "Check own registration" ON public.allowed_registrations;
+-- La versión anterior leía auth.users (sin permiso para usuarios normales) y
+-- hacía fallar toda la consulta: se usa el email del token.
+DROP POLICY IF EXISTS "Public check registration" ON public.allowed_registrations;
+CREATE POLICY "Public check registration" ON public.allowed_registrations FOR SELECT TO authenticated
+    USING (lower(email) = lower(auth.jwt() ->> 'email'));
 
 CREATE OR REPLACE FUNCTION public.check_registration(p_email text)
 RETURNS TABLE (id uuid, role text, orchard_id uuid, used_at timestamptz)
