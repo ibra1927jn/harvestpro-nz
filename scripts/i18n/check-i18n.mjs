@@ -236,9 +236,21 @@ export function findHardcoded(text, file, allow) {
     };
     const addExpr = (expr, kind) => { const o = []; collectText(expr, o); for (const x of o) add(x.node, x.text, kind); };
 
+    // Ligaduras de la fuente de iconos (<span className="material-symbols-outlined">close</span>)
+    const isIconText = (n) => {
+        const el = n.parent;
+        if (!el || !ts.isJsxElement(el)) return false;
+        const attrs = el.openingElement.attributes.properties;
+        const get = (name) => attrs.find((a) => ts.isJsxAttribute(a) && a.name.getText(sf) === name);
+        const cls = get('className');
+        const clsText = cls?.initializer ? cls.initializer.getText(sf) : '';
+        if (/material-(symbols|icons)/.test(clsText)) return true;
+        const hidden = get('aria-hidden');
+        return !!hidden && /^[a-z_]+$/.test(n.getText(sf).trim());
+    };
     const visit = (n) => {
-        if (ts.isJsxText(n)) add(n, n.text, 'jsx-text');
-        else if (ts.isJsxExpression(n) && n.expression && (ts.isJsxElement(n.parent) || ts.isJsxFragment(n.parent))) addExpr(n.expression, 'jsx-expr');
+        if (ts.isJsxText(n)) { if (!isIconText(n)) add(n, n.text, 'jsx-text'); }
+        else if (ts.isJsxExpression(n) && n.expression && (ts.isJsxElement(n.parent) || ts.isJsxFragment(n.parent))) { if (!isIconText(n)) addExpr(n.expression, 'jsx-expr'); }
         else if (ts.isJsxAttribute(n)) {
             const name = n.name.getText(sf);
             if (TEXT_ATTRS.has(name) && n.initializer) {

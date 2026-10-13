@@ -1,6 +1,7 @@
 import React from 'react';
 import EmptyState from '@/components/ui/EmptyState';
 import { avatarUrl } from '@/utils/avatarUrl';
+import { useTranslation } from '@/i18n';
 
 interface WarehouseViewProps {
     inventory?: {
@@ -13,6 +14,7 @@ interface WarehouseViewProps {
 }
 
 const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportRequest }) => {
+    const { t } = useTranslation();
     const fullBins = inventory?.full_bins || 0;
     const emptyBins = inventory?.empty_bins || 0;
     const inProgress = inventory?.in_progress || 0;
@@ -28,19 +30,19 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
                 <header className="flex-none bg-white/70 backdrop-blur-xl z-30 border-b border-white/50 shadow-[0_4px_30px_-5px_rgba(0,0,0,0.05)] pt-6">
                     <div className="flex flex-wrap gap-y-2 items-center px-6 py-4 justify-between">
                         <div>
-                            <h2 className="text-2xl font-black bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent tracking-tight leading-tight">Warehouse Inventory</h2>
-                            <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">Stock Management</p>
+                            <h2 className="text-2xl font-black bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent tracking-tight leading-tight">{t('runner.warehouse.title')}</h2>
+                            <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">{t('runner.warehouse.subtitle')}</p>
                         </div>
                     </div>
                 </header>
                 <div className="flex-1 flex items-center justify-center relative z-10 px-6">
                     <EmptyState
                         icon="warehouse"
-                        title="No Warehouse Inventory"
-                        subtitle="Bins will appear here once the harvest operation begins and bins start being filled."
+                        title={t('runner.warehouse.empty_title')}
+                        subtitle={t('runner.warehouse.empty_desc')}
                         iconColor="text-primary"
                         action={onTransportRequest ? {
-                            label: 'Request transport',
+                            label: t('runner.warehouse.request_transport'),
                             onClick: onTransportRequest,
                             icon: 'local_shipping',
                         } : undefined}
@@ -59,15 +61,15 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
             <header className="flex-none bg-white/70 backdrop-blur-xl z-30 border-b border-white/50 shadow-[0_4px_30px_-5px_rgba(0,0,0,0.05)] pt-6">
                 <div className="flex flex-wrap gap-y-2 items-center px-6 py-4 justify-between">
                     <div>
-                        <h2 className="text-2xl font-black bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent tracking-tight leading-tight">Warehouse Inventory</h2>
-                        <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">Stock Management</p>
+                        <h2 className="text-2xl font-black bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent tracking-tight leading-tight">{t('runner.warehouse.title')}</h2>
+                        <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">{t('runner.warehouse.subtitle')}</p>
                     </div>
                     <div className="flex items-center justify-end gap-3">
-                        <button aria-label="Notifications" className="relative flex items-center justify-center rounded-2xl size-11 bg-white/80 border border-white/60 shadow-sm text-slate-500 hover:text-primary transition-colors hover:shadow-md">
+                        <button aria-label={t('settings.notifications')} className="relative flex items-center justify-center rounded-2xl size-11 bg-white/80 border border-white/60 shadow-sm text-slate-500 hover:text-primary transition-colors hover:shadow-md">
                             <span aria-hidden="true" className="material-symbols-outlined text-[22px]">notifications</span>
                         </button>
                         <div className="size-11 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden border border-white/60 shadow-sm">
-                            <img src={avatarUrl('Warehouse')} alt="Avatar" className="w-full h-full object-cover" />
+                            <img src={avatarUrl('Warehouse')} alt={t('common.avatar')} className="w-full h-full object-cover" />
                         </div>
                     </div>
                 </div>
@@ -81,8 +83,8 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
                     
                     <div className="flex items-start justify-between pl-3">
                         <div>
-                            <h3 className="text-[11px] font-bold text-primary uppercase tracking-widest mb-1.5">Harvested Stock</h3>
-                            <h2 className="text-2xl font-black text-slate-800 tracking-tight">Full Cherry Bins</h2>
+                            <h3 className="text-[11px] font-bold text-primary uppercase tracking-widest mb-1.5">{t('runner.warehouse.harvested')}</h3>
+                            <h2 className="text-2xl font-black text-slate-800 tracking-tight">{t('runner.warehouse.full_bins')}</h2>
                         </div>
                         <div className="size-14 rounded-2xl bg-gradient-to-br from-primary/5 to-blue-500/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
                             <span aria-hidden="true" className="material-symbols-outlined text-[28px]">inventory_2</span>
@@ -90,12 +92,12 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
                     </div>
                     <div className="mt-8 flex items-baseline gap-2.5 pl-3">
                         <span className="text-7xl font-black text-slate-800 tracking-tighter leading-none">{fullBins}</span>
-                        <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">filled</span>
+                        <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">{t('runner.warehouse.filled')}</span>
                     </div>
                     <div className="mt-6 pt-5 border-t border-slate-100/50 flex items-center justify-between pl-3">
                         <div className="flex items-center gap-2">
                             <span aria-hidden="true" className={`material-symbols-outlined text-xl ${fullBins > 0 ? 'text-emerald-500' : 'text-slate-400'}`}>check_circle</span>
-                            <span className={`text-xs font-bold uppercase tracking-wider ${fullBins > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>{fullBins > 0 ? 'Ready for Pickup' : 'Awaiting Harvest'}</span>
+                            <span className={`text-xs font-bold uppercase tracking-wider ${fullBins > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>{fullBins > 0 ? t('runner.warehouse.ready') : t('runner.warehouse.awaiting')}</span>
                         </div>
                     </div>
                 </div>
@@ -108,12 +110,12 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
                                 <span aria-hidden="true" className="material-symbols-outlined text-[24px]">grid_view</span>
                             </div>
                             <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${emptyBins < 5 ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
-                                {emptyBins < 5 ? 'Critical' : 'Stock OK'}
+                                {emptyBins < 5 ? t('runner.warehouse.critical') : t('runner.stock_ok')}
                             </span>
                         </div>
                         <div className="flex-1 flex flex-col justify-end">
                             <span className="text-4xl font-black text-slate-800 block leading-tight tracking-tight mb-1">{emptyBins}</span>
-                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block leading-tight">Empty Bins</span>
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block leading-tight">{t('runner.empty_bins')}</span>
                         </div>
                     </div>
                     <div className="bg-white/80 backdrop-blur-md rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 flex flex-col h-full hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all">
@@ -121,11 +123,11 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
                             <div className="size-12 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center text-blue-500 border border-blue-200/50 shadow-inner">
                                 <span aria-hidden="true" className="material-symbols-outlined text-[24px]">shopping_basket</span>
                             </div>
-                            <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-blue-50 text-blue-600 uppercase tracking-widest border border-blue-100">IN-FLOW</span>
+                            <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-blue-50 text-blue-600 uppercase tracking-widest border border-blue-100">{t('runner.warehouse.in_flow')}</span>
                         </div>
                         <div className="flex-1 flex flex-col justify-end">
                             <span className="text-4xl font-black text-slate-800 block leading-tight tracking-tight mb-1">{inProgress}</span>
-                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block leading-tight">In Progress</span>
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block leading-tight">{t('orchardMap.status.in_progress')}</span>
                         </div>
                     </div>
                 </div>
@@ -136,9 +138,9 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
                         <span aria-hidden="true" className="material-symbols-outlined text-[24px]">local_shipping</span>
                     </div>
                     <div className="flex-1">
-                        <p className="text-xs font-black text-slate-800 uppercase tracking-widest mb-1.5">Transport</p>
+                        <p className="text-xs font-black text-slate-800 uppercase tracking-widest mb-1.5">{t('runner.warehouse.transport')}</p>
                         <p className="text-xs font-medium text-slate-500 leading-relaxed">
-                            {fullBins > 10 ? 'Dispatch requested for full bins.' : 'Use the button below to request a pickup.'}
+                            {fullBins > 10 ? t('runner.warehouse.dispatch_requested') : t('runner.warehouse.use_button')}
                         </p>
                     </div>
                 </div>
@@ -152,7 +154,7 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
                     className="w-full h-14 bg-slate-900 border border-slate-800 text-white rounded-2xl shadow-[0_10px_20px_rgba(15,23,42,0.2)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all group disabled:opacity-50 disabled:shadow-none hover:bg-slate-800"
                 >
                     <span aria-hidden="true" className="material-symbols-outlined text-[24px] text-emerald-400 group-active:scale-90 transition-transform">local_shipping</span>
-                    <span className="text-sm font-black uppercase tracking-widest">Request Transport</span>
+                    <span className="text-sm font-black uppercase tracking-widest">{t('runner.warehouse.request_transport')}</span>
                 </button>
             </div>
         </div>

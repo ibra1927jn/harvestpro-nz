@@ -14,6 +14,8 @@ import orchardMap from './orchardMap';
 import assignModal from './assignModal';
 import logistics from './logistics';
 import legal from './legal';
+import runner from './runner';
+import shared from './shared';
 
 // Claves propias de este idioma (sin heredar de otro: el checker exige todas)
 const en: TranslationDict = {
@@ -32,6 +34,8 @@ const en: TranslationDict = {
     ...assignModal,
     ...logistics,
     ...legal,
+    ...runner,
+    ...shared,
 };
 
 export default en;

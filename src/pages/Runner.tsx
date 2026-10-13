@@ -17,6 +17,7 @@ import Toast from '@/components/ui/Toast';
 import SyncStatusMonitor from '@/components/common/SyncStatusMonitor';
 import { useRunnerData } from '@/hooks/useRunnerData';
 import { RUNNER_NAV_TABS, type RunnerTab } from '@/config/navigation/runner.nav';
+import { useTranslation } from '@/i18n';
 
 // Lazy-loaded views (code-split for performance)
 const loadLogistics = () => import('@/components/views/runner/LogisticsView');
@@ -55,6 +56,7 @@ const TabLoader = () => (
 );
 
 const Runner = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<RunnerTab>('logistics');
   const runner = useRunnerData();
 
@@ -69,8 +71,8 @@ const Runner = () => {
         mobileTabs={RUNNER_NAV_TABS}
         activeTab={activeTab}
         onTabChange={id => setActiveTab(id as RunnerTab)}
-        title="Runner"
-        subtitle={`Logistics - ${runner.orchard?.name || 'No Orchard'}`}
+        title={t('runner.page_title')}
+        subtitle={t('runner.page_subtitle', { orchard: runner.orchard?.name || t('teams.no_orchard') })}
         accentColor="sky"
         titleIcon="local_shipping"
       >
