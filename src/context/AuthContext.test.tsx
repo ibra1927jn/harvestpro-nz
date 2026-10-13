@@ -406,6 +406,8 @@ describe('AuthContext', () => {
       expect(confirmMock).toHaveBeenCalled();
       // Should NOT sign out since confirm returned false
       expect(mocks.signOut).not.toHaveBeenCalled();
+      // Cancelar no puede borrar los datos pendientes (antes el finally borraba Dexie igualmente)
+      expect(mocks.dbDelete).not.toHaveBeenCalled();
     });
   });
 

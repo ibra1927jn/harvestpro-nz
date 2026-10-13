@@ -234,6 +234,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signOut = async () => {
     if (isSigningOutRef.current) return;
     isSigningOutRef.current = true;
+    let aborted = false;
     try {
       // 🔧 V27: Hard-gate — block logout if there are unsynced items
       const pendingCount = await syncService.getPendingCount();
@@ -245,7 +246,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             `Conecta a internet y espera a que todo se sincronice antes de cerrar sesión.\n\n` +
             `¿Estás SEGURO de que quieres cerrar sesión y PERDER estos datos?`
         );
-        if (!confirmed) return; // Abort sign-out
+        if (!confirmed) {
+          // Cancelado: salir sin pasar por el finally, que borraría Dexie con los pendientes
+          isSigningOutRef.current = false;
+          aborted = true;
+          return;
+        }
         logger.warn(
           `[Auth] User forced sign-out with ${pendingCount} pending items — DATA WILL BE LOST`
         );
@@ -269,18 +275,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       logger.error('Error signing out from Supabase:', error);
     } finally {
-      // 🔧 U6: Wipe Dexie to prevent cross-session data leak on shared tablet
-      try {
-        await db.delete();
-      } catch (e) {
-        logger.error('[Auth] Dexie wipe failed:', e);
-      }
-      localStorage.clear();
-      isSigningOutRef.current = false;
-      // 🔧 V26: Force hard reload to re-instantiate Dexie engine
-      // Without this, the JS db instance is a zombie pointing to deleted IndexedDB
-      window.location.reload();
+      if (!aborted) await wipeAndReload();
     }
+  };
+
+  const wipeAndReload = async () => {
+    // 🔧 U6: Wipe Dexie to prevent cross-session data leak on shared tablet
+    try {
+      await db.delete();
+    } catch (e) {
+      logger.error('[Auth] Dexie wipe failed:', e);
+    }
+    localStorage.clear();
+    isSigningOutRef.current = false;
+    // 🔧 V26: Force hard reload to re-instantiate Dexie engine
+    // Without this, the JS db instance is a zombie pointing to deleted IndexedDB
+    window.location.reload();
   };
 
   const logout = signOut;
