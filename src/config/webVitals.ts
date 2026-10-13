@@ -8,25 +8,20 @@
  * @module config/webVitals
  */
 import { onCLS, onFCP, onINP, onLCP, onTTFB, type Metric } from 'web-vitals';
+import { analytics } from './analytics';
 
-/** Envia una metrica web-vital a PostHog via dynamic import para evitar race condition */
-async function sendToPostHog(metric: Metric) {
+/** Envía una métrica a PostHog (encolada hasta que PostHog cargue; sin clave se descarta) */
+function sendToPostHog(metric: Metric) {
   // Solo reportar en produccion para evitar datos ruidosos en dev
   if (import.meta.env.DEV) return;
-
-  try {
-    const { default: posthog } = await import('posthog-js');
-    posthog.capture('web_vital', {
-      name: metric.name, // e.g. "LCP", "CLS"
-      value: metric.value, // valor numerico
-      rating: metric.rating, // "good" | "needs-improvement" | "poor"
-      delta: metric.delta, // cambio desde ultimo reporte
-      id: metric.id, // unico por instancia de metrica
-      navigationType: metric.navigationType,
-    });
-  } catch {
-    // posthog aun no inicializado — ignorar silenciosamente
-  }
+  analytics.trackWebVital({
+    name: metric.name, // e.g. "LCP", "CLS"
+    value: metric.value,
+    rating: metric.rating, // "good" | "needs-improvement" | "poor"
+    delta: metric.delta,
+    id: metric.id,
+    navigationType: metric.navigationType,
+  });
 }
 
 /**
