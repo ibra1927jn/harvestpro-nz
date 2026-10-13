@@ -1,0 +1,38 @@
+import type { TranslationDict } from '../../types';
+
+const auth: TranslationDict = {
+    'auth.welcome': 'Nau mai anō!',
+    'auth.sign_in': 'Takiuru',
+    'auth.sign_in_desc': 'Takiuru ki tō papatohu',
+    'auth.register': 'Rēhita',
+    'auth.email': 'Īmēra',
+    'auth.password': 'Kupuhipa',
+    'auth.forgot_password': 'Kua wareware tō kupuhipa?',
+    'auth.twoFactor.title': 'Motuhēhēnga Takirua',
+    'auth.twoFactor.subtitle': 'Tāurua te waehere 6-mati mai i tō taupānga motuhēhēnga',
+    'auth.twoFactor.verify': 'Manatoko',
+    'auth.twoFactor.verifying': 'E manatoko ana...',
+    'auth.twoFactor.cancel': 'Whakakore',
+    'auth.twoFactor.back': '← Hoki ki te takiuru',
+    'auth.twoFactor.resend': 'Tukuna anō te waehere',
+    'auth.twoFactor.resend_in': 'Tukuna anō hei {n}s',
+    'auth.twoFactor.expires_in': 'Ka pau te waehere hei {mm}:{ss}',
+    'auth.twoFactor.lost_access': 'Kua ngaro tō taupānga motuhēhēnga?',
+    'auth.twoFactor.contact_admin': 'Whakapā atu ki tō kaiwhakahaere mō te āwhina.',
+    'auth.twoFactor.error_length': 'Tāurua he waehere 6-mati',
+    'auth.twoFactor.error_invalid': 'He waehere hē. Ngana anō.',
+    'auth.signing_in': 'E takiuru ana...',
+    'auth.sign_up': 'Rēhita',
+    'auth.full_name': 'Ingoa Katoa',
+    'auth.or_register': 'He hou? Waihangatia he pūkete',
+    'auth.or_login': 'He pūkete tōu? Takiuru',
+    'auth.create_account': 'Waihanga Pūkete',
+    'auth.creating_account': 'E waihanga ana i te pūkete...',
+    'auth.welcome_back': 'Nau mai anō!',
+    'auth.sign_in_desc_alt': 'Takiuru ki tō papatohu',
+    'auth.register_desc': 'Waihangatia tō pūkete',
+    'auth.register_hr_notice': 'Rēhita mā te īmēra i whakaaetia e HR',
+    'auth.register_hr_notice_full': 'Rēhita mā te īmēra i whakaaetia e HR. Ka tohaina aunoatia tō tūranga me tō tari.',
+};
+
+export default auth;

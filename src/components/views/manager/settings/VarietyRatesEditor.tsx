@@ -11,8 +11,11 @@ import {
     type OrchardVarietyRate,
 } from '@/repositories/pay-rates.repository';
 import { logger } from '@/utils/logger';
+import { formatNZD } from '@/utils/nzFormat';
+import { useTranslation } from '@/i18n';
 
 export const VarietyRatesEditor: React.FC<{ orchardId?: string; defaultRate: number }> = ({ orchardId, defaultRate }) => {
+    const { t } = useTranslation();
     const [rows, setRows] = useState<OrchardVarietyRate[]>([]);
     const [drafts, setDrafts] = useState<Record<string, string>>({});
     const [saving, setSaving] = useState<string | null>(null);
@@ -46,16 +49,16 @@ export const VarietyRatesEditor: React.FC<{ orchardId?: string; defaultRate: num
         const raw = (drafts[variety] ?? '').trim();
         const value = raw === '' ? null : Number(raw);
         if (value !== null && (!Number.isFinite(value) || value < 0)) {
-            setMessage({ text: `Invalid price for ${variety}`, ok: false });
+            setMessage({ text: t('variety.invalid', { variety }), ok: false });
             return;
         }
         setSaving(variety);
         try {
             await saveOrchardVarietyRate(orchardId, variety, value);
-            setMessage({ text: `${variety}: ${value === null ? 'uses default price' : `$${value.toFixed(2)} per bucket`}`, ok: true });
+            setMessage({ text: `${variety}: ${value === null ? t('variety.uses_default') : t('variety.per_bucket', { price: formatNZD(value) })}`, ok: true });
             await load();
         } catch (e) {
-            setMessage({ text: e instanceof Error ? e.message : 'Could not save', ok: false });
+            setMessage({ text: e instanceof Error ? e.message : t('variety.save_failed'), ok: false });
         } finally {
             setSaving(null);
         }
@@ -65,12 +68,12 @@ export const VarietyRatesEditor: React.FC<{ orchardId?: string; defaultRate: num
 
     return (
         <div className="pt-3 mt-2 border-t border-border-light" data-testid="variety-rates-editor">
-            <p className="text-sm font-bold text-text-main">Price per bucket by variety</p>
+            <p className="text-sm font-bold text-text-main">{t('variety.title')}</p>
             <p className="text-xs text-text-muted mb-2">
-                Empty = default price (${defaultRate.toFixed(2)}). Each bucket is paid at the price of the variety in its row.
+                {t('variety.hint', { price: formatNZD(defaultRate) })}
             </p>
             {rows.length === 0 ? (
-                <p className="text-xs text-text-muted">No varieties found in this orchard's rows.</p>
+                <p className="text-xs text-text-muted">{t('variety.none')}</p>
             ) : (
                 <div className="space-y-1.5">
                     {rows.map(r => (
@@ -78,7 +81,7 @@ export const VarietyRatesEditor: React.FC<{ orchardId?: string; defaultRate: num
                             <span className="text-sm font-medium text-text-sub min-w-0 break-words">
                                 {r.variety}
                                 {r.orchardRate == null && r.companyRate != null && (
-                                    <span className="ml-2 text-[11px] text-text-muted">company ${r.companyRate.toFixed(2)}</span>
+                                    <span className="ml-2 text-[11px] text-text-muted">{t('variety.company', { price: formatNZD(r.companyRate) })}</span>
                                 )}
                             </span>
                             <div className="flex items-center gap-1.5 ml-auto">
@@ -88,7 +91,7 @@ export const VarietyRatesEditor: React.FC<{ orchardId?: string; defaultRate: num
                                     min="0"
                                     step="0.10"
                                     inputMode="decimal"
-                                    aria-label={`Price per bucket ${r.variety}`}
+                                    aria-label={t('variety.price_aria', { variety: r.variety })}
                                     placeholder={defaultRate.toFixed(2)}
                                     value={drafts[r.variety] ?? ''}
                                     onChange={e => setDrafts(d => ({ ...d, [r.variety]: e.target.value }))}
@@ -100,7 +103,7 @@ export const VarietyRatesEditor: React.FC<{ orchardId?: string; defaultRate: num
                                     disabled={saving === r.variety || (drafts[r.variety] ?? '') === (r.orchardRate != null ? String(r.orchardRate) : '')}
                                     className="text-xs font-bold px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white disabled:opacity-40"
                                 >
-                                    {saving === r.variety ? '…' : 'Save'}
+                                    {saving === r.variety ? '…' : t('common.save')}
                                 </button>
                             </div>
                         </div>

@@ -18,6 +18,7 @@ import {
   AMBER_RATIO,
 } from '@/services/logisticsMetrics';
 import type { BacklogPoint, BinFillEvent, PickupRun, RunnerStats } from '@/services/logisticsMetrics';
+import { todayNZST } from '@/utils/nzst';
 
 export interface RecentEvent {
   id: string;
@@ -78,7 +79,7 @@ export function useLogisticsHealth(): LogisticsHealthData {
   // Derivar PickupRuns sintéticos desde runners (Picker[])
   // Un run sintético por runner activo
   const pickupRuns = useMemo((): PickupRun[] => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayNZST();
 
     return runners.map((picker): PickupRun => {
       const hasTime = picker.hours > 0;

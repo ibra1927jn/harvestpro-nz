@@ -22,10 +22,11 @@ import ClickableRow from '@/components/primitives/ClickableRow';
 import TeamDrawer, { SelectedTeamData } from './TeamDrawer';
 import { useTranslation } from '@/i18n';
 import { TeamRanking } from '@/hooks/useWeeklyReport';
+import { formatNZDate } from '@/utils/nzFormat';
 
 const WeeklyReportView: React.FC = () => {
     const report = useWeeklyReport();
-    const { t, locale } = useTranslation();
+    const { t } = useTranslation();
     const [selectedTeam, setSelectedTeam] = useState<SelectedTeamData | null>(null);
 
     const buildTeamData = (team: TeamRanking): SelectedTeamData => {
@@ -84,7 +85,7 @@ const WeeklyReportView: React.FC = () => {
                 <div>
                     <h2 className="text-xl font-black text-text-main">{t('insights.weekly.title')}</h2>
                     <p className="text-xs text-text-muted">
-                        {report.orchard?.name || 'Orchard'} — {new Date().toLocaleDateString(locale === 'es' ? 'es-NZ' : 'en-NZ', { timeZone: 'Pacific/Auckland', weekday: 'long', month: 'long', day: 'numeric' })}
+                        {report.orchard?.name || t('runner.orchard')} — {formatNZDate(new Date(), 'weekday')}
                     </p>
                 </div>
                 <button
@@ -130,7 +131,7 @@ const WeeklyReportView: React.FC = () => {
                             <span aria-hidden="true" className="material-symbols-outlined text-3xl text-slate-300">leaderboard</span>
                         </div>
                         <p className="text-sm font-bold text-text-sub">{t('insights.weekly.no_teams')}</p>
-                        <p className="text-xs text-text-muted mt-1">Rankings appear as data flows in</p>
+                        <p className="text-xs text-text-muted mt-1">{t('mgr.rankings_empty')}</p>
                     </div>
                 ) : (
                     <div className="space-y-2">
@@ -168,7 +169,7 @@ const WeeklyReportView: React.FC = () => {
                             <span aria-hidden="true" className="material-symbols-outlined text-3xl text-slate-300">person_search</span>
                         </div>
                         <p className="text-sm font-bold text-text-sub">{t('insights.weekly.no_pickers')}</p>
-                        <p className="text-xs text-text-muted mt-1">Picker stats appear as scans are submitted</p>
+                        <p className="text-xs text-text-muted mt-1">{t('mgr.picker_stats_empty')}</p>
                     </div>
                 ) : (
                     <div className="space-y-1">

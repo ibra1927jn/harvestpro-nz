@@ -14,6 +14,7 @@ import OrchardMapView from './OrchardMapView';
 import { HeatMapView } from './HeatMapView';
 import RowListView from './RowListView';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
+import { useTranslation } from '@/i18n';
 
 type MapMode = 'tactical' | 'heatmap' | 'list';
 
@@ -28,9 +29,9 @@ interface MapToggleViewProps {
 }
 
 const MODES: { id: MapMode; label: string; icon: string }[] = [
-    { id: 'tactical', label: 'Táctico', icon: 'strategy' },
-    { id: 'heatmap', label: 'Calor', icon: 'local_fire_department' },
-    { id: 'list', label: 'Lista', icon: 'list_alt' },
+    { id: 'tactical', label: 'map.tactical', icon: 'strategy' },
+    { id: 'heatmap', label: 'map.heat', icon: 'local_fire_department' },
+    { id: 'list', label: 'map.list', icon: 'list_alt' },
 ];
 
 const MapToggleView: React.FC<MapToggleViewProps> = ({
@@ -42,6 +43,7 @@ const MapToggleView: React.FC<MapToggleViewProps> = ({
     setActiveTab,
     onRowClick,
 }) => {
+    const { t } = useTranslation();
     const [mode, setMode] = useState<MapMode>('tactical');
 
     // La vista de lista cuenta pickers por fila: pickers trabajando ahora (antes recibía los runners)
@@ -62,7 +64,7 @@ const MapToggleView: React.FC<MapToggleViewProps> = ({
                                 }`}
                         >
                             <span aria-hidden="true" className="material-symbols-outlined text-base">{m.icon}</span>
-                            {m.label}
+                            {t(m.label)}
                         </button>
                     ))}
                 </div>

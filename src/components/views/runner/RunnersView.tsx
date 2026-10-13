@@ -2,12 +2,14 @@ import { selectPresentPickers } from '@/services/harvestMetrics/roster';
 import React from 'react';
 import { useHarvestStore as useHarvest } from '@/stores/useHarvestStore';
 import EmptyState from '@/components/ui/EmptyState';
+import { useTranslation } from '@/i18n';
 
 interface RunnersViewProps {
     onBack: () => void;
 }
 
 const RunnersView: React.FC<RunnersViewProps> = ({ onBack }) => {
+    const { t } = useTranslation();
     const { crew, orchard } = useHarvest();
 
     // Pickers trabajando ahora (fichados y sin salida) — misma regla que Panel y Mapa
@@ -20,7 +22,7 @@ const RunnersView: React.FC<RunnersViewProps> = ({ onBack }) => {
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500/10 blur-3xl pointer-events-none"></div>
 
             <header className="pt-10 pb-6 px-6 flex items-center justify-between z-20 bg-white/70 backdrop-blur-xl sticky top-0 border-b border-white/50 shadow-[0_4px_30px_-5px_rgba(0,0,0,0.05)]">
-                <button aria-label="Back"
+                <button aria-label={t('common.back')}
                     onClick={onBack}
                     className="size-11 flex items-center justify-center rounded-2xl bg-white/80 border border-white/60 shadow-sm text-slate-600 active:scale-95 transition-all hover:bg-white hover:text-primary hover:shadow-md"
                 >
@@ -28,22 +30,22 @@ const RunnersView: React.FC<RunnersViewProps> = ({ onBack }) => {
                 </button>
                 <div className="text-center">
                     <h1 className="text-xl font-black bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent uppercase tracking-tight">
-                        Orchard Crew
+                        {t('runner.crew.title')}
                     </h1>
-                    <p className="text-[11px] text-primary font-bold tracking-widest uppercase mt-0.5">{orchard?.name || 'Live Ops'}</p>
+                    <p className="text-[11px] text-primary font-bold tracking-widest uppercase mt-0.5">{orchard?.name || t('runner.crew.live_ops')}</p>
                 </div>
                 <div className="size-11"></div> {/* Spacer for symmetry */}
             </header>
 
             <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5 z-10 pb-20 no-scrollbar relative">
                 <div className="flex items-center justify-between px-1 mb-2">
-                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Active Pickers</h2>
+                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('runner.crew.active_pickers')}</h2>
                     <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-full border border-emerald-100">
                         <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                         </span>
-                        <span className="text-emerald-700 font-bold text-[10px] uppercase tracking-wider">{activePickers.length} Checked In</span>
+                        <span className="text-emerald-700 font-bold text-[10px] uppercase tracking-wider">{t('runner.crew.checked_in_n', { n: activePickers.length })}</span>
                     </div>
                 </div>
 
@@ -66,7 +68,7 @@ const RunnersView: React.FC<RunnersViewProps> = ({ onBack }) => {
                                         <div className="flex items-center justify-center size-5 rounded-full bg-primary/10">
                                             <span aria-hidden="true" className="material-symbols-outlined text-[12px] text-primary filled">location_on</span>
                                         </div>
-                                        <span className="text-xs font-semibold text-slate-500 tracking-wide">Row {picker.current_row || '?'}</span>
+                                        <span className="text-xs font-semibold text-slate-500 tracking-wide">{t('runner.row_n', { n: picker.current_row || '?' })}</span>
                                     </div>
                                 </div>
                             </div>
@@ -77,10 +79,10 @@ const RunnersView: React.FC<RunnersViewProps> = ({ onBack }) => {
                         
                         <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100/50 flex items-center justify-between group-hover:bg-slate-50 transition-colors">
                             <div>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Buckets</p>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{t('runner.crew.buckets')}</p>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-2xl font-black text-slate-800 tracking-tight">{picker.total_buckets_today || 0}</span>
-                                    <span className="text-xs font-bold text-slate-400">units</span>
+                                    <span className="text-xs font-bold text-slate-400">{t('runner.crew.units')}</span>
                                 </div>
                             </div>
                             <div className="size-10 rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-primary">
@@ -94,13 +96,13 @@ const RunnersView: React.FC<RunnersViewProps> = ({ onBack }) => {
                     <div className="mt-8">
                         <EmptyState
                             icon="person_search"
-                            title="No Active Pickers"
+                            title={t('runner.crew.empty_title')}
                             subtitle={orchard?.name
-                                ? `No pickers are checked in at ${orchard.name} right now. They will appear here once they start working.`
-                                : 'You are not assigned to an orchard yet. Contact your manager to get assigned.'}
+                                ? t('runner.crew.empty_desc', { orchard: orchard.name })
+                                : t('runner.crew.no_orchard_desc')}
                             iconColor="text-emerald-400"
                             action={!orchard?.name ? {
-                                label: 'Go back',
+                                label: t('common.go_back'),
                                 onClick: onBack,
                                 icon: 'arrow_back',
                             } : undefined}

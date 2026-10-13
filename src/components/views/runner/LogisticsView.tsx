@@ -4,6 +4,7 @@ import { bucketsInBin } from '@/services/bin.service';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { avatarUrl } from '@/utils/avatarUrl';
 import type { RejectedScan } from '@/hooks/useRunnerData';
+import { useTranslation } from '@/i18n';
 
 interface LogisticsViewProps {
   onScan: (type?: 'BIN' | 'BUCKET') => void;
@@ -30,6 +31,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
   onRequestRefill,
   selectedBinId,
 }) => {
+  const { t } = useTranslation();
   const buckets = useHarvestStore(state => state.buckets);
   const bucketRecords = useHarvestStore(state => state.bucketRecords);
   // Cubetas en el bin activo (móvil + servidor, sin duplicar)
@@ -92,11 +94,11 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
       <header className="flex-none bg-white/70 backdrop-blur-xl z-30 border-b border-white/50 shadow-[0_4px_30px_-5px_rgba(0,0,0,0.05)] pt-6">
         <div className="flex flex-wrap gap-y-2 items-center px-6 py-4 justify-between">
           <div>
-            <h1 className="text-2xl font-black bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent tracking-tight">Logistics Hub</h1>
-            <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">Runner Operations</p>
+            <h1 className="text-2xl font-black bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent tracking-tight">{t('runner.hub.title')}</h1>
+            <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">{t('runner.hub.subtitle')}</p>
           </div>
           <div className="flex items-center gap-3">
-            <button aria-label="Notifications"
+            <button aria-label={t('settings.notifications')}
               onClick={() => onBroadcast?.('Notification center requested')}
               className="relative flex items-center justify-center rounded-2xl size-11 bg-white/80 border border-white/60 shadow-sm text-slate-500 hover:text-primary transition-colors hover:shadow-md"
             >
@@ -106,7 +108,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
             <div className="size-11 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden border border-white/60 shadow-sm">
               <img
                 src={avatarUrl('Runner')}
-                alt="Avatar"
+                alt={t('common.avatar')}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -120,7 +122,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
               <div className="size-6 rounded-full bg-orange-100 flex items-center justify-center">
                 <span aria-hidden="true" className="material-symbols-outlined text-orange-600 text-[14px]">cloud_off</span>
               </div>
-              <p className="text-orange-800 text-sm font-bold tracking-tight">Offline Sync Pending</p>
+              <p className="text-orange-800 text-sm font-bold tracking-tight">{t('runner.offline_pending')}</p>
             </div>
             <div
               data-testid="sync-badge"
@@ -128,7 +130,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
             >
               <span aria-hidden="true" className="material-symbols-outlined text-orange-500 text-sm animate-spin-slow">sync</span>
               <span className="text-[10px] font-black text-orange-800 uppercase tracking-widest">
-                {pendingUploads} Pending
+                {t('runner.pending_n', { n: pendingUploads })}
               </span>
             </div>
           </div>
@@ -146,7 +148,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
               <span className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-red-600 text-[18px]" aria-hidden="true">error</span>
                 <span className="text-red-800 text-sm font-bold tracking-tight">
-                  {rejectedScans.length} {rejectedScans.length === 1 ? 'scan' : 'scans'} not accepted — tell your manager
+                  {t(rejectedScans.length === 1 ? 'runner.rejected_one' : 'runner.rejected_other', { n: rejectedScans.length })}
                 </span>
               </span>
               <span className="material-symbols-outlined text-red-500 text-[18px]" aria-hidden="true">
@@ -175,15 +177,15 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
           <div className="flex items-start justify-between mb-4">
             <div>
               <h2 className="text-3xl font-black text-slate-800 tracking-tight leading-none mb-1">
-                {selectedBinId ? `Bin ${activeBinCode}` : 'No Bin Selected'}
+                {selectedBinId ? t('runner.bin_code', { code: activeBinCode ?? '' }) : t('runner.no_bin')}
               </h2>
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                {selectedBinId ? 'Fill Progress' : 'Scan a bin to start'}
+                {selectedBinId ? t('runner.fill_progress') : t('runner.scan_bin_to_start')}
               </p>
             </div>
             <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border border-emerald-100/50 flex items-center gap-1">
                 <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Active
+                {t('common.active')}
             </div>
           </div>
           
@@ -206,7 +208,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
               <div className="absolute inset-0 flex flex-col items-center justify-center mt-1">
                 <span className="text-5xl font-black text-slate-800 tracking-tighter">{activeBinPercentage}%</span>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                  Filled
+                  {t('runner.filled')}
                 </span>
               </div>
             </div>
@@ -219,7 +221,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
               <span className="text-slate-500">{binCapacity}</span>
             </p>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-              Buckets in current bin
+              {t('runner.buckets_in_bin')}
             </p>
           </div>
         </div>
@@ -232,12 +234,12 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
             </div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                Sun Exposure
+                {t('runner.sun_exposure')}
               </p>
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
                 <p className="text-sm font-black text-emerald-600 uppercase tracking-wide">
-                  Safe Level
+                  {t('runner.safe_level')}
                 </p>
               </div>
             </div>
@@ -252,28 +254,28 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
         {/* Supply Management */}
         <div className="bg-white/80 backdrop-blur-md rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60">
           <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest mb-5">
-            Supply Management
+            {t('runner.supply')}
           </h3>
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="bg-gradient-to-b from-slate-50/80 to-slate-100/50 rounded-2xl p-4 border border-slate-100 hover:shadow-md transition-shadow">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Empty Bins</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">{t('runner.empty_bins')}</p>
               <div className="flex items-end justify-between">
                 <span className="text-3xl font-black text-slate-800 tracking-tight leading-none">{emptyBins}</span>
                 <span
                   className={`text-[9px] px-2 py-1 rounded-lg font-black uppercase tracking-widest ${emptyBins < 5 ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}
                 >
-                  {emptyBins < 5 ? 'Low' : 'Good'}
+                  {emptyBins < 5 ? t('runner.stock_low') : t('runner.stock_good')}
                 </span>
               </div>
             </div>
             <div className="bg-gradient-to-b from-slate-50/80 to-slate-100/50 rounded-2xl p-4 border border-slate-100 hover:shadow-md transition-shadow">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Empty Buckets</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">{t('runner.empty_buckets')}</p>
               <div className="flex items-end justify-between">
                 <span className="text-3xl font-black text-slate-800 tracking-tight leading-none">
                   {Math.max(10, emptyBins * 5)}
                 </span>
                 <span className="text-[9px] px-2 py-1 rounded-lg font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 border border-emerald-100">
-                    Stock OK
+                    {t('runner.stock_ok')}
                 </span>
               </div>
             </div>
@@ -283,7 +285,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
             className="w-full bg-slate-800 hover:bg-slate-700 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-[0_8px_16px_rgba(15,23,42,0.15)]"
           >
             <span aria-hidden="true" className="material-symbols-outlined text-[18px]">local_shipping</span>
-            Request Refill
+            {t('runner.request_refill')}
           </button>
         </div>
       </div>
@@ -296,14 +298,14 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
             className="flex-1 flex flex-col items-center justify-center py-4 bg-white/90 backdrop-blur-md border-2 border-primary/20 text-primary rounded-[1.25rem] font-black text-xs uppercase tracking-widest active:scale-95 shadow-[0_8px_30px_rgba(37,99,235,0.1)] hover:border-primary/50 transition-all"
           >
             <span aria-hidden="true" className="material-symbols-outlined mb-1.5 text-[28px]">crop_free</span>
-            Scan Bin
+            {t('runner.scan_bin')}
           </button>
           <button
             onClick={() => onScan('BUCKET')}
             className="flex-1 flex flex-col items-center justify-center py-4 bg-gradient-to-r from-primary to-blue-500 text-white rounded-[1.25rem] font-black text-xs uppercase tracking-widest shadow-[0_8px_20px_rgba(37,99,235,0.3)] hover:shadow-[0_12px_25px_rgba(37,99,235,0.4)] active:scale-95 transition-all"
           >
             <span aria-hidden="true" className="material-symbols-outlined mb-1.5 text-[28px]">label</span>
-            Scan Sticker
+            {t('runner.scan_sticker')}
           </button>
         </div>
       </div>

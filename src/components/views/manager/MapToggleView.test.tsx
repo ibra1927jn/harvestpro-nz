@@ -34,9 +34,9 @@ describe('MapToggleView', () => {
 
     it('renders toggle buttons', () => {
         render(<MapToggleView {...defaultProps} />);
-        expect(screen.getByText('Táctico')).toBeTruthy();
-        expect(screen.getByText('Calor')).toBeTruthy();
-        expect(screen.getByText('Lista')).toBeTruthy();
+        expect(screen.getByText('Tactical')).toBeTruthy();
+        expect(screen.getByText('Heat')).toBeTruthy();
+        expect(screen.getByText('List')).toBeTruthy();
     });
 
     it('shows tactical map by default', () => {
@@ -46,19 +46,19 @@ describe('MapToggleView', () => {
 
     it('switches to heat map', () => {
         render(<MapToggleView {...defaultProps} />);
-        fireEvent.click(screen.getByText('Calor'));
+        fireEvent.click(screen.getByText('Heat'));
         expect(screen.getByTestId('heat-map')).toBeTruthy();
     });
 
     it('switches to list view', () => {
         render(<MapToggleView {...defaultProps} />);
-        fireEvent.click(screen.getByText('Lista'));
+        fireEvent.click(screen.getByText('List'));
         expect(screen.getByTestId('row-list')).toBeTruthy();
     });
 
     it('passes blockName to RowListView', () => {
         render(<MapToggleView {...defaultProps} />);
-        fireEvent.click(screen.getByText('Lista'));
+        fireEvent.click(screen.getByText('List'));
         expect(screen.getByText('RowList - Block A')).toBeTruthy();
     });
 });

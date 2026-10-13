@@ -62,3 +62,26 @@ describe('i18n module', () => {
     });
   });
 });
+
+describe('interpolate / translate', () => {
+  it('replaces every {placeholder} it is given and leaves the others', async () => {
+    const { interpolate } = await import('./index');
+    expect(interpolate('{n} of {total} — {n}', { n: 3, total: 10 })).toBe('3 of 10 — 3');
+    expect(interpolate('Row {row}', {})).toBe('Row {row}');
+    expect(interpolate('$5', undefined)).toBe('$5');
+  });
+
+  it('translate() outside React follows the current app language, falling back to English', async () => {
+    const { translate, setCurrentLocale, translations } = await import('./index');
+    setCurrentLocale('es');
+    try {
+      expect(translate('common.retry')).toBe(translations.es['common.retry']);
+      expect(translate('assignModal.title', { row: 7 })).toBe(translations.es['assignModal.title'].replace('{row}', '7'));
+      expect(translate('assignModal.title', { row: 7 })).not.toContain('{row}');
+      expect(translate('no.such.key')).toBe('no.such.key');
+    } finally {
+      setCurrentLocale('en');
+    }
+    expect(translate('common.retry')).toBe('Retry');
+  });
+});

@@ -11,10 +11,13 @@ import { useMessaging } from '@/context/MessagingContext';
 import { useNavigate } from 'react-router-dom';
 import NotificationPanel from './NotificationPanel';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+import { useTranslation } from '@/i18n';
 
 export interface NavItem {
     id: string;
     label: string;
+    /** Clave de traducción del nombre (si está, gana a label) */
+    labelKey?: string;
     icon: string;
     badge?: number;
 }
@@ -47,7 +50,10 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
     titleIcon = 'dashboard',
     children,
 }) => {
+    const { t } = useTranslation();
     const { appUser, signOut } = useAuth();
+    // Nombres de las secciones en el idioma de la app
+    navItems = navItems.map(i => (i.labelKey ? { ...i, label: t(i.labelKey) } : i));
     const { unreadCount } = useMessaging();
     const navigate = useNavigate();
     // Persiste el estado del sidebar en localStorage para que no se resetee al navegar entre páginas
@@ -104,7 +110,7 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto" aria-label="Main navigation">
+                <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto" aria-label={t('shell.main_nav')}>
                     {navItems.map((item) => {
                         const isActive = activeTab === item.id;
                         return (
@@ -146,7 +152,7 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                             try { localStorage.setItem('sidebar-collapsed', String(next)); } catch { /* quota */ }
                         }}
                         className="w-full flex items-center justify-center p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
-                        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                        aria-label={collapsed ? t('shell.expand_sidebar') : t('shell.collapse_sidebar')}
                     >
                         <span aria-hidden="true" className="material-symbols-outlined text-[18px]">
                             {collapsed ? 'chevron_right' : 'chevron_left'}
@@ -161,7 +167,7 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                         </div>
                         {!collapsed && (
                             <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-slate-700 truncate">{appUser?.full_name || 'User'}</p>
+                                <p className="text-xs font-semibold text-slate-700 truncate">{appUser?.full_name || t('shell.user')}</p>
                                 <p className="text-[10px] text-slate-400 truncate">{appUser?.email}</p>
                             </div>
                         )}
@@ -177,7 +183,7 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                     <button
                         className="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100"
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                        aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                        aria-label={mobileMenuOpen ? t('shell.close_menu') : t('shell.open_menu')}
                         aria-expanded={mobileMenuOpen}
                     >
                         <span aria-hidden="true" className="material-symbols-outlined text-[22px]">
@@ -202,7 +208,7 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                             <button
                                 onClick={() => setShowNotifications(!showNotifications)}
                                 className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 relative"
-                                aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
+                                aria-label={unreadCount > 0 ? t('shell.notifications_unread', { n: unreadCount }) : t('settings.notifications')}
                             >
                                 <span aria-hidden="true" className="material-symbols-outlined text-[20px]">notifications</span>
                                 {unreadCount > 0 && (
@@ -221,8 +227,8 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                         <button
                             onClick={handleSignOut}
                             className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50"
-                            title="Sign Out"
-                            aria-label="Sign out"
+                            title={t('common.sign_out')}
+                            aria-label={t('common.sign_out')}
                         >
                             <span aria-hidden="true" className="material-symbols-outlined text-[20px]">logout</span>
                         </button>
@@ -244,7 +250,7 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                         ref={drawerRef}
                         role="dialog"
                         aria-modal="true"
-                        aria-label="Menu"
+                        aria-label={t('shell.menu')}
                         className="absolute left-0 top-0 h-full w-[280px] bg-white shadow-xl flex flex-col"
                     >
                         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100">
@@ -257,7 +263,7 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                                     <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">{title}</p>
                                 </div>
                             </div>
-                            <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-slate-400" aria-label="Close menu">
+                            <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-slate-400" aria-label={t('shell.close_menu')}>
                                 <span aria-hidden="true" className="material-symbols-outlined">close</span>
                             </button>
                         </div>
@@ -296,17 +302,17 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                                     </span>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-slate-700 truncate">{appUser?.full_name || 'User'}</p>
+                                    <p className="text-sm font-semibold text-slate-700 truncate">{appUser?.full_name || t('shell.user')}</p>
                                     <p className="text-xs text-slate-400 truncate">{appUser?.email}</p>
                                 </div>
                             </div>
                             <button
                                 onClick={handleSignOut}
                                 className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
-                                aria-label="Sign out"
+                                aria-label={t('common.sign_out')}
                             >
                                 <span aria-hidden="true" className="material-symbols-outlined text-[18px]">logout</span>
-                                Sign Out
+                                {t('common.sign_out')}
                             </button>
                         </div>
                     </aside>

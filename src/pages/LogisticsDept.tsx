@@ -15,6 +15,7 @@ import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import { useLogistics } from '@/hooks/useLogistics';
 import { LOG_NAV_ITEMS } from '@/config/navigation/logistics.nav';
+import { useTranslation } from '@/i18n';
 
 // Lazy-loaded views (code-split for performance)
 const FleetTab = React.lazy(() => import('@/components/views/logistics/FleetTab'));
@@ -29,6 +30,7 @@ const TabLoader = () => (
 );
 
 const LogisticsDept: React.FC = () => {
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('fleet');
     const { summary, tractors, bins, requests, history, isLoading, reload } = useLogistics();
 
@@ -68,8 +70,8 @@ const LogisticsDept: React.FC = () => {
             mobileTabs={navItems}
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            title="Logistics"
-            subtitle="Fleet & bins"
+            title={t('roles.logistics')}
+            subtitle={t('logi.subtitle')}
             accentColor="teal"
             titleIcon="local_shipping"
         >
@@ -77,26 +79,26 @@ const LogisticsDept: React.FC = () => {
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-3 mb-4">
                 <span className="size-2.5 bg-emerald-500 rounded-full animate-pulse" />
                 <p className="text-sm font-medium text-emerald-800">
-                    {summary.activeTractors} Tractors Active • {summary.binsInTransit} Bins in Transit
+                    {t('logi.live_status', { tractors: summary.activeTractors, bins: summary.binsInTransit })}
                 </p>
             </div>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
                 <SummaryCard
-                    icon="inventory_2" iconColor="text-red-500" label="Full Bins"
+                    icon="inventory_2" iconColor="text-red-500" label={t('logi.full_bins')}
                     value={summary.fullBins}
                     progress={(summary.fullBins / totalBins) * 100}
                     progressColor="bg-red-400"
                 />
                 <SummaryCard
-                    icon="check_box_outline_blank" iconColor="text-emerald-500" label="Empty Bins"
+                    icon="check_box_outline_blank" iconColor="text-emerald-500" label={t('runner.empty_bins')}
                     value={summary.emptyBins}
                     progress={(summary.emptyBins / totalBins) * 100}
                     progressColor="bg-emerald-400"
                 />
-                <SummaryCard icon="agriculture" iconColor="text-indigo-500" label="Active Tractors" value={summary.activeTractors} />
-                <SummaryCard icon="swap_horiz" iconColor="text-amber-500" label="Transport Requests" value={summary.pendingRequests} />
+                <SummaryCard icon="agriculture" iconColor="text-indigo-500" label={t('logi.active_tractors')} value={summary.activeTractors} />
+                <SummaryCard icon="swap_horiz" iconColor="text-amber-500" label={t('logi.transport_requests')} value={summary.pendingRequests} />
             </div>
 
             {/* Tab Content */}

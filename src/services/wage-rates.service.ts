@@ -12,6 +12,7 @@
 
 import { supabase } from '@/services/supabase';
 import { logger } from '@/utils/logger';
+import { todayNZST } from '@/utils/nzst';
 import {
   NZ_DEFAULT_WAGE_RATES,
   NZ_MINIMUM_WAGE_2026,
@@ -53,7 +54,8 @@ async function fetchFromDB(orchardId: string): Promise<WageRate[]> {
     .from('wage_rates')
     .select('*')
     .eq('orchard_id', orchardId)
-    .lte('effective_from', new Date().toISOString().split('T')[0])
+    // Día de NZ: con la fecha UTC, una tarifa nueva no se aplicaba hasta las 12:00/13:00 de NZ
+    .lte('effective_from', todayNZST())
     .order('effective_from', { ascending: false });
 
   if (error) {

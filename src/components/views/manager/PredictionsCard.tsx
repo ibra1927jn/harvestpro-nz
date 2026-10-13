@@ -11,13 +11,14 @@ import { useTranslation } from '@/i18n';
 import { useAuth } from '@/context/AuthContext';
 import { predictionsService, type PredictionDashboard } from '@/services/predictions.service';
 import { Tab } from '@/types';
+import { formatNZDate } from '@/utils/nzFormat';
 
 interface PredictionsCardProps {
   setActiveTab: (tab: Tab) => void;
 }
 
 export default function PredictionsCard({ setActiveTab }: PredictionsCardProps) {
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
   const { orchardId } = useAuth();
   const [dashboard, setDashboard] = useState<PredictionDashboard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,7 +70,7 @@ export default function PredictionsCard({ setActiveTab }: PredictionsCardProps) 
           <button
             onClick={() => setActiveTab('analytics')}
             className="w-7 h-7 rounded-full bg-orange-100 hover:bg-orange-200 flex items-center justify-center transition-colors"
-            aria-label="View Insights & Analytics"
+            aria-label={t('mgr.view_insights')}
           >
             <span aria-hidden="true" className="material-symbols-outlined text-orange-500 text-sm">arrow_forward</span>
           </button>
@@ -111,7 +112,7 @@ export default function PredictionsCard({ setActiveTab }: PredictionsCardProps) 
                 style={{ height: `${height}px`, opacity: yp.confidence }}
               />
               <span className="text-[9px] text-slate-400">
-                {new Intl.DateTimeFormat(locale, { month: 'numeric', day: 'numeric' }).format(new Date(yp.date + 'T12:00:00'))}
+                {formatNZDate(yp.date, 'dayMonthNumeric')}
               </span>
             </div>
           );

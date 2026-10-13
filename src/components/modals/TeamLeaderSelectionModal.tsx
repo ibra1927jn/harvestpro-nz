@@ -16,6 +16,7 @@ import {
     type StaffInfo,
 } from './staff-selection/staffSelectionLogic';
 import { StaffRow } from './staff-selection/StaffRow';
+import { useTranslation } from '@/i18n';
 
 
 interface TeamLeaderSelectionModalProps {
@@ -35,6 +36,7 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
     onAdd,
     onRemoveUser
 }) => {
+    const { t } = useTranslation();
     const [staff, setStaff] = useState<StaffInfo[]>([]);
     const [loading, setLoading] = useState(false);
     const [assigning, setAssigning] = useState(false);
@@ -140,10 +142,10 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
             setStaff(prev => prev.map(s =>
                 s.id === userId ? { ...s, orchard_id: undefined } : s
             ));
-            showToast('Staff member unlinked.', 'success');
+            showToast(t('staff.unlinked'), 'success');
         } catch (err) {
             logger.error('Failed to unlink from modal:', err);
-            showToast('Failed to unlink staff member.', 'error');
+            showToast(t('staff.unlink_failed'), 'error');
         } finally {
             setUnlinkingId(null);
         }
@@ -155,12 +157,12 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-border-light">
                     <div>
-                        <h3 className="text-xl font-black text-text-main">Link Staff to Orchard</h3>
+                        <h3 className="text-xl font-black text-text-main">{t('staff.title')}</h3>
                         <p className="text-xs text-text-muted mt-1">
-                            Select staff to assign — you can link multiple at once
+                            {t('staff.subtitle')}
                         </p>
                     </div>
-                    <button aria-label="Close" onClick={onClose} className="text-text-muted hover:text-text-main transition-colors">
+                    <button aria-label={t('common.close')} onClick={onClose} className="text-text-muted hover:text-text-main transition-colors">
                         <span aria-hidden="true" className="material-symbols-outlined">close</span>
                     </button>
                 </div>
@@ -175,11 +177,11 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onMouseDown={(e) => e.stopPropagation()}
-                            placeholder="Search by name..."
+                            placeholder={t('staff.search')}
                             className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-border-light bg-white text-sm text-text-main placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-all"
                         />
                         {searchQuery && (
-                            <button aria-label="Clear search"
+                            <button aria-label={t('ui.clear_search')}
                                 onClick={() => { setSearchQuery(''); searchRef.current?.focus(); }}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-text-main transition-colors"
                             >
@@ -193,9 +195,9 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                 <div className="px-6 py-3 flex items-center justify-between border-b border-border-light bg-slate-50/50">
                     <div className="flex gap-2">
                         {([
-                            { key: 'all' as const, label: 'All', icon: 'people' },
-                            { key: 'team_leader' as const, label: 'Leaders', icon: 'groups' },
-                            { key: 'runner' as const, label: 'Runners', icon: 'local_shipping' },
+                            { key: 'all' as const, label: t('staff.filter_all'), icon: 'people' },
+                            { key: 'team_leader' as const, label: t('staff.filter_leaders'), icon: 'groups' },
+                            { key: 'runner' as const, label: t('staff.filter_runners'), icon: 'local_shipping' },
                         ]).map(tab => (
                             <button
                                 key={tab.key}
@@ -215,14 +217,14 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                             onClick={selectAll}
                             className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
                         >
-                            Select All
+                            {t('staff.select_all')}
                         </button>
                         <span className="text-slate-300">|</span>
                         <button
                             onClick={clearSelection}
                             className="text-[11px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
                         >
-                            Clear
+                            {t('ui.clear')}
                         </button>
                     </div>
                 </div>
@@ -232,7 +234,7 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                     {loading ? (
                         <div className="text-center py-8">
                             <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                            <p className="text-sm text-text-muted">Loading staff roster...</p>
+                            <p className="text-sm text-text-muted">{t('staff.loading')}</p>
                         </div>
                     ) : filteredStaff.length === 0 ? (
                         <div className="text-center py-8 text-text-muted">
@@ -262,12 +264,12 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                 {/* Footer with count + Link button */}
                 <div className="px-6 py-4 border-t border-border-light bg-slate-50/50 flex items-center justify-between">
                     <span className="text-xs text-slate-400 font-medium">
-                        {filteredStaff.length} staff • {countRole(staff, 'team_leader')} leaders • {countRole(staff, 'runner')} runners
+                        {t('staff.counts', { n: filteredStaff.length, leaders: countRole(staff, 'team_leader'), runners: countRole(staff, 'runner') })}
                     </span>
                     <div className="flex items-center gap-3">
                         {selectedIds.size > 0 && (
                             <span className="text-xs font-bold text-indigo-600">
-                                {selectedIds.size} selected
+                                {t('staff.selected', { n: selectedIds.size })}
                             </span>
                         )}
                         <button
@@ -283,12 +285,12 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                             {assigning ? (
                                 <>
                                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    Linking...
+                                    {t('staff.linking')}
                                 </>
                             ) : (
                                 <>
                                     <span aria-hidden="true" className="material-symbols-outlined text-sm">link</span>
-                                    Link {selectedIds.size > 0 ? `(${selectedIds.size})` : 'Selected'}
+                                    {selectedIds.size > 0 ? t('staff.link_n', { n: selectedIds.size }) : t('staff.link_selected')}
                                 </>
                             )}
                         </button>

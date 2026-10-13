@@ -9,8 +9,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { apiKeysService, type APIKey, type APIScope } from '@/services/api-keys.service';
+import { formatNZDate } from '@/utils/nzFormat';
+import { useTranslation } from '@/i18n';
 
 export default function APIKeysView() {
+  const { t } = useTranslation();
   const { orchardId } = useAuth();
   const [keys, setKeys] = useState<APIKey[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +56,7 @@ export default function APIKeysView() {
   };
 
   const handleRevoke = async (keyId: string) => {
-    if (!confirm('Are you sure you want to revoke this API key?')) return;
+    if (!confirm(t('apikeys.confirm_revoke'))) return;
     await apiKeysService.revokeKey(keyId);
     await loadKeys();
   };
@@ -71,14 +74,14 @@ export default function APIKeysView() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-text-main flex items-center gap-2">
           <span aria-hidden="true" className="material-symbols-outlined text-indigo-600">key</span>
-          API Keys
+          {t('apikeys.title')}
         </h2>
         <button
           onClick={() => setShowCreate(true)}
           className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-xl font-medium hover:bg-indigo-700 transition-colors flex items-center gap-1"
         >
           <span aria-hidden="true" className="material-symbols-outlined text-base">add</span>
-          New Key
+          {t('apikeys.new')}
         </button>
       </div>
 
@@ -86,7 +89,7 @@ export default function APIKeysView() {
       {createdKey && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
           <p className="text-sm font-medium text-emerald-700 mb-2">
-            ✅ API key created! Copy it now — it won't be shown again.
+            ✅ {t('apikeys.created_banner')}
           </p>
           <div className="flex items-center gap-2">
             <code className="flex-1 text-xs bg-white px-3 py-2 rounded-lg border font-mono break-all">
@@ -98,14 +101,14 @@ export default function APIKeysView() {
               }}
               className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700"
             >
-              Copy
+              {t('common.copy')}
             </button>
           </div>
           <button
             onClick={() => setCreatedKey(null)}
             className="text-xs text-emerald-600 mt-2 hover:underline"
           >
-            Dismiss
+            {t('apikeys.dismiss')}
           </button>
         </div>
       )}
@@ -113,20 +116,20 @@ export default function APIKeysView() {
       {/* Create Key Form */}
       {showCreate && (
         <div className="bg-white rounded-2xl p-5 border border-border-light shadow-sm">
-          <h3 className="font-semibold mb-3">Create New API Key</h3>
+          <h3 className="font-semibold mb-3">{t('apikeys.create_title')}</h3>
           <div className="space-y-3">
             <div>
-              <label className="text-xs text-slate-500 block mb-1">Key Name</label>
+              <label className="text-xs text-slate-500 block mb-1">{t('apikeys.name')}</label>
               <input
                 type="text"
                 value={newKeyName}
                 onChange={e => setNewKeyName(e.target.value)}
-                placeholder="e.g. Xero Integration"
+                placeholder={t('apikeys.name_placeholder')}
                 className="w-full px-3 py-2 border rounded-lg text-sm"
               />
             </div>
             <div>
-              <label className="text-xs text-slate-500 block mb-1">Scopes</label>
+              <label className="text-xs text-slate-500 block mb-1">{t('apikeys.scopes')}</label>
               <div className="grid grid-cols-2 gap-2">
                 {availableScopes.map(s => (
                   <label
@@ -148,19 +151,19 @@ export default function APIKeysView() {
               </div>
             </div>
             <div>
-              <label className="text-xs text-slate-500 block mb-1">Expires In</label>
+              <label className="text-xs text-slate-500 block mb-1">{t('apikeys.expires_in')}</label>
               <select
-                title="API key expiry period"
+                title={t('apikeys.expiry_title')}
                 value={newKeyExpiry ?? 'never'}
                 onChange={e =>
                   setNewKeyExpiry(e.target.value === 'never' ? undefined : Number(e.target.value))
                 }
                 className="w-full px-3 py-2 border rounded-lg text-sm"
               >
-                <option value="30">30 days</option>
-                <option value="90">90 days</option>
-                <option value="365">1 year</option>
-                <option value="never">Never</option>
+                <option value="30">{t('apikeys.days', { n: 30 })}</option>
+                <option value="90">{t('apikeys.days', { n: 90 })}</option>
+                <option value="365">{t('apikeys.one_year')}</option>
+                <option value="never">{t('apikeys.never')}</option>
               </select>
             </div>
             <div className="flex gap-2">
@@ -169,13 +172,13 @@ export default function APIKeysView() {
                 disabled={creating || !newKeyName.trim()}
                 className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50"
               >
-                {creating ? 'Creating...' : 'Create Key'}
+                {creating ? t('apikeys.creating') : t('apikeys.create')}
               </button>
               <button
                 onClick={() => setShowCreate(false)}
                 className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -192,7 +195,7 @@ export default function APIKeysView() {
       ) : keys.length === 0 ? (
         <div className="text-center py-12 text-slate-400">
           <span aria-hidden="true" className="material-symbols-outlined text-4xl mb-2 block">key_off</span>
-          <p className="text-sm">No API keys yet. Create one to enable integrations.</p>
+          <p className="text-sm">{t('apikeys.empty')}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -214,10 +217,10 @@ export default function APIKeysView() {
                     onClick={() => handleRevoke(key.id)}
                     className="text-xs text-red-500 hover:text-red-700 font-medium"
                   >
-                    Revoke
+                    {t('apikeys.revoke')}
                   </button>
                 ) : (
-                  <span className="text-xs text-red-500 font-medium">Revoked</span>
+                  <span className="text-xs text-red-500 font-medium">{t('apikeys.revoked')}</span>
                 )}
               </div>
               <div className="flex flex-wrap gap-1 mb-2">
@@ -231,13 +234,13 @@ export default function APIKeysView() {
                 ))}
               </div>
               <div className="flex items-center gap-3 text-[10px] text-slate-400">
-                <span>Created {new Date(key.created_at).toLocaleDateString(undefined, { timeZone: 'Pacific/Auckland' })}</span>
-                <span>{key.request_count} requests</span>
+                <span>{t('apikeys.created_on', { date: formatNZDate(key.created_at) })}</span>
+                <span>{t('apikeys.requests', { n: key.request_count })}</span>
                 {key.last_used_at && (
-                  <span>Last used {new Date(key.last_used_at).toLocaleDateString(undefined, { timeZone: 'Pacific/Auckland' })}</span>
+                  <span>{t('apikeys.last_used', { date: formatNZDate(key.last_used_at) })}</span>
                 )}
                 {key.expires_at && (
-                  <span>Expires {new Date(key.expires_at).toLocaleDateString(undefined, { timeZone: 'Pacific/Auckland' })}</span>
+                  <span>{t('apikeys.expires_on', { date: formatNZDate(key.expires_at) })}</span>
                 )}
               </div>
             </div>

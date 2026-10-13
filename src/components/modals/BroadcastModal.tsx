@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import ModalOverlay from '@/components/ui/ModalOverlay';
+import { useTranslation } from '@/i18n';
 
 interface BroadcastModalProps {
     onClose: () => void;
@@ -12,6 +13,7 @@ interface BroadcastModalProps {
 }
 
 const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose, onSend }) => {
+    const { t } = useTranslation();
     const [title, setTitle] = useState('');
     const [message, setMessage] = useState('');
     const [priority, setPriority] = useState<'normal' | 'high' | 'urgent'>('normal');
@@ -39,45 +41,45 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose, onSend }) => {
                             <span aria-hidden="true" className="material-symbols-outlined text-primary text-2xl">campaign</span>
                         </div>
                         <div>
-                            <h3 className="text-xl font-black text-text-main">New Broadcast</h3>
-                            <p className="text-xs text-text-muted">Send to all field staff</p>
+                            <h3 className="text-xl font-black text-text-main">{t('broadcast.new')}</h3>
+                            <p className="text-xs text-text-muted">{t('broadcast.to_all_field')}</p>
                         </div>
                     </div>
-                    <button aria-label="Close" onClick={onClose} className="text-text-muted hover:text-text-main transition-colors">
+                    <button aria-label={t('common.close')} onClick={onClose} className="text-text-muted hover:text-text-main transition-colors">
                         <span aria-hidden="true" className="material-symbols-outlined">close</span>
                     </button>
                 </div>
 
                 <div className="space-y-4">
                     <div>
-                        <label className="text-xs font-bold text-text-muted uppercase mb-2 block">Title</label>
+                        <label className="text-xs font-bold text-text-muted uppercase mb-2 block">{t('broadcast.title_label')}</label>
                         <input
                             type="text"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            placeholder="e.g. Weather Alert"
+                            placeholder={t('broadcast.title_example')}
                             className="w-full bg-slate-50 border border-border-light rounded-xl px-4 py-3 text-text-main focus:border-primary outline-none transition-colors"
                         />
                     </div>
 
                     <div>
-                        <label className="text-xs font-bold text-text-muted uppercase mb-2 block">Message</label>
+                        <label className="text-xs font-bold text-text-muted uppercase mb-2 block">{t('pd.message')}</label>
                         <textarea
                             value={message}
                             onChange={(e) => setMessage(e.target.value)}
-                            placeholder="Type your broadcast message..."
+                            placeholder={t('broadcast.message_placeholder')}
                             rows={4}
                             className="w-full bg-slate-50 border border-border-light rounded-xl px-4 py-3 text-text-main focus:border-primary outline-none resize-none transition-colors"
                         />
                     </div>
 
                     <div>
-                        <label className="text-xs font-bold text-text-muted uppercase mb-2 block">Priority</label>
+                        <label className="text-xs font-bold text-text-muted uppercase mb-2 block">{t('broadcast.priority')}</label>
                         <div className="grid grid-cols-3 gap-2">
                             {[
-                                { value: 'normal', label: 'Normal', color: 'bg-slate-500' },
-                                { value: 'high', label: 'High', color: 'bg-warning' },
-                                { value: 'urgent', label: 'Urgent', color: 'bg-danger' },
+                                { value: 'normal', label: t('chat.priority.normal'), color: 'bg-slate-500' },
+                                { value: 'high', label: t('chat.priority.high'), color: 'bg-warning' },
+                                { value: 'urgent', label: t('chat.priority.urgent'), color: 'bg-danger' },
                             ].map((p) => (
                                 <button
                                     key={p.value}
@@ -97,7 +99,7 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose, onSend }) => {
                     {priority === 'urgent' && (
                         <div className="bg-red-50 border border-red-200 rounded-xl p-3">
                             <p className="text-xs text-danger">
-                                ⚠️ Urgent broadcasts will trigger push notifications and audio alerts on all devices.
+                                ⚠️ {t('broadcast.urgent_warning')}
                             </p>
                         </div>
                     )}
@@ -108,7 +110,7 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose, onSend }) => {
                     disabled={!title.trim() || !message.trim() || isSending}
                     className="w-full mt-6 py-4 gradient-primary glow-primary text-white rounded-xl font-bold uppercase tracking-widest disabled:bg-surface-tertiary disabled:shadow-none active:scale-[0.98] transition-all"
                 >
-                    {isSending ? 'Sending...' : 'Send Broadcast'}
+                    {isSending ? t('broadcast.sending') : t('broadcast.send')}
                 </button>
             </div>
         </ModalOverlay>

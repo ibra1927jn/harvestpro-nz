@@ -115,7 +115,7 @@ const PickerDrawerToday: React.FC<PickerDrawerTodayProps> = ({
                             <p className="text-[10px] text-slate-400 mb-0.5">{t('panel.picker.team')}</p>
                             <p className="text-xs font-bold text-slate-900">
                                 {picker.team_leader_id
-                                    ? (crew.find(c => c.id === picker.team_leader_id)?.name || 'Assigned')
+                                    ? (crew.find(c => c.id === picker.team_leader_id)?.name || t('pd.assigned'))
                                     : t('panel.picker.no_team')}
                             </p>
                         </div>

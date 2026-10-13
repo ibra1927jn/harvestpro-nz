@@ -155,5 +155,27 @@ describe('Analytics Service', () => {
             });
         });
     });
+
+    describe('NZ time whatever the device time zone', () => {
+        const realTz = process.env.TZ;
+        beforeEach(() => {
+            process.env.TZ = 'UTC'; // portátil/móvil con otra zona
+            vi.setSystemTime(new Date('2026-10-13T03:30:00Z')); // 16:30 en NZ (NZDT)
+        });
+        afterEach(() => { process.env.TZ = realTz; });
+
+        it('labels and buckets the velocity chart by NZ hours', () => {
+            const records = [{ scanned_at: '2026-10-13T03:10:00Z' }, { scanned_at: '2026-10-13T02:59:00Z' }] as BucketRecord[];
+            const result = analyticsService.groupByHour(records, 2);
+            expect(result).toEqual([{ hour: '15:00', count: 1 }, { hour: '16:00', count: 1 }]);
+        });
+
+        it('computes the ETA and the end of shift in NZ time', () => {
+            // faltan 2 h → 18:30 NZ, después del fin de turno (17:00 NZ)
+            const result = analyticsService.calculateETA(0, 2, 72, 72, '17:00');
+            expect(result.eta).toBe('18:30');
+            expect(result.status).toBe('behind');
+        });
+    });
 });
 

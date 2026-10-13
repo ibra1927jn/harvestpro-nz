@@ -38,6 +38,10 @@ jobs:
         if: matrix.shard == '1/5'
         run: npm run test:mock-guard
 
+      - name: Translations (keys in all locales, placeholders, no new hard-coded text)
+        if: matrix.shard == '1/5'
+        run: npm run i18n:check
+
       - name: Test (shard ${{ matrix.shard }})
         run: npx vitest run --config vitest.config.ci.ts --shard=${{ matrix.shard }}
         env:

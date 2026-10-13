@@ -9,6 +9,8 @@ import { GradeDistribution } from '@/services/qc.service';
 import { Picker } from '@/types';
 import DistributionBar from './DistributionBar';
 import { usePhotoCapture } from '@/hooks/usePhotoCapture';
+import { useTranslation } from '@/i18n';
+import { gradeLabel } from './gradeLabel';
 
 type QualityGrade = 'A' | 'B' | 'C' | 'reject';
 
@@ -21,27 +23,28 @@ interface GradeConfig {
     icon: React.ReactNode;
 }
 
+// label / sublabel = claves de traducción
 const GRADE_CONFIG: Record<QualityGrade, GradeConfig> = {
     A: {
-        label: 'Grade A', sublabel: 'Export',
+        label: 'panel.quality.grade_a', sublabel: 'qc.export',
         color: 'text-emerald-700', bg: 'bg-emerald-50/50 hover:bg-emerald-50',
         border: 'border border-emerald-200/60 shadow-[0_4px_12px_rgba(16,185,129,0.08)]',
         icon: <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span>,
     },
     B: {
-        label: 'Grade B', sublabel: 'Domestic',
+        label: 'panel.quality.grade_b', sublabel: 'qc.domestic',
         color: 'text-blue-700', bg: 'bg-blue-50/50 hover:bg-blue-50',
         border: 'border border-blue-200/60 shadow-[0_4px_12px_rgba(59,130,246,0.08)]',
         icon: <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-blue-500">check_circle</span>,
     },
     C: {
-        label: 'Grade C', sublabel: 'Process',
+        label: 'panel.quality.grade_c', sublabel: 'qc.process',
         color: 'text-amber-700', bg: 'bg-amber-50/50 hover:bg-amber-50',
         border: 'border border-amber-200/60 shadow-[0_4px_12px_rgba(245,158,11,0.08)]',
         icon: <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-amber-500">warning</span>,
     },
     reject: {
-        label: 'Reject', sublabel: 'Discard',
+        label: 'qc.reject', sublabel: 'qc.discard',
         color: 'text-red-700', bg: 'bg-red-50/50 hover:bg-red-50',
         border: 'border border-red-200/60 shadow-[0_4px_12px_rgba(239,68,68,0.08)]',
         icon: <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-red-500">cancel</span>,
@@ -68,6 +71,7 @@ export default function InspectTab({
     crew, distribution, selectedPicker, setSelectedPicker,
     notes, setNotes, isSubmitting, lastGrade, gradeError, onGrade, onAutoAdvance,
 }: InspectTabProps) {
+    const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = React.useState('');
     const [turboMode, setTurboMode] = React.useState(false);
     const { capturePhoto, photoBlob, photoPreview, isCapturing, clearPhoto } = usePhotoCapture();
@@ -106,8 +110,8 @@ export default function InspectTab({
                         <span aria-hidden="true" className="material-symbols-outlined text-[24px] text-orange-500">bolt</span>
                     </div>
                     <div>
-                        <p className="text-sm font-extrabold text-orange-900 tracking-tight">Turbo Mode</p>
-                        <p className="text-[10px] font-bold text-orange-600/80 uppercase tracking-widest mt-0.5">Auto-advance + haptic + max buttons</p>
+                        <p className="text-sm font-extrabold text-orange-900 tracking-tight">{t('qc.turbo')}</p>
+                        <p className="text-[10px] font-bold text-orange-600/80 uppercase tracking-widest mt-0.5">{t('qc.turbo_desc')}</p>
                     </div>
                 </div>
                 <button
@@ -115,7 +119,7 @@ export default function InspectTab({
                     className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors duration-300 ${turboMode ? 'bg-orange-500' : 'bg-slate-200'}`}
                     role="switch"
                     aria-checked={turboMode ? "true" : "false"}
-                    aria-label="Toggle turbo mode"
+                    aria-label={t('qc.turbo_toggle')}
                 >
                     <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-300 shadow-sm ${turboMode ? 'translate-x-7' : 'translate-x-1'}`} />
                 </button>
@@ -131,7 +135,9 @@ export default function InspectTab({
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
                     <span aria-hidden="true" className="material-symbols-outlined text-base text-green-600">check_circle</span>
                     <span className="text-sm text-green-800">
-                        Logged <strong>Grade {lastGrade.grade}</strong> for {lastGrade.picker}
+                        {t('qc.logged_for', { name: lastGrade.picker }).split('{grade}')[0]}
+                        <strong>{gradeLabel(t, lastGrade.grade)}</strong>
+                        {t('qc.logged_for', { name: lastGrade.picker }).split('{grade}')[1] ?? ''}
                     </span>
                 </div>
             )}
@@ -141,7 +147,7 @@ export default function InspectTab({
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-50"></div>
                 
                 <div className="px-5 py-4 border-b border-slate-100/50">
-                    <h2 className="text-sm font-extrabold text-slate-800 tracking-tight">Step 1: Select Picker</h2>
+                    <h2 className="text-sm font-extrabold text-slate-800 tracking-tight">{t('qc.step1')}</h2>
                 </div>
                 
                 <div className="p-5 space-y-4">
@@ -149,10 +155,10 @@ export default function InspectTab({
                         <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
                         <input
                             type="text"
-                            placeholder="Search by name or ID..."
+                            placeholder={t('qc.search_placeholder')}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            aria-label="Search pickers"
+                            aria-label={t('qc.search_label')}
                             className="w-full pl-10 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium text-slate-800 focus:bg-white focus:ring-4 focus:ring-orange-500/10 focus:border-orange-400 outline-none transition-all"
                         />
                     </div>
@@ -174,10 +180,10 @@ export default function InspectTab({
                                     <p className="text-sm font-extrabold text-slate-800 truncate mb-0.5">{picker.name}</p>
                                     <div className="flex items-center gap-2">
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white px-2 py-0.5 rounded-md border border-slate-100">
-                                            Row {picker.current_row}
+                                            {t('runner.row_n', { n: picker.current_row })}
                                         </span>
                                         <span className="text-[10px] font-bold text-primary uppercase tracking-widest bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10">
-                                            {picker.total_buckets_today} BKT
+                                            {t('qc.bkt_n', { n: picker.total_buckets_today })}
                                         </span>
                                     </div>
                                 </div>
@@ -187,7 +193,7 @@ export default function InspectTab({
                             </button>
                         ))}
                         {filteredPickers.length === 0 && (
-                            <p className="text-[11px] font-bold text-slate-400 text-center py-6 uppercase tracking-widest">No pickers found</p>
+                            <p className="text-[11px] font-bold text-slate-400 text-center py-6 uppercase tracking-widest">{t('qc.no_pickers')}</p>
                         )}
                     </div>
                 </div>
@@ -198,11 +204,11 @@ export default function InspectTab({
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-50"></div>
                 <div className="px-5 py-4 border-b border-slate-100/50 flex items-center justify-between">
                     <h2 className="text-sm font-extrabold text-slate-800 tracking-tight">
-                        Step 2: Assign Grade
+                        {t('qc.step2')}
                     </h2>
                     {selectedPicker && (
                         <span className="text-[10px] bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg text-slate-500 font-bold uppercase tracking-widest">
-                            for {selectedPicker.name}
+                            {t('qc.for_name', { name: selectedPicker.name })}
                         </span>
                     )}
                 </div>
@@ -222,11 +228,11 @@ export default function InspectTab({
                                     <span className={turboMode ? 'scale-125' : ''}>{config.icon}</span>
                                     <div className="text-left flex-1">
                                         <div className={`font-extrabold tracking-tight ${turboMode ? 'text-lg' : 'text-sm'} ${config.color}`}>
-                                            {config.label}
+                                            {t(config.label)}
                                         </div>
-                                        <div className={`${turboMode ? 'text-sm' : 'text-[11px] uppercase tracking-widest'} text-slate-500 font-bold mt-0.5`}>{config.sublabel}</div>
+                                        <div className={`${turboMode ? 'text-sm' : 'text-[11px] uppercase tracking-widest'} text-slate-500 font-bold mt-0.5`}>{t(config.sublabel)}</div>
                                         <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2">
-                                            {distribution[grade as keyof Omit<GradeDistribution, 'total'>]} today
+                                            {t('qc.n_today', { n: distribution[grade as keyof Omit<GradeDistribution, 'total'>] })}
                                         </div>
                                     </div>
                                     {turboMode && selectedPicker && (
@@ -245,14 +251,14 @@ export default function InspectTab({
             <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden">
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-50"></div>
                 <div className="px-5 py-4 border-b border-slate-100/50">
-                    <h2 className="text-sm font-extrabold text-slate-800 tracking-tight">Step 3: Add Details <span className="font-normal text-slate-400 text-xs ml-1">(Optional)</span></h2>
+                    <h2 className="text-sm font-extrabold text-slate-800 tracking-tight">{t('qc.step3')} <span className="font-normal text-slate-400 text-xs ml-1">{t('qc.optional')}</span></h2>
                 </div>
                 <div className="p-5 space-y-4">
                     <textarea
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        placeholder="Inspection notes..."
-                        aria-label="Inspection notes"
+                        placeholder={t('qc.notes_placeholder')}
+                        aria-label={t('qc.notes_label')}
                         rows={3}
                         className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium text-slate-800 resize-none focus:bg-white focus:ring-4 focus:ring-orange-500/10 focus:border-orange-400 outline-none transition-all placeholder:text-slate-400"
                     />
@@ -265,20 +271,20 @@ export default function InspectTab({
                         <span aria-hidden="true" className="material-symbols-outlined text-[18px]">
                             {isCapturing ? 'hourglass_empty' : 'photo_camera'}
                         </span>
-                        {isCapturing ? 'Processing...' : 'Attach Visual Proof'}
+                        {isCapturing ? t('qc.processing') : t('qc.attach_photo')}
                     </button>
                     {photoPreview && (
                         <div className="relative inline-block mt-2">
                             <img
                                 src={photoPreview}
-                                alt="QC inspection photo"
+                                alt={t('qc.photo_alt')}
                                 className="w-28 h-28 object-cover rounded-2xl border-4 border-white shadow-[0_4px_12px_rgba(0,0,0,0.08)]"
                             />
                             <button
                                 type="button"
                                 onClick={clearPhoto}
                                 className="absolute -top-3 -right-3 size-8 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 hover:scale-110 transition-all active:scale-95"
-                                aria-label="Remove photo"
+                                aria-label={t('qc.remove_photo')}
                             >
                                 <span aria-hidden="true" className="material-symbols-outlined text-[16px]">close</span>
                             </button>
@@ -290,7 +296,7 @@ export default function InspectTab({
             {/* Today's Stats */}
             {distribution.total > 0 && (
                 <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden p-5">
-                    <h3 className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mb-4 text-center">Today&apos;s Distribution</h3>
+                    <h3 className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mb-4 text-center">{t('qc.today_distribution')}</h3>
                     <DistributionBar distribution={distribution} />
                     <div className="flex justify-between mt-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
                         <span>A: {distribution.A} <span className="font-medium text-slate-400 ml-0.5">({distribution.total ? Math.round(distribution.A / distribution.total * 100) : 0}%)</span></span>

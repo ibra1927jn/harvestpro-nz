@@ -6,6 +6,8 @@ import React, { useState, useMemo } from 'react';
 import { Picker, PickerStatus } from '../../../types';
 import { isPicker } from './roleUtils';
 import { useHarvestStore } from '@/stores/useHarvestStore';
+import { useTranslation } from '@/i18n';
+import { formatNZD } from '@/utils/nzFormat';
 
 interface TeamLeaderProfileViewProps {
     picker: Picker;
@@ -24,6 +26,7 @@ const TeamLeaderProfileView: React.FC<TeamLeaderProfileViewProps> = React.memo((
     onUpdate,
     onAssignRow,
 }) => {
+    const { t } = useTranslation();
     const [isEditing, setIsEditing] = useState(false);
     const [status, setStatus] = useState<PickerStatus>(picker.status);
     const [showRowAssigner, setShowRowAssigner] = useState(false);
@@ -81,22 +84,22 @@ const TeamLeaderProfileView: React.FC<TeamLeaderProfileViewProps> = React.memo((
         <>
             {/* Team Overview */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-md p-5">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Team Overview</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">{t('panel.tl.overview')}</p>
                 <div className="grid grid-cols-3 gap-3">
                     <div className="bg-emerald-50 rounded-xl p-3 text-center">
                         <p className="text-2xl font-black text-emerald-700">{tlStats.teamSize}</p>
-                        <p className="text-[11px] text-emerald-600 font-medium mt-0.5">Pickers</p>
-                        <p className="text-[10px] text-emerald-500 mt-1">{tlStats.activePickers} active</p>
+                        <p className="text-[11px] text-emerald-600 font-medium mt-0.5">{t('pd.pickers')}</p>
+                        <p className="text-[10px] text-emerald-500 mt-1">{t('teams.active_other', { n: tlStats.activePickers })}</p>
                     </div>
                     <div className="bg-slate-50 rounded-xl p-3 text-center">
                         <p className="text-2xl font-black text-slate-900">{tlStats.totalBuckets}</p>
-                        <p className="text-[11px] text-slate-500 font-medium mt-0.5">Team Buckets</p>
-                        <p className="text-[10px] text-slate-400 mt-1">today</p>
+                        <p className="text-[11px] text-slate-500 font-medium mt-0.5">{t('teams.team_buckets')}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">{t('pd.today_lower')}</p>
                     </div>
                     <div className="bg-slate-50 rounded-xl p-3 text-center">
                         <p className="text-2xl font-black text-slate-900">{tlStats.avgBuckets}</p>
-                        <p className="text-[11px] text-slate-500 font-medium mt-0.5">Avg/Picker</p>
-                        <p className="text-[10px] text-slate-400 mt-1">buckets</p>
+                        <p className="text-[11px] text-slate-500 font-medium mt-0.5">{t('pd.avg_picker')}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">{t('dashboard.buckets')}</p>
                     </div>
                 </div>
                 {tlStats.belowMin > 0 && (
@@ -104,7 +107,7 @@ const TeamLeaderProfileView: React.FC<TeamLeaderProfileViewProps> = React.memo((
                         <div className="flex items-start gap-2">
                             <span aria-hidden="true" className="material-symbols-outlined text-amber-600 text-[20px] shrink-0 mt-0.5">warning</span>
                             <div>
-                                <p className="text-sm text-amber-700 font-medium">{tlStats.belowMin} picker{tlStats.belowMin > 1 ? 's' : ''} below minimum wage</p>
+                                <p className="text-sm text-amber-700 font-medium">{t(tlStats.belowMin > 1 ? 'panel.tl.below_min_many' : 'panel.tl.below_min_one', { n: tlStats.belowMin })}</p>
                                 <p className="text-xs text-amber-600 mt-0.5">{tlStats.belowMinNames.join(', ')}</p>
                             </div>
                         </div>
@@ -115,23 +118,23 @@ const TeamLeaderProfileView: React.FC<TeamLeaderProfileViewProps> = React.memo((
             {/* Details Card */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                 <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Details</p>
-                    {!isEditing && <button onClick={() => setIsEditing(true)} className="text-emerald-600 text-xs font-bold hover:text-emerald-800 transition-colors flex items-center gap-1"><span aria-hidden="true" className="material-symbols-outlined text-[14px]">edit</span>Edit</button>}
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('panel.picker.details')}</p>
+                    {!isEditing && <button onClick={() => setIsEditing(true)} className="text-emerald-600 text-xs font-bold hover:text-emerald-800 transition-colors flex items-center gap-1"><span aria-hidden="true" className="material-symbols-outlined text-[14px]">edit</span>{t('common.edit')}</button>}
                 </div>
                 {isEditing ? (
                     <div className="space-y-3">
                         <div>
-                            <label className="text-slate-500 text-xs block mb-1">Status</label>
-                            <select value={status} onChange={(e) => setStatus(e.target.value as PickerStatus)} aria-label="Status"
+                            <label className="text-slate-500 text-xs block mb-1">{t('orchardMap.list.col.status')}</label>
+                            <select value={status} onChange={(e) => setStatus(e.target.value as PickerStatus)} aria-label={t('orchardMap.list.col.status')}
                                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none text-slate-900 bg-white transition-all">
-                                <option value="active">Active</option>
-                                <option value="on_break">On Break</option>
-                                <option value="inactive">Inactive</option>
+                                <option value="active">{t('common.active')}</option>
+                                <option value="on_break">{t('teams.on_break')}</option>
+                                <option value="inactive">{t('common.inactive')}</option>
                             </select>
                         </div>
                         <div className="flex gap-2 pt-1">
-                            <button onClick={handleSave} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm transition-colors">Save</button>
-                            <button onClick={() => setIsEditing(false)} className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors">Cancel</button>
+                            <button onClick={handleSave} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm transition-colors">{t('common.save')}</button>
+                            <button onClick={() => setIsEditing(false)} className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors">{t('common.cancel')}</button>
                         </div>
                     </div>
                 ) : (
@@ -144,7 +147,7 @@ const TeamLeaderProfileView: React.FC<TeamLeaderProfileViewProps> = React.memo((
                                 } ${onAssignRow ? 'cursor-pointer hover:shadow-sm' : ''}`}
                             onClick={() => onAssignRow && setShowRowAssigner(true)}
                         >
-                            <p className="text-[11px] text-slate-400 font-medium mb-0.5">Assigned Rows</p>
+                            <p className="text-[11px] text-slate-400 font-medium mb-0.5">{t('pd.assigned_rows')}</p>
                             {uniqueRows.length > 0 ? (
                                 <div className="flex items-center justify-between">
                                     <p className="text-sm font-bold text-emerald-700">
@@ -159,16 +162,16 @@ const TeamLeaderProfileView: React.FC<TeamLeaderProfileViewProps> = React.memo((
                                     {onAssignRow ? (
                                         <>
                                             <span aria-hidden="true" className="material-symbols-outlined text-primary text-[14px]">add_circle</span>
-                                            <p className="text-sm font-bold text-primary">Assign rows</p>
+                                            <p className="text-sm font-bold text-primary">{t('pd.assign_rows')}</p>
                                         </>
                                     ) : (
-                                        <p className="text-sm font-bold text-slate-500">None</p>
+                                        <p className="text-sm font-bold text-slate-500">{t('common.none')}</p>
                                     )}
                                 </div>
                             )}
                         </div>
-                        <div className="bg-slate-50 rounded-xl p-3"><p className="text-[11px] text-slate-400 font-medium mb-0.5">Hours On-Site</p><p className="text-sm font-bold text-slate-900">{effectiveHours > 0 ? effectiveHours.toFixed(1) : '0'}h</p></div>
-                        <div className="bg-slate-50 rounded-xl p-3"><p className="text-[11px] text-slate-400 font-medium mb-0.5">Team Earnings</p><p className="text-sm font-bold text-emerald-600">${(tlStats.totalBuckets * pieceRate).toFixed(0)}</p></div>
+                        <div className="bg-slate-50 rounded-xl p-3"><p className="text-[11px] text-slate-400 font-medium mb-0.5">{t('pd.hours_on_site')}</p><p className="text-sm font-bold text-slate-900">{effectiveHours > 0 ? effectiveHours.toFixed(1) : '0'}h</p></div>
+                        <div className="bg-slate-50 rounded-xl p-3"><p className="text-[11px] text-slate-400 font-medium mb-0.5">{t('pd.team_earnings')}</p><p className="text-sm font-bold text-emerald-600">{formatNZD(tlStats.totalBuckets * pieceRate, 0)}</p></div>
                     </div>
                 )}
 
@@ -176,14 +179,14 @@ const TeamLeaderProfileView: React.FC<TeamLeaderProfileViewProps> = React.memo((
                 {showRowAssigner && onAssignRow && (
                     <div className="mt-4 p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
                         <div className="flex items-center justify-between">
-                            <p className="text-xs font-bold text-primary uppercase">Add Row</p>
-                            <button aria-label="Close row assignment" onClick={() => setShowRowAssigner(false)} className="text-slate-400 hover:text-slate-600">
+                            <p className="text-xs font-bold text-primary uppercase">{t('pd.add_row')}</p>
+                            <button aria-label={t('pd.close_row_assign')} onClick={() => setShowRowAssigner(false)} className="text-slate-400 hover:text-slate-600">
                                 <span aria-hidden="true" className="material-symbols-outlined text-sm">close</span>
                             </button>
                         </div>
                         <div className="flex gap-3">
                             <div className="flex-1">
-                                <label className="text-[10px] text-slate-500 font-bold uppercase mb-1 block">Row #</label>
+                                <label className="text-[10px] text-slate-500 font-bold uppercase mb-1 block">{t('pd.row_hash')}</label>
                                 <input
                                     type="number"
                                     value={rowInput}
@@ -195,7 +198,7 @@ const TeamLeaderProfileView: React.FC<TeamLeaderProfileViewProps> = React.memo((
                                 />
                             </div>
                             <div className="flex-1">
-                                <label className="text-[10px] text-slate-500 font-bold uppercase mb-1 block">Side</label>
+                                <label className="text-[10px] text-slate-500 font-bold uppercase mb-1 block">{t('assignModal.side')}</label>
                                 <div className="flex bg-slate-100 p-0.5 rounded-xl h-[42px]">
                                     <button
                                         onClick={() => setSideInput('north')}
@@ -213,7 +216,7 @@ const TeamLeaderProfileView: React.FC<TeamLeaderProfileViewProps> = React.memo((
                             disabled={!rowInput || assigning}
                             className="w-full py-2.5 bg-primary text-white rounded-xl font-bold text-xs hover:bg-red-600 disabled:opacity-50 transition-all active:scale-[0.98]"
                         >
-                            {assigning ? 'Assigning...' : `Assign Row ${rowInput || ''}`}
+                            {assigning ? t('assignModal.assigning') : t('pd.assign_row_n', { n: rowInput || '' })}
                         </button>
                     </div>
                 )}

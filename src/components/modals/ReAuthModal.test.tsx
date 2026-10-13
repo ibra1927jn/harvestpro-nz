@@ -4,7 +4,7 @@
  * @module components/modals/ReAuthModal.test
  */
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 const mocks = vi.hoisted(() => ({
@@ -31,23 +31,34 @@ vi.mock('@/utils/logger', () => ({
 }));
 
 import ReAuthModal from './ReAuthModal';
+import { setCurrentLocale } from '@/i18n';
 
 describe('ReAuthModal', () => {
     const onReAuthenticated = vi.fn();
 
+    // Estos tests comprueban los textos en español (idioma de la app = es)
+    afterEach(() => setCurrentLocale('en'));
+    it('is in English when the app is in English', () => {
+        setCurrentLocale('en');
+        render(<ReAuthModal email="ana@x.nz" onReAuthenticated={vi.fn()} />);
+        expect(screen.getByText(/Session expired/)).toBeTruthy();
+        expect(screen.getByLabelText('Password')).toBeTruthy();
+    });
+
     beforeEach(() => {
+        setCurrentLocale('es');
         vi.clearAllMocks();
         mocks.getPendingCount.mockResolvedValue(5);
     });
 
     it('renders session expired title', () => {
         render(<ReAuthModal email="user@test.com" onReAuthenticated={onReAuthenticated} />);
-        expect(screen.getByText(/Sesión Expirada/)).toBeTruthy();
+        expect(screen.getByText(/Sesión expirada/)).toBeTruthy();
     });
 
     it('displays user email in disabled field', () => {
         render(<ReAuthModal email="user@test.com" onReAuthenticated={onReAuthenticated} />);
-        const emailInput = screen.getByLabelText('Correo electrónico') as HTMLInputElement;
+        const emailInput = screen.getByLabelText('Correo Electrónico') as HTMLInputElement;
         expect(emailInput.value).toBe('user@test.com');
         expect(emailInput.disabled).toBe(true);
     });

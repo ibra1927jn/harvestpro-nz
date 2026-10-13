@@ -8,6 +8,7 @@
  */
 import { logger } from '@/utils/logger';
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { translate as t } from '@/i18n';
 
 interface Props {
     children: ReactNode;
@@ -44,7 +45,7 @@ class ComponentErrorBoundary extends Component<Props, State> {
 
     public render() {
         if (this.state.hasError) {
-            const name = this.props.componentName || 'This section';
+            const name = this.props.componentName || t('errorBoundary.this_section');
             return (
                 <div className="bg-white rounded-2xl shadow-sm border border-red-100 overflow-hidden">
                     <div className="p-6 flex flex-col items-center text-center">
@@ -55,10 +56,10 @@ class ComponentErrorBoundary extends Component<Props, State> {
 
                         {/* Title */}
                         <h4 className="text-sm font-bold text-text-main mb-1">
-                            {name} failed to load
+                            {t('errorBoundary.failed', { name })}
                         </h4>
                         <p className="text-xs text-text-muted mb-4 max-w-[250px]">
-                            An unexpected error occurred. Other parts of the app are unaffected.
+                            {t('errorBoundary.desc')}
                         </p>
 
                         {/* Error detail (dev mode only) */}
@@ -77,7 +78,7 @@ class ComponentErrorBoundary extends Component<Props, State> {
                                 className="px-4 py-2 bg-text-main text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center gap-1.5"
                             >
                                 <span aria-hidden="true" className="material-symbols-outlined text-sm">refresh</span>
-                                Retry
+                                {t('common.retry')}
                             </button>
                             <a
                                 href={`mailto:support@harvestpro.nz?subject=Bug Report: ${encodeURIComponent(name)} crashed&body=${encodeURIComponent(
@@ -86,7 +87,7 @@ class ComponentErrorBoundary extends Component<Props, State> {
                                 className="px-3 py-2 text-xs font-medium text-text-muted hover:text-red-500 transition-colors flex items-center gap-1 rounded-lg hover:bg-red-50"
                             >
                                 <span aria-hidden="true" className="material-symbols-outlined text-sm">bug_report</span>
-                                Report issue
+                                {t('errorBoundary.report')}
                             </a>
                         </div>
                     </div>

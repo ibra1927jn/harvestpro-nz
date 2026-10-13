@@ -2,6 +2,8 @@
  * Lógica pura del modal para vincular personal (team leaders / runners) a un huerto.
  * @module components/modals/staff-selection/staffSelectionLogic
  */
+import { translate } from '@/i18n';
+
 export interface StaffInfo {
     id: string;
     full_name: string;
@@ -43,21 +45,21 @@ export function toggleId(ids: Set<string>, id: string): Set<string> {
 
 /** Aviso tras vincular en lote */
 export function batchAssignToast(successCount: number, failCount: number): { message: string; type: 'warning' | 'success' } {
-    if (failCount > 0) return { message: `Linked ${successCount} staff. ${failCount} failed.`, type: 'warning' };
+    if (failCount > 0) return { message: translate('staff.linked_some', { n: successCount, failed: failCount }), type: 'warning' };
     return {
-        message: `Successfully linked ${successCount} staff member${successCount > 1 ? 's' : ''}.`,
+        message: translate(successCount > 1 ? 'staff.linked_other' : 'staff.linked_one', { n: successCount }),
         type: 'success',
     };
 }
 
 /** Texto de lista vacía */
 export function emptyStaffMessage(searchQuery: string, filter: StaffFilter): string {
-    if (searchQuery) return `No results for "${searchQuery}"`;
-    if (filter === 'all') return 'No staff found in the system.';
-    return `No ${filter === 'team_leader' ? 'Team Leaders' : 'Runners'} found.`;
+    if (searchQuery) return translate('staff.no_results', { q: searchQuery });
+    if (filter === 'all') return translate('staff.none');
+    return translate(filter === 'team_leader' ? 'staff.no_leaders' : 'staff.no_runners');
 }
 
-export const roleLabel = (role: string) => (role === 'team_leader' ? 'Team Leader' : 'Bucket Runner');
+export const roleLabel = (role: string) => translate(role === 'team_leader' ? 'roles.team_leader' : 'staff.bucket_runner');
 export const roleColor = (role: string) =>
     role === 'team_leader' ? 'bg-indigo-100 text-indigo-700' : 'bg-blue-100 text-blue-700';
 export const roleIcon = (role: string) => (role === 'team_leader' ? 'groups' : 'local_shipping');

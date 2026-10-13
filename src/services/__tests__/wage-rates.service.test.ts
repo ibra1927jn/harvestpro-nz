@@ -82,6 +82,20 @@ describe('getWageRates', () => {
         localStorage.clear();
     });
 
+    it('only loads rates effective on or before today in NZ (not the UTC date)', async () => {
+        // 1 abr 08:00 en NZ = 31 mar 19:00 UTC: una tarifa que empieza el 1 abr ya vale
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-03-31T19:00:00Z'));
+        try {
+            const chain = makeChain([makeWageRate()]);
+            mockFrom.mockReturnValue(chain);
+            await getWageRates('o1');
+            expect(chain.lte).toHaveBeenCalledWith('effective_from', '2026-04-01');
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('returns config from DB when available', async () => {
         mockFrom.mockReturnValue(makeChain([makeWageRate()]));
         const config = await getWageRates('o1');

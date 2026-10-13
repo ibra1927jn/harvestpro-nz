@@ -10,6 +10,9 @@ import {
     assignVehicleToRequest, completeTransportRequest, cancelTransportRequest
 } from '@/services/logistics-dept.service';
 import { useAuth } from '@/context/AuthContext';
+import { useTranslation } from '@/i18n';
+import { statusLabel } from '@/i18n/statusLabel';
+import { formatNZDate, formatNZTime } from '@/utils/nzFormat';
 
 const PRIORITY_BADGES: Record<string, string> = {
     urgent: 'bg-red-100 text-red-700',
@@ -33,6 +36,7 @@ interface RequestsTabProps {
 }
 
 const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRefresh, readOnly = false }) => {
+    const { t } = useTranslation();
     const { appUser } = useAuth();
     const [assigningId, setAssigningId] = useState<string | null>(null);
     const [selectedVehicle, setSelectedVehicle] = useState('');
@@ -59,13 +63,13 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
         setTimeout(() => setToast(null), 3000);
     };
 
-    const availableTractors = tractors.filter(t => t.status === 'active' || t.status === 'idle');
+    const availableTractors = tractors.filter(tr => tr.status === 'active' || tr.status === 'idle');
 
     const handleAssign = (requestId: string, updatedAt?: string) => {
         if (!selectedVehicle || !appUser?.id) return;
         // Quién asigna: el usuario real (antes se mandaba el texto 'current_user' y la BD lo rechazaba)
         assignVehicleToRequest(requestId, selectedVehicle, appUser.id, updatedAt);
-        showToast('Vehicle assigned to transport request');
+        showToast(t('logi.toast.assigned'));
         setAssigningId(null);
         setSelectedVehicle('');
         onRefresh?.();
@@ -73,13 +77,13 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
 
     const handleComplete = (requestId: string, updatedAt?: string) => {
         completeTransportRequest(requestId, updatedAt);
-        showToast('Transport request completed');
+        showToast(t('logi.toast.completed'));
         onRefresh?.();
     };
 
     const handleCancel = (requestId: string, updatedAt?: string) => {
         cancelTransportRequest(requestId, updatedAt);
-        showToast('Transport request cancelled', 'error');
+        showToast(t('logi.toast.cancelled'), 'error');
         onRefresh?.();
     };
 
@@ -109,8 +113,8 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
                 onSearchChange={setSearchQuery}
                 searchPlaceholder="Search by zone or cargo..."
                 filters={[
-                    { key: 'priority', label: 'Priority', options: filterOpts.priorities, icon: 'priority_high' },
-                    { key: 'status', label: 'Status', options: filterOpts.statuses, icon: 'pending_actions' },
+                    { key: 'priority', label: t('broadcast.priority'), options: filterOpts.priorities, icon: 'priority_high' },
+                    { key: 'status', label: t('orchardMap.list.col.status'), options: filterOpts.statuses, icon: 'pending_actions' },
                 ]}
                 activeFilters={activeFilters}
                 onFilterChange={(key, value) => setActiveFilters(prev => ({ ...prev, [key]: value }))}
@@ -120,8 +124,8 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
             {filteredRequests.length === 0 && (
                 <EmptyState
                     icon="local_shipping"
-                    title="No requests found"
-                    subtitle={searchQuery || Object.values(activeFilters).some(v => v) ? "Try adjusting your filters" : "Transport requests will appear here as teams need pickups"}
+                    title={t('logi.no_requests')}
+                    subtitle={searchQuery || Object.values(activeFilters).some(v => v) ? t('qc.adjust_filters') : t('logi.no_requests_desc')}
                     compact
                 />
             )}
@@ -136,22 +140,22 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
                         <div className="flex items-center justify-between mb-3 relative z-10">
                             <div className="flex items-center gap-3">
                                 <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full shadow-sm ${PRIORITY_BADGES[req.priority] || 'bg-surface-secondary text-text-secondary'}`}>
-                                    {req.priority}
+                                    {statusLabel(t, req.priority)}
                                 </span>
-                                <h4 className="font-bold text-slate-800 text-sm">Zone {req.zone}</h4>
+                                <h4 className="font-bold text-slate-800 text-sm">{t('logi.zone', { zone: req.zone })}</h4>
                             </div>
                             <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border ${STATUS_BADGES[req.status] || 'bg-surface-secondary text-text-secondary border-border-light'}`}>
-                                {req.status.replace('_', ' ')}
+                                {statusLabel(t, req.status)}
                             </span>
                         </div>
                         <div className="flex items-center gap-3 text-xs text-slate-500 font-medium mb-3 relative z-10">
                             <span>{req.requester_name}</span>
                             <span>•</span>
-                            <span>{req.bins_count} bins</span>
+                            <span>{t('dashboard.velocity.tooltip_bins', { n: req.bins_count })}</span>
                             {req.assigned_tractor && (
                                 <>
                                     <span>•</span>
-                                    <span className="text-indigo-600 font-medium">Assigned to {req.assigned_tractor}</span>
+                                    <span className="text-indigo-600 font-medium">{t('logi.assigned_to', { name: req.assigned_tractor })}</span>
                                 </>
                             )}
                         </div>
@@ -160,7 +164,7 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
                         )}
                         <div className="flex items-center gap-2 text-[10px] text-slate-400 mb-4 relative z-10 font-medium">
                             <span aria-hidden="true" className="material-symbols-outlined text-[14px]">schedule</span>
-                            {new Date(req.created_at).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })} — {new Date(req.created_at).toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland' })}
+                            {formatNZTime(req.created_at)} — {formatNZDate(req.created_at)}
                         </div>
 
                         {/* Action Buttons — hidden in read-only mode */}
@@ -173,12 +177,12 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
                                                 value={selectedVehicle}
                                                 onChange={e => setSelectedVehicle(e.target.value)}
                                                 className="w-full px-3 py-2 rounded-xl bg-white/80 border border-slate-200 text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all shadow-sm"
-                                                aria-label="Select vehicle"
+                                                aria-label={t('logi.select_vehicle')}
                                             >
-                                                <option value="">Select vehicle...</option>
-                                                {availableTractors.map(t => (
-                                                    <option key={t.id} value={t.id}>
-                                                        {t.name} — {t.zone} ({t.status})
+                                                <option value="">{t('logi.select_vehicle')}...</option>
+                                                {availableTractors.map(tr => (
+                                                    <option key={tr.id} value={tr.id}>
+                                                        {tr.name} — {tr.zone} ({statusLabel(t, tr.status)})
                                                     </option>
                                                 ))}
                                             </select>
@@ -188,13 +192,13 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
                                                     disabled={!selectedVehicle}
                                                     className="flex-1 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold shadow-md shadow-indigo-600/20 hover:bg-indigo-700 hover:shadow-indigo-600/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
                                                 >
-                                                    Confirm
+                                                    {t('logi.confirm')}
                                                 </button>
                                                 <button
                                                     onClick={() => { setAssigningId(null); setSelectedVehicle(''); }}
                                                     className="flex-1 py-2 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 text-sm font-bold shadow-sm hover:bg-slate-200 hover:text-slate-900 transition-all"
                                                 >
-                                                    Cancel
+                                                    {t('common.cancel')}
                                                 </button>
                                             </div>
                                         </div>
@@ -205,13 +209,13 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
                                                 className="flex-1 py-2 rounded-xl bg-indigo-50/80 text-indigo-700 text-sm font-bold border border-indigo-100 shadow-sm hover:bg-indigo-100 transition-all flex items-center justify-center gap-1.5 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 group-hover:shadow-md group-hover:shadow-indigo-600/20"
                                             >
                                                 <span aria-hidden="true" className="material-symbols-outlined text-[16px]">agriculture</span>
-                                                Assign Vehicle
+                                                {t('logi.assign_vehicle')}
                                             </button>
                                             <button
                                                 onClick={() => handleCancel(req.id, req.updated_at)}
                                                 className="py-2 px-4 rounded-xl bg-red-50 text-red-700 text-sm font-bold border border-red-100 shadow-sm hover:bg-red-100 hover:text-red-800 transition-all"
-                                                                                                aria-label="Cancel request"
-                                                                                                title="Cancel Request"
+                                                                                                aria-label={t('logi.cancel_request')}
+                                                                                                title={t('logi.cancel_request')}
                                             >
                                                 <span aria-hidden="true" className="material-symbols-outlined text-[16px]">close</span>
                                             </button>
@@ -227,13 +231,13 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
                                         className="flex-1 py-2 rounded-xl bg-emerald-500 text-white text-sm font-bold shadow-md shadow-emerald-500/20 hover:bg-emerald-600 hover:shadow-emerald-500/40 transition-all flex items-center justify-center gap-1.5"
                                     >
                                         <span aria-hidden="true" className="material-symbols-outlined text-[16px]">check_circle</span>
-                                        Mark Completed
+                                        {t('logi.mark_completed')}
                                     </button>
                                     <button
                                         onClick={() => handleCancel(req.id, req.updated_at)}
                                         className="py-2 px-4 rounded-xl bg-red-50 text-red-700 text-sm font-bold border border-red-100 shadow-sm hover:bg-red-100 hover:text-red-800 transition-all"
-                                                                                aria-label="Cancel request"
-                                                                                title="Cancel Request"
+                                                                                aria-label={t('logi.cancel_request')}
+                                                                                title={t('logi.cancel_request')}
                                     >
                                         <span aria-hidden="true" className="material-symbols-outlined text-[16px]">close</span>
                                     </button>

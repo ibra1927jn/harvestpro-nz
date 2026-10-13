@@ -4,6 +4,8 @@ import { useAuth } from '../../../context/AuthContext';
 import { useAttendance } from '../../../hooks/useAttendance';
 import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/ui/Toast';
+import { useTranslation } from '@/i18n';
+import { formatNZDate, formatNZTime } from '@/utils/nzFormat';
 
 interface Picker {
     id: string;
@@ -12,6 +14,7 @@ interface Picker {
 }
 
 const AttendanceView = () => {
+    const { t } = useTranslation();
     const { appUser } = useAuth();
     const {
         loading,
@@ -23,29 +26,27 @@ const AttendanceView = () => {
     } = useAttendance(appUser ?? undefined);
     const { toast, showToast, hideToast } = useToast();
 
-    const noSignal = (what: string) =>
-        typeof navigator !== 'undefined' && navigator.onLine === false
-            ? `No signal — ${what} not saved. Try again when you have signal.`
-            : null;
+    const noSignal = (key: 'tl.attendance.no_signal_check_in' | 'tl.attendance.no_signal_check_out') =>
+        typeof navigator !== 'undefined' && navigator.onLine === false ? t(key) : null;
 
     // Handlers
     const handleCheckIn = async (picker: Picker) => {
         try {
             await checkIn(picker.id);
-            announce(`${picker.name} checked in.`);
+            announce(t('tl.attendance.sr_checked_in', { name: picker.name }));
         } catch (error: unknown) {
-            showToast(noSignal('check-in') || (error as Error).message || 'Failed to check in', 'error');
+            showToast(noSignal('tl.attendance.no_signal_check_in') || (error as Error).message || t('tl.attendance.check_in_failed'), 'error');
         }
     };
 
     const handleCheckOut = async (attendanceId: string, name?: string) => {
         try {
             await checkOut(attendanceId);
-            announce(`${name ?? 'Picker'} checked out.`);
+            announce(t('tl.attendance.sr_checked_out', { name: name ?? t('panel.role.picker') }));
         } catch (err) {
             // Antes solo iba al log: sin red el botón no hacía nada y nadie se enteraba
             logger.error(err);
-            showToast(noSignal('check-out') || (err as Error)?.message || 'Failed to check out', 'error');
+            showToast(noSignal('tl.attendance.no_signal_check_out') || (err as Error)?.message || t('tl.attendance.check_out_failed'), 'error');
         }
     };
 
@@ -56,9 +57,9 @@ const AttendanceView = () => {
             <div className="bg-white px-6 py-6 border-b border-slate-200 sticky top-0 z-20 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                     <div>
-                        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Daily Roll Call</h1>
+                        <h1 className="text-2xl font-black text-slate-900 tracking-tight">{t('tl.attendance.title')}</h1>
                         <p className="text-slate-500 text-sm font-medium">
-                            {new Date().toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', weekday: 'long', day: 'numeric', month: 'long' })}
+                            {formatNZDate(new Date(), 'weekday')}
                         </p>
                     </div>
                     {loading && <span aria-hidden="true" className="material-symbols-outlined animate-spin text-primary">sync</span>}
@@ -68,11 +69,11 @@ const AttendanceView = () => {
                 <div className="grid grid-cols-2 gap-3">
                     <div className="bg-green-50 p-3 rounded-2xl border border-green-100 flex flex-col items-center">
                         <span className="text-2xl font-black text-green-600">{stats.present}</span>
-                        <span className="text-xs font-bold text-green-700 uppercase">Present</span>
+                        <span className="text-xs font-bold text-green-700 uppercase">{t('tl.attendance.present')}</span>
                     </div>
                     <div className="bg-slate-100 p-3 rounded-2xl border border-slate-200 flex flex-col items-center">
                         <span className="text-2xl font-black text-slate-500">{stats.absent}</span>
-                        <span className="text-xs font-bold text-slate-500 uppercase">Absent</span>
+                        <span className="text-xs font-bold text-slate-500 uppercase">{t('tl.attendance.absent')}</span>
                     </div>
                 </div>
             </div>
@@ -98,8 +99,8 @@ const AttendanceView = () => {
                                 </h3>
                                 <p className="text-xs font-semibold text-slate-400">
                                     {item.attendanceRecord?.check_in
-                                        ? `In: ${new Date(item.attendanceRecord.check_in).toLocaleTimeString([], { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })}`
-                                        : 'Not checked in'
+                                        ? t('tl.attendance.in_at', { time: formatNZTime(item.attendanceRecord.check_in) })
+                                        : t('tl.attendance.not_checked_in')
                                     }
                                 </p>
                             </div>
@@ -111,20 +112,20 @@ const AttendanceView = () => {
                                 <span aria-hidden="true" className="material-symbols-outlined animate-spin text-slate-400">progress_activity</span>
                             ) : item.isPresent ? (
                                 <button
-                                    aria-label={`Check out ${item.name}`}
+                                    aria-label={t('tl.attendance.check_out_name', { name: item.name })}
                                     onClick={() => item.attendanceRecord?.id && handleCheckOut(item.attendanceRecord.id, item.name)}
                                     className="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-red-100 hover:bg-red-100 transition-colors"
                                 >
-                                    Check Out
+                                    {t('tl.attendance.check_out')}
                                 </button>
                             ) : (
                                 <button
-                                    aria-label={`Check in ${item.name}`}
+                                    aria-label={t('tl.attendance.check_in_name', { name: item.name })}
                                     onClick={() => handleCheckIn(item)}
                                     className="bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-green-200 hover:bg-green-700 transition-all flex items-center gap-1"
                                 >
                                     <span aria-hidden="true" className="material-symbols-outlined text-lg">login</span>
-                                    Check In
+                                    {t('tl.attendance.check_in')}
                                 </button>
                             )}
                         </div>
@@ -134,7 +135,7 @@ const AttendanceView = () => {
                 {mergedList.length === 0 && !loading && (
                     <div className="text-center py-12 text-slate-400">
                         <span aria-hidden="true" className="material-symbols-outlined text-4xl mb-2">group_off</span>
-                        <p>No crew found in your roster.</p>
+                        <p>{t('tl.attendance.empty')}</p>
                     </div>
                 )}
             </div>

@@ -4,10 +4,13 @@
 import React from 'react';
 import { useTypewriter, useCounter, useParallax } from '@/hooks/useLoginAnimations';
 import { VineLeaf, GrapeCluster, ParticleDots } from './Decorations';
+import { useTranslation } from '@/i18n';
 
 const HeroPanel: React.FC = () => {
     const { ref: heroRef, offset } = useParallax();
-    const { displayed: typedTitle, done: titleDone } = useTypewriter('Manage your harvest intelligently', 50, 600);
+    const { t } = useTranslation();
+    const highlight = t('login.hero_highlight');
+    const { displayed: typedTitle, done: titleDone } = useTypewriter(t('login.hero_title'), 50, 600);
     const roleCount = useCounter(8, 1500, 1400);
     const complianceCount = useCounter(100, 2000, 1600);
 
@@ -16,7 +19,7 @@ const HeroPanel: React.FC = () => {
             {/* Vineyard photo with parallax */}
             <img
                 src="/orchard-hero.png"
-                alt="New Zealand Orchard"
+                alt={t('login.hero_alt')}
                 // lazy: el panel está oculto en el móvil y así no se descarga (123 KB en 3G)
                 loading="lazy"
                 decoding="async"
@@ -47,19 +50,19 @@ const HeroPanel: React.FC = () => {
                     </div>
                     <div>
                         <h2 className="text-white font-black text-xl tracking-tight">HarvestPro<span className="text-lilac-light">NZ</span></h2>
-                        <p className="text-white/40 text-xs font-medium">Workforce Management</p>
+                        <p className="text-white/40 text-xs font-medium">{t('login.workforce')}</p>
                     </div>
                 </div>
 
                 {/* Hero text with typewriter */}
                 <div className="max-w-md">
                     <h1 className="text-5xl font-black text-white leading-tight mb-6 min-h-[180px]">
-                        {typedTitle.split('harvest').map((part, i) =>
+                        {typedTitle.split(highlight).map((part, i) =>
                             i === 0 ? (
                                 <React.Fragment key={i}>{part}</React.Fragment>
                             ) : (
                                 <React.Fragment key={i}>
-                                    <span className="bg-gradient-to-r from-lilac-light to-lilac-glow bg-clip-text text-transparent">harvest</span>
+                                    <span className="bg-gradient-to-r from-lilac-light to-lilac-glow bg-clip-text text-transparent">{highlight}</span>
                                     {part}
                                 </React.Fragment>
                             )
@@ -67,22 +70,22 @@ const HeroPanel: React.FC = () => {
                         {!titleDone && <span className="inline-block w-[3px] h-[1em] bg-lilac-light ml-1 animate-pulse align-middle" />}
                     </h1>
                     <p className="text-white/50 text-base leading-relaxed mb-8 animate-fade-in" style={{ animationDelay: '2.5s', animationFillMode: 'both' }}>
-                        Complete control over your workforce, logistics, and New Zealand regulatory compliance — all in one platform.
+                        {t('login.hero_desc')}
                     </p>
                     <div className="flex gap-8">
                         <div className="animate-slide-up stagger-1">
                             <p className="text-3xl font-black text-white tabular-nums">{roleCount}</p>
-                            <p className="text-lilac-glow/60 text-xs font-medium uppercase tracking-wider">Roles</p>
+                            <p className="text-lilac-glow/60 text-xs font-medium uppercase tracking-wider">{t('login.roles')}</p>
                         </div>
                         <div className="w-px bg-lilac/20" />
                         <div className="animate-slide-up stagger-2">
                             <p className="text-3xl font-black text-white">24/7</p>
-                            <p className="text-lilac-glow/60 text-xs font-medium uppercase tracking-wider">Offline-First</p>
+                            <p className="text-lilac-glow/60 text-xs font-medium uppercase tracking-wider">{t('login.offline_first')}</p>
                         </div>
                         <div className="w-px bg-lilac/20" />
                         <div className="animate-slide-up stagger-3">
                             <p className="text-3xl font-black text-white tabular-nums">{complianceCount}%</p>
-                            <p className="text-lilac-glow/60 text-xs font-medium uppercase tracking-wider">NZ Compliant</p>
+                            <p className="text-lilac-glow/60 text-xs font-medium uppercase tracking-wider">{t('login.nz_compliant')}</p>
                         </div>
                     </div>
                 </div>
@@ -90,9 +93,9 @@ const HeroPanel: React.FC = () => {
                 {/* Trust badges */}
                 <div className="flex items-center gap-6">
                     {[
-                        { icon: 'shield', label: 'RLS Secured', color: 'text-lilac-light', delay: '0.1s' },
-                        { icon: 'cloud_sync', label: 'Real-Time Sync', color: 'text-lilac-glow', delay: '0.2s' },
-                        { icon: 'verified', label: 'NZ Compliant', color: 'text-lilac-light', delay: '0.3s' },
+                        { icon: 'shield', label: t('login.rls_secured'), color: 'text-lilac-light', delay: '0.1s' },
+                        { icon: 'cloud_sync', label: t('login.realtime_sync'), color: 'text-lilac-glow', delay: '0.2s' },
+                        { icon: 'verified', label: t('login.nz_compliant'), color: 'text-lilac-light', delay: '0.3s' },
                     ].map((badge) => (
                         <div key={badge.icon} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-lilac/20 backdrop-blur-sm hover:bg-white/10 hover:border-lilac/40 transition-all duration-300 animate-slide-up" style={{ animationDelay: badge.delay, animationFillMode: 'both' }}>
                             <span aria-hidden="true" className={`material-symbols-outlined ${badge.color} text-sm`}>{badge.icon}</span>

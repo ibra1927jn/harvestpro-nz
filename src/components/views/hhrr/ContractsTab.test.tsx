@@ -67,8 +67,8 @@ describe('ContractsTab', () => {
 
     it('renders contract type badges', () => {
         render(<ContractsTab {...defaultProps} />);
-        expect(screen.getByText('permanent')).toBeTruthy();
-        expect(screen.getByText('seasonal')).toBeTruthy();
+        expect(screen.getByText('Permanent')).toBeTruthy();
+        expect(screen.getByText('Seasonal')).toBeTruthy();
     });
 
     it('renders filter bar', () => {

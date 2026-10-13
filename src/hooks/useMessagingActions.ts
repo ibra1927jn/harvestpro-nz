@@ -10,6 +10,7 @@
 import { nowNZST } from '@/utils/nzst';
 import { Role, MessagePriority, Broadcast } from '@/types';
 import type { DBMessage, ChatGroup } from '@/context/messaging.types';
+import { formatNZTime } from '@/utils/nzFormat';
 
 // =============================================
 // OPTIMISTIC MESSAGE BUILDER
@@ -109,9 +110,9 @@ export function buildChatGroups(
 
     const lastMsg = lastMsgMap[c.id];
     const timeStr = lastMsg
-      ? new Date(lastMsg.created_at).toLocaleTimeString([], { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })
+      ? formatNZTime(lastMsg.created_at)
       : c.updated_at
-        ? new Date(c.updated_at).toLocaleTimeString([], { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })
+        ? formatNZTime(c.updated_at)
         : '';
 
     return {

@@ -1,3 +1,4 @@
+import { translate, type TFunction } from '@/i18n';
 /**
  * Dead Letter Queue Types
  * Extracted from DeadLetterQueueView.tsx for reuse in tests and services.
@@ -26,25 +27,25 @@ export interface CategorizedErrors {
  * Human-readable error tooltip based on Supabase/Postgres error codes.
  * Pure function — no side effects.
  */
-export function getErrorTooltip(item: DeadLetterItem): string {
+export function getErrorTooltip(item: DeadLetterItem, t: TFunction = translate): string {
     const errorCode = item.errorCode;
     const errorMsg = item.failureReason;
 
     // Common error explanations
     if (errorCode?.includes('23503')) {
-        return '❌ Foreign Key Violation: Picker or orchard no longer exists in database';
+        return `❌ ${t('dlq.err.fk')}`;
     }
     if (errorCode?.includes('23505')) {
-        return '⚠️ Duplicate: This record already exists in the database';
+        return `⚠️ ${t('dlq.err.duplicate')}`;
     }
     if (errorCode?.includes('PGRST116')) {
-        return '🔒 RLS Policy Violation: Action blocked by database security rules (e.g., archived picker)';
+        return `🔒 ${t('dlq.err.rls')}`;
     }
     if (errorMsg?.includes('archived')) {
-        return '🚫 Picker Archived: Cannot sync buckets for removed/suspended workers';
+        return `🚫 ${t('dlq.err.archived')}`;
     }
     if (errorMsg?.includes('Network')) {
-        return '📡 Network Error: Connection lost during sync';
+        return `📡 ${t('dlq.err.network')}`;
     }
-    return errorMsg || 'Unknown error';
+    return errorMsg || t('common.unknown_error');
 }

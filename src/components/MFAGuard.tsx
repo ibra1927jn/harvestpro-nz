@@ -15,6 +15,7 @@ import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useMFA } from '../hooks/useMFA';
 import { supabase } from '../services/supabase';
+import { useTranslation } from '@/i18n';
 
 // Solo los roles con 2FA ven estas pantallas: fuera del bundle inicial (login/runner)
 const MFASetup = lazy(() => import('./MFASetup').then(m => ({ default: m.MFASetup })));
@@ -39,6 +40,7 @@ type GuardState =
   | { kind: 'error' };
 
 export function MFAGuard({ children }: MFAGuardProps) {
+  const { t } = useTranslation();
   const { currentRole, isAuthenticated, signOut } = useAuth();
   const { checkMFAStatus } = useMFA();
   const [state, setState] = useState<GuardState>({ kind: 'checking' });
@@ -90,7 +92,7 @@ export function MFAGuard({ children }: MFAGuardProps) {
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-text-secondary">Checking security settings...</p>
+        <p className="text-text-secondary">{t('mfa.checking')}</p>
       </div>
     </div>
   );
@@ -114,10 +116,9 @@ export function MFAGuard({ children }: MFAGuardProps) {
       <div className="flex items-center justify-center min-h-screen bg-background-light">
         <div className="max-w-2xl w-full px-4">
           <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h2 className="font-bold text-blue-900 mb-2">🔒 Two-Factor Authentication Required</h2>
+            <h2 className="font-bold text-blue-900 mb-2">🔒 {t('mfa.required_title')}</h2>
             <p className="text-blue-800 text-sm">
-              Your role requires two-factor authentication to access the application.
-              This additional security layer protects sensitive payroll and employee data.
+              {t('mfa.required_desc')}
             </p>
           </div>
           <Suspense fallback={checking}>
@@ -132,22 +133,22 @@ export function MFAGuard({ children }: MFAGuardProps) {
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
         <div className="max-w-sm w-full text-center" role="alert">
-          <h2 className="font-bold text-text-main mb-2">Could not check two-factor authentication</h2>
+          <h2 className="font-bold text-text-main mb-2">{t('mfa.check_failed')}</h2>
           <p className="text-sm text-text-secondary mb-4">
-            Check your connection and try again.
+            {t('mfa.check_connection')}
           </p>
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => void evaluate()}
               className="min-h-[44px] px-4 rounded-lg bg-blue-600 text-white font-semibold"
             >
-              Try again
+              {t('mfa.try_again')}
             </button>
             <button
               onClick={() => void signOut()}
               className="min-h-[44px] px-4 rounded-lg border border-border-light font-semibold"
             >
-              Sign out
+              {t('common.sign_out')}
             </button>
           </div>
         </div>

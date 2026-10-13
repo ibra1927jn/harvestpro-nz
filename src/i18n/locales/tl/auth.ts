@@ -1,0 +1,38 @@
+import type { TranslationDict } from '../../types';
+
+const auth: TranslationDict = {
+    'auth.welcome': 'Maligayang pagbabalik!',
+    'auth.sign_in': 'Mag-sign in',
+    'auth.sign_in_desc': 'Mag-sign in para sa iyong dashboard',
+    'auth.register': 'Magparehistro',
+    'auth.email': 'Email',
+    'auth.password': 'Password',
+    'auth.forgot_password': 'Nakalimutan ang password?',
+    'auth.twoFactor.title': 'Two-Factor Authentication',
+    'auth.twoFactor.subtitle': 'Ilagay ang 6-digit code mula sa authenticator app',
+    'auth.twoFactor.verify': 'I-verify',
+    'auth.twoFactor.verifying': 'Vine-verify...',
+    'auth.twoFactor.cancel': 'Kanselahin',
+    'auth.twoFactor.back': '← Bumalik sa login',
+    'auth.twoFactor.resend': 'Ipadala muli ang code',
+    'auth.twoFactor.resend_in': 'Ipadala muli sa {n}s',
+    'auth.twoFactor.expires_in': 'Mag-e-expire ang code sa {mm}:{ss}',
+    'auth.twoFactor.lost_access': 'Nawalan ng access sa authenticator?',
+    'auth.twoFactor.contact_admin': 'Makipag-ugnayan sa iyong admin para sa tulong.',
+    'auth.twoFactor.error_length': 'Maglagay ng 6-digit code',
+    'auth.twoFactor.error_invalid': 'Maling code. Subukan muli.',
+    'auth.signing_in': 'Nagsa-sign in...',
+    'auth.sign_up': 'Mag-sign up',
+    'auth.full_name': 'Buong Pangalan',
+    'auth.or_register': 'Bago? Gumawa ng account',
+    'auth.or_login': 'May account na? Mag-sign in',
+    'auth.create_account': 'Gumawa ng Account',
+    'auth.creating_account': 'Ginagawa ang account...',
+    'auth.welcome_back': 'Maligayang pagbabalik!',
+    'auth.sign_in_desc_alt': 'Mag-sign in para sa iyong dashboard',
+    'auth.register_desc': 'Gumawa ng iyong account',
+    'auth.register_hr_notice': 'Magparehistro gamit ang email na pinayagan ng HR',
+    'auth.register_hr_notice_full': 'Magparehistro gamit ang email na pinayagan ng HR. Awtomatikong itatalaga ang iyong role at departamento.',
+};
+
+export default auth;

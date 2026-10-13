@@ -5,6 +5,9 @@ import { useHarvestStore } from '@/stores/useHarvestStore';
 import { nowNZST, todayNZST } from '@/utils/nzst';
 import { payrollService, PayrollResult } from '@/services/payroll.service';
 import Toast from '@/components/ui/Toast';
+import { useTranslation } from '@/i18n';
+import { formatNZD } from '@/utils/nzFormat';
+import { withBold } from '@/i18n/withBold';
 
 interface ClosureConfirmModalProps {
     summary: PayrollResult;
@@ -14,63 +17,61 @@ interface ClosureConfirmModalProps {
 }
 
 const ClosureConfirmModal = ({ summary, onConfirm, onCancel, isLoading }: ClosureConfirmModalProps) => {
+    const { t } = useTranslation();
     return (
         <div className="modal-overlay">
             <div className="modal-content day-closure-modal">
-                <h2>🔒 End & Lock Day</h2>
+                <h2>🔒 {t('close.title')}</h2>
 
                 <div className="closure-warning">
                     <span aria-hidden="true" className="material-symbols-outlined">warning</span>
-                    <p>
-                        Once closed, records for this date <strong>cannot be edited or added</strong>.
-                        This closure is <strong>permanent and immutable</strong> for legal compliance.
-                    </p>
+                    <p>{withBold(t('close.warning'))}</p>
                 </div>
 
                 <div className="closure-summary">
-                    <h3>Day Summary</h3>
+                    <h3>{t('close.day_summary')}</h3>
 
                     <div className="summary-grid">
                         <div className="summary-item">
-                            <span className="label">Total Buckets</span>
+                            <span className="label">{t('pay.total_buckets')}</span>
                             <span className="value">{summary.summary.total_buckets}</span>
                         </div>
 
                         <div className="summary-item">
-                            <span className="label">Hours Worked</span>
+                            <span className="label">{t('pay.calc.hours')}</span>
                             <span className="value">{summary.summary.total_hours.toFixed(1)}h</span>
                         </div>
 
                         <div className="summary-item">
-                            <span className="label">Piece Rate</span>
-                            <span className="value">${summary.summary.total_piece_rate_earnings.toFixed(2)}</span>
+                            <span className="label">{t('pay.piece_rate')}</span>
+                            <span className="value">{formatNZD(summary.summary.total_piece_rate_earnings)}</span>
                         </div>
 
                         <div className="summary-item">
-                            <span className="label">Wage Top-Up</span>
-                            <span className="value top-up">${summary.summary.total_top_up.toFixed(2)}</span>
+                            <span className="label">{t('close.wage_top_up')}</span>
+                            <span className="value top-up">{formatNZD(summary.summary.total_top_up)}</span>
                         </div>
 
                         <div className="summary-item total">
-                            <span className="label">Total Cost</span>
-                            <span className="value">${summary.summary.total_earnings.toFixed(2)} NZD</span>
+                            <span className="label">{t('close.total_cost')}</span>
+                            <span className="value">{formatNZD(summary.summary.total_earnings)} NZD</span>
                         </div>
                     </div>
 
                     <div className="compliance-section">
-                        <h4>Compliance</h4>
+                        <h4>{t('admin.compliance')}</h4>
                         <div className="compliance-stats">
                             <div className="stat">
                                 <span className="icon">👥</span>
-                                <span>{summary.compliance.workers_total} workers</span>
+                                <span>{t('close.workers', { n: summary.compliance.workers_total })}</span>
                             </div>
                             <div className={`stat ${summary.compliance.workers_below_minimum > 0 ? 'warning' : 'success'}`}>
                                 <span className="icon">⚠️</span>
-                                <span>{summary.compliance.workers_below_minimum} required top-up</span>
+                                <span>{t('close.required_top_up', { n: summary.compliance.workers_below_minimum })}</span>
                             </div>
                             <div className="stat success">
                                 <span className="icon">✅</span>
-                                <span>{summary.compliance.compliance_rate.toFixed(0)}% compliance rate</span>
+                                <span>{t('close.compliance_rate', { pct: summary.compliance.compliance_rate.toFixed(0) })}</span>
                             </div>
                         </div>
                     </div>
@@ -82,14 +83,14 @@ const ClosureConfirmModal = ({ summary, onConfirm, onCancel, isLoading }: Closur
                         className="btn-secondary"
                         disabled={isLoading}
                     >
-                        Cancel
+                        {t('common.cancel')}
                     </button>
                     <button
                         onClick={onConfirm}
                         className="btn-danger"
                         disabled={isLoading}
                     >
-                        {isLoading ? 'Closing...' : '🔒 Confirm Closure'}
+                        {isLoading ? t('close.closing') : `🔒 ${t('close.confirm')}`}
                     </button>
                 </div>
             </div>
@@ -102,6 +103,7 @@ export const DayClosureButton = () => {
     const [showConfirm, setShowConfirm] = useState(false);
     const [summary, setSummary] = useState<PayrollResult | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
+    const { t } = useTranslation();
 
     const orchard = useHarvestStore(state => state.orchard);
     const currentUser = useHarvestStore(state => state.currentUser);
@@ -126,7 +128,7 @@ export const DayClosureButton = () => {
         } catch (error) {
 
             logger.error('Error fetching day summary:', error);
-            setToast({ message: 'Error fetching day summary. Please try again.', type: 'error' });
+            setToast({ message: t('close.summary_failed'), type: 'error' });
         } finally {
             setIsLoading(false);
         }
@@ -180,7 +182,7 @@ export const DayClosureButton = () => {
                 });
 
             // 3. Show confirmation via Toast
-            setToast({ message: '✅ Day closed and locked successfully', type: 'success' });
+            setToast({ message: `✅ ${t('close.done')}`, type: 'success' });
             setShowConfirm(false);
 
             // Refresh global state instead of reloading page
@@ -191,7 +193,7 @@ export const DayClosureButton = () => {
 
             logger.error('Error closing day:', error);
             setToast({
-                message: `Error closing day: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                message: t('close.failed', { error: error instanceof Error ? error.message : t('common.unknown_error') }),
                 type: 'error'
             });
         } finally {
@@ -207,9 +209,9 @@ export const DayClosureButton = () => {
                 disabled={isLoading}
             >
                 {isLoading ? (
-                    <>⏳ Loading...</>
+                    <>⏳ {t('common.loading')}</>
                 ) : (
-                    <>🔒 End & Lock Day</>
+                    <>🔒 {t('close.title')}</>
                 )}
             </button>
 

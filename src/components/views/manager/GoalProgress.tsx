@@ -6,6 +6,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from '@/i18n';
+import { formatNZNumber } from '@/utils/nzFormat';
 
 interface GoalProgressProps {
     progress: number;
@@ -89,7 +90,7 @@ const GoalProgress: React.FC<GoalProgressProps> = ({
                 <div className="relative z-10 mt-4 pt-3 border-t border-white/20 flex justify-between items-center text-sm animate-fade-in anim-delay" style={{ '--delay': '0.5s', animationFillMode: 'both' } as React.CSSProperties}>
                     <span className="text-white/80">{t('dashboard.projected')} (8h):</span>
                     <span className={`font-bold flex items-center gap-1.5 ${isOnTrack ? 'text-green-300' : 'text-amber-300'}`}>
-                        {isOnTrack ? '🟢' : '⚠️'} {projectedBuckets.toLocaleString()} {t('dashboard.buckets')}
+                        {isOnTrack ? '🟢' : '⚠️'} {formatNZNumber(projectedBuckets)} {t('dashboard.buckets')}
                     </span>
                 </div>
             )}

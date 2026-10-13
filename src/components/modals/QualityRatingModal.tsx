@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
+import { useTranslation } from '@/i18n';
 
 interface QualityRatingModalProps {
     scannedCode: string;
@@ -8,6 +9,7 @@ interface QualityRatingModalProps {
 }
 
 const QualityRatingModal: React.FC<QualityRatingModalProps> = ({ scannedCode, onRate, onCancel }) => {
+    const { t } = useTranslation();
     const dialogRef = useRef<HTMLDivElement>(null);
     useDialogA11y(dialogRef, { onClose: onCancel });
     return (
@@ -21,26 +23,26 @@ const QualityRatingModal: React.FC<QualityRatingModalProps> = ({ scannedCode, on
                 className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom duration-300"
             >
                 <div className="text-center mb-6">
-                    <h3 id="quality-rating-title" className="text-2xl font-black text-text-main">Quality Check</h3>
-                    <p id="quality-rating-desc" className="text-text-muted font-medium">Rate the bucket from {scannedCode}</p>
+                    <h3 id="quality-rating-title" className="text-2xl font-black text-text-main">{t('qc.modal.title')}</h3>
+                    <p id="quality-rating-desc" className="text-text-muted font-medium">{t('qc.modal.desc', { code: scannedCode })}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mb-4">
                     <button onClick={() => onRate('A')} className="p-4 bg-green-50 border-2 border-green-100 rounded-xl active:scale-95 transition-all hover:border-green-500 group">
-                        <span className="block text-2xl font-black text-success mb-1">Class A</span>
-                        <span className="text-xs font-bold text-green-800 uppercase">Perfect</span>
+                        <span className="block text-2xl font-black text-success mb-1">{t('qc.modal.class_a')}</span>
+                        <span className="text-xs font-bold text-green-800 uppercase">{t('qc.modal.perfect')}</span>
                     </button>
                     <button onClick={() => onRate('B')} className="p-4 bg-blue-50 border-2 border-blue-100 rounded-xl active:scale-95 transition-all hover:border-blue-500 group">
-                        <span className="block text-2xl font-black text-blue-600 mb-1">Class B</span>
-                        <span className="text-xs font-bold text-blue-800 uppercase">Auto-fail 5%</span>
+                        <span className="block text-2xl font-black text-blue-600 mb-1">{t('qc.modal.class_b')}</span>
+                        <span className="text-xs font-bold text-blue-800 uppercase">{t('qc.modal.autofail')}</span>
                     </button>
                     <button onClick={() => onRate('C')} className="p-4 bg-yellow-50 border-2 border-yellow-100 rounded-xl active:scale-95 transition-all hover:border-yellow-500 group">
-                        <span className="block text-2xl font-black text-warning mb-1">Class C</span>
-                        <span className="text-xs font-bold text-yellow-800 uppercase">Process</span>
+                        <span className="block text-2xl font-black text-warning mb-1">{t('qc.modal.class_c')}</span>
+                        <span className="text-xs font-bold text-yellow-800 uppercase">{t('qc.process')}</span>
                     </button>
                     <button onClick={() => onRate('reject')} className="p-4 bg-red-50 border-2 border-red-100 rounded-xl active:scale-95 transition-all hover:border-red-500 group">
-                        <span className="block text-2xl font-black text-danger mb-1">REJECT</span>
-                        <span className="text-xs font-bold text-red-800 uppercase">Bin Dump</span>
+                        <span className="block text-2xl font-black text-danger mb-1">{t('qc.modal.reject')}</span>
+                        <span className="text-xs font-bold text-red-800 uppercase">{t('qc.modal.bin_dump')}</span>
                     </button>
                 </div>
 
@@ -48,7 +50,7 @@ const QualityRatingModal: React.FC<QualityRatingModalProps> = ({ scannedCode, on
                     onClick={onCancel}
                     className="w-full py-4 text-text-muted font-bold uppercase tracking-widest text-sm hover:text-text-main transition-colors"
                 >
-                    Cancel Scan
+                    {t('qc.modal.cancel_scan')}
                 </button>
             </div>
         </div>

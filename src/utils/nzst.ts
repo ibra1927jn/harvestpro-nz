@@ -153,3 +153,12 @@ export function nzMidnight(dateYMD: string): string {
 export function nzEndOfDay(dateYMD: string): string {
   return `${dateYMD}T23:59:59${nzOffsetAtLocal(dateYMD, '23:59:59')}`;
 }
+
+/**
+ * Suma (o resta) días a una fecha de calendario 'YYYY-MM-DD' (sin zonas: el día NZ sigue siendo el mismo día).
+ * Ej.: addDaysYMD(todayNZST(), -6) = hace 6 días en NZ.
+ */
+export function addDaysYMD(ymd: string, days: number): string {
+    const [y, m, d] = ymd.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}

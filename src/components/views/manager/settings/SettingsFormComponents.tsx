@@ -7,6 +7,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { parseMoney, formatMoneyInput } from '@/utils/money';
+import { useTranslation } from '@/i18n';
 
 /* ── SettingsSection ─────────────────────── */
 
@@ -157,7 +158,9 @@ interface ToggleRowProps {
     compact?: boolean;
 }
 
-export const ToggleRow: React.FC<ToggleRowProps> = ({ label, description, checked, onChange, locked, icon, compact }) => (
+export const ToggleRow: React.FC<ToggleRowProps> = ({ label, description, checked, onChange, locked, icon, compact }) => {
+    const { t } = useTranslation();
+    return (
     <div className={`flex items-center justify-between ${compact ? '' : 'py-0.5'}`}>
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
             {icon && (
@@ -177,7 +180,7 @@ export const ToggleRow: React.FC<ToggleRowProps> = ({ label, description, checke
         </div>
         <button
             onClick={() => !locked && onChange(!checked)}
-            aria-label={`Toggle ${label}`}
+            aria-label={t('mgr.toggle', { label })}
             role="switch"
             aria-checked={checked ? "true" : "false"}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 flex-shrink-0 ml-3 ${locked ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'} ${checked ? 'bg-green-500 shadow-sm shadow-green-200' : 'bg-slate-200'}`}
@@ -186,3 +189,4 @@ export const ToggleRow: React.FC<ToggleRowProps> = ({ label, description, checke
         </button>
     </div>
 );
+};

@@ -7,8 +7,10 @@ import { selectTeamOf, isPresentToday } from '@/services/harvestMetrics/roster';
 import AddPickerModal from '../../modals/AddPickerModal';
 import PickerDetailsModal from '../../modals/PickerDetailsModal';
 import { ElsewhereBadge } from '@/components/common/ElsewhereBadge';
+import { useTranslation } from '@/i18n';
 
 const TeamView = () => {
+    const { t } = useTranslation();
     const {
         crew,
         addPicker,
@@ -41,7 +43,7 @@ const TeamView = () => {
 
     const handleDelete = async (e: React.MouseEvent, pickerId: string, pickerName: string) => {
         e.stopPropagation();
-        if (window.confirm(`Are you sure you want to remove ${pickerName}?`)) {
+        if (window.confirm(t('tl.team.confirm_remove', { name: pickerName }))) {
             await removePicker(pickerId);
         }
     };
@@ -52,8 +54,8 @@ const TeamView = () => {
                 <div className="flex items-center justify-between px-5 py-3">
                     <div className="flex items-center gap-3">
                         <div>
-                            <h1 className="text-slate-800 text-lg font-black leading-tight tracking-tight">Crew Setup</h1>
-                            <p className="text-[10px] text-primary font-bold uppercase tracking-widest mt-0.5">Harness & ID Assignment</p>
+                            <h1 className="text-slate-800 text-lg font-black leading-tight tracking-tight">{t('tl.team.title')}</h1>
+                            <p className="text-[10px] text-primary font-bold uppercase tracking-widest mt-0.5">{t('tl.team.subtitle')}</p>
                         </div>
                     </div>
 
@@ -65,21 +67,21 @@ const TeamView = () => {
                                 onChange={(e) => setShowInactive(e.target.checked)}
                                 className="accent-primary size-3.5"
                             />
-                            History
+                            {t('panel.tabs.history')}
                         </label>
                     </div>
                 </div>
                 <div className="grid grid-cols-3 gap-3 px-5 mt-1">
                     <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_4px_12px_rgb(0,0,0,0.03)]">
-                        <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Total Crew</span>
+                        <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">{t('tl.team.total')}</span>
                         <span className="text-slate-800 text-xl font-black font-mono tracking-tight">{totalCrew}</span>
                     </div>
                     <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white/80 backdrop-blur-md border border-white/60 shadow-[0_4px_12px_rgb(0,0,0,0.03)]">
-                        <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Active</span>
+                        <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">{t('common.active')}</span>
                         <span className="text-emerald-600 text-xl font-black font-mono tracking-tight">{activeCrew}</span>
                     </div>
                     <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-amber-50/60 backdrop-blur-md border border-amber-200/40 shadow-[0_4px_12px_rgb(245,158,11,0.04)]">
-                        <span className="text-[10px] text-amber-600/80 uppercase tracking-widest font-bold">Pending</span>
+                        <span className="text-[10px] text-amber-600/80 uppercase tracking-widest font-bold">{t('tl.team.pending')}</span>
                         <span className="text-amber-600 text-xl font-black font-mono tracking-tight">{pendingCrew}</span>
                     </div>
                 </div>
@@ -91,8 +93,8 @@ const TeamView = () => {
                         <div className="mx-auto size-16 bg-slate-50 rounded-2xl shadow-inner border border-slate-100 flex items-center justify-center mb-4">
                             <span aria-hidden="true" className="material-symbols-outlined text-[32px] text-slate-300">group_off</span>
                         </div>
-                        <p className="text-sm font-extrabold text-slate-500 tracking-tight">No active pickers found.</p>
-                        {!showInactive && <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-2">Check "History" to see archived crew.</p>}
+                        <p className="text-sm font-extrabold text-slate-500 tracking-tight">{t('tl.team.empty')}</p>
+                        {!showInactive && <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-2">{t('tl.team.empty_hint')}</p>}
                     </div>
                 ) : (
                     displayedCrew.map(picker => (
@@ -116,19 +118,19 @@ const TeamView = () => {
                                                 <span aria-hidden="true" className="material-symbols-outlined text-amber-500 text-[16px] fill-current">star</span>
                                             }
                                             {picker.status === 'inactive' &&
-                                                <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-lg uppercase font-bold tracking-widest ml-2 border border-slate-200">Archived</span>
+                                                <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-lg uppercase font-bold tracking-widest ml-2 border border-slate-200">{t('tl.team.archived')}</span>
                                             }
                                         </div>
                                         <div className="flex items-center gap-2 mt-1.5">
                                             <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold tracking-widest uppercase ${picker.safety_verified ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
-                                                {picker.safety_verified ? 'Onboarded' : 'Pending'}
+                                                {picker.safety_verified ? t('tl.team.onboarded') : t('tl.team.pending')}
                                             </span>
                                             {!picker.orchard_id ? (
                                                 <span className="px-2 py-0.5 rounded-md text-[10px] font-bold tracking-widest uppercase bg-slate-50 text-slate-500 border border-slate-100">
-                                                    On Bench
+                                                    {t('tl.bench')}
                                                 </span>
                                             ) : (
-                                                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold tracking-widest uppercase text-primary bg-primary/5 border border-primary/10">Row {picker.current_row || '—'}</span>
+                                                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold tracking-widest uppercase text-primary bg-primary/5 border border-primary/10">{t('runner.row_n', { n: picker.current_row || '—' })}</span>
                                             )}
                                         </div>
                                     </div>
@@ -136,12 +138,12 @@ const TeamView = () => {
                                 <div className="text-right flex flex-col items-end gap-1.5">
                                     <div>
                                         <span className="block text-2xl font-black text-slate-800 leading-none tracking-tight">{picker.total_buckets_today || 0}</span>
-                                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 block">Buckets</span>
+                                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 block">{t('tl.home.buckets')}</span>
                                     </div>
-                                    <button aria-label={`Delete or archive ${picker.name}`}
+                                    <button aria-label={t('tl.team.delete_name', { name: picker.name })}
                                         onClick={(e) => handleDelete(e, picker.id, picker.name)}
                                         className="size-8 rounded-xl bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 active:scale-95 transition-all border border-red-100/50"
-                                        title="Delete/Archive Picker"
+                                        title={t('tl.team.delete_title')}
                                     >
                                         <span aria-hidden="true" className="material-symbols-outlined text-base">delete</span>
                                     </button>
@@ -149,19 +151,19 @@ const TeamView = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-100/50">
                                 <div>
-                                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-widest block mb-1.5">Picker ID</label>
+                                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-widest block mb-1.5">{t('tl.team.picker_id')}</label>
                                     <div className="relative">
-                                        <input className="w-full bg-white border border-slate-100 rounded-xl px-3 py-2.5 text-sm font-mono font-black text-slate-700 pointer-events-none" type="text" readOnly value={picker.picker_id} aria-label="Picker ID" />
+                                        <input className="w-full bg-white border border-slate-100 rounded-xl px-3 py-2.5 text-sm font-mono font-black text-slate-700 pointer-events-none" type="text" readOnly value={picker.picker_id} aria-label={t('tl.team.picker_id')} />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-[10px] uppercase font-bold text-primary tracking-widest block mb-1.5">Harness No.</label>
+                                    <label className="text-[10px] uppercase font-bold text-primary tracking-widest block mb-1.5">{t('tl.team.harness_no')}</label>
                                     <div className="relative">
                                         <input
                                             className="w-full bg-white border border-slate-100 rounded-xl px-3 py-2.5 text-sm font-mono font-black text-primary uppercase focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all"
                                             type="text"
                                             defaultValue={picker.harness_id || ''}
-                                            placeholder="Assign..."
+                                            placeholder={t('tl.team.assign_placeholder')}
                                             onBlur={(e) => {
                                                 if (e.target.value !== picker.harness_id) {
                                                     updatePicker(picker.id, { harness_id: e.target.value.toUpperCase() });
@@ -188,7 +190,7 @@ const TeamView = () => {
                             className="w-full bg-primary hover:opacity-90 text-white text-sm font-black uppercase tracking-widest py-4 rounded-2xl shadow-[0_10px_30px_rgba(255,31,61,0.3)] flex items-center justify-center gap-2.5 active:scale-[0.98] transition-all border border-white/10"
                         >
                             <span aria-hidden="true" className="material-symbols-outlined text-[22px]">person_add</span>
-                            Add New Picker
+                            {t('tl.team.add_picker')}
                         </button>
                     </div>
                 </div>

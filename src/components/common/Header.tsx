@@ -13,6 +13,7 @@ import { offlineService } from '@/services/offline.service';
 import NotificationPanel from './NotificationPanel';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import OrchardSwitcher from './OrchardSwitcher';
+import { useTranslation } from '@/i18n';
 
 interface HeaderProps {
   title: string;
@@ -29,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   onProfileClick,
   onNavigateToMessaging,
 }) => {
+  const { t } = useTranslation();
   const { appUser, signOut } = useAuth();
   const { unreadCount } = useMessaging();
   const navigate = useNavigate();
@@ -51,12 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
       // Offline guard: check for pending sync items
       const pendingCount = await offlineService.getPendingCount();
       if (pendingCount > 0) {
-        const confirmed = window.confirm(
-          `⚠️ Tienes ${pendingCount} registro(s) sin sincronizar.\n\n` +
-            `Si cierras sesión ahora, podrías perder estos datos.\n\n` +
-            `Conéctate a internet y espera a que se sincronicen antes de cerrar sesión.\n\n` +
-            `¿Quieres cerrar sesión de todas formas?`
-        );
+        const confirmed = window.confirm(`⚠️ ${t('header.unsynced_confirm', { n: pendingCount })}`);
         if (!confirmed) {
           setSigningOut(false);
           return;
@@ -69,7 +66,7 @@ export const Header: React.FC<HeaderProps> = ({
       logger.error('[Header] Sign-out failed:', err);
       setSigningOut(false);
     }
-  }, [signingOut, signOut, navigate]);
+  }, [signingOut, signOut, navigate, t]);
 
   return (
     <header className="sticky top-0 z-30 glass-header">
@@ -95,9 +92,9 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={() => setShowNotifications(!showNotifications)}
               className="size-10 rounded-xl bg-slate-100 border border-border-light flex items-center justify-center text-text-muted hover:bg-slate-200 transition-colors relative"
-              title="Notifications"
+              title={t('settings.notifications')}
               aria-label={
-                unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'
+                unreadCount > 0 ? t('shell.notifications_unread', { n: unreadCount }) : t('settings.notifications')
               }
             >
               <span aria-hidden="true" className="material-symbols-outlined text-[20px]">notifications</span>
@@ -123,7 +120,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onProfileClick}
               className="size-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-sm shadow-md shadow-primary/20 hover:bg-primary-dim transition-colors"
-              aria-label="Open profile settings"
+              aria-label={t('header.open_profile')}
             >
               {initials}
             </button>
@@ -138,8 +135,8 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={handleSignOut}
             disabled={signingOut}
             className="size-10 rounded-xl bg-slate-100 border border-border-light flex items-center justify-center text-text-muted hover:text-red-500 hover:bg-red-50 hover:border-red-200 transition-colors disabled:opacity-50"
-            title="Sign Out"
-            aria-label={signingOut ? 'Signing out...' : 'Sign out'}
+            title={t('common.sign_out')}
+            aria-label={signingOut ? t('header.signing_out') : t('common.sign_out')}
           >
             <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
               {signingOut ? 'hourglass_empty' : 'logout'}

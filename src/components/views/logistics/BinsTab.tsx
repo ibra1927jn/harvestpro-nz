@@ -5,23 +5,27 @@
 import React from 'react';
 import EmptyState from '@/components/ui/EmptyState';
 import { BinInventory, LogisticsSummary } from '@/services/logistics-dept.service';
+import { useTranslation } from '@/i18n';
+import { statusLabel } from '@/i18n/statusLabel';
 
 interface BinsTabProps {
     bins: BinInventory[];
     summary: LogisticsSummary;
 }
 
-const BinsTab: React.FC<BinsTabProps> = ({ bins, summary }) => (
+const BinsTab: React.FC<BinsTabProps> = ({ bins, summary }) => {
+    const { t } = useTranslation();
+    return (
     <div className="space-y-4">
         {/* Bin Overview */}
         <div className="bg-white rounded-xl p-5 shadow-sm border border-border-light">
-            <h3 className="font-bold text-text-primary text-sm mb-3">Bin Inventory Overview</h3>
+            <h3 className="font-bold text-text-primary text-sm mb-3">{t('logi.bins_overview')}</h3>
             <div className="grid grid-cols-4 gap-3 text-center">
                 {[
-                    { label: 'Empty', count: summary.emptyBins, color: 'text-text-secondary' },
-                    { label: 'Filling', count: bins.filter(b => b.status === 'filling').length, color: 'text-amber-600' },
-                    { label: 'Full', count: summary.fullBins, color: 'text-red-600' },
-                    { label: 'Transit', count: summary.binsInTransit, color: 'text-sky-600' },
+                    { label: t('status.empty'), count: summary.emptyBins, color: 'text-text-secondary' },
+                    { label: t('status.filling'), count: bins.filter(b => b.status === 'filling').length, color: 'text-amber-600' },
+                    { label: t('status.full'), count: summary.fullBins, color: 'text-red-600' },
+                    { label: t('logi.transit'), count: summary.binsInTransit, color: 'text-sky-600' },
                 ].map((item, i) => (
                     <div key={i}>
                         <p className={`text-xl font-black ${item.color}`}>{item.count}</p>
@@ -34,8 +38,8 @@ const BinsTab: React.FC<BinsTabProps> = ({ bins, summary }) => (
         {bins.length === 0 && (
             <EmptyState
                 icon="inventory_2"
-                title="No bin data available"
-                subtitle="Bins will appear as they are scanned"
+                title={t('logi.no_bins')}
+                subtitle={t('logi.no_bins_desc')}
                 compact
             />
         )}
@@ -50,12 +54,12 @@ const BinsTab: React.FC<BinsTabProps> = ({ bins, summary }) => (
                             bin.status === 'in_transit' ? 'bg-sky-50 text-sky-700' :
                                 bin.status === 'filling' ? 'bg-amber-50 text-amber-700' :
                                     'bg-surface-secondary text-text-secondary'
-                            }`}>{bin.status.replace('_', ' ')}</span>
+                            }`}>{statusLabel(t, bin.status)}</span>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-text-secondary">
-                        <span>Zone {bin.zone}</span>
+                        <span>{t('logi.zone', { zone: bin.zone })}</span>
                         <span>•</span>
-                        <span>{bin.fill_percentage}% full</span>
+                        <span>{t('logi.pct_full', { n: bin.fill_percentage })}</span>
                     </div>
                     <div className="mt-2 h-1.5 bg-surface-secondary rounded-full overflow-hidden">
                         <div className={`h-full rounded-full ${bin.fill_percentage > 80 ? 'bg-red-400' :
@@ -66,6 +70,7 @@ const BinsTab: React.FC<BinsTabProps> = ({ bins, summary }) => (
             ))}
         </div>
     </div>
-);
+    );
+};
 
 export default BinsTab;

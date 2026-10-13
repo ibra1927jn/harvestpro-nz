@@ -14,6 +14,8 @@
  *   />
  */
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from '@/i18n';
+import { statusLabel } from '@/i18n/statusLabel';
 
 interface InlineSelectProps {
     value: string;
@@ -35,6 +37,7 @@ const InlineSelect: React.FC<InlineSelectProps> = ({
     colorMap,
     disabled = false,
 }) => {
+    const { t } = useTranslation();
     const [isEditing, setIsEditing] = useState(false);
     const selectRef = useRef<HTMLSelectElement>(null);
 
@@ -44,7 +47,7 @@ const InlineSelect: React.FC<InlineSelectProps> = ({
         }
     }, [isEditing]);
 
-    const displayLabel = labelMap?.[value] || value.replace(/_/g, ' ');
+    const displayLabel = labelMap?.[value] || statusLabel(t, value);
     const pillColor = colorMap?.[value] || 'bg-surface-secondary text-text-primary';
 
     const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -70,12 +73,12 @@ const InlineSelect: React.FC<InlineSelectProps> = ({
                 value={value}
                 onChange={handleChange}
                 onBlur={() => setIsEditing(false)}
-                aria-label={`Select ${displayLabel}`}
+                aria-label={t('ui.select_x', { name: displayLabel })}
                 className="px-2 py-1 rounded-lg border-2 border-indigo-400 bg-indigo-50/50 text-xs font-bold text-text-primary outline-none ring-2 ring-indigo-400/20 transition-all"
             >
                 {options.map(opt => (
                     <option key={opt} value={opt}>
-                        {labelMap?.[opt] || opt.replace(/_/g, ' ')}
+                        {labelMap?.[opt] || statusLabel(t, opt)}
                     </option>
                 ))}
             </select>
@@ -86,7 +89,7 @@ const InlineSelect: React.FC<InlineSelectProps> = ({
         <button
             onClick={() => setIsEditing(true)}
             className={`group inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold transition-all hover:ring-2 hover:ring-indigo-300/50 cursor-pointer ${pillColor}`}
-            title="Click to change"
+            title={t('ui.click_to_change')}
         >
             {displayLabel}
             <span aria-hidden="true" className="material-symbols-outlined text-[10px] opacity-0 group-hover:opacity-70 transition-opacity">

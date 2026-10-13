@@ -4,12 +4,14 @@
  */
 import React from 'react';
 import { useTheme } from '@/hooks/useTheme';
+import { useTranslation } from '@/i18n';
 
 interface ThemeToggleProps {
     className?: string;
 }
 
 const ThemeToggle: React.FC<ThemeToggleProps> = ({ className = '' }) => {
+    const { t } = useTranslation();
     const { isDark, toggleTheme } = useTheme();
 
     return (
@@ -22,8 +24,8 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({ className = '' }) => {
                 text-slate-600 dark:text-yellow-300
                 shadow-sm hover:shadow-md active:scale-95
                 ${className}`}
-            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            title={isDark ? 'Modo claro' : 'Modo oscuro'}
+            aria-label={isDark ? t('ui.light_mode') : t('ui.dark_mode')}
+            title={isDark ? t('ui.light_mode') : t('ui.dark_mode')}
         >
             <span aria-hidden="true"
                 className="material-symbols-outlined text-xl transition-transform duration-300"

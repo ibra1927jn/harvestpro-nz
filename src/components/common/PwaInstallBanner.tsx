@@ -8,8 +8,10 @@
  */
 import React from 'react';
 import { usePwaInstall } from '@/hooks/usePwaInstall';
+import { useTranslation } from '@/i18n';
 
 const PwaInstallBanner: React.FC = () => {
+    const { t } = useTranslation();
     const { canInstall, isInstalled, isDismissed, promptInstall, dismissBanner } = usePwaInstall();
 
     // Don't render if installed, dismissed, or no native prompt
@@ -25,8 +27,8 @@ const PwaInstallBanner: React.FC = () => {
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-slate-900">Install HarvestPro</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Works offline • Faster access • No App Store</p>
+                    <p className="text-sm font-bold text-slate-900">{t('pwa.install_title')}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{t('pwa.install_desc')}</p>
                 </div>
 
                 {/* Actions */}
@@ -34,7 +36,7 @@ const PwaInstallBanner: React.FC = () => {
                     <button
                         onClick={dismissBanner}
                         className="text-slate-400 hover:text-slate-600 p-1 transition-colors"
-                        aria-label="Dismiss install banner"
+                        aria-label={t('pwa.dismiss')}
                     >
                         <span aria-hidden="true" className="material-symbols-outlined text-[20px]">close</span>
                     </button>
@@ -42,7 +44,7 @@ const PwaInstallBanner: React.FC = () => {
                         onClick={promptInstall}
                         className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition-colors active:scale-95"
                     >
-                        Install
+                        {t('pwa.install')}
                     </button>
                 </div>
             </div>

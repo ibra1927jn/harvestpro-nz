@@ -5,6 +5,7 @@ import React, { useMemo } from 'react';
 import { ChatGroup } from '../../../context/MessagingContext';
 import type { Broadcast } from '../../../types';
 import { getAvatarColor, formatTime } from './messagingHelpers';
+import { useTranslation } from '@/i18n';
 
 interface Props {
     activeTab: 'alerts' | 'chats';
@@ -27,6 +28,7 @@ const MessagingSidebar: React.FC<Props> = ({
     searchQuery, setSearchQuery, unreadCounts, isManager,
     onSelectChat, onNewChat, onNewBroadcast, isSidebarOpen,
 }) => {
+    const { t } = useTranslation();
     const filteredChats = useMemo(() => {
         if (!searchQuery.trim()) return chatGroups;
         const q = searchQuery.toLowerCase();
@@ -49,11 +51,11 @@ const MessagingSidebar: React.FC<Props> = ({
                             <span aria-hidden="true" className="material-symbols-outlined text-white text-lg">forum</span>
                         </div>
                         <div>
-                            <h2 className="text-base font-black text-slate-800 tracking-tight">Field Comms</h2>
-                            <p className="text-[10px] text-slate-400 font-medium -mt-0.5">{chatGroups.length} conversations</p>
+                            <h2 className="text-base font-black text-slate-800 tracking-tight">{t('chat.field_comms')}</h2>
+                            <p className="text-[10px] text-slate-400 font-medium -mt-0.5">{t('chat.conversations_n', { n: chatGroups.length })}</p>
                         </div>
                     </div>
-                    <button aria-label="New chat" onClick={onNewChat} className="size-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition active:scale-95">
+                    <button aria-label={t('chat.new_chat')} onClick={onNewChat} className="size-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition active:scale-95">
                         <span aria-hidden="true" className="material-symbols-outlined text-lg">edit_square</span>
                     </button>
                 </div>
@@ -61,7 +63,7 @@ const MessagingSidebar: React.FC<Props> = ({
                 <div className="relative">
                     <span aria-hidden="true" className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg">search</span>
                     <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                        placeholder="Search conversations..." className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm focus:outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition font-medium placeholder:text-slate-300" />
+                        placeholder={t('chat.search')} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm focus:outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition font-medium placeholder:text-slate-300" />
                 </div>
             </div>
 
@@ -70,12 +72,12 @@ const MessagingSidebar: React.FC<Props> = ({
                 <div className="flex bg-slate-100/80 p-1 rounded-xl">
                     <button onClick={() => setActiveTab('chats')}
                         className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'chats' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
-                        <span aria-hidden="true" className="material-symbols-outlined text-sm">chat</span>Chats
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm">chat</span>{t('chat.chats')}
                         {chatGroups.length > 0 && <span className="bg-indigo-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center">{chatGroups.length}</span>}
                     </button>
                     <button onClick={() => setActiveTab('alerts')}
                         className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'alerts' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
-                        <span aria-hidden="true" className="material-symbols-outlined text-sm">campaign</span>Alerts
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm">campaign</span>{t('chat.alerts')}
                         {broadcasts.length > 0 && <span className="bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center">{broadcasts.length}</span>}
                     </button>
                 </div>
@@ -87,7 +89,7 @@ const MessagingSidebar: React.FC<Props> = ({
                     <div className="p-3 space-y-2">
                         {isManager && (
                             <button onClick={onNewBroadcast} className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs shadow-lg shadow-amber-500/20 transition active:scale-[0.98] mb-1">
-                                <span aria-hidden="true" className="material-symbols-outlined text-sm">campaign</span>NEW BROADCAST
+                                <span aria-hidden="true" className="material-symbols-outlined text-sm">campaign</span>{t('chat.new_broadcast')}
                             </button>
                         )}
                         {filteredBroadcasts.length === 0 ? (
@@ -95,14 +97,14 @@ const MessagingSidebar: React.FC<Props> = ({
                                 <div className="size-16 mx-auto mb-3 rounded-2xl bg-amber-50 flex items-center justify-center">
                                     <span aria-hidden="true" className="material-symbols-outlined text-3xl text-amber-300">notifications_off</span>
                                 </div>
-                                <p className="text-sm font-bold text-slate-300">No alerts yet</p>
-                                <p className="text-xs text-slate-300 mt-1">Broadcasts will appear here</p>
+                                <p className="text-sm font-bold text-slate-300">{t('chat.no_alerts')}</p>
+                                <p className="text-xs text-slate-300 mt-1">{t('chat.no_alerts_desc')}</p>
                             </div>
                         ) : (
                             filteredBroadcasts.map(b => (
                                 <div key={b.id} className={`p-3.5 rounded-xl border transition group cursor-pointer hover:shadow-sm ${b.priority === 'urgent' ? 'bg-red-50/50 border-red-200/50 hover:border-red-300' : b.priority === 'high' ? 'bg-amber-50/50 border-amber-200/50 hover:border-amber-300' : 'bg-white border-slate-100 hover:border-indigo-200'}`}>
                                     <div className="flex items-center justify-between mb-1.5">
-                                        <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${b.priority === 'urgent' ? 'bg-red-500 text-white' : b.priority === 'high' ? 'bg-amber-500 text-white' : 'bg-indigo-100 text-indigo-600'}`}>{b.priority || 'Info'}</span>
+                                        <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${b.priority === 'urgent' ? 'bg-red-500 text-white' : b.priority === 'high' ? 'bg-amber-500 text-white' : 'bg-indigo-100 text-indigo-600'}`}>{t(`chat.priority.${b.priority || 'normal'}`)}</span>
                                         <span className="text-[10px] text-slate-400 font-medium">{formatTime(b.created_at)}</span>
                                     </div>
                                     <h4 className="text-sm font-bold text-slate-800 mb-0.5">{b.title}</h4>
@@ -118,12 +120,12 @@ const MessagingSidebar: React.FC<Props> = ({
                                 <div className="size-16 mx-auto mb-3 rounded-2xl bg-indigo-50 flex items-center justify-center">
                                     <span aria-hidden="true" className="material-symbols-outlined text-3xl text-indigo-300">chat_bubble</span>
                                 </div>
-                                <p className="text-sm font-bold text-slate-300">No conversations yet</p>
-                                <p className="text-xs text-slate-300 mt-1">Start a new chat to begin</p>
-                                <button onClick={onNewChat} className="mt-4 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition">Start a chat</button>
+                                <p className="text-sm font-bold text-slate-300">{t('chat.no_conversations')}</p>
+                                <p className="text-xs text-slate-300 mt-1">{t('chat.no_conversations_desc')}</p>
+                                <button onClick={onNewChat} className="mt-4 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition">{t('chat.start_chat')}</button>
                             </div>
                         ) : filteredChats.length === 0 ? (
-                            <div className="text-center py-10 opacity-50"><p className="text-xs font-medium">No results for "{searchQuery}"</p></div>
+                            <div className="text-center py-10 opacity-50"><p className="text-xs font-medium">{t('chat.no_results_for', { q: searchQuery })}</p></div>
                         ) : (
                             filteredChats.map((chat, chatIdx) => {
                                 const isActive = selectedChat?.id === chat.id;
@@ -135,7 +137,7 @@ const MessagingSidebar: React.FC<Props> = ({
                                             <div className={`size-12 rounded-full bg-gradient-to-br ${getAvatarColor(chat.name)} flex items-center justify-center font-bold text-white text-sm shadow-sm`}>
                                                 {chat.isGroup ? <span aria-hidden="true" className="material-symbols-outlined text-lg">groups</span> : chat.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()}
                                             </div>
-                                            {!chat.isGroup && <div className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-emerald-400 border-2 border-white online-dot" title="Online"></div>}
+                                            {!chat.isGroup && <div className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-emerald-400 border-2 border-white online-dot" title={t('common.online')}></div>}
                                         </div>
                                         <div className="flex-1 text-left min-w-0">
                                             <div className="flex justify-between items-baseline mb-0.5">
@@ -144,7 +146,7 @@ const MessagingSidebar: React.FC<Props> = ({
                                             </div>
                                             <div className="flex items-center gap-1.5">
                                                 {chat.isGroup && <span className="text-[10px] text-slate-400">👥 {chat.members.length}</span>}
-                                                <p className="text-xs text-slate-400 truncate">{chat.lastMsg || 'No messages yet'}</p>
+                                                <p className="text-xs text-slate-400 truncate">{chat.lastMsg || t('chat.no_messages')}</p>
                                             </div>
                                         </div>
                                         {(unreadCounts[chat.id] || (chat.unreadCount ?? 0)) > 0 && (

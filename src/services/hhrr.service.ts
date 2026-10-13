@@ -11,7 +11,7 @@ import { settingsRepository } from '@/repositories/settings.repository';
 import { payrollService } from '@/services/payroll.service';
 import { storeSyncRepository } from '@/repositories/store-sync.repository';
 import { logger } from '@/utils/logger';
-import { todayNZST, nzMidnight } from '@/utils/nzst';
+import { todayNZST, nzMidnight, addDaysYMD } from '@/utils/nzst';
 import { userRepository2 } from '@/repositories/user.repository';
 import { contractRepository2 } from '@/repositories/contract.repository';
 import { attendanceRepository } from '@/repositories/attendance.repository';
@@ -221,8 +221,9 @@ export async function fetchComplianceAlerts(orchardId?: string): Promise<Complia
   const alerts: ComplianceAlert[] = [];
 
   try {
-    const thirtyDaysFromNow = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
-    const today = new Date().toISOString().split('T')[0];
+    // Días de NZ (antes fecha UTC: por la mañana "hoy" era ayer)
+    const today = todayNZST();
+    const thirtyDaysFromNow = addDaysYMD(today, 30);
 
     const expiringContracts = await contractRepository2.getExpiringSoon(orchardId, today, thirtyDaysFromNow);
     if (expiringContracts.length > 0) {

@@ -7,11 +7,10 @@ import React, { useEffect, useState } from 'react';
 import { attendanceRepository } from '@/repositories/attendance.repository';
 import { todayNZST } from '@/utils/nzst';
 import { logger } from '@/utils/logger';
+import { useTranslation } from '@/i18n';
+import { formatNZDate, formatNZTime } from '@/utils/nzFormat';
 
 type Row = Awaited<ReturnType<typeof attendanceRepository.getUnclosedPastShifts>>[number];
-
-const nzTime = (iso: string | null) =>
-    iso ? new Intl.DateTimeFormat('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso)) : '';
 
 export const UnclosedShiftsAlert: React.FC<{
     /** Solo este huerto (manager) */
@@ -20,7 +19,8 @@ export const UnclosedShiftsAlert: React.FC<{
     pickerIds?: string[];
     /** Qué hacer (texto según el rol) */
     hint?: string;
-}> = ({ orchardId, pickerIds, hint = 'Fix the check-out time in the timesheets.' }) => {
+}> = ({ orchardId, pickerIds, hint }) => {
+    const { t } = useTranslation();
     const [rows, setRows] = useState<Row[]>([]);
     const [open, setOpen] = useState(false);
     const idsKey = pickerIds?.slice().sort().join(',');
@@ -44,16 +44,19 @@ export const UnclosedShiftsAlert: React.FC<{
             <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between gap-3 text-left">
                 <span className="text-sm font-bold flex items-center gap-2">
                     <span aria-hidden="true" className="material-symbols-outlined text-[20px]">timer_off</span>
-                    {rows.length} shift{rows.length === 1 ? '' : 's'} from past days with no check-out ({people} {people === 1 ? 'person' : 'people'}). Hours are estimated until fixed.
+                    {t(rows.length === 1 ? 'unclosed.summary_one' : 'unclosed.summary_other', {
+                        n: rows.length,
+                        people: t(people === 1 ? 'unclosed.people_one' : 'unclosed.people_other', { n: people }),
+                    })}
                 </span>
                 <span aria-hidden="true" className="material-symbols-outlined text-[18px]">{open ? 'expand_less' : 'expand_more'}</span>
             </button>
             {open && (
                 <div className="mt-2 text-sm">
-                    <p className="text-xs mb-1">{hint}</p>
+                    <p className="text-xs mb-1">{hint ?? t('unclosed.hint_default')}</p>
                     <ul className="list-disc pl-5 space-y-0.5">
                         {rows.map(r => (
-                            <li key={r.id}>{r.pickerName} — {r.date} (in {nzTime(r.checkIn)}, {r.orchardName})</li>
+                            <li key={r.id}>{t('unclosed.row', { name: r.pickerName, date: formatNZDate(r.date), time: formatNZTime(r.checkIn), orchard: r.orchardName })}</li>
                         ))}
                     </ul>
                 </div>

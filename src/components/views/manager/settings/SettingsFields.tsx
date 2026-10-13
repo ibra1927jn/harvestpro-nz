@@ -40,8 +40,8 @@ export const ComplianceTargetField: React.FC<ComplianceTargetFieldProps> = ({ va
                     value={value}
                     min={floor}
                     step="1"
-                    title="Target Buckets / Hour"
-                    aria-label="Target Buckets / Hour"
+                    title={t('settings.harvest.target_buckets')}
+                    aria-label={t('settings.harvest.target_buckets')}
                     onChange={(e) => onChange(clampToFloor(e.target.value, floor))}
                     className="w-24 text-right bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-text-main font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
                 />
@@ -50,7 +50,7 @@ export const ComplianceTargetField: React.FC<ComplianceTargetFieldProps> = ({ va
                 <span aria-hidden="true" className="material-symbols-outlined text-sm">{isAtFloor ? 'warning' : 'check_circle'}</span>
                 {/* Fórmula visible: ceil(minWage / pieceRate) */}
                 {fillMinWarning(t('settings.harvest.min_warning'), minWage, pieceRate, floor)}
-                {!isAtFloor && <span className="text-text-muted ml-1">(override: {value})</span>}
+                {!isAtFloor && <span className="text-text-muted ml-1">{t('settings.override', { value })}</span>}
             </p>
         </div>
     );
@@ -65,19 +65,20 @@ interface OrchardSelectorProps {
 }
 
 /** Selector de huerto que auto-rellena Total Rows y Variety desde la DB */
-export const OrchardSelector: React.FC<OrchardSelectorProps> = ({ orchards, selectedId, onSelect }) => (
+export const OrchardSelector: React.FC<OrchardSelectorProps> = ({ orchards, selectedId, onSelect }) => {
+    const { t } = useTranslation();
+    return (
     <div className="flex items-center justify-between py-1">
         <span className="text-sm font-medium text-text-sub flex items-center gap-2">
             <span aria-hidden="true" className="material-symbols-outlined text-sm text-text-muted">location_on</span>
-            {/* OrchardSelector is rendered inside SettingsView which has translation context */}
-            Orchard
+            {t('settings.orchard.label')}
         </span>
         {orchards.length > 1 ? (
             <select
                 value={selectedId}
                 onChange={(e) => onSelect(e.target.value)}
-                title="Select orchard"
-                aria-label="Select orchard"
+                title={t('settings.select_orchard')}
+                aria-label={t('settings.select_orchard')}
                 className="max-w-[160px] text-right bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-text-main font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all truncate"
             >
                 {orchards.map(o => (
@@ -90,4 +91,5 @@ export const OrchardSelector: React.FC<OrchardSelectorProps> = ({ orchards, sele
             </span>
         )}
     </div>
-);
+    );
+};

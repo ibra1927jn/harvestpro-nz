@@ -13,8 +13,10 @@ import { logger } from '../../utils/logger';
 import MessagingSidebar from './messaging/MessagingSidebar';
 import ChatWindow from './messaging/ChatWindow';
 import NewChatModal from './messaging/NewChatModal';
+import { useTranslation } from '@/i18n';
 
 const UnifiedMessagingView = () => {
+  const { t } = useTranslation();
   const { appUser } = useAuth();
   const {
     broadcasts,
@@ -192,7 +194,7 @@ const UnifiedMessagingView = () => {
       />
 
       <section
-        aria-label="Conversation"
+        aria-label={t('chat.conversation')}
         // Móvil: lista o conversación, nunca las dos a la vez (antes se partía la pantalla en dos)
         className={`flex-1 flex flex-col ${isSidebarOpen ? 'hidden md:flex' : 'flex'}`}
       >
@@ -219,18 +221,16 @@ const UnifiedMessagingView = () => {
             <div className="size-28 rounded-3xl bg-gradient-to-br from-indigo-100 to-blue-100 flex items-center justify-center mb-5 shadow-sm">
               <span aria-hidden="true" className="material-symbols-outlined text-6xl text-indigo-400">forum</span>
             </div>
-            <h3 className="text-xl font-black text-slate-800 mb-1">Field Communications</h3>
+            <h3 className="text-xl font-black text-slate-800 mb-1">{t('chat.field_comms_title')}</h3>
             <p className="text-sm text-slate-400 font-medium text-center max-w-xs mb-6">
-              Stay connected with your team. Send messages, alerts, and coordinate harvest
-              operations in real-time.
+              {t('chat.field_comms_desc')}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowNewChatModal(true)}
                 className="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/30 transition active:scale-95"
               >
-                <span aria-hidden="true" className="material-symbols-outlined text-sm mr-1 align-middle">add</span>New
-                Chat
+                <span aria-hidden="true" className="material-symbols-outlined text-sm mr-1 align-middle">add</span>{t('chat.new_chat')}
               </button>
               {isManager && (
                 <button
@@ -240,7 +240,7 @@ const UnifiedMessagingView = () => {
                   <span aria-hidden="true" className="material-symbols-outlined text-sm mr-1 align-middle">
                     campaign
                   </span>
-                  Broadcast
+                  {t('common.broadcast')}
                 </button>
               )}
             </div>
@@ -264,7 +264,7 @@ const UnifiedMessagingView = () => {
                 setActiveTab('chats');
               }
             } catch (e) {
-              setActionError(`Group not created: ${e instanceof Error ? e.message : 'try again'}`);
+              setActionError(t('chat.group_not_created', { error: e instanceof Error ? e.message : t('chat.try_again') }));
               setShowNewChatModal(false);
             }
           }}
@@ -277,7 +277,7 @@ const UnifiedMessagingView = () => {
             // Si no se guardó, el modal no se cierra y se avisa
             const ok = await sendBroadcast(title, content, priority as MessagePriority);
             if (!ok) {
-              setActionError('Broadcast not sent — check your connection and try again');
+              setActionError(t('chat.broadcast_failed'));
               throw new Error('Broadcast not sent');
             }
             setActionError(null);

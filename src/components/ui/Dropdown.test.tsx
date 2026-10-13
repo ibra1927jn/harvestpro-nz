@@ -22,7 +22,7 @@ describe('Dropdown', () => {
 
     it('renders with placeholder', () => {
         render(<Dropdown {...defaultProps} />);
-        expect(screen.getByText('Seleccionar...')).toBeDefined();
+        expect(screen.getByText('Select...')).toBeDefined();
     });
 
     it('renders with custom placeholder', () => {
@@ -66,7 +66,7 @@ describe('Dropdown', () => {
     it('filters options when searchable', () => {
         render(<Dropdown {...defaultProps} searchable />);
         fireEvent.click(screen.getByRole('button'));
-        const searchInput = screen.getByPlaceholderText('Buscar...');
+        const searchInput = screen.getByPlaceholderText('Search...');
         fireEvent.change(searchInput, { target: { value: 'ki' } });
         expect(screen.getByText('Kiwi')).toBeDefined();
         expect(screen.queryByText('Apple')).toBeNull();
@@ -75,9 +75,9 @@ describe('Dropdown', () => {
     it('shows no results message', () => {
         render(<Dropdown {...defaultProps} searchable />);
         fireEvent.click(screen.getByRole('button'));
-        const searchInput = screen.getByPlaceholderText('Buscar...');
+        const searchInput = screen.getByPlaceholderText('Search...');
         fireEvent.change(searchInput, { target: { value: 'zzz' } });
-        expect(screen.getByText('Sin resultados')).toBeDefined();
+        expect(screen.getByText('No results')).toBeDefined();
     });
 
     it('shows error message', () => {

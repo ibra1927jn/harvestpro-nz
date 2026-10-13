@@ -10,6 +10,9 @@ import { useAuth } from '@/context/AuthContext';
 import { PAY_RULES } from '@/services/harvestMetrics';
 import FilterBar from '@/components/ui/FilterBar';
 import InlineEdit from '@/components/ui/InlineEdit';
+import { formatNZDate } from '@/utils/nzFormat';
+import { statusLabel } from '@/i18n/statusLabel';
+import { useTranslation } from '@/i18n';
 
 interface ContractsTabProps {
     employees: Employee[];
@@ -18,6 +21,7 @@ interface ContractsTabProps {
 }
 
 const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefresh }) => {
+    const { t } = useTranslation();
     const [confirmId, setConfirmId] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -55,7 +59,7 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
             showToast(okMessage, okType);
             onRefresh?.();
         } catch (e) {
-            showToast(`${emp.full_name}: ${e instanceof Error ? e.message : 'not saved'}`, 'error');
+            showToast(`${emp.full_name}: ${e instanceof Error ? e.message : t('hr.contracts.not_saved')}`, 'error');
         } finally {
             setBusy(null);
         }
@@ -67,19 +71,19 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
         nextYear.setFullYear(nextYear.getFullYear() + 1);
         const end = nextYear.toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' });
         void run(emp, () => changeContract(emp.contract_id!, { status: 'active', end_date: end }),
-            `Contract renewed for ${emp.full_name} until ${end}`);
+            t('hr.contracts.renewed', { name: emp.full_name, date: formatNZDate(end, 'medium') }));
     };
 
     const handleTerminate = (emp: Employee) => {
         if (!emp.contract_id) return;
         setConfirmId(null);
         void run(emp, () => changeContract(emp.contract_id!, { status: 'terminated' }),
-            `Contract terminated for ${emp.full_name}`, 'error');
+            t('hr.contracts.terminated', { name: emp.full_name }), 'error');
     };
 
     const handleCreate = (emp: Employee, form: NewContractForm) => {
         const orchardId = emp.orchard_id || storeOrchardId;
-        if (!orchardId) { showToast('No orchard for this person', 'error'); return; }
+        if (!orchardId) { showToast(t('hr.contracts.no_orchard'), 'error'); return; }
         void run(emp, async () => {
             await saveNewContract({
                 employee_id: emp.id,
@@ -91,7 +95,7 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                 created_by: appUser?.id ?? null,
             });
             setCreatingFor(null);
-        }, `Contract created for ${emp.full_name}`);
+        }, t('hr.contracts.created', { name: emp.full_name }));
     };
 
     return (
@@ -114,8 +118,8 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                         <span aria-hidden="true" className="material-symbols-outlined text-[24px] text-amber-600">info</span>
                     </div>
                     <div>
-                        <p className="text-sm font-extrabold text-amber-900 tracking-tight">{summary.pendingContracts} contracts need renewal within 30 days</p>
-                        <p className="text-[10px] font-bold text-amber-600/80 uppercase tracking-widest mt-0.5">Please review pending contracts</p>
+                        <p className="text-sm font-extrabold text-amber-900 tracking-tight">{t('hr.contracts.need_renewal', { n: summary.pendingContracts })}</p>
+                        <p className="text-[10px] font-bold text-amber-600/80 uppercase tracking-widest mt-0.5">{t('hr.contracts.review_pending')}</p>
                     </div>
                 </div>
             )}
@@ -123,10 +127,10 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
             <FilterBar
                 searchValue={searchQuery}
                 onSearchChange={setSearchQuery}
-                searchPlaceholder="Search contracts..."
+                searchPlaceholder={t('hr.contracts.search')}
                 filters={[
-                    { key: 'contract_type', label: 'Type', options: filterOptions.types, icon: 'description' },
-                    { key: 'status', label: 'Status', options: filterOptions.statuses, icon: 'toggle_on' },
+                    { key: 'contract_type', label: t('hr.type'), options: filterOptions.types, icon: 'description' },
+                    { key: 'status', label: t('hr.status'), options: filterOptions.statuses, icon: 'toggle_on' },
                 ]}
                 activeFilters={activeFilters}
                 onFilterChange={(key, value) => setActiveFilters(prev => ({ ...prev, [key]: value }))}
@@ -145,18 +149,18 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                             <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md shadow-sm border ${emp.contract_type === 'permanent' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
                                 emp.contract_type === 'seasonal' ? 'bg-sky-50 border-sky-100 text-sky-700' :
                                     'bg-slate-50 border-slate-100 text-slate-500'
-                                }`}>{emp.contract_type}</span>
+                                }`}>{statusLabel(t, emp.contract_type)}</span>
                         </div>
                         <div className="flex items-center gap-5 text-xs text-slate-500 font-bold mb-4 bg-slate-50/50 rounded-2xl p-3 border border-slate-100/50 relative z-10">
                             <span className="flex items-center gap-1.5">
                                 <span aria-hidden="true" className="material-symbols-outlined text-[16px] text-slate-400">event</span>
-                                {new Date(emp.contract_start).toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', month: 'short', year: 'numeric' })}
+                                {formatNZDate(emp.contract_start, 'monthYear')}
                                 {emp.contract_id && emp.contract_end && (
                                     <>
                                         <span className="text-slate-300 mx-1">→</span>
                                         <InlineEdit
                                             value={emp.contract_end}
-                                            onSave={(val) => run(emp, () => changeContract(emp.contract_id!, { end_date: val }), 'End date saved')}
+                                            onSave={(val) => run(emp, () => changeContract(emp.contract_id!, { end_date: val }), t('hr.contracts.end_saved'))}
                                             type="date"
                                         />
                                     </>
@@ -168,14 +172,14 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                                 {emp.contract_id ? (
                                     <InlineEdit
                                         value={String(emp.hourly_rate)}
-                                        onSave={(val) => run(emp, () => changeContract(emp.contract_id!, { hourly_rate: parseFloat(val) || emp.hourly_rate }), 'Hourly rate saved')}
+                                        onSave={(val) => run(emp, () => changeContract(emp.contract_id!, { hourly_rate: parseFloat(val) || emp.hourly_rate }), t('hr.contracts.rate_saved'))}
                                         type="number"
                                         prefix="$"
-                                        suffix="/hr"
+                                        suffix={t('common.per_hour')}
                                         minWidth="60px"
                                     />
                                 ) : (
-                                    <span className="text-slate-400">No contract</span>
+                                    <span className="text-slate-400">{t('hr.contracts.none')}</span>
                                 )}
                             </span>
                         </div>
@@ -194,7 +198,7 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                                     className="relative z-10 w-full py-3 rounded-2xl bg-indigo-50 text-indigo-700 text-[11px] uppercase tracking-widest font-bold hover:bg-indigo-100 flex items-center justify-center gap-1.5 border border-indigo-100"
                                 >
                                     <span aria-hidden="true" className="material-symbols-outlined text-[16px]">add</span>
-                                    Create contract
+                                    {t('hr.contracts.create')}
                                 </button>
                             )
                         )}
@@ -208,7 +212,7 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                                 className="flex-1 py-3 rounded-2xl bg-emerald-50/50 text-emerald-700 text-[11px] uppercase tracking-widest font-bold hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1.5 border border-emerald-100/50"
                             >
                                 <span aria-hidden="true" className="material-symbols-outlined text-[16px]">autorenew</span>
-                                Renew
+                                {t('hr.contracts.renew')}
                             </button>
                             {confirmId === emp.id ? (
                                 <div className="flex-1 flex gap-2">
@@ -217,13 +221,13 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                                         disabled={busy === emp.id}
                                         className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-[11px] uppercase tracking-widest font-bold hover:bg-red-600 transition-colors shadow-sm"
                                     >
-                                        Confirm
+                                        {t('hr.contracts.confirm')}
                                     </button>
                                     <button
                                         onClick={() => setConfirmId(null)}
                                         className="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-600 text-[11px] uppercase tracking-widest font-bold hover:bg-slate-200 transition-colors"
                                     >
-                                        Cancel
+                                        {t('common.cancel')}
                                     </button>
                                 </div>
                             ) : (
@@ -232,7 +236,7 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
                                     className="flex-1 py-3 rounded-2xl bg-red-50/50 text-red-700 text-[11px] uppercase tracking-widest font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-1.5 border border-red-100/50"
                                 >
                                     <span aria-hidden="true" className="material-symbols-outlined text-[16px]">cancel</span>
-                                    Terminate
+                                    {t('hr.contracts.terminate')}
                                 </button>
                             )}
                         </div>
@@ -252,34 +256,35 @@ interface NewContractForm {
 }
 
 const CreateContractForm: React.FC<{ busy: boolean; onCancel: () => void; onSave: (f: NewContractForm) => void }> = ({ busy, onCancel, onSave }) => {
+    const { t } = useTranslation();
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' });
     const [form, setForm] = useState<NewContractForm>({ type: 'seasonal', start: today, end: '', rate: PAY_RULES.minWageFloor });
     const field = 'w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm bg-white';
     return (
         <div className="relative z-10 space-y-2 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3" data-testid="create-contract-form">
             <div className="grid grid-cols-2 gap-2">
-                <label className="text-[11px] font-bold text-slate-500">Type
+                <label className="text-[11px] font-bold text-slate-500">{t('hr.type')}
                     <select className={field} value={form.type} onChange={e => setForm({ ...form, type: e.target.value as NewContractForm['type'] })}>
-                        <option value="seasonal">Seasonal</option>
-                        <option value="casual">Casual</option>
-                        <option value="permanent">Permanent</option>
+                        <option value="seasonal">{t('status.seasonal')}</option>
+                        <option value="casual">{t('status.casual')}</option>
+                        <option value="permanent">{t('status.permanent')}</option>
                     </select>
                 </label>
-                <label className="text-[11px] font-bold text-slate-500">Hourly rate ($)
+                <label className="text-[11px] font-bold text-slate-500">{t('hr.contracts.hourly_rate')}
                     <input className={field} type="number" step="0.01" min={PAY_RULES.minWageFloor} value={form.rate}
                         onChange={e => setForm({ ...form, rate: parseFloat(e.target.value) || 0 })} />
                 </label>
-                <label className="text-[11px] font-bold text-slate-500">Start
+                <label className="text-[11px] font-bold text-slate-500">{t('hr.contracts.start')}
                     <input className={field} type="date" value={form.start} onChange={e => setForm({ ...form, start: e.target.value })} />
                 </label>
-                <label className="text-[11px] font-bold text-slate-500">End (optional)
+                <label className="text-[11px] font-bold text-slate-500">{t('hr.contracts.end_optional')}
                     <input className={field} type="date" value={form.end} onChange={e => setForm({ ...form, end: e.target.value })} />
                 </label>
             </div>
             <div className="flex gap-2">
-                <button onClick={onCancel} disabled={busy} className="flex-1 rounded-xl bg-white py-2 text-xs font-bold text-slate-600 border border-slate-200">Cancel</button>
+                <button onClick={onCancel} disabled={busy} className="flex-1 rounded-xl bg-white py-2 text-xs font-bold text-slate-600 border border-slate-200">{t('common.cancel')}</button>
                 <button onClick={() => onSave(form)} disabled={busy || !form.start} className="flex-1 rounded-xl bg-indigo-600 py-2 text-xs font-bold text-white disabled:opacity-50">
-                    {busy ? 'Saving…' : 'Save contract'}
+                    {busy ? t('hr.saving') : t('hr.contracts.save')}
                 </button>
             </div>
         </div>

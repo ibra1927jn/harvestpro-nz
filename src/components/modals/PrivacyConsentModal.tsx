@@ -17,7 +17,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { supabase } from '@/services/supabase';
 import { logger } from '@/utils/logger';
-import { i18n } from '@/services/i18n.service';
+import { useTranslation, type TFunction } from '@/i18n';
 
 interface PrivacyConsentModalProps {
   /** The authenticated user's ID (from auth.users) */
@@ -32,8 +32,7 @@ interface PrivacyConsentModalProps {
  * Returns the consent sections based on current language.
  * Each section maps to a specific NZ Privacy Act 2020 Information Privacy Principle (IPP).
  */
-function getConsentSections(): Array<{ title: string; body: string }> {
-  const t = (key: string) => i18n.t(key);
+function getConsentSections(t: TFunction): Array<{ title: string; body: string }> {
   return [
     { title: t('privacy.section1.title'), body: t('privacy.section1.body') },
     { title: t('privacy.section2.title'), body: t('privacy.section2.body') },
@@ -53,7 +52,7 @@ const PrivacyConsentModal: React.FC<PrivacyConsentModalProps> = ({
   const [error, setError] = useState('');
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
 
-  const t = useCallback((key: string) => i18n.t(key), []);
+  const { t } = useTranslation();
 
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
@@ -111,7 +110,7 @@ const PrivacyConsentModal: React.FC<PrivacyConsentModalProps> = ({
   const dialogRef = useRef<HTMLDivElement>(null);
   useDialogA11y(dialogRef, { closeOnEscape: false });
 
-  const sections = getConsentSections();
+  const sections = getConsentSections(t);
   const buttonDisabled = isSubmitting || !hasScrolledToBottom;
 
   return (

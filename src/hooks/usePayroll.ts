@@ -13,6 +13,7 @@ import { todayNZST } from '@/utils/nzst';
 import { logger } from '@/utils/logger';
 import { useAuth } from '@/context/AuthContext';
 import type { PayWeekActionResult } from '@/repositories/payroll.repository';
+import { translate } from '@/i18n';
 
 /** Semana de pago a mostrar por defecto: el lunes se cierra la semana anterior. */
 export function defaultPayWeek(today: string = todayNZST()): PayWeek {
@@ -58,7 +59,7 @@ export function usePayroll() {
                 logger.warn('[Payroll] Failed to load payroll data:', err);
                 if (!cancelled) {
                     setPayrollData(null);
-                    setError('No se pudo calcular la nómina de esta semana.');
+                    setError(translate('pay.err.calc'));
                 }
             } finally {
                 if (!cancelled) { setIsLoading(false); setHasLoadedOnce(true); }
@@ -86,7 +87,7 @@ export function usePayroll() {
             setCloseResult(res);
             if (res.closed || res.already_closed) setReloadKey(k => k + 1);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'No se pudo cerrar la semana.');
+            setError(err instanceof Error ? err.message : translate('pay.err.close'));
         } finally {
             setClosing(false);
         }
@@ -100,7 +101,7 @@ export function usePayroll() {
             setCloseResult(null);
             setReloadKey(k => k + 1);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'No se pudo reabrir la semana.');
+            setError(err instanceof Error ? err.message : translate('pay.err.reopen'));
         } finally {
             setClosing(false);
         }

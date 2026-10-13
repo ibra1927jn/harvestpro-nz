@@ -25,7 +25,7 @@ describe('UnclosedShiftsAlert', () => {
         render(<UnclosedShiftsAlert orchardId="o1" />);
         expect(await screen.findByText(/2 shifts from past days with no check-out \(1 person\)/)).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button'));
-        expect(screen.getByText('Ana — 2026-10-10 (in 07:00, A)')).toBeInTheDocument();
+        expect(screen.getByText('Ana — 10/10/2026 (in 07:00, A)')).toBeInTheDocument();
         expect(getUnclosed).toHaveBeenLastCalledWith('2026-10-12', { orchardId: 'o1', pickerIds: undefined });
     });
 });

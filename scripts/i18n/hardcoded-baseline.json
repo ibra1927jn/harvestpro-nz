@@ -1,0 +1,15 @@
+{
+  "src/components/AuditLogViewer.tsx": 36,
+  "src/components/common/setup-wizard/OrchardStep.tsx": 7,
+  "src/components/common/setup-wizard/RatesStep.tsx": 5,
+  "src/components/common/setup-wizard/SummaryStep.tsx": 9,
+  "src/components/common/SetupWizard.tsx": 13,
+  "src/components/manager/OnboardingWizard.tsx": 12,
+  "src/components/modals/import-csv/ImportSteps.tsx": 27,
+  "src/components/modals/ImportCSVModal.tsx": 10,
+  "src/components/SecurityDashboard.tsx": 22,
+  "src/components/views/manager/AnomalyDetectionView.tsx": 20,
+  "src/components/views/manager/MPIExportView.tsx": 14,
+  "src/components/views/manager/weekly-report/ExportModal.tsx": 20,
+  "src/pages/OnboardingPage.tsx": 41
+}

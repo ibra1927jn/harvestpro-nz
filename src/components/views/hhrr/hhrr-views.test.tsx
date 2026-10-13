@@ -11,7 +11,7 @@ describe('CalendarTab', () => {
     it('renders fallback banner when shift hours not configured', () => {
         render(<CalendarTab />);
         expect(screen.getByTestId('calendar-fallback-banner')).toBeTruthy();
-        expect(screen.getByText(/Orchard settings incompletos/)).toBeTruthy();
+        expect(screen.getByText(/Orchard settings incomplete/)).toBeTruthy();
     });
 
     it('renders Today\'s Schedule section', () => {

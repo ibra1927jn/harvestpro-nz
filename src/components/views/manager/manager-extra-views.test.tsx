@@ -3,7 +3,7 @@
  * MPIExportView (191L), APIKeysView (249L), AnomalyDetectionView (204L), OrchardMapView (170L)
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 
 // ═══ Global mocks ═══
@@ -97,6 +97,17 @@ describe('APIKeysView', () => {
     const { default: APIKeysView } = await import('./APIKeysView');
     const { container } = render(<APIKeysView />);
     expect(container.firstChild).not.toBeNull();
+  });
+
+  it('shows key dates in NZ format, not the device locale (5 March is not 3 May)', async () => {
+    const { apiKeysService } = await import('@/services/api-keys.service');
+    vi.mocked(apiKeysService.listKeys).mockResolvedValueOnce([{
+      id: 'k1', name: 'Xero', key_prefix: 'hp_live_ab', scopes: ['harvest:read'], is_active: true,
+      created_at: '2026-03-05T10:00:00Z', last_used_at: null, expires_at: null, request_count: 3,
+    } as unknown as Awaited<ReturnType<typeof apiKeysService.listKeys>>[number]]);
+    const { default: APIKeysView } = await import('./APIKeysView');
+    render(<APIKeysView />);
+    expect(await screen.findByText('Created 05/03/2026')).toBeTruthy();
   });
 });
 

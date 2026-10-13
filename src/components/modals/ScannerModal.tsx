@@ -6,6 +6,7 @@ import { useScanRateLimit } from '@/hooks/useScanRateLimit';
 import { nativeScannerService } from '@/services/native-scanner.service';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { announce } from '@/services/announcer';
+import { useTranslation } from '@/i18n';
 
 // Configura la ruta del worker para que Vite pueda servirlo sin eval()
 QrScanner.WORKER_PATH = qrScannerWorkerPath;
@@ -25,6 +26,8 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
   batchMode = false,
   onBatchScan,
 }) => {
+  const { t } = useTranslation();
+  const isBin = scanType === 'BIN';
   const [manualCode, setManualCode] = useState('');
   const [scannedCodes, setScannedCodes] = useState<string[]>([]);
   const [showManual, setShowManual] = useState(false);
@@ -74,12 +77,12 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
         playSuccessFeedback();
         setTimeout(() => setShowSuccess(false), 500); // Shorter success visual for batch
         const n = batchRef.current.length;
-        announce(`${code} added. ${n} ${n === 1 ? 'bucket' : 'buckets'} in batch.`);
+        announce(t(n === 1 ? 'runner.scanner.sr_batch_added_one' : 'runner.scanner.sr_batch_added_other', { code, n }));
       } else {
         setShowSuccess(true);
         playSuccessFeedback();
         setTimeout(() => setShowSuccess(false), 1500);
-        announce(`Scanned ${code}.`);
+        announce(t('runner.scanner.sr_scanned', { code }));
         onScan(code);
       }
     },
@@ -168,7 +171,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
       ref={dialogRef}
       role="dialog"
       aria-modal="true"
-      aria-label={`Scan ${scanType}`}
+      aria-label={t(isBin ? 'runner.scanner.title_bin' : 'runner.scanner.title_bucket')}
       className="fixed inset-0 z-[100] bg-black flex flex-col animate-in fade-in duration-200"
     >
       {/* Header */}
@@ -176,20 +179,20 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
       <div className="shrink-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/80 to-transparent">
         <div className="text-white">
           <h2 className="text-lg font-bold flex items-center gap-2">
-            Scan {scanType}
+            {t(isBin ? 'runner.scanner.title_bin' : 'runner.scanner.title_bucket')}
             {isNative && (
               <span className="px-1.5 py-0.5 bg-emerald-500/20 border border-emerald-500/30 rounded text-[10px] font-bold text-emerald-400">
-                NATIVE
+                {t('scanner.native')}
               </span>
             )}
           </h2>
           <p className="text-xs text-text-disabled">
-            {isNative ? 'Using hardware-accelerated scanner' : 'Align QR code within frame'}
+            {isNative ? t('scanner.hardware_accelerated') : t('scanner.align_qr')}
           </p>
         </div>
         <button
           onClick={onClose}
-          aria-label="Close scanner"
+          aria-label={t('runner.scanner.close')}
           className="size-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white"
         >
           <span aria-hidden="true" className="material-symbols-outlined">close</span>
@@ -201,8 +204,8 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
         <div role="alert" className="absolute top-20 left-4 right-4 z-20 bg-red-500/90 backdrop-blur-md text-white px-4 py-3 rounded-xl flex items-center gap-3">
           <span aria-hidden="true" className="material-symbols-outlined text-xl">videocam_off</span>
           <div>
-            <p className="text-sm font-bold">Camera unavailable</p>
-            <p className="text-xs opacity-80">Use manual entry below</p>
+            <p className="text-sm font-bold">{t('scanner.camera_unavailable')}</p>
+            <p className="text-xs opacity-80">{t('runner.scanner.use_manual')}</p>
           </div>
         </div>
       )}
@@ -212,8 +215,8 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
         <div className="absolute top-20 left-4 right-4 z-20 bg-emerald-500/90 backdrop-blur-md text-white px-4 py-3 rounded-xl flex items-center gap-3 animate-slide-down">
           <span aria-hidden="true" className="material-symbols-outlined text-xl">check_circle</span>
           <div>
-            <p className="text-sm font-bold">Scanned ✓</p>
-            <p className="text-xs opacity-80">Code registered successfully</p>
+            <p className="text-sm font-bold">{t('scanner.scanned')}</p>
+            <p className="text-xs opacity-80">{t('scanner.code_registered')}</p>
           </div>
         </div>
       )}
@@ -229,7 +232,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
                 className="bg-black/80 backdrop-blur-md p-6 rounded-2xl border border-white/10"
               >
                 <label htmlFor="scanner-manual-code" className="block text-sm font-medium text-text-muted mb-2">
-                  Enter {scanType} Code
+                  {t(isBin ? 'runner.scanner.enter_code_bin' : 'runner.scanner.enter_code_bucket')}
                 </label>
                 <input
                   id="scanner-manual-code"
@@ -239,14 +242,14 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
                   value={manualCode}
                   onChange={e => setManualCode(e.target.value.toUpperCase())}
                   className="w-full bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-white font-mono text-lg focus:border-primary outline-none mb-4"
-                  placeholder="e.g. BKT-1024"
+                  placeholder={t('runner.scanner.code_example', { code: 'BKT-1024' })}
                   autoFocus
                 />
                 <button
                   type="submit"
                   className="w-full bg-primary text-white font-bold py-3 rounded-xl active:scale-95 transition-transform"
                 >
-                  Submit Code
+                  {t('scanner.submit_code')}
                 </button>
               </form>
             ) : isNative ? (
@@ -255,8 +258,8 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
                 {nativeScanning ? (
                   <>
                     <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-white font-semibold">Native scanner active…</p>
-                    <p className="text-sm text-white/60 mt-1">Point camera at QR code</p>
+                    <p className="text-white font-semibold">{t('runner.scanner.native_active')}</p>
+                    <p className="text-sm text-white/60 mt-1">{t('runner.scanner.point_camera')}</p>
                   </>
                 ) : (
                   <>
@@ -267,7 +270,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
                       onClick={startNativeScan}
                       className="bg-emerald-500 text-white font-bold py-3 px-8 rounded-xl active:scale-95 transition-transform"
                     >
-                      Scan Again
+                      {t('scanner.scan_again')}
                     </button>
                   </>
                 )}
@@ -287,7 +290,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
           {batchMode && scannedCodes.length > 0 && (
             <div className="mx-4 max-h-48 overflow-y-auto bg-black/60 backdrop-blur-md rounded-xl border border-white/20 p-3 custom-scrollbar">
               <h3 className="text-white text-xs font-bold mb-2 px-1 uppercase tracking-wider">
-                {scannedCodes.length} Scanned in batch
+                {t('runner.scanner.batch_count', { n: scannedCodes.length })}
               </h3>
               <div className="flex flex-col gap-1.5">
                 {scannedCodes.map(code => (
@@ -318,7 +321,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
           }}
           className="text-sm font-medium text-white/80 underline decoration-white/30 underline-offset-4 pointer-events-auto"
         >
-          {showManual ? 'Switch to Camera' : 'Problem scanning? Enter code manually'}
+          {showManual ? t('scanner.switch_camera') : t('scanner.problem_scanning')}
         </button>
         {/* Batch Done Button */}
         {batchMode && scannedCodes.length > 0 && (
@@ -331,7 +334,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
               className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black text-lg py-4 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95 transition-all flex items-center justify-center gap-2"
             >
               <span aria-hidden="true" className="material-symbols-outlined">done_all</span>
-              Complete Batch ({scannedCodes.length})
+              {t('runner.scanner.complete_batch', { n: scannedCodes.length })}
             </button>
           </div>
         )}

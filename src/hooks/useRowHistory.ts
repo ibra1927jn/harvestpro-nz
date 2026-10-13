@@ -8,6 +8,7 @@ import { rowRepository } from '@/repositories/row.repository';
 import { nzMidnight, startOfWeekNZ, todayNZST } from '@/utils/nzst';
 import { logger } from '@/utils/logger';
 import type { RowVisit } from '@/types';
+import { useTranslation } from '@/i18n';
 
 export type RowHistoryPeriod = 'today' | 'week';
 
@@ -42,6 +43,7 @@ export function useRowHistory(period: RowHistoryPeriod, teamLeaderId?: string) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const { t } = useTranslation();
     const load = useCallback(async () => {
         if (!orchardId) return;
         setLoading(true);
@@ -51,11 +53,11 @@ export function useRowHistory(period: RowHistoryPeriod, teamLeaderId?: string) {
             setVisits(await rowRepository.getHistory(orchardId, since, teamLeaderId));
         } catch (e) {
             logger.warn('[RowHistory] Could not load:', e);
-            setError('Row history not available offline');
+            setError(t('rowHistory.offline'));
         } finally {
             setLoading(false);
         }
-    }, [orchardId, period, teamLeaderId]);
+    }, [orchardId, period, teamLeaderId, t]);
 
     useEffect(() => { void load(); }, [load, activeKey]);
 

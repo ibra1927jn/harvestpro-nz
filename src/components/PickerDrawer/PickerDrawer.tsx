@@ -134,7 +134,7 @@ const PickerDrawer: React.FC = () => {
             {/* Drawer */}
             <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={displayName} className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-50 overflow-y-auto animate-slide-in-right">
                 {/* Botón de cierre */}
-                <button aria-label="Close"
+                <button aria-label={t('common.close')}
                     onClick={closeDrawer}
                     className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors z-10"
                 >

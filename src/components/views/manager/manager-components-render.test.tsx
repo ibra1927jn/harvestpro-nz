@@ -44,11 +44,6 @@ vi.mock('@/utils/logger', () => ({
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-vi.mock('@/services/i18n.service', () => ({
-    t: (key: string) => key,
-    i18n: { t: (key: string) => key, getLanguage: () => 'en', subscribe: () => () => { } },
-}));
-
 vi.mock('@/services/gateway.service', () => ({
     gatewayService: {
         withResilience: vi.fn((_n: string, fn: () => Promise<unknown>) => fn()),
