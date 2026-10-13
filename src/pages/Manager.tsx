@@ -44,14 +44,17 @@ import BroadcastModal from '@/components/views/manager/BroadcastModal';
 import RowAssignmentModal from '@/components/views/manager/RowAssignmentModal';
 
 /* ── Lazy loading fallback ─────────────────────────── */
-const TabLoader = () => (
+const TabLoader = () => {
+    const { t } = useTranslation();
+    return (
   <div className="flex items-center justify-center py-32">
     <div className="text-center">
       <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-      <p className="text-sm text-text-sub font-medium">Loading…</p>
+      <p className="text-sm text-text-sub font-medium">{t('common.loading')}</p>
     </div>
   </div>
 );
+};
 
 const Manager = () => {
   const {
@@ -196,7 +199,7 @@ const Manager = () => {
               />
               {/* Recorrido de filas de cada equipo */}
               <div className="px-4 pb-6 pt-2">
-                <RowHistory title="Row history by team" />
+                <RowHistory title={t('mgr.row_history_by_team')} />
               </div>
             </Suspense>
           </ComponentErrorBoundary>
@@ -279,7 +282,7 @@ const Manager = () => {
           className="gradient-primary glow-primary text-white rounded-full h-14 px-6 flex items-center justify-center gap-2 transition-all active:scale-95 hover:scale-105 shadow-2xl dash-fab-pulse"
         >
           <span aria-hidden="true" className="material-symbols-outlined">campaign</span>
-          <span className="font-bold tracking-wide">Broadcast</span>
+          <span className="font-bold tracking-wide">{t('common.broadcast')}</span>
         </button>
       </div>
     );
@@ -306,7 +309,7 @@ const Manager = () => {
           navItems={desktopNav}
           activeTab={activeTab}
           onTabChange={id => setActiveTab(id as Tab)}
-          title="Harvest Manager"
+          title={t('mgr.page_title')}
           titleIcon="agriculture"
           accentColor="#16a34a"
         >
@@ -325,8 +328,8 @@ const Manager = () => {
   return (
     <div className="flex flex-col h-full bg-background-light min-h-screen text-slate-900 pb-20">
       <Header
-        title="Harvest Manager"
-        subtitle={`${orchard?.name || 'No Orchard'} • Live`}
+        title={t('mgr.page_title')}
+        subtitle={t('mgr.page_subtitle', { orchard: orchard?.name || t('teams.no_orchard') })}
         onProfileClick={() => setShowSettings(true)}
         onNavigateToMessaging={() => setActiveTab('messaging' as Tab)}
       />

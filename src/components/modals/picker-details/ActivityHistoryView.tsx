@@ -7,6 +7,8 @@
 import React, { useMemo } from 'react';
 import { Picker } from '../../../types';
 import { isPicker, isTeamLeader } from './roleUtils';
+import { useTranslation } from '@/i18n';
+import { formatNZD } from '@/utils/nzFormat';
 
 interface ActivityHistoryViewProps {
     picker: Picker;
@@ -23,6 +25,7 @@ const ActivityHistoryView: React.FC<ActivityHistoryViewProps> = React.memo(({
     allCrew,
     onBack,
 }) => {
+    const { t } = useTranslation();
     const earnings = picker.total_buckets_today * pieceRate;
     const speed = picker.hours && picker.hours > 0
         ? Math.round(picker.total_buckets_today / picker.hours) : 0;
@@ -35,12 +38,13 @@ const ActivityHistoryView: React.FC<ActivityHistoryViewProps> = React.memo(({
         return allCrew.filter(p => p.team_leader_id === picker.id && isPicker(p.role || 'picker'));
     }, [allCrew, picker.id, role]);
 
-    const sectionTitle = isPicker(role) ? 'Scan History' : isTeamLeader(role) ? 'Team Activity' : 'Collection Log';
+    const sectionTitle = isPicker(role) ? t('pd.scan_history') : isTeamLeader(role) ? t('pd.team_activity') : t('pd.collection_log');
+    const rowText = picker.current_row ? t('runner.row_n', { n: picker.current_row }) : t('panel.picker.not_assigned');
 
     return (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-md p-5">
             <div className="flex items-center gap-2 mb-4">
-                <button aria-label="Back" onClick={onBack} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <button aria-label={t('common.back')} onClick={onBack} className="text-slate-400 hover:text-slate-600 transition-colors">
                     <span aria-hidden="true" className="material-symbols-outlined text-[20px]">arrow_back</span>
                 </button>
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{sectionTitle}</p>
@@ -50,25 +54,25 @@ const ActivityHistoryView: React.FC<ActivityHistoryViewProps> = React.memo(({
                 picker.total_buckets_today > 0 ? (
                     <div className="space-y-2">
                         <div className="flex items-center justify-between mb-3 p-3 bg-indigo-50 rounded-xl">
-                            <span className="text-sm font-bold text-indigo-700">Today&apos;s Total</span>
-                            <span className="text-lg font-black text-indigo-700">{picker.total_buckets_today} buckets</span>
+                            <span className="text-sm font-bold text-indigo-700">{t('pd.today_total')}</span>
+                            <span className="text-lg font-black text-indigo-700">{t('pd.buckets_n', { n: picker.total_buckets_today })}</span>
                         </div>
                         <div className="space-y-1.5">
-                            <HistoryRow icon="schedule" label="Check-in" value={picker.hours ? `${picker.hours.toFixed(1)}h ago` : 'N/A'} />
-                            <HistoryRow icon="pin_drop" label="Current Location" value={picker.current_row ? `Row ${picker.current_row}` : 'Not assigned'} />
-                            <HistoryRow icon="speed" label="Current Pace" value={`${speed} buckets/hr — ${isAboveMinimum ? '✅ Above min wage' : '⚠️ Below min wage'}`} />
-                            <HistoryRow icon="payments" label="Estimated Earnings" value={`$${earnings.toFixed(2)} (${picker.total_buckets_today} × $${pieceRate})`} />
+                            <HistoryRow icon="schedule" label={t('pd.check_in')} value={picker.hours ? t('pd.hours_ago', { n: picker.hours.toFixed(1) }) : t('common.na')} />
+                            <HistoryRow icon="pin_drop" label={t('pd.current_location')} value={rowText} />
+                            <HistoryRow icon="speed" label={t('pd.current_pace')} value={`${t('pd.buckets_per_hr', { n: speed })} — ${isAboveMinimum ? `✅ ${t('pd.above_min')}` : `⚠️ ${t('pd.below_min')}`}`} />
+                            <HistoryRow icon="payments" label={t('pd.est_earnings')} value={`${formatNZD(earnings)} (${picker.total_buckets_today} × ${formatNZD(pieceRate)})`} />
                         </div>
                     </div>
                 ) : (
-                    <EmptyHistory message="No activity recorded today" sub="Scans will appear here as they happen" />
+                    <EmptyHistory message={t('pd.no_activity')} sub={t('pd.no_activity_sub')} />
                 )
             ) : isTeamLeader(role) ? (
                 <div className="space-y-2">
                     <div className="flex items-center justify-between mb-3 p-3 bg-emerald-50 rounded-xl">
-                        <span className="text-sm font-bold text-emerald-700">Team Summary</span>
+                        <span className="text-sm font-bold text-emerald-700">{t('pd.team_summary')}</span>
                         <span className="text-lg font-black text-emerald-700">
-                            {teamMembers.reduce((s, p) => s + (p.total_buckets_today || 0), 0)} buckets
+                            {t('pd.buckets_n', { n: teamMembers.reduce((s, p) => s + (p.total_buckets_today || 0), 0) })}
                         </span>
                     </div>
                     {teamMembers.length > 0 ? teamMembers.map(member => (
@@ -78,25 +82,25 @@ const ActivityHistoryView: React.FC<ActivityHistoryViewProps> = React.memo(({
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-slate-700 truncate">{member.name}</p>
-                                <p className="text-[11px] text-slate-500">{member.total_buckets_today} buckets • {member.hours?.toFixed(1) || '0'}h</p>
+                                <p className="text-[11px] text-slate-500">{t('pd.buckets_n', { n: member.total_buckets_today })} • {member.hours?.toFixed(1) || '0'}h</p>
                             </div>
                             <div className="text-right">
-                                <p className="text-sm font-bold text-slate-900">${(member.total_buckets_today * pieceRate).toFixed(0)}</p>
+                                <p className="text-sm font-bold text-slate-900">{formatNZD(member.total_buckets_today * pieceRate, 0)}</p>
                             </div>
                         </div>
                     )) : (
-                        <EmptyHistory message="No pickers assigned to this team" icon="group_off" />
+                        <EmptyHistory message={t('pd.no_team_pickers')} icon="group_off" />
                     )}
                 </div>
             ) : (
                 /* Runner activity */
                 <div className="space-y-2">
                     <div className="flex items-center justify-between mb-3 p-3 bg-amber-50 rounded-xl">
-                        <span className="text-sm font-bold text-amber-700">Today&apos;s Runs</span>
-                        <span className="text-lg font-black text-amber-700">{picker.total_buckets_today} collected</span>
+                        <span className="text-sm font-bold text-amber-700">{t('pd.today_runs')}</span>
+                        <span className="text-lg font-black text-amber-700">{t('pd.collected_n', { n: picker.total_buckets_today })}</span>
                     </div>
-                    <HistoryRow icon="pin_drop" label="Current Row" value={picker.current_row ? `Row ${picker.current_row}` : 'Not assigned'} />
-                    <HistoryRow icon="schedule" label="Hours On-Site" value={`${picker.hours?.toFixed(1) || '0'} hours today`} />
+                    <HistoryRow icon="pin_drop" label={t('panel.picker.current_row')} value={rowText} />
+                    <HistoryRow icon="schedule" label={t('pd.hours_on_site')} value={t('pd.hours_today', { n: picker.hours?.toFixed(1) || '0' })} />
                 </div>
             )}
         </div>

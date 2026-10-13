@@ -4,6 +4,9 @@
 import React from 'react';
 import type { Anomaly } from '../../../../services/fraud-detection.service';
 import { ANOMALY_CONFIG, SEVERITY_STYLES, RULE_BADGE } from './anomaly.constants';
+import { formatNZTime } from '@/utils/nzFormat';
+import { statusLabel } from '@/i18n/statusLabel';
+import { useTranslation } from '@/i18n';
 
 interface AnomalyCardProps {
     anomaly: Anomaly;
@@ -12,6 +15,7 @@ interface AnomalyCardProps {
 }
 
 const AnomalyCard: React.FC<AnomalyCardProps> = ({ anomaly, index, onViewProfile }) => {
+    const { t } = useTranslation();
     const config = ANOMALY_CONFIG[anomaly.type];
     const ruleBadge = RULE_BADGE[anomaly.rule] || RULE_BADGE['elapsed_velocity'];
 
@@ -34,16 +38,13 @@ const AnomalyCard: React.FC<AnomalyCardProps> = ({ anomaly, index, onViewProfile
                             </h4>
                             <p className="text-xs text-slate-400 font-mono mt-0.5 flex items-center gap-1">
                                 <span aria-hidden="true" className="material-symbols-outlined text-xs">schedule</span>
-                                {new Date(anomaly.timestamp).toLocaleTimeString([], { timeZone: 'Pacific/Auckland',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                })}
+                                {formatNZTime(anomaly.timestamp)}
                             </p>
                         </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ${SEVERITY_STYLES[anomaly.severity]}`}>
-                            {anomaly.severity} risk
+                            {t('mgr.risk_level', { level: statusLabel(t, anomaly.severity) })}
                         </span>
                         <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${ruleBadge.color}`}>
                             {ruleBadge.label}
@@ -71,7 +72,7 @@ const AnomalyCard: React.FC<AnomalyCardProps> = ({ anomaly, index, onViewProfile
             </div>
 
             <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs font-bold text-slate-400 group-hover:text-primary transition-colors">
-                <span>Inspect Profile & History</span>
+                <span>{t('fraud.inspect_profile')}</span>
                 <span aria-hidden="true" className="material-symbols-outlined text-lg">chevron_right</span>
             </div>
         </div>

@@ -29,7 +29,7 @@ describe('ExportTab', () => {
 
     it('muestra la semana y el total a pagar', () => {
         render(<ExportTab pickers={[row({}), row({ picker_id: 'p2', picker_name: 'Bea', total_earnings: 200 })]} week={WEEK} />);
-        expect(screen.getByText(/2026-10-05 → 2026-10-11/)).toBeTruthy();
+        expect(screen.getByText(/5 Oct → 11 Oct 2026/)).toBeTruthy();
         expect(screen.getByText('$379.63')).toBeTruthy();
     });
 

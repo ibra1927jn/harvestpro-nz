@@ -24,11 +24,6 @@ vi.mock('@/utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-vi.mock('@/services/i18n.service', () => ({
-  t: (key: string) => key,
-  i18n: { t: (key: string) => key, getLanguage: () => 'en', subscribe: () => () => {} },
-}));
-
 describe('crewSlice', () => {
   it('exports createCrewSlice', async () => {
     const mod = await import('./crewSlice');

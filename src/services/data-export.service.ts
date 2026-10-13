@@ -46,6 +46,13 @@ export interface UserDataExport {
   messageCount: number;
 }
 
+/** Nombre del huerto (relación orchards) o, si no se pudo leer, su id */
+function orchardName(row: Record<string, unknown>): string {
+  const rel = row.orchards as { name?: unknown } | Array<{ name?: unknown }> | null | undefined;
+  const name = Array.isArray(rel) ? rel[0]?.name : rel?.name;
+  return typeof name === 'string' ? name : (row.orchard_id as string);
+}
+
 export const dataExportService = {
   /**
    * Export all personal data for the authenticated user.
@@ -58,7 +65,7 @@ export const dataExportService = {
       // 1. Fetch user profile
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, email, role, name, created_at, privacy_consent_at')
+        .select('id, email, role, full_name, created_at, privacy_consent_at')
         .eq('id', userId)
         .single();
 
@@ -67,7 +74,7 @@ export const dataExportService = {
       // 2. Fetch attendance records
       const { data: attendance, error: attendanceError } = await supabase
         .from('daily_attendance')
-        .select('id, check_in, check_out, orchard_id')
+        .select('id, check_in, check_out, orchard_id, orchards(name)')
         .eq('picker_id', userId)
         .order('check_in', { ascending: false })
         .limit(1000);
@@ -76,9 +83,9 @@ export const dataExportService = {
         logger.warn('[DataExport] Failed to fetch attendance:', attendanceError);
       }
 
-      // 3. Fetch bucket scan records
+      // 3. Cubos escaneados (la tabla es bucket_records; 'bucket_scans' no existe)
       const { data: scans, error: scansError } = await supabase
-        .from('bucket_scans')
+        .from('bucket_records')
         .select('id, scanned_at, quality_grade, orchard_id')
         .eq('picker_id', userId)
         .order('scanned_at', { ascending: false })
@@ -99,11 +106,13 @@ export const dataExportService = {
         logger.warn('[DataExport] Failed to fetch consent history:', consentsError);
       }
 
-      // 5. Message count (not content — privacy-preserving)
-      const { count: messageCount } = await supabase
-        .from('messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('sender_id', userId);
+      // 5. Nº de mensajes enviados, sin contenido: chat (chat_messages) + directos antiguos (messages)
+      const messageCounts = await Promise.all(
+        (['chat_messages', 'messages'] as const).map(table =>
+          supabase.from(table).select('id', { count: 'exact', head: true }).eq('sender_id', userId)
+        )
+      );
+      const messageCount = messageCounts.reduce((sum, r) => sum + (r.count ?? 0), 0);
 
       const exportData: UserDataExport = {
         exportedAt: new Date().toISOString(),
@@ -111,7 +120,7 @@ export const dataExportService = {
           id: userData.id,
           email: userData.email,
           role: userData.role,
-          name: userData.name,
+          name: userData.full_name,
           created_at: userData.created_at,
           privacy_consent_at: userData.privacy_consent_at,
         },
@@ -119,7 +128,7 @@ export const dataExportService = {
           id: a.id as string,
           check_in: a.check_in as string,
           check_out: a.check_out as string | null,
-          orchard_name: a.orchard_id as string,
+          orchard_name: orchardName(a),
         })),
         bucketScans: (scans || []).map((s: Record<string, unknown>) => ({
           id: s.id as string,
@@ -132,16 +141,19 @@ export const dataExportService = {
           policy_version: c.policy_version as string,
           consented_at: c.consented_at as string,
         })),
-        messageCount: messageCount || 0,
+        messageCount,
       };
 
-      // 6. Log the export (audit trail)
-      await supabase.from('audit_logs').insert({
-        event_type: 'data_export',
-        severity: 'info',
-        action: 'User requested personal data export (IPP 6)',
+      // 6. Registro de auditoría. audit_logs.action solo admite INSERT/UPDATE/DELETE/CUSTOM:
+      // el evento va como CUSTOM y su nombre en new_values.event (como _shared/audit.ts)
+      const { error: auditError } = await supabase.from('audit_logs').insert({
+        action: 'CUSTOM',
+        table_name: 'users',
+        record_id: userId,
         user_id: userId,
-        details: {
+        new_values: {
+          event: 'data_export',
+          reason: 'User requested personal data export (IPP 6)',
           records_exported: {
             attendance: exportData.attendance.length,
             scans: exportData.bucketScans.length,
@@ -149,6 +161,7 @@ export const dataExportService = {
           },
         },
       });
+      if (auditError) logger.warn('[DataExport] Audit log insert failed:', auditError);
 
       // Track analytics
       // Track export completion (using logger since analytics doesn't expose raw capture)

@@ -2,14 +2,15 @@
  * roleUtils.ts — Shared role helpers and UI config for PickerDetailsModal sub-components
  */
 import React from 'react';
+import { translate, type TFunction } from '@/i18n';
 
 // ── Role type checks ──────────────────────────────────────── */
 export const isPicker = (role: string) => role === 'picker';
 export const isTeamLeader = (role: string) => role === 'team_leader';
 export const isRunner = (role: string) => role === 'runner' || role === 'bucket_runner';
 
-export const roleLabel = (role: string) =>
-    isTeamLeader(role) ? 'Team Leader' : isRunner(role) ? 'Bucket Runner' : 'Picker';
+export const roleLabel = (role: string, t: TFunction = translate) =>
+    isTeamLeader(role) ? t('panel.role.team_leader') : isRunner(role) ? t('panel.role.runner') : t('panel.role.picker');
 
 export const roleGradient = (role: string) =>
     isTeamLeader(role)
@@ -42,12 +43,12 @@ export interface StatusConfig {
     dot: string;
 }
 
-export const getStatusConfig = (status: string): StatusConfig =>
+export const getStatusConfig = (status: string, t: TFunction = translate): StatusConfig =>
     status === 'active'
-        ? { label: 'Active', bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' }
+        ? { label: t('common.active'), bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' }
         : status === 'on_break'
-            ? { label: 'On Break', bg: 'bg-amber-100', text: 'text-amber-700', dot: 'bg-amber-500' }
-            : { label: 'Inactive', bg: 'bg-slate-100', text: 'text-slate-600', dot: 'bg-slate-400' };
+            ? { label: t('teams.on_break'), bg: 'bg-amber-100', text: 'text-amber-700', dot: 'bg-amber-500' }
+            : { label: t('common.inactive'), bg: 'bg-slate-100', text: 'text-slate-600', dot: 'bg-slate-400' };
 
 // ── Comparison Badge ──────────────────────────────────────── */
 interface ComparisonBadgeProps {

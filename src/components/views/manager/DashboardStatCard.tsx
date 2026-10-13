@@ -2,6 +2,7 @@
  * DashboardStatCard — Executive KPI card with animated values
  */
 import React from 'react';
+import { useTranslation } from '@/i18n';
 
 export interface StatCardProps {
     title: string;
@@ -20,7 +21,9 @@ const DashboardStatCard: React.FC<StatCardProps> = React.memo(({
     title, value, unit, trend, icon,
     iconBg = 'bg-blue-50', iconColor = 'text-blue-600',
     onClick, staggerIndex = 0,
-}) => (
+}) => {
+    const { t } = useTranslation();
+    return (
     <div
         onClick={onClick}
         className={`bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col card-hover section-enter stagger-${Math.min(staggerIndex + 1, 8)} ${onClick ? 'cursor-pointer' : ''}`}
@@ -48,10 +51,11 @@ const DashboardStatCard: React.FC<StatCardProps> = React.memo(({
                 <span aria-hidden="true" className="material-symbols-outlined text-[16px]">
                     {trend > 0 ? 'trending_up' : 'trending_down'}
                 </span>
-                <span>{trend > 0 ? '+' : ''}{trend}% vs yesterday</span>
+                <span>{t('mgr.vs_yesterday', { pct: `${trend > 0 ? '+' : ''}${trend}` })}</span>
             </div>
         ) : null}
     </div>
-));
+);
+});
 
 export default DashboardStatCard;

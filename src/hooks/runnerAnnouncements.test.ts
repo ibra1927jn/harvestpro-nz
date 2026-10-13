@@ -25,3 +25,18 @@ describe('bucketSavedAnnouncement', () => {
     expect(bucketSavedAnnouncement([], true)).toBe('');
   });
 });
+
+describe('bucketSavedAnnouncement in the app language', () => {
+  it('speaks Spanish when the app is in Spanish (TalkBack reads it with the Spanish voice)', async () => {
+    const { setCurrentLocale } = await import('@/i18n');
+    setCurrentLocale('es');
+    try {
+      expect(bucketSavedAnnouncement(['Ana Tui'], true)).toBe('Cubeta guardada para Ana Tui.');
+      expect(bucketSavedAnnouncement(['A', 'B'], false)).toBe(
+        '2 cubetas guardadas para A, B. Sin señal, guardado en el móvil. Se enviará cuando vuelva la conexión.'
+      );
+    } finally {
+      setCurrentLocale('en');
+    }
+  });
+});

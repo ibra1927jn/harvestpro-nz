@@ -5,6 +5,7 @@
  */
 import { Role } from '@/types';
 import type { AuthState } from '../auth.types';
+import { translate, type TFunction } from '@/i18n';
 
 /** Estado inicial del proveedor: cargando, sin sesión */
 export const INITIAL_AUTH_STATE: AuthState = {
@@ -74,14 +75,9 @@ export function resolveWhitelistRegistration(
 export const normalizeEmail = (email: string): string => email.toLowerCase().trim();
 
 /** Texto del confirm() cuando hay registros sin sincronizar al cerrar sesión */
-export function pendingSignOutMessage(pendingCount: number): string {
-  return (
-    `⚠️ ALERTA CRÍTICA: Tienes ${pendingCount} registros sin sincronizar.\n\n` +
-    `Si cierras sesión ahora, estos datos se perderán permanentemente ` +
-    `(incluyendo información de nómina).\n\n` +
-    `Conecta a internet y espera a que todo se sincronice antes de cerrar sesión.\n\n` +
-    `¿Estás SEGURO de que quieres cerrar sesión y PERDER estos datos?`
-  );
+export function pendingSignOutMessage(pendingCount: number, t: TFunction = translate): string {
+  // En el idioma de la app (antes solo en español)
+  return `⚠️ ${t('auth.unsynced_signout', { n: pendingCount })}`;
 }
 
 /** Qué hacer ante un evento de onAuthStateChange */

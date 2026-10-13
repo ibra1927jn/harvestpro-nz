@@ -18,6 +18,8 @@ import { HR_NAV_ITEMS } from '@/config/navigation/hhrr.nav';
 import AddPickerModal from '@/components/modals/AddPickerModal';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { setEmployeeActive, type Employee } from '@/services/hhrr.service';
+import { formatNZD } from '@/utils/nzFormat';
+import { useTranslation } from '@/i18n';
 
 // Lazy-loaded views (code-split for performance)
 const EmployeesTab = React.lazy(() => import('@/components/views/hhrr/EmployeesTab'));
@@ -34,6 +36,7 @@ const TabLoader = () => (
 );
 
 const HHRR: React.FC = () => {
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('employees');
     const { summary, employees, payroll, alerts, isLoading, reload } = useHHRR();
     const addPicker = useHarvestStore(s => s.addPicker);
@@ -87,17 +90,17 @@ const HHRR: React.FC = () => {
             mobileTabs={navItems}
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            title="Human Resources"
-            subtitle="HR admin"
+            title={t('hr.page_title')}
+            subtitle={t('hr.page_subtitle')}
             accentColor="purple"
             titleIcon="badge"
         >
             {/* Summary Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-                <SummaryCard icon="group" iconColor="text-emerald-500" label="Active Workers" value={summary.activeWorkers} />
-                <SummaryCard icon="description" iconColor="text-amber-500" label="Pending Contracts" value={summary.pendingContracts} />
-                <SummaryCard icon="payments" iconColor="text-indigo-500" label="Payroll This Week" value={`$${(summary.payrollThisWeek / 1000).toFixed(1)}k`} />
-                <SummaryCard icon="warning" iconColor="text-red-500" label="Compliance Alerts" value={summary.complianceAlerts} />
+                <SummaryCard icon="group" iconColor="text-emerald-500" label={t('hr.active_workers')} value={summary.activeWorkers} />
+                <SummaryCard icon="description" iconColor="text-amber-500" label={t('hr.pending_contracts')} value={summary.pendingContracts} />
+                <SummaryCard icon="payments" iconColor="text-indigo-500" label={t('hr.payroll_week')} value={`${formatNZD(summary.payrollThisWeek / 1000, 1)}k`} />
+                <SummaryCard icon="warning" iconColor="text-red-500" label={t('hr.compliance_alerts')} value={summary.complianceAlerts} />
             </div>
 
             {showAddPicker && (

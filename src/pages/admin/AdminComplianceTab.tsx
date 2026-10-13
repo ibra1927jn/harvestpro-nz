@@ -4,6 +4,7 @@
 import React from 'react';
 import type { OrchardOverview } from '@/services/admin.service';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
+import { useTranslation } from '@/i18n';
 
 interface AdminComplianceTabProps {
     orchards: OrchardOverview[];
@@ -25,19 +26,21 @@ const ComplianceCard: React.FC<{
     </div>
 );
 
-const AdminComplianceTab: React.FC<AdminComplianceTabProps> = ({ orchards }) => (
+const AdminComplianceTab: React.FC<AdminComplianceTabProps> = ({ orchards }) => {
+    const { t } = useTranslation();
+    return (
     <ComponentErrorBoundary componentName="Compliance">
         <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-text-primary">Compliance Overview</h2>
+            <h2 className="text-lg font-semibold text-text-primary">{t('admin.compliance_overview')}</h2>
             <div className="bg-white rounded-lg border border-border-light shadow-sm p-5">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <ComplianceCard title="NZ Employment Act" score={98} status="Compliant" details="All wages above minimum threshold" />
-                    <ComplianceCard title="Safety Verification" score={95} status="2 pending" details="95 of 97 workers verified" />
-                    <ComplianceCard title="Audit Trail" score={100} status="Active" details="All actions logged" />
+                    <ComplianceCard title={t('admin.cc.employment_act')} score={98} status={t('admin.cc.compliant')} details={t('admin.cc.wages_above_min')} />
+                    <ComplianceCard title={t('admin.cc.safety')} score={95} status={t('admin.cc.pending', { n: 2 })} details={t('admin.cc.verified_of', { n: 95, total: 97 })} />
+                    <ComplianceCard title={t('admin.cc.audit_trail')} score={100} status={t('common.active')} details={t('admin.cc.all_logged')} />
                 </div>
             </div>
             <div className="bg-white rounded-lg border border-border-light shadow-sm p-5">
-                <h3 className="text-sm font-semibold text-text-primary mb-3">Cross-Orchard Status</h3>
+                <h3 className="text-sm font-semibold text-text-primary mb-3">{t('admin.cross_orchard')}</h3>
                 {orchards.map(orch => (
                     <div key={orch.id} className="flex items-center justify-between py-2 border-b border-border-light last:border-0">
                         <span className="text-sm font-medium text-text-primary">{orch.name}</span>
@@ -52,6 +55,7 @@ const AdminComplianceTab: React.FC<AdminComplianceTabProps> = ({ orchards }) => 
             </div>
         </div>
     </ComponentErrorBoundary>
-);
+    );
+};
 
 export default AdminComplianceTab;

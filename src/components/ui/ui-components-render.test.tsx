@@ -280,7 +280,7 @@ describe('InlineSelect', () => {
         const { container } = render(
             <InlineSelect value="active" options={['active', 'idle']} onSave={vi.fn()} />
         );
-        expect(container.textContent).toContain('active');
+        expect(container.textContent).toContain('Active');
     });
 });
 

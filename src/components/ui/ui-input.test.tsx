@@ -105,7 +105,7 @@ describe('InlineSelect', () => {
 
     it('renders current value as pill', () => {
         render(<InlineSelect value="active" options={options} onSave={vi.fn()} />);
-        expect(screen.getByText('active')).toBeTruthy();
+        expect(screen.getByText('Active')).toBeTruthy();
     });
 
     it('applies labelMap for display', () => {
@@ -160,7 +160,7 @@ describe('InlineSelect', () => {
 
     it('renders as static pill when disabled', () => {
         render(<InlineSelect value="active" options={options} onSave={vi.fn()} disabled />);
-        expect(screen.getByText('active')).toBeTruthy();
+        expect(screen.getByText('Active')).toBeTruthy();
         expect(screen.queryByTitle('Click to change')).toBeNull();
     });
 

@@ -7,6 +7,9 @@ import { Tractor } from '@/services/logistics-dept.service';
 import FilterBar from '@/components/ui/FilterBar';
 import InlineSelect from '@/components/ui/InlineSelect';
 import InlineEdit from '@/components/ui/InlineEdit';
+import { useTranslation } from '@/i18n';
+import { statusLabel } from '@/i18n/statusLabel';
+import { formatNZTime } from '@/utils/nzFormat';
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
     active: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
@@ -33,20 +36,21 @@ const STATUS_SELECT_COLORS: Record<string, string> = {
 };
 
 const FleetTab: React.FC<FleetTabProps> = ({ tractors, onUpdateTractor, readOnly = false }) => {
+    const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
 
     const statusOptions = useMemo(() =>
-        [...new Set(tractors.map(t => t.status))].sort(),
+        [...new Set(tractors.map(tr => tr.status))].sort(),
         [tractors]
     );
 
-    const filtered = useMemo(() => tractors.filter(t => {
+    const filtered = useMemo(() => tractors.filter(tr => {
         const matchesSearch = !searchQuery ||
-            t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            t.driver_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            t.zone.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = !activeFilters.status || t.status === activeFilters.status;
+            tr.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            tr.driver_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            tr.zone.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = !activeFilters.status || tr.status === activeFilters.status;
         return matchesSearch && matchesStatus;
     }), [tractors, searchQuery, activeFilters]);
 
@@ -65,7 +69,7 @@ const FleetTab: React.FC<FleetTabProps> = ({ tractors, onUpdateTractor, readOnly
                 onSearchChange={setSearchQuery}
                 searchPlaceholder="Search vehicles, drivers, zones..."
                 filters={[
-                    { key: 'status', label: 'Status', options: statusOptions, icon: 'local_shipping' },
+                    { key: 'status', label: t('orchardMap.list.col.status'), options: statusOptions, icon: 'local_shipping' },
                 ]}
                 activeFilters={activeFilters}
                 onFilterChange={(key, value) => setActiveFilters(prev => ({ ...prev, [key]: value }))}
@@ -74,11 +78,11 @@ const FleetTab: React.FC<FleetTabProps> = ({ tractors, onUpdateTractor, readOnly
 
             {/* Zone Map */}
             <div className="bg-white rounded-xl p-5 shadow-sm border border-border-light">
-                <h3 className="font-bold text-text-primary text-sm mb-3">Orchard Zone Map</h3>
+                <h3 className="font-bold text-text-primary text-sm mb-3">{t('logi.zone_map')}</h3>
                 <div className="grid grid-cols-4 lg:grid-cols-8 gap-2">
                     {['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'C1'].map(zone => {
-                        const tractorsInZone = tractors.filter(t => t.zone === zone);
-                        const hasActive = tractorsInZone.some(t => t.status === 'active');
+                        const tractorsInZone = tractors.filter(tr => tr.zone === zone);
+                        const hasActive = tractorsInZone.some(tr => tr.status === 'active');
                         return (
                             <div
                                 key={zone}
@@ -116,11 +120,11 @@ const FleetTab: React.FC<FleetTabProps> = ({ tractors, onUpdateTractor, readOnly
                                             <InlineEdit
                                                 value={tractor.driver_name}
                                                 onSave={(val) => onUpdateTractor?.(tractor.id, { driver_name: val })}
-                                                placeholder="Assign driver..."
+                                                placeholder={t('logi.assign_driver')}
                                                 disabled={readOnly}
                                             />
                                             <span className="text-text-disabled">•</span>
-                                            Zone {tractor.zone}
+                                            {t('logi.zone', { zone: tractor.zone })}
                                         </p>
                                     </div>
                                 </div>
@@ -135,10 +139,10 @@ const FleetTab: React.FC<FleetTabProps> = ({ tractors, onUpdateTractor, readOnly
                             <div className="flex items-center gap-4 text-xs text-text-secondary">
                                 <span className={`flex items-center gap-1 font-medium ${LOAD_COLORS[tractor.load_status] || 'text-text-muted'}`}>
                                     <span aria-hidden="true" className="material-symbols-outlined text-xs">inventory_2</span>
-                                    {tractor.bins_loaded}/{tractor.max_capacity} bins — {tractor.load_status}
+                                    {t('logi.bins_loaded', { n: tractor.bins_loaded, max: tractor.max_capacity })} — {statusLabel(t, tractor.load_status)}
                                 </span>
                                 <span className="ml-auto text-text-muted">
-                                    {new Date(tractor.last_update).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })}
+                                    {formatNZTime(tractor.last_update)}
                                 </span>
                             </div>
                         </div>

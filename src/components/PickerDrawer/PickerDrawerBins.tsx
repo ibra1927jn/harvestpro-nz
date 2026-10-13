@@ -57,7 +57,7 @@ const PickerDrawerBins: React.FC<PickerDrawerBinsProps> = ({
                     </div>
                 )}
                 <div className="border-t border-slate-100 pt-1.5 flex justify-between text-xs">
-                    <span className="font-bold text-text-main">Total</span>
+                    <span className="font-bold text-text-main">{t('mgr.total')}</span>
                     <span className="font-black text-text-main">${earned.toFixed(2)}</span>
                 </div>
             </div>

@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { initials, roleColor, roleIcon, roleLabel, type StaffInfo } from './staffSelectionLogic';
+import { useTranslation } from '@/i18n';
 
 interface StaffRowProps {
     person: StaffInfo;
@@ -16,7 +17,9 @@ interface StaffRowProps {
 
 export const StaffRow: React.FC<StaffRowProps> = ({
     person, alreadyHere, isSelected, isUnlinking, isConfirming, onToggle, onUnlink,
-}) => (
+}) => {
+    const { t } = useTranslation();
+    return (
         <div
                         onClick={() => !alreadyHere && !isUnlinking && onToggle(person.id)}
             className={`p-4 rounded-xl border flex items-center justify-between transition-all duration-200 ${alreadyHere
@@ -50,7 +53,7 @@ export const StaffRow: React.FC<StaffRowProps> = ({
                             {roleLabel(person.role)}
                         </span>
                         {alreadyHere && (
-                            <span className="text-[10px] text-green-600 font-bold">✅ Linked</span>
+                            <span className="text-[10px] text-green-600 font-bold">✅ {t('mgr.linked')}</span>
                         )}
                     </div>
                 </div>
@@ -73,12 +76,12 @@ export const StaffRow: React.FC<StaffRowProps> = ({
                     ) : isConfirming ? (
                         <>
                             <span aria-hidden="true" className="material-symbols-outlined text-xs">warning</span>
-                            Confirm?
+                            {t('teams.confirm_q')}
                         </>
                     ) : (
                         <>
                             <span aria-hidden="true" className="material-symbols-outlined text-sm">link_off</span>
-                            Unlink
+                            {t('mgr.unlink')}
                         </>
                     )}
                 </button>
@@ -87,3 +90,4 @@ export const StaffRow: React.FC<StaffRowProps> = ({
             ) : null}
         </div>
 );
+};

@@ -591,6 +591,149 @@ function splitByOrchard(
     return out.sort((a, b) => key(a.orchardId).localeCompare(key(b.orchardId)));
 }
 
+const dayKey = (pickerId: string, date: string) => `${pickerId}|${date}`;
+
+/** Agrupa una lista por clave, manteniendo el orden de entrada */
+function groupBy<T>(items: ReadonlyArray<T>, keyOf: (item: T) => string | null): Map<string, T[]> {
+    const out = new Map<string, T[]>();
+    for (const item of items) {
+        const k = keyOf(item);
+        if (k === null) continue;
+        const list = out.get(k) ?? [];
+        list.push(item);
+        out.set(k, list);
+    }
+    return out;
+}
+
+interface ClosedShift { start: number; end: number; date: string }
+
+/** Tramos cerrados (entrada y salida, salida posterior) de cada persona */
+function closedShiftsByPicker(attendance: ReadonlyArray<AttendanceRow>): Map<string, ClosedShift[]> {
+    const out = new Map<string, ClosedShift[]>();
+    for (const a of attendance) {
+        const start = toMs(a.checkIn), end = toMs(a.checkOut);
+        if (start === null || end === null || end <= start) continue;
+        const list = out.get(a.pickerId) ?? [];
+        list.push({ start, end, date: a.date });
+        out.set(a.pickerId, list);
+    }
+    return out;
+}
+
+/**
+ * Día al que cuenta una cubeta. Una cubeta escaneada dentro de un tramo que
+ * cruza la medianoche es del día de ese tramo (horas y cubetas juntas; antes se
+ * iba al día siguiente y allí se estimaban horas otra vez). Si un tramo de su
+ * propio día la cubre, se queda en su día.
+ */
+function payDateOfScan(ms: number, scanDate: string, closed: ReadonlyArray<ClosedShift>): string {
+    const covering = closed.filter(x => ms >= x.start && ms <= x.end);
+    if (covering.length === 0 || covering.some(x => x.date === scanDate)) return scanDate;
+    return [...covering].sort((x, y) => x.date.localeCompare(y.date))[0].date;
+}
+
+/** Cubetas pagables (sin 'reject') agrupadas por persona y día de pago */
+function scansByPayDay(
+    buckets: ReadonlyArray<BucketRow>,
+    closedByPicker: ReadonlyMap<string, ClosedShift[]>,
+    pieceRate: number,
+): Map<string, ScanForPay[]> {
+    const scans = new Map<string, ScanForPay[]>();
+    for (const b of buckets) {
+        if (b.qualityGrade === 'reject') continue;
+        const ms = toMs(b.scannedAt);
+        if (ms === null) continue;
+        const date = payDateOfScan(ms, nzDateOf(b.scannedAt), closedByPicker.get(b.pickerId) ?? []);
+        const k = dayKey(b.pickerId, date);
+        const list = scans.get(k) ?? [];
+        list.push({
+            ms,
+            ts: b.scannedAt,
+            orchardId: b.orchardId ?? null,
+            variety: b.variety ?? null,
+            rate: b.pieceRate ?? pieceRate,
+        });
+        scans.set(k, list);
+    }
+    return scans;
+}
+
+function countByVariety(scans: ReadonlyArray<ScanForPay>): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const s of scans) {
+        const v = s.variety ?? '—';
+        out[v] = (out[v] ?? 0) + 1;
+    }
+    return out;
+}
+
+interface DayContext {
+    pieceRate: number;
+    minWage: number;
+    isPublicHoliday: (dateYMD: string) => boolean;
+    today: string;
+    nowMs: number;
+}
+
+/** Detalle de pago de un día de una persona, o null si no hay nada que pagar */
+function payDayOf(date: string, rows: AttendanceRow[], dayScans: ScanForPay[], ctx: DayContext): PayDay | null {
+    const h = dayHours(rows, dayScans, date === ctx.today, ctx.nowMs);
+    const hasStaleOpen = date < ctx.today && rows.some(r => r.checkIn && !r.checkOut);
+    // Sin horas ni cubetas no hay nada que pagar, salvo un tramo abierto de un
+    // día pasado: se mantiene (0 h, estimado) para que no desaparezca sin aviso.
+    if (h.hours === 0 && dayScans.length === 0 && !hasStaleOpen) return null;
+
+    const holiday = ctx.isPublicHoliday(date);
+    const p = dayPay({
+        buckets: dayScans.length,
+        pieceEarnings: dayScans.reduce((sum, s) => sum + s.rate, 0),
+        hours: h.hours,
+        pieceRate: ctx.pieceRate,
+        minWage: ctx.minWage,
+        isPublicHoliday: holiday,
+    });
+    return {
+        date,
+        segments: h.segments,
+        hours: h.hours,
+        breakMinutes: h.breakMinutes,
+        travelMinutes: h.travelMinutes,
+        buckets: dayScans.length,
+        bucketsByVariety: countByVariety(dayScans),
+        pieceLines: buildPieceLines(dayScans),
+        byOrchard: splitByOrchard(h, dayScans, p.topUp, holiday ? PAY_RULES.publicHolidayMultiplier : 1, p.holidayPremium),
+        pieceEarnings: p.pieceEarnings,
+        holidayPremium: p.holidayPremium,
+        topUp: p.topUp,
+        total: p.total,
+        belowMinimum: p.belowMinimum,
+        estimated: h.estimated || hasStaleOpen,
+        isPublicHoliday: holiday,
+    };
+}
+
+function emptyRangePay(pickerId: string): PickerRangePay {
+    return {
+        pickerId, buckets: 0, hours: 0, pieceEarnings: 0, holidayPremium: 0, topUp: 0, total: 0,
+        days: 0, daysBelowMinimum: 0, estimatedDays: 0, dayDetails: [],
+    };
+}
+
+/** Suma un día al acumulado de la persona (redondeando a céntimos en cada paso) */
+function addDay(acc: PickerRangePay, day: PayDay): void {
+    acc.buckets += day.buckets;
+    acc.hours = round2(acc.hours + day.hours);
+    acc.pieceEarnings = round2(acc.pieceEarnings + day.pieceEarnings);
+    acc.holidayPremium = round2(acc.holidayPremium + day.holidayPremium);
+    acc.topUp = round2(acc.topUp + day.topUp);
+    acc.total = round2(acc.total + day.total);
+    acc.days += 1;
+    if (day.belowMinimum) acc.daysBelowMinimum += 1;
+    if (day.estimated) acc.estimatedDays += 1;
+    acc.dayDetails.push(day);
+}
+
 /**
  * Pago de cada picker en un rango de días. El complemento se calcula día a día
  * (con TODOS los tramos y cubetas de ese día, de cualquier huerto o variedad)
@@ -607,114 +750,26 @@ export function payForRange(params: {
     now?: Date;
 }): PickerRangePay[] {
     const { attendance, buckets, pieceRate, minWage } = params;
-    const isPublicHoliday = params.isPublicHoliday ?? isNZPublicHoliday;
     const nowDate = params.now ?? new Date();
-    const nowMs = nowDate.getTime();
-    const today = nzDateOf(nowDate);
-    const key = (pickerId: string, date: string) => `${pickerId}|${date}`;
+    const ctx: DayContext = {
+        pieceRate,
+        minWage,
+        isPublicHoliday: params.isPublicHoliday ?? isNZPublicHoliday,
+        today: nzDateOf(nowDate),
+        nowMs: nowDate.getTime(),
+    };
 
-    const shifts = new Map<string, AttendanceRow[]>();
-    for (const a of attendance) {
-        const k = key(a.pickerId, a.date);
-        const list = shifts.get(k) ?? [];
-        list.push(a);
-        shifts.set(k, list);
-    }
-
-    // Tramos cerrados de cada persona: una cubeta escaneada dentro de un tramo
-    // que cruza la medianoche es del día de ese tramo (horas y cubetas juntas;
-    // antes se iba al día siguiente y allí se estimaban horas otra vez)
-    const closedByPicker = new Map<string, { start: number; end: number; date: string }[]>();
-    for (const a of attendance) {
-        const start = toMs(a.checkIn), end = toMs(a.checkOut);
-        if (start === null || end === null || end <= start) continue;
-        const list = closedByPicker.get(a.pickerId) ?? [];
-        list.push({ start, end, date: a.date });
-        closedByPicker.set(a.pickerId, list);
-    }
-
-    const scans = new Map<string, ScanForPay[]>();
-    for (const b of buckets) {
-        if (b.qualityGrade === 'reject') continue;
-        const ms = toMs(b.scannedAt);
-        if (ms === null) continue;
-        const scanDate = nzDateOf(b.scannedAt);
-        const covering = (closedByPicker.get(b.pickerId) ?? []).filter(x => ms >= x.start && ms <= x.end);
-        // Si un tramo de su propio día la cubre, se queda en su día
-        const shift = covering.some(x => x.date === scanDate) ? undefined : [...covering].sort((x, y) => x.date.localeCompare(y.date))[0];
-        const k = key(b.pickerId, shift ? shift.date : scanDate);
-        const list = scans.get(k) ?? [];
-        list.push({
-            ms,
-            ts: b.scannedAt,
-            orchardId: b.orchardId ?? null,
-            variety: b.variety ?? null,
-            rate: b.pieceRate ?? pieceRate,
-        });
-        scans.set(k, list);
-    }
+    const shifts = groupBy(attendance, a => dayKey(a.pickerId, a.date));
+    const scans = scansByPayDay(buckets, closedShiftsByPicker(attendance), pieceRate);
 
     const byPicker = new Map<string, PickerRangePay>();
     const dayKeys = [...new Set<string>([...shifts.keys(), ...scans.keys()])].sort();
     for (const k of dayKeys) {
         const [pickerId, date] = k.split('|');
-        const rows = shifts.get(k) ?? [];
-        const dayScans = scans.get(k) ?? [];
-        const h = dayHours(rows, dayScans, date === today, nowMs);
-        const hasStaleOpen = date < today && rows.some(r => r.checkIn && !r.checkOut);
-        // Sin horas ni cubetas no hay nada que pagar, salvo un tramo abierto de un
-        // día pasado: se mantiene (0 h, estimado) para que no desaparezca sin aviso.
-        if (h.hours === 0 && dayScans.length === 0 && !hasStaleOpen) continue;
-
-        const holiday = isPublicHoliday(date);
-        const p = dayPay({
-            buckets: dayScans.length,
-            pieceEarnings: dayScans.reduce((sum, s) => sum + s.rate, 0),
-            hours: h.hours,
-            pieceRate,
-            minWage,
-            isPublicHoliday: holiday,
-        });
-        const bucketsByVariety: Record<string, number> = {};
-        for (const s of dayScans) {
-            const v = s.variety ?? '—';
-            bucketsByVariety[v] = (bucketsByVariety[v] ?? 0) + 1;
-        }
-        const estimated = h.estimated || hasStaleOpen;
-        const pieceLines = buildPieceLines(dayScans);
-        const byOrchard = splitByOrchard(h, dayScans, p.topUp, holiday ? PAY_RULES.publicHolidayMultiplier : 1, p.holidayPremium);
-
-        const acc = byPicker.get(pickerId) ?? {
-            pickerId, buckets: 0, hours: 0, pieceEarnings: 0, holidayPremium: 0, topUp: 0, total: 0,
-            days: 0, daysBelowMinimum: 0, estimatedDays: 0, dayDetails: [],
-        };
-        acc.buckets += dayScans.length;
-        acc.hours = round2(acc.hours + h.hours);
-        acc.pieceEarnings = round2(acc.pieceEarnings + p.pieceEarnings);
-        acc.holidayPremium = round2(acc.holidayPremium + p.holidayPremium);
-        acc.topUp = round2(acc.topUp + p.topUp);
-        acc.total = round2(acc.total + p.total);
-        acc.days += 1;
-        if (p.belowMinimum) acc.daysBelowMinimum += 1;
-        if (estimated) acc.estimatedDays += 1;
-        acc.dayDetails.push({
-            date,
-            segments: h.segments,
-            hours: h.hours,
-            breakMinutes: h.breakMinutes,
-            travelMinutes: h.travelMinutes,
-            buckets: dayScans.length,
-            bucketsByVariety,
-            pieceLines,
-            byOrchard,
-            pieceEarnings: p.pieceEarnings,
-            holidayPremium: p.holidayPremium,
-            topUp: p.topUp,
-            total: p.total,
-            belowMinimum: p.belowMinimum,
-            estimated,
-            isPublicHoliday: holiday,
-        });
+        const day = payDayOf(date, shifts.get(k) ?? [], scans.get(k) ?? [], ctx);
+        if (!day) continue;
+        const acc = byPicker.get(pickerId) ?? emptyRangePay(pickerId);
+        addDay(acc, day);
         byPicker.set(pickerId, acc);
     }
 

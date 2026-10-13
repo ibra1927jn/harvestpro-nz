@@ -21,6 +21,9 @@ export const FONT_MANIFEST = join(ROOT, 'src', 'assets', 'fonts', 'material-symb
 
 const SKIP_FILE = /(\.test\.|\.spec\.|\.stories\.|\.d\.ts$)/;
 const SKIP_DIR = new Set(['__tests__', 'stories', 'mocks', 'test', 'tests']);
+// Textos traducidos (no son iconos) y claves de traducción 'area.clave' (los iconos no llevan puntos)
+const SKIP_PATH = /[\\/]src[\\/]i18n[\\/]locales[\\/]/;
+const I18N_KEY = /^[a-z][\w-]*(\.[\w-]+)+$/i;
 
 export function knownIconNames() {
   return new Set(
@@ -36,7 +39,7 @@ function* sourceFiles(dir) {
     const full = join(dir, name);
     if (statSync(full).isDirectory()) {
       if (!SKIP_DIR.has(name)) yield* sourceFiles(full);
-    } else if (/\.(tsx?|jsx?)$/.test(name) && !SKIP_FILE.test(name)) {
+    } else if (/\.(tsx?|jsx?)$/.test(name) && !SKIP_FILE.test(name) && !SKIP_PATH.test(full)) {
       yield full;
     }
   }
@@ -74,6 +77,7 @@ export function collectUsedIcons(srcDir = join(ROOT, 'src')) {
   const where = new Map();
   for (const file of sourceFiles(srcDir)) {
     for (const text of literalTexts(file)) {
+      if (I18N_KEY.test(text)) continue;
       for (const word of text.match(/[a-z0-9_]+/g) ?? []) {
         if (!known.has(word)) continue;
         const rel = relative(ROOT, file);

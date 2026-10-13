@@ -5,10 +5,10 @@
 import type { NavItem } from '@/components/common/DesktopLayout';
 
 export const HR_NAV_ITEMS: NavItem[] = [
-    { id: 'employees', label: 'Employees', icon: 'group' },
-    { id: 'contracts', label: 'Contracts', icon: 'description' },
-    { id: 'payroll', label: 'Payroll', icon: 'payments' },
-    { id: 'documents', label: 'Documents', icon: 'folder' },
-    { id: 'calendar', label: 'Calendar', icon: 'calendar_month' },
-    { id: 'planning', label: 'Planning', icon: 'analytics' },
+    { id: 'employees', label: 'Employees', labelKey: 'nav.employees', icon: 'group' },
+    { id: 'contracts', label: 'Contracts', labelKey: 'nav.contracts', icon: 'description' },
+    { id: 'payroll', label: 'Payroll', labelKey: 'nav.payroll', icon: 'payments' },
+    { id: 'documents', label: 'Documents', labelKey: 'nav.documents', icon: 'folder' },
+    { id: 'calendar', label: 'Calendar', labelKey: 'nav.calendar', icon: 'calendar_month' },
+    { id: 'planning', label: 'Planning', labelKey: 'nav.planning', icon: 'analytics' },
 ];

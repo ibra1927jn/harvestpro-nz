@@ -80,10 +80,8 @@ describe('useNotifications', () => {
 
         const { result } = renderHook(() => useNotifications());
 
-        // Wait for initial check
-        await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 10));
-        });
+        // Esperar a la comprobación inicial (sin dormir: hasta que el estado cambie)
+        await vi.waitFor(() => expect(result.current.isSubscribed).toBe(true));
 
         await act(async () => {
             await result.current.sendTest();

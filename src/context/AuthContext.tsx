@@ -62,6 +62,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isAuthenticatedRef.current = state.isAuthenticated;
   }, [state.isAuthenticated]);
 
+  // El listener de onAuthStateChange llama al signOut del primer render (user = null):
+  // signOut lee el usuario de este ref para limpiar su confianza MFA del dispositivo
+  const userIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    userIdRef.current = state.user?.id ?? state.appUser?.id ?? undefined;
+  }, [state.user?.id, state.appUser?.id]);
+
   // Evita re-entrada si signOut ya está en curso (doble llamada desde onAuthStateChange)
   const isSigningOutRef = useRef(false);
 
@@ -145,7 +152,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         aborted = true;
         return;
       }
-      await teardownSession(state.user?.id);
+      await teardownSession(userIdRef.current);
     } catch (error) {
       logger.error('Error signing out from Supabase:', error);
     } finally {

@@ -16,6 +16,7 @@ import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import { useQC } from '@/hooks/useQC';
 import { QC_NAV_TABS, type QCTab } from '@/config/navigation/qc.nav';
+import { useTranslation } from '@/i18n';
 
 // Lazy-loaded views (code-split for performance)
 const InspectTab = React.lazy(() => import('@/components/views/qc/InspectTab'));
@@ -30,6 +31,7 @@ const TabLoader = () => (
 );
 
 export default function QualityControl() {
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState<QCTab>('inspect');
     const qc = useQC();
 
@@ -57,8 +59,8 @@ export default function QualityControl() {
             mobileTabs={QC_NAV_TABS}
             activeTab={activeTab}
             onTabChange={(id) => setActiveTab(id as QCTab)}
-            title="Quality Control"
-            subtitle="Inspection Dashboard"
+            title={t('qc.page_title')}
+            subtitle={t('qc.page_subtitle')}
             accentColor="emerald"
             titleIcon="verified"
         >

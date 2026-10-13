@@ -148,9 +148,9 @@ describe('DayClosureButton', () => {
         });
         expect(screen.getByText('320')).toBeInTheDocument(); // total_buckets
         expect(screen.getByText('48.5h')).toBeInTheDocument(); // total_hours
-        expect(screen.getByText('$1600.00')).toBeInTheDocument(); // piece_rate
+        expect(screen.getByText('$1,600.00')).toBeInTheDocument(); // piece_rate
         expect(screen.getByText('$250.00')).toBeInTheDocument(); // top_up
-        expect(screen.getByText('$1850.00 NZD')).toBeInTheDocument(); // total
+        expect(screen.getByText('$1,850.00 NZD')).toBeInTheDocument(); // total
         expect(screen.getByText('12 workers')).toBeInTheDocument();
         expect(screen.getByText('3 required top-up')).toBeInTheDocument();
         expect(screen.getByText('75% compliance rate')).toBeInTheDocument();

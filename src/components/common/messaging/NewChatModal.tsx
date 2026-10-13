@@ -4,6 +4,8 @@
 import React, { useState, useRef } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { getAvatarColor, getRoleBadge } from './messagingHelpers';
+import { useTranslation } from '@/i18n';
+import { roleLabel } from '@/i18n/roleLabel';
 
 interface Props {
     availableUsers: Array<{ id: string; name: string; role: string }>;
@@ -16,6 +18,7 @@ interface Props {
 const NewChatModal: React.FC<Props> = ({
     availableUsers, currentUserId, onClose, onStartDirect, onCreateGroup,
 }) => {
+    const { t } = useTranslation();
     const dialogRef = useRef<HTMLDivElement>(null);
     useDialogA11y(dialogRef, { onClose });
 
@@ -39,7 +42,7 @@ const NewChatModal: React.FC<Props> = ({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" onClick={onClose}>
-            <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="New chat" className="bg-white rounded-3xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh] shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={t('chat.new_chat')} className="bg-white rounded-3xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh] shadow-2xl" onClick={e => e.stopPropagation()}>
                 {/* Header */}
                 <header className="p-5 border-b border-slate-100">
                     <div className="flex justify-between items-center mb-4">
@@ -51,24 +54,24 @@ const NewChatModal: React.FC<Props> = ({
                             </div>
                             <div>
                                 <h3 className="text-base font-black text-slate-800">
-                                    {mode === 'direct' ? 'New Message' : 'Create Group'}
+                                    {mode === 'direct' ? t('chat.new_message') : t('chat.create_group')}
                                 </h3>
                                 <p className="text-[10px] text-slate-400 font-medium">
-                                    {mode === 'direct' ? 'Select a person to message' : `${selectedIds.length} selected`}
+                                    {mode === 'direct' ? t('chat.select_person') : t('chat.selected_n', { n: selectedIds.length })}
                                 </p>
                             </div>
                         </div>
-                        <button aria-label="Close" onClick={onClose} className="size-9 flex items-center justify-center text-slate-300 hover:text-slate-500 hover:bg-slate-50 rounded-xl transition">
+                        <button aria-label={t('common.close')} onClick={onClose} className="size-9 flex items-center justify-center text-slate-300 hover:text-slate-500 hover:bg-slate-50 rounded-xl transition">
                             <span aria-hidden="true" className="material-symbols-outlined">close</span>
                         </button>
                     </div>
                     {/* Mode Tabs */}
                     <div className="flex bg-slate-100 p-1 rounded-xl">
                         <button onClick={() => setMode('direct')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${mode === 'direct' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}>
-                            <span aria-hidden="true" className="material-symbols-outlined text-sm">person</span>Direct
+                            <span aria-hidden="true" className="material-symbols-outlined text-sm">person</span>{t('chat.direct')}
                         </button>
                         <button onClick={() => setMode('group')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${mode === 'group' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}>
-                            <span aria-hidden="true" className="material-symbols-outlined text-sm">groups</span>Group
+                            <span aria-hidden="true" className="material-symbols-outlined text-sm">groups</span>{t('chat.group')}
                         </button>
                     </div>
                 </header>
@@ -77,14 +80,14 @@ const NewChatModal: React.FC<Props> = ({
                 <div className="flex-1 overflow-y-auto p-4">
                     {mode === 'group' && (
                         <div className="mb-4">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">Group Name</label>
-                            <input type="text" value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="e.g. Block A Team"
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block px-1">{t('chat.group_name')}</label>
+                            <input type="text" value={groupName} onChange={e => setGroupName(e.target.value)} placeholder={t('chat.group_name_example')}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition" />
                         </div>
                     )}
                     <div className="relative mb-3">
                         <span aria-hidden="true" className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg">search</span>
-                        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search people..."
+                        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder={t('chat.search_people')}
                             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm focus:outline-none focus:border-indigo-300 transition font-medium placeholder:text-slate-300" />
                     </div>
                     <div className="space-y-1.5">
@@ -101,7 +104,7 @@ const NewChatModal: React.FC<Props> = ({
                                         <p className={`text-sm font-bold truncate ${mode === 'group' && isSelected ? 'text-indigo-700' : 'text-slate-800'}`}>{p.name}</p>
                                         <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${badge.bg}`}>
                                             <span aria-hidden="true" className="material-symbols-outlined text-[11px]">{badge.icon}</span>
-                                            {p.role?.replace('_', ' ') || 'Picker'}
+                                            {p.role ? roleLabel(t, p.role) : t('roles.picker')}
                                         </span>
                                     </div>
                                     {mode === 'direct' && <span aria-hidden="true" className="material-symbols-outlined text-slate-300 text-lg">arrow_forward_ios</span>}
@@ -116,7 +119,7 @@ const NewChatModal: React.FC<Props> = ({
                     <div className="p-4 border-t border-slate-100 bg-slate-50/50">
                         <button onClick={handleCreateGroup} disabled={!groupName.trim() || selectedIds.length === 0}
                             className="w-full py-3.5 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg shadow-indigo-500/20 disabled:opacity-40 disabled:shadow-none transition active:scale-[0.98]">
-                            Create Group ({selectedIds.length} members)
+                            {t('chat.create_group_n', { n: selectedIds.length })}
                         </button>
                     </div>
                 )}

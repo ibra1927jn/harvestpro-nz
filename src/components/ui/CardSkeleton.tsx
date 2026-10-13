@@ -6,6 +6,7 @@
  *   <CardSkeleton className="h-40" />  — altura personalizada
  */
 import React from 'react';
+import { translate } from '@/i18n';
 
 interface CardSkeletonProps {
     /** Número de líneas de contenido simuladas (default: 2) */
@@ -18,7 +19,7 @@ const CardSkeleton: React.FC<CardSkeletonProps> = ({ lines = 2, className = '' }
     <div
         role="status"
         aria-busy={true}
-        aria-label="Loading"
+        aria-label={translate('ui.loading')}
         className={`bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-3 ${className}`}
     >
         {/* Barra de título simulada */}

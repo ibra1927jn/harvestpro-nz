@@ -113,7 +113,7 @@ const RunnersSection: React.FC<RunnersSectionProps> = ({ runners, onSelectUser, 
                                                 ? 'bg-red-500 text-white shadow-sm opacity-100'
                                                 : 'text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100'
                                                 }`}
-                                            title={confirmId === runner.id ? t('teams.confirm_q') : 'Unlink from orchard'}
+                                            title={confirmId === runner.id ? t('teams.confirm_q') : t('mgr.unlink_orchard')}
                                         >
                                             <span aria-hidden="true" className="material-symbols-outlined text-sm">
                                                 {unlinking === runner.id ? 'hourglass_top' : 'link_off'}

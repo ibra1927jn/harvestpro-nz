@@ -23,12 +23,15 @@ import {
 } from './timesheet-utils';
 import TimesheetRow from './TimesheetRow';
 import DailyTimesheetSummary from './DailyTimesheetSummary';
+import { formatNZDate } from '@/utils/nzFormat';
+import { useTranslation } from '@/i18n';
 
 interface TimesheetEditorProps {
   orchardId: string;
 }
 
 export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
+  const { t } = useTranslation();
   const { appUser } = useAuth();
   const [selectedDate, setSelectedDate] = useState(todayNZST());
   // Timesheet completo con produccion y earnings (generado bajo demanda)
@@ -79,7 +82,7 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
 
   const saveCorrection = async (record: AttendanceRow) => {
     if (!editValues.reason.trim()) {
-      showToast('A correction reason is required for audit compliance.', 'warning');
+      showToast(t('tse.reason_required'), 'warning');
       return;
     }
 
@@ -98,11 +101,11 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
       );
 
       setEditingId(null);
-      setSuccessMsg(`Corrected ${record.picker?.name || 'picker'}'s timesheet`);
+      setSuccessMsg(t('tse.corrected', { name: record.picker?.name || t('roles.picker') }));
       setTimeout(() => setSuccessMsg(''), 3000);
       await loadRecords();
     } catch (err) {
-      showToast(`Error: ${err instanceof Error ? err.message : 'Unknown'}`, 'error');
+      showToast(t('tse.error', { error: err instanceof Error ? err.message : t('common.unknown') }), 'error');
     } finally {
       setSaving(false);
     }
@@ -117,8 +120,8 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
             <span aria-hidden="true" className="material-symbols-outlined text-xl text-amber-600">schedule</span>
           </div>
           <div>
-            <h2 className="text-lg font-bold text-text-main">Timesheet Editor</h2>
-            <p className="text-sm text-text-muted">Correct attendance records with audit trail</p>
+            <h2 className="text-lg font-bold text-text-main">{t('timesheet.title')}</h2>
+            <p className="text-sm text-text-muted">{t('tse.subtitle')}</p>
           </div>
         </div>
 
@@ -132,8 +135,8 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
             value={selectedDate}
             onChange={e => setSelectedDate(e.target.value)}
             max={todayNZST()}
-            title="Select date"
-            aria-label="Timesheet date"
+            title={t('tse.select_date')}
+            aria-label={t('tse.date')}
             className="px-3 py-2 border border-border-light rounded-xl text-sm font-medium text-text-sub bg-white focus:ring-2 focus:ring-amber-500 outline-none"
           />
         </div>
@@ -162,8 +165,8 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
           <span aria-hidden="true" className="material-symbols-outlined text-5xl mx-auto text-slate-300 mb-4">
             schedule
           </span>
-          <p className="text-text-muted font-medium">No attendance records for {selectedDate}</p>
-          <p className="text-sm text-text-muted mt-1">Select a different date to view records</p>
+          <p className="text-text-muted font-medium">{t('tse.empty', { date: formatNZDate(selectedDate, 'medium') })}</p>
+          <p className="text-sm text-text-muted mt-1">{t('tse.empty_hint')}</p>
         </div>
       )}
 
@@ -173,13 +176,13 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
           <table className="w-full text-sm">
             <thead className="bg-slate-50">
               <tr>
-                <th className="text-left px-4 py-3 text-text-sub font-semibold">Picker</th>
-                <th className="text-left px-4 py-3 text-text-sub font-semibold">Check-In</th>
-                <th className="text-left px-4 py-3 text-text-sub font-semibold">Check-Out</th>
-                <th className="text-left px-4 py-3 text-text-sub font-semibold" title="30-min unpaid meal break">Break</th>
-                <th className="text-left px-4 py-3 text-text-sub font-semibold" title="Paid hours (unpaid break deducted)">Hours</th>
-                <th className="text-left px-4 py-3 text-text-sub font-semibold">Status</th>
-                <th className="text-right px-4 py-3 text-text-sub font-semibold">Action</th>
+                <th className="text-left px-4 py-3 text-text-sub font-semibold">{t('roles.picker')}</th>
+                <th className="text-left px-4 py-3 text-text-sub font-semibold">{t('tse.check_in')}</th>
+                <th className="text-left px-4 py-3 text-text-sub font-semibold">{t('tse.check_out')}</th>
+                <th className="text-left px-4 py-3 text-text-sub font-semibold" title={t('tse.break_title')}>{t('tse.break')}</th>
+                <th className="text-left px-4 py-3 text-text-sub font-semibold" title={t('tse.hours_title')}>{t('pay.col.hours')}</th>
+                <th className="text-left px-4 py-3 text-text-sub font-semibold">{t('hr.status')}</th>
+                <th className="text-right px-4 py-3 text-text-sub font-semibold">{t('tse.action')}</th>
               </tr>
             </thead>
             <tbody>
@@ -212,7 +215,7 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
                 setDailyTimesheet(data);
               } catch (err) {
                 logger.error('[Timesheet] Failed to generate daily timesheet:', err);
-                showToast('Failed to generate timesheet summary', 'error');
+                showToast(t('tse.generate_failed'), 'error');
               } finally {
                 setGeneratingTimesheet(false);
               }
@@ -225,7 +228,7 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
             ) : (
               <span aria-hidden="true" className="material-symbols-outlined text-lg">summarize</span>
             )}
-            Generate Complete Timesheet
+            {t('tse.generate')}
           </button>
         </div>
       )}
@@ -238,10 +241,9 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
         <div className="flex items-start gap-3">
           <span aria-hidden="true" className="material-symbols-outlined text-lg text-amber-600 mt-0.5">warning</span>
           <div>
-            <p className="text-sm font-medium text-amber-800">Audit Compliance</p>
+            <p className="text-sm font-medium text-amber-800">{t('tse.audit_title')}</p>
             <p className="text-xs text-amber-700 mt-1">
-              All corrections are logged with your name, timestamp, and reason. This data is
-              immutable and visible in the Audit Log.
+              {t('tse.audit_body')}
             </p>
           </div>
         </div>

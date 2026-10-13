@@ -2,6 +2,7 @@
  * RowGrid — Interactive row selection grid for row assignments
  */
 import React from 'react';
+import { translate } from '@/i18n';
 
 interface TeamOnRow {
     total: number;
@@ -29,10 +30,10 @@ const RowGrid: React.FC<RowGridProps> = ({
     <div>
         <div className="flex items-center justify-between mb-2">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                {blockRowsLabel ?? `${blockName} Rows`}
+                {blockRowsLabel ?? translate('mgr.block_rows', { blockName })}
             </label>
             <span className="text-[10px] font-bold text-primary">
-                {selectedLabel ?? `${selectedRows.length} selected`}
+                {selectedLabel ?? translate('chat.selected_n', { n: selectedRows.length })}
             </span>
         </div>
         <div className="grid grid-cols-6 gap-1.5">
@@ -56,7 +57,7 @@ const RowGrid: React.FC<RowGridProps> = ({
                                         ? 'bg-amber-50 text-amber-600 hover:bg-amber-100'
                                         : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
                             }`}
-                        title={isVarietyBlocked ? `${rowVariety} (inactive)` : hasTeams ? `${teams.length} team(s), ${teams.reduce((s, t) => s + t.total, 0)} people` : undefined}
+                        title={isVarietyBlocked ? translate('mgr.variety_inactive', { variety: rowVariety ?? '' }) : hasTeams ? translate('mgr.teams_people', { teams: teams.length, people: teams.reduce((s, tm) => s + tm.total, 0) }) : undefined}
                     >
                         {r}
                         {hasTeams && !isSelected && !isVarietyBlocked && (

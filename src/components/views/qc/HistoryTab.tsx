@@ -9,6 +9,8 @@ import FilterBar from '@/components/ui/FilterBar';
 import VirtualList from '@/components/ui/VirtualList';
 import { QCInspection } from '@/services/qc.service';
 import { Picker } from '@/types';
+import { useTranslation } from '@/i18n';
+import { formatNZTime } from '@/utils/nzFormat';
 
 const GRADE_PILL_COLORS: Record<string, string> = {
     A: 'bg-green-100 text-green-700',
@@ -23,6 +25,7 @@ interface HistoryTabProps {
 }
 
 export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
+    const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -47,14 +50,14 @@ export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
             <div className="bg-white rounded-lg border border-border-light shadow-sm">
                 <div className="px-4 py-3 border-b border-slate-100">
                     <h2 className="text-sm font-semibold text-text-main mb-3">
-                        Recent Inspections ({filtered.length})
+                        {t('qc.recent_n', { n: filtered.length })}
                     </h2>
                     <FilterBar
                         searchValue={searchQuery}
                         onSearchChange={setSearchQuery}
-                        searchPlaceholder="Search by picker..."
+                        searchPlaceholder={t('qc.search_by_picker')}
                         filters={[
-                            { key: 'grade', label: 'Grade', options: gradeOptions, icon: 'grade' },
+                            { key: 'grade', label: t('qc.grade'), options: gradeOptions, icon: 'grade' },
                         ]}
                         activeFilters={activeFilters}
                         onFilterChange={(key, value) => setActiveFilters(prev => ({ ...prev, [key]: value }))}
@@ -77,7 +80,7 @@ export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-text-main truncate">
-                                            {picker?.name || 'Unknown'}
+                                            {picker?.name || t('common.unknown')}
                                         </p>
                                         {insp.notes && (
                                             <p className="text-xs text-text-muted truncate">{insp.notes}</p>
@@ -88,20 +91,20 @@ export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
                                             type="button"
                                             onClick={() => setLightboxUrl(insp.photo_url!)}
                                             className="flex-shrink-0"
-                                            aria-label="View inspection photo"
+                                            aria-label={t('qc.view_photo')}
                                         >
                                             <img
                                                 src={insp.photo_url}
-                                                alt="QC evidence"
+                                                alt={t('qc.photo_alt')}
                                                 className="w-10 h-10 object-cover rounded border border-border-light hover:ring-2 hover:ring-indigo-400 transition-all cursor-pointer"
                                             />
                                         </button>
                                     )}
                                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${GRADE_PILL_COLORS[insp.grade] || ''}`}>
-                                        {insp.grade === 'reject' ? 'REJ' : insp.grade}
+                                        {insp.grade === 'reject' ? t('qc.rej') : insp.grade}
                                     </span>
                                     <span className="text-xs text-text-muted">
-                                        {new Date(insp.created_at).toLocaleTimeString([], { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })}
+                                        {formatNZTime(insp.created_at)}
                                     </span>
                                 </div>
                             );
@@ -110,8 +113,8 @@ export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
                 ) : (
                     <EmptyState
                         icon="assignment_turned_in"
-                        title="No inspections found"
-                        subtitle={searchQuery || Object.values(activeFilters).some(v => v) ? "Try adjusting your filters" : "Start inspecting to see history here"}
+                        title={t('qc.no_inspections')}
+                        subtitle={searchQuery || Object.values(activeFilters).some(v => v) ? t('qc.adjust_filters') : t('qc.start_inspecting')}
                         compact
                     />
                 )}
@@ -124,20 +127,20 @@ export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
                     onClick={() => setLightboxUrl(null)}
                     role="dialog"
                     aria-modal="true"
-                    aria-label="Photo preview"
+                    aria-label={t('qc.photo_preview')}
                     ref={lightboxRef}
                 >
                     <div className="relative max-w-2xl max-h-[80vh]">
                         <img
                             src={lightboxUrl}
-                            alt="QC inspection evidence"
+                            alt={t('qc.photo_alt')}
                             className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
                         />
                         <button
                             type="button"
                             onClick={() => setLightboxUrl(null)}
                             className="absolute top-2 right-2 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
-                            aria-label="Close photo preview"
+                            aria-label={t('qc.close_preview')}
                         >
                             <span aria-hidden="true" className="material-symbols-outlined text-text-sub">close</span>
                         </button>

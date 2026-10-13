@@ -35,10 +35,10 @@ describe('ScannerModal accessibility', () => {
 
   it('is a named modal dialog with a labelled manual code field', async () => {
     render(<ScannerModal onClose={vi.fn()} onScan={vi.fn()} scanType="BUCKET" batchMode />);
-    const dialog = screen.getByRole('dialog', { name: 'Scan BUCKET' });
+    const dialog = screen.getByRole('dialog', { name: 'Scan bucket' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
     // Sin cámara pasa solo a entrada manual
-    const input = await screen.findByRole('textbox', { name: 'Enter BUCKET Code' });
+    const input = await screen.findByRole('textbox', { name: 'Enter bucket code' });
     expect(input).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('Camera unavailable');
   });
@@ -55,7 +55,7 @@ describe('ScannerModal accessibility', () => {
     const off = subscribeAnnouncer(m => heard.push(m));
     render(<ScannerModal onClose={vi.fn()} onScan={vi.fn()} scanType="BUCKET" batchMode />);
     expect(screen.getByRole('button', { name: 'Close scanner' })).toBeInTheDocument();
-    const input = await screen.findByRole('textbox', { name: 'Enter BUCKET Code' });
+    const input = await screen.findByRole('textbox', { name: 'Enter bucket code' });
     fireEvent.change(input, { target: { value: 'bkt-1' } });
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Submit Code' }));

@@ -21,17 +21,26 @@ import {
 } from '@/services/wage-rates.service';
 import { type JobType, NZ_MINIMUM_WAGE_2026 } from '@/constants/nz-law';
 import { useAuth } from '@/context';
+import { todayNZST } from '@/utils/nzst';
+import { roleLabel } from '@/i18n/roleLabel';
+import type { TFunction } from '@/i18n';
+import { formatNZD, formatNZDateTime } from '@/utils/nzFormat';
+import { withBold } from '@/i18n/withBold';
+import { useTranslation } from '@/i18n';
 
-const JOB_TYPE_LABELS: Record<JobType, string> = {
-  picker:       '🍒 Picker (Piece Rate)',
-  team_leader:  '👑 Team Leader',
-  runner:       '🚐 Runner',
-  qc_inspector: '🔍 QC Inspector',
-  logistics:    '📦 Logistics',
-  hr_admin:     '👤 HR Admin',
-  manager:      '📊 Manager',
-  admin:        '⚙️ System Admin',
+// Icono de cada puesto (el nombre sale traducido con jobLabel)
+const JOB_TYPE_ICONS: Record<JobType, string> = {
+  picker:       '🍒',
+  team_leader:  '👑',
+  runner:       '🚐',
+  qc_inspector: '🔍',
+  logistics:    '📦',
+  hr_admin:     '👤',
+  manager:      '📊',
+  admin:        '⚙️',
 };
+const jobLabel = (t: TFunction, jt: JobType) =>
+  `${JOB_TYPE_ICONS[jt]} ${jt === 'picker' ? t('wage.picker_piece') : roleLabel(t, jt)}`;
 
 const JOB_ORDER: JobType[] = [
   'picker', 'team_leader', 'runner', 'qc_inspector',
@@ -50,6 +59,7 @@ interface RateEditState {
 }
 
 export function WageRatesPanel({ orchardId }: { orchardId: string }) {
+  const { t } = useTranslation();
   const { appUser } = useAuth();
   const [config, setConfig] = useState<WageRatesConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,7 +80,8 @@ export function WageRatesPanel({ orchardId }: { orchardId: string }) {
           hourly_rate: rate.hourly_rate.toFixed(2),
           piece_rate_per_bin: rate.piece_rate_per_bin.toFixed(2),
           is_piece_rate_eligible: rate.is_piece_rate_eligible,
-          effective_from: new Date().toISOString().split('T')[0],
+          // Hoy en NZ (con la fecha UTC, por la mañana la tarifa nueva quedaba con fecha de ayer)
+          effective_from: todayNZST(),
           notes: rate.notes ?? '',
           saving: false,
           error: null,
@@ -118,14 +129,14 @@ export function WageRatesPanel({ orchardId }: { orchardId: string }) {
       setEditStates(s => ({ ...s, [jt]: { ...s[jt], saving: false, success: true, error: null } }));
       await loadRates();
     } else {
-      setEditStates(s => ({ ...s, [jt]: { ...s[jt], saving: false, error: result.error ?? 'Save failed', success: false } }));
+      setEditStates(s => ({ ...s, [jt]: { ...s[jt], saving: false, error: result.error ?? t('wage.save_failed'), success: false } }));
     }
   };
 
   if (loading) return (
     <div className="wage-rates-loading">
       <div className="spinner" />
-      <span>Loading wage rates…</span>
+      <span>{t('wage.loading')}</span>
     </div>
   );
 
@@ -133,15 +144,14 @@ export function WageRatesPanel({ orchardId }: { orchardId: string }) {
     <div className="wage-rates-panel">
       <div className="wage-rates-header">
         <div>
-          <h2 className="wage-rates-title">💼 Wage Rates Configuration</h2>
+          <h2 className="wage-rates-title">💼 {t('wage.title')}</h2>
           <p className="wage-rates-subtitle">
-            Set hourly rates per job type. All rates must meet or exceed the
-            <strong> NZ Minimum Wage (${NZ_MINIMUM_WAGE_2026}/hr)</strong>.
-            Changes take effect on the selected date and are fully audited.
+            {withBold(t('wage.subtitle', { wage: formatNZD(NZ_MINIMUM_WAGE_2026) }))}
           </p>
         </div>
         <div className="wage-rates-legal-badge">
           <span className="badge-dot" />
+          {/* i18n-ignore: nombre de la ley, no se traduce */}
           NZ Employment Relations Act 2000
         </div>
       </div>
@@ -161,11 +171,11 @@ export function WageRatesPanel({ orchardId }: { orchardId: string }) {
                 onClick={() => setExpandedJob(isExpanded ? null : jt)}
                 aria-expanded={isExpanded ? 'true' : 'false'}
               >
-                <span className="job-label">{JOB_TYPE_LABELS[jt]}</span>
+                <span className="job-label">{jobLabel(t, jt)}</span>
                 <div className="wage-card-summary">
-                  <span className="current-rate">${currentDbRate?.hourly_rate.toFixed(2)}/hr</span>
+                  <span className="current-rate">{currentDbRate ? `${formatNZD(currentDbRate.hourly_rate)}${t('common.per_hour')}` : ''}</span>
                   {currentDbRate?.is_piece_rate_eligible && (
-                    <span className="piece-badge">+ piece rate</span>
+                    <span className="piece-badge">{t('wage.plus_piece')}</span>
                   )}
                   <span className="expand-icon">{isExpanded ? '▲' : '▼'}</span>
                 </div>
@@ -175,7 +185,7 @@ export function WageRatesPanel({ orchardId }: { orchardId: string }) {
                 <div className="wage-card-body">
                   <div className="form-row">
                     <label htmlFor={`rate-${jt}`} className="form-label">
-                      Hourly Rate (NZD)
+                      {t('wage.hourly_rate')}
                     </label>
                     <div className="input-wrapper">
                       <span className="input-prefix">$</span>
@@ -189,12 +199,12 @@ export function WageRatesPanel({ orchardId }: { orchardId: string }) {
                         onChange={e => updateEdit(jt, 'hourly_rate', e.target.value)}
                         aria-describedby={`rate-hint-${jt}`}
                       />
-                      <span className="input-suffix">/hr</span>
+                      <span className="input-suffix">{t('common.per_hour')}</span>
                     </div>
                     <p id={`rate-hint-${jt}`} className={`form-hint ${isBelowMinimum ? 'error-hint' : ''}`}>
                       {isBelowMinimum
-                        ? `⚠️ Below NZ minimum wage ($${NZ_MINIMUM_WAGE_2026}/hr)`
-                        : `Min: $${NZ_MINIMUM_WAGE_2026}/hr (NZ 2026)`
+                        ? `⚠️ ${t('wage.below_min', { wage: formatNZD(NZ_MINIMUM_WAGE_2026) })}`
+                        : t('wage.min_hint', { wage: formatNZD(NZ_MINIMUM_WAGE_2026) })
                       }
                     </p>
                   </div>
@@ -206,14 +216,14 @@ export function WageRatesPanel({ orchardId }: { orchardId: string }) {
                         checked={state.is_piece_rate_eligible}
                         onChange={e => updateEdit(jt, 'is_piece_rate_eligible', e.target.checked)}
                       />
-                      <span>Piece rate eligible (wage shield applies)</span>
+                      <span>{t('wage.piece_eligible')}</span>
                     </label>
                   </div>
 
                   {state.is_piece_rate_eligible && (
                     <div className="form-row">
                       <label htmlFor={`piece-${jt}`} className="form-label">
-                        Piece Rate per Bin (NZD)
+                        {t('wage.piece_per_bin')}
                       </label>
                       <div className="input-wrapper">
                         <span className="input-prefix">$</span>
@@ -226,35 +236,35 @@ export function WageRatesPanel({ orchardId }: { orchardId: string }) {
                           value={state.piece_rate_per_bin}
                           onChange={e => updateEdit(jt, 'piece_rate_per_bin', e.target.value)}
                         />
-                        <span className="input-suffix">/bin</span>
+                        <span className="input-suffix">{t('wage.per_bin')}</span>
                       </div>
                     </div>
                   )}
 
                   <div className="form-row">
                     <label htmlFor={`effective-${jt}`} className="form-label">
-                      Effective From
+                      {t('wage.effective_from')}
                     </label>
                     <input
                       id={`effective-${jt}`}
                       type="date"
                       className="date-input"
                       value={state.effective_from}
-                      min={new Date().toISOString().split('T')[0]}
+                      min={todayNZST()}
                       onChange={e => updateEdit(jt, 'effective_from', e.target.value)}
                     />
-                    <p className="form-hint">Future date = rate change scheduled, not immediate</p>
+                    <p className="form-hint">{t('wage.future_hint')}</p>
                   </div>
 
                   <div className="form-row">
                     <label htmlFor={`notes-${jt}`} className="form-label">
-                      Notes (optional)
+                      {t('wage.notes')}
                     </label>
                     <input
                       id={`notes-${jt}`}
                       type="text"
                       className="notes-input"
-                      placeholder="e.g. Annual review 2025, RSE workers collective agreement…"
+                      placeholder={t('wage.notes_placeholder')}
                       value={state.notes}
                       onChange={e => updateEdit(jt, 'notes', e.target.value)}
                     />
@@ -267,7 +277,7 @@ export function WageRatesPanel({ orchardId }: { orchardId: string }) {
                   )}
                   {state.success && (
                     <div className="form-success" role="status">
-                      ✅ Rate saved and audited successfully
+                      ✅ {t('wage.saved')}
                     </div>
                   )}
 
@@ -276,7 +286,7 @@ export function WageRatesPanel({ orchardId }: { orchardId: string }) {
                     onClick={() => handleSave(jt)}
                     disabled={state.saving || isBelowMinimum}
                   >
-                    {state.saving ? 'Saving…' : 'Save Rate'}
+                    {state.saving ? t('hr.saving') : t('wage.save')}
                   </button>
                 </div>
               )}
@@ -286,10 +296,7 @@ export function WageRatesPanel({ orchardId }: { orchardId: string }) {
       </div>
 
       <p className="wage-rates-footer">
-        Last synced: {config?.lastUpdated
-          ? new Date(config.lastUpdated).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })
-          : 'unknown'
-        } · All changes are audit-logged with user, timestamp, and old/new values.
+        {t('wage.footer', { date: config?.lastUpdated ? formatNZDateTime(config.lastUpdated) : t('common.unknown') })}
       </p>
     </div>
   );

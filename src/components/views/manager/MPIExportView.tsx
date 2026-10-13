@@ -9,6 +9,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { mpiExportService, type MPIExportBatch } from '@/services/mpi-export.service';
+import { addDaysYMD, todayNZST } from '@/utils/nzst';
 
 export default function MPIExportView() {
   const { orchardId } = useAuth();
@@ -21,8 +22,8 @@ export default function MPIExportView() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [dateRange, setDateRange] = useState({
-    start: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0],
+    start: addDaysYMD(todayNZST(), -7),
+    end: todayNZST(),
   });
 
   useEffect(() => {

@@ -68,7 +68,7 @@ describe('SyncStatusMonitor', () => {
         render(<SyncStatusMonitor />);
         expect(await screen.findByText(/2 changes could not be sent — kept on this device/)).toBeInTheDocument();
         act(() => { screen.getByRole('button').click(); });
-        expect(screen.getByText(/UNLINK — validation: max retries exceeded/)).toBeInTheDocument();
+        expect(screen.getByText(/Team unlink — validation: max retries exceeded/)).toBeInTheDocument();
         expect(screen.getByText(/BREAK_LOG — unknown_type: BREAK_LOG/)).toBeInTheDocument();
     });
 
@@ -118,5 +118,24 @@ describe('SyncStatusMonitor', () => {
         rerender(<SyncStatusMonitor />);
         off();
         expect(heard[1]).toMatch(/^Back online/);
+    });
+
+    it('speaks the connection change in the app language (Tongan user hears Tongan)', async () => {
+        const { setCurrentLocale, translations } = await import('@/i18n');
+        resetAnnouncerForTests();
+        setCurrentLocale('to');
+        const heard: string[] = [];
+        const off = subscribeAnnouncer(m => heard.push(m));
+        try {
+            const { rerender } = render(<SyncStatusMonitor />);
+            mocks.isOnline = false;
+            rerender(<SyncStatusMonitor />);
+            expect(heard[0]).toBe(translations.to['sync.sr_offline']);
+            expect(heard[0]).not.toMatch(/No signal/);
+            expect(screen.getByText(translations.to['sync.offline'])).toBeTruthy();
+        } finally {
+            off();
+            setCurrentLocale('en');
+        }
     });
 });

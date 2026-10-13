@@ -4,6 +4,8 @@
  */
 import React from 'react';
 import { GradeDistribution } from '@/services/qc.service';
+import { useTranslation } from '@/i18n';
+import { gradeLabel, type QCGrade } from './gradeLabel';
 
 interface DistributionBarProps {
     distribution: GradeDistribution;
@@ -11,10 +13,11 @@ interface DistributionBarProps {
 }
 
 const DistributionBar: React.FC<DistributionBarProps> = ({ distribution, large }) => {
+    const { t } = useTranslation();
     if (distribution.total === 0) return null;
     const h = large ? 'h-6' : 'h-3';
 
-    const segments = [
+    const segments: { key: QCGrade; count: number; color: string }[] = [
         { key: 'A', count: distribution.A, color: 'bg-green-500' },
         { key: 'B', count: distribution.B, color: 'bg-blue-500' },
         { key: 'C', count: distribution.C, color: 'bg-amber-500' },
@@ -29,7 +32,7 @@ const DistributionBar: React.FC<DistributionBarProps> = ({ distribution, large }
                         key={seg.key}
                         className={`${seg.color} transition-all dynamic-width`}
                         style={{ '--w': `${(seg.count / distribution.total) * 100}%` } as React.CSSProperties}
-                        title={`${seg.key === 'reject' ? 'Reject' : `Grade ${seg.key}`}: ${seg.count}`}
+                        title={`${gradeLabel(t, seg.key)}: ${seg.count}`}
                     />
                 ) : null
             )}

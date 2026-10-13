@@ -18,16 +18,19 @@ import { PayWeekCloseBar } from '@/components/views/payroll/PayWeekCloseBar';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import { UnclosedShiftsAlert } from '@/components/common/UnclosedShiftsAlert';
+import { formatNZNumber, formatNZD, formatNZDate } from '@/utils/nzFormat';
+import { useTranslation } from '@/i18n';
 
 const PAYROLL_NAV: NavItem[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { id: 'timesheets', label: 'Timesheets', icon: 'schedule' },
-    { id: 'wages', label: 'Wage Calculator', icon: 'calculate' },
-    { id: 'export', label: 'Export', icon: 'download' },
-    { id: 'history', label: 'History', icon: 'history' },
+    { id: 'dashboard', label: 'Dashboard', labelKey: 'nav.dashboard', icon: 'dashboard' },
+    { id: 'timesheets', label: 'Timesheets', labelKey: 'nav.timesheets', icon: 'schedule' },
+    { id: 'wages', label: 'Wage Calculator', labelKey: 'nav.wage_calculator', icon: 'calculate' },
+    { id: 'export', label: 'Export', labelKey: 'nav.export', icon: 'download' },
+    { id: 'history', label: 'History', labelKey: 'nav.history', icon: 'history' },
 ];
 
 const Payroll: React.FC = () => {
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('dashboard');
     const pay = usePayroll();
 
@@ -48,17 +51,17 @@ const Payroll: React.FC = () => {
     }
 
     return (
-        <ResponsiveLayout navItems={navItems} mobileTabs={navItems} activeTab={activeTab} onTabChange={setActiveTab} title="Payroll Admin" subtitle="Wages & compliance" accentColor="orange" titleIcon="payments">
+        <ResponsiveLayout navItems={navItems} mobileTabs={navItems} activeTab={activeTab} onTabChange={setActiveTab} title={t('pay.page_title')} subtitle={t('pay.page_subtitle')} accentColor="orange" titleIcon="payments">
             {/* Semana de pago: la nómina es semanal y se cierra el lunes siguiente */}
             <div className="flex items-center justify-between gap-3 mb-4" data-testid="pay-week-selector">
-                <button type="button" onClick={() => pay.goToWeek(-1)} aria-label="Previous pay week" className="p-2 rounded-xl hover:bg-slate-100">
+                <button type="button" onClick={() => pay.goToWeek(-1)} aria-label={t('pay.prev_week')} className="p-2 rounded-xl hover:bg-slate-100">
                     <span aria-hidden="true" className="material-symbols-outlined">chevron_left</span>
                 </button>
                 <div className="text-center">
-                    <p className="text-sm font-extrabold text-slate-800">Pay week {pay.week.start} → {pay.week.end}</p>
-                    <p className="text-[11px] uppercase tracking-widest font-bold text-slate-400">Closes Monday {pay.week.closesOn}</p>
+                    <p className="text-sm font-extrabold text-slate-800">{t('pay.week_range', { start: formatNZDate(pay.week.start, 'dayMonth'), end: formatNZDate(pay.week.end, 'medium') })}</p>
+                    <p className="text-[11px] uppercase tracking-widest font-bold text-slate-400">{t('pay.closes_monday', { date: formatNZDate(pay.week.closesOn, 'dayMonth') })}</p>
                 </div>
-                <button type="button" onClick={() => pay.goToWeek(1)} aria-label="Next pay week" className="p-2 rounded-xl hover:bg-slate-100">
+                <button type="button" onClick={() => pay.goToWeek(1)} aria-label={t('pay.next_week')} className="p-2 rounded-xl hover:bg-slate-100">
                     <span aria-hidden="true" className="material-symbols-outlined">chevron_right</span>
                 </button>
             </div>
@@ -75,7 +78,7 @@ const Payroll: React.FC = () => {
             />
 
             <div className="mb-4">
-                <UnclosedShiftsAlert hint="Ask the team leader or manager to fix the check-out time in the timesheets before closing the week." />
+                <UnclosedShiftsAlert hint={t('pay.unclosed_hint')} />
             </div>
 
             {pay.error && (
@@ -83,11 +86,11 @@ const Payroll: React.FC = () => {
             )}
 
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-                <SummaryCard icon="inventory_2" iconColor="text-indigo-500" label="Total Buckets" value={pay.summary.total_buckets.toLocaleString()} />
-                <SummaryCard icon="schedule" iconColor="text-sky-500" label="Total Hours" value={`${pay.summary.total_hours.toFixed(1)}h`} />
-                <SummaryCard icon="payments" iconColor="text-emerald-500" label="Piece Rate" value={`$${pay.summary.total_piece_rate_earnings.toFixed(0)}`} />
-                <SummaryCard icon="shield" iconColor="text-amber-500" label="Top-Up Required" value={`$${pay.summary.total_top_up.toFixed(0)}`} />
-                <SummaryCard icon="account_balance" iconColor="text-orange-600" label="Total Payroll" value={`$${pay.summary.total_earnings.toFixed(0)}`} highlight />
+                <SummaryCard icon="inventory_2" iconColor="text-indigo-500" label={t('pay.total_buckets')} value={formatNZNumber(pay.summary.total_buckets)} />
+                <SummaryCard icon="schedule" iconColor="text-sky-500" label={t('pay.total_hours')} value={`${formatNZNumber(pay.summary.total_hours, 1)}h`} />
+                <SummaryCard icon="payments" iconColor="text-emerald-500" label={t('pay.piece_rate')} value={formatNZD(pay.summary.total_piece_rate_earnings, 0)} />
+                <SummaryCard icon="shield" iconColor="text-amber-500" label={t('pay.top_up_required')} value={formatNZD(pay.summary.total_top_up, 0)} />
+                <SummaryCard icon="account_balance" iconColor="text-orange-600" label={t('pay.total_payroll')} value={formatNZD(pay.summary.total_earnings, 0)} highlight />
             </div>
 
             {(pay.summary.total_alternative_holidays_owed ?? 0) > 0 && (
@@ -97,8 +100,9 @@ const Payroll: React.FC = () => {
                 >
                     <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-violet-600">event_available</span>
                     <p className="text-sm font-bold text-violet-900">
-                        {pay.summary.total_alternative_holidays_owed} alternative day{(pay.summary.total_alternative_holidays_owed ?? 0) === 1 ? '' : 's'} owed
+                        {t((pay.summary.total_alternative_holidays_owed ?? 0) === 1 ? 'pay.alt_days_one' : 'pay.alt_days_other', { n: pay.summary.total_alternative_holidays_owed ?? 0 })}
                         <span className="ml-2 text-[11px] font-semibold uppercase tracking-widest text-violet-600">
+                            {/* i18n-ignore: nombre de la ley, no se traduce */}
                             Holidays Act s.60
                         </span>
                     </p>
@@ -113,10 +117,10 @@ const Payroll: React.FC = () => {
                     </div>
                     <div className="flex-1">
                         <p className="text-sm font-extrabold text-amber-900 tracking-tight">
-                            Wage Shield Active
+                            {t('pay.wage_shield_active')}
                         </p>
                         <p className="text-[11px] font-bold text-amber-600/80 uppercase tracking-widest mt-0.5">
-                            {pay.compliance.workers_below_minimum} of {pay.compliance.workers_total} workers • {pay.compliance.compliance_rate.toFixed(0)}% compliance
+                            {t('pay.shield_stats', { n: pay.compliance.workers_below_minimum, total: pay.compliance.workers_total, pct: pay.compliance.compliance_rate.toFixed(0) })}
                         </p>
                     </div>
                 </div>

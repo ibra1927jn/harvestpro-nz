@@ -23,6 +23,7 @@ import {
     buildDailySummaryTable,
     buildTeamBreakdown,
 } from './weeklyReportSections';
+import { todayNZST } from '@/utils/nzst';
 
 interface CrewMember {
     id: string;
@@ -90,7 +91,7 @@ export function exportPDF(ctx: ExportContext): void {
 // ── Internal helpers ──
 
 function dateStamp(): string {
-    return new Date().toISOString().slice(0, 10);
+    return todayNZST();
 }
 
 function downloadBlob(content: string, type: string, filename: string): void {

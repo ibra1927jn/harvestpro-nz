@@ -7,10 +7,10 @@ import type { NavItem } from '@/components/common/DesktopLayout';
 export type AdminTab = 'orchards' | 'users' | 'compliance' | 'audit';
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
-    { id: 'orchards', label: 'Orchards', icon: 'apartment' },
-    { id: 'users', label: 'Users', icon: 'group' },
-    { id: 'compliance', label: 'Compliance', icon: 'monitoring' },
-    { id: 'audit', label: 'Audit Log', icon: 'shield' },
+    { id: 'orchards', label: 'Orchards', labelKey: 'nav.orchards', icon: 'apartment' },
+    { id: 'users', label: 'Users', labelKey: 'nav.users', icon: 'group' },
+    { id: 'compliance', label: 'Compliance', labelKey: 'nav.compliance', icon: 'monitoring' },
+    { id: 'audit', label: 'Audit Log', labelKey: 'nav.audit', icon: 'shield' },
 ];
 
 export const ADMIN_SUMMARY_CARDS = [

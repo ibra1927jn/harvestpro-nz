@@ -7,6 +7,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { createPortal } from 'react-dom';
+import { useTranslation } from '@/i18n';
 import { cn } from '@/utils/cn';
 
 interface DrawerProps {
@@ -35,6 +36,7 @@ const Drawer: React.FC<DrawerProps> = ({
     children,
     className,
 }) => {
+    const { t } = useTranslation();
     const panelRef = useRef<HTMLDivElement>(null);
 
     // Foco dentro, Tab atrapado, Escape cierra y el foco vuelve al botón que lo abrió
@@ -68,7 +70,7 @@ const Drawer: React.FC<DrawerProps> = ({
                 tabIndex={-1}
                 role="dialog"
                 aria-modal="true"
-                aria-label={title ?? 'Panel'}
+                aria-label={title ?? t('ui.panel')}
                 className={cn(
                     'relative w-full h-full bg-white shadow-2xl outline-none',
                     'animate-slide-in-right overflow-y-auto',
@@ -86,7 +88,7 @@ const Drawer: React.FC<DrawerProps> = ({
                         <button
                             onClick={onClose}
                             className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-                            aria-label="Close panel"
+                            aria-label={t('ui.close_panel')}
                         >
                             <span aria-hidden="true" className="material-symbols-outlined text-xl">close</span>
                         </button>

@@ -77,7 +77,7 @@ const VelocityHourDrilldown: React.FC<VelocityHourDrilldownProps> = ({ isOpen, d
                     <button
                         onClick={onClose}
                         className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors"
-                        aria-label="Close"
+                        aria-label={t('common.close')}
                     >
                         <span aria-hidden="true" className="material-symbols-outlined text-slate-500 text-[18px]">close</span>
                     </button>
@@ -130,7 +130,7 @@ const VelocityHourDrilldown: React.FC<VelocityHourDrilldownProps> = ({ isOpen, d
                             <tfoot>
                                 <tr className="bg-slate-50 border-t border-slate-200">
                                     <td className="px-4 py-2.5 text-xs font-semibold text-slate-500">
-                                        Total
+                                        {t('mgr.total')}
                                     </td>
                                     <td className="px-4 py-2.5 text-right font-black text-blue-700">
                                         {data.totalBins}

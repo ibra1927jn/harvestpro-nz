@@ -77,7 +77,7 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                 <div
                     className="relative cursor-pointer group/avatar"
                     onClick={(e) => { e.stopPropagation(); onSelectUser(leader); }}
-                    title={`View ${leader.name}'s profile`}
+                    title={t('mgr.view_profile_of', { name: leader.name })}
                 >
                     <div className="w-14 h-14 rounded-full bg-slate-100 overflow-hidden border-2 border-border-light group-hover/avatar:border-primary group-hover/avatar:shadow-md transition-all">
                         <img
@@ -106,7 +106,7 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                                 <span>•</span>
                                 <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded inline-flex items-center gap-1">
                                     <span aria-hidden="true" className="material-symbols-outlined text-[11px]">pin_drop</span>
-                                    {leaderRows.length === 1 ? `Row ${leaderRows[0]}` : `R${leaderRows.join(', R')}`}
+                                    {leaderRows.length === 1 ? t('runner.row_n', { n: leaderRows[0] }) : `R${leaderRows.join(', R')}`}
                                 </span>
                             </>
                         )}
@@ -128,7 +128,7 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                             ? 'bg-red-500 text-white shadow-sm'
                             : 'text-slate-300 hover:text-red-500 hover:bg-red-50'
                             }`}
-                        title={confirmId === leader.id ? t('teams.confirm_q') : 'Unlink from orchard'}
+                        title={confirmId === leader.id ? t('teams.confirm_q') : t('mgr.unlink_orchard')}
                     >
                         <span aria-hidden="true" className="material-symbols-outlined text-lg">
                             {unlinking === leader.id ? 'hourglass_top' : 'link_off'}
@@ -152,10 +152,10 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                         className="flex items-center gap-3 p-3 bg-white rounded-xl border border-primary/20 cursor-pointer hover:border-primary transition-colors group"
                     >
                         <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden">
-                            <img src={avatarUrl(leader.name)} alt={`${leader.name} avatar`} className="w-full h-full object-cover" />
+                            <img src={avatarUrl(leader.name)} alt={t('mgr.avatar_of', { name: leader.name })} className="w-full h-full object-cover" />
                         </div>
                         <div className="flex-1">
-                            <p className="font-bold text-text-main text-sm">{leader.name} (Lead)</p>
+                            <p className="font-bold text-text-main text-sm">{leader.name} ({t('mgr.lead')})</p>
                             <p className="text-[10px] text-primary font-bold uppercase">{t('teams.view_profile')}</p>
                         </div>
                     </div>
@@ -176,7 +176,7 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                                     className="flex items-center gap-3 flex-1 min-w-0"
                                 >
                                     <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden flex-shrink-0">
-                                        <img src={avatarUrl(member.name)} alt={`${member.name} avatar`} className="w-full h-full object-cover" />
+                                        <img src={avatarUrl(member.name)} alt={t('mgr.avatar_of', { name: member.name })} className="w-full h-full object-cover" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-text-main text-sm truncate">{member.name}</p>
@@ -209,7 +209,7 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                                             ? 'bg-red-500 text-white opacity-100'
                                             : 'text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100'
                                             }`}
-                                        title={confirmId === member.id ? t('teams.confirm_q') : 'Unlink'}
+                                        title={confirmId === member.id ? t('teams.confirm_q') : t('mgr.unlink')}
                                     >
                                         <span aria-hidden="true" className="material-symbols-outlined text-sm">
                                             {unlinking === member.id ? 'hourglass_top' : 'link_off'}
@@ -222,7 +222,7 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
 
                     {crew.length === 0 && (
                         <div className="col-span-full py-4 text-center text-xs font-bold text-slate-400 italic">
-                            No crew members assigned yet.
+                            {t('mgr.no_crew')}
                         </div>
                     )}
                 </div>

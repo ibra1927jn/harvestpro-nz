@@ -52,7 +52,7 @@ describe('AnomalyCard', () => {
 
     it('renders severity badge', () => {
         render(<AnomalyCard anomaly={anomaly} index={0} onViewProfile={onViewProfile} />);
-        expect(screen.getByText('high risk')).toBeTruthy();
+        expect(screen.getByText(/^high risk$/i)).toBeTruthy();
     });
 
     it('renders detail text', () => {

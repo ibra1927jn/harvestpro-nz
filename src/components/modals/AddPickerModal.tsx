@@ -10,6 +10,7 @@ import { logger } from '@/utils/logger';
 import { useToast } from '@/hooks/useToast';
 import ModalOverlay from '@/components/ui/ModalOverlay';
 import { DEFAULT_START_TIME } from '../../types';
+import { useTranslation } from '@/i18n';
 
 export interface NewPickerData {
     name: string;
@@ -33,6 +34,7 @@ interface AddPickerModalProps {
 }
 
 const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
+    const { t } = useTranslation();
     const { appUser } = useAuth();
     const { orchard, crew } = useHarvestStore();
     // RRHH/admin eligen el equipo; el team leader lo mete en el suyo
@@ -88,9 +90,9 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
             await onAdd(newPicker);
             onClose();
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            const errorMessage = error instanceof Error ? error.message : t('common.unknown_error');
             logger.error('Error adding picker:', error);
-            showToast(`Failed to add: ${errorMessage}`, 'error');
+            showToast(t('addPicker.failed', { error: errorMessage }), 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -100,37 +102,37 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
         <ModalOverlay onClose={onClose}>
             <div className="p-6 max-h-[85vh] overflow-y-auto">
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-black text-text-main">Add New Picker</h3>
-                    <button aria-label="Close" onClick={onClose} className="text-text-muted hover:text-text-main transition-colors">
+                    <h3 className="text-xl font-black text-text-main">{t('tl.team.add_picker')}</h3>
+                    <button aria-label={t('common.close')} onClick={onClose} className="text-text-muted hover:text-text-main transition-colors">
                         <span aria-hidden="true" className="material-symbols-outlined">close</span>
                     </button>
                 </div>
                 <div className="space-y-4">
                     <div>
-                        <label className="text-xs font-bold text-text-muted uppercase mb-2 block">Full Name *</label>
+                        <label className="text-xs font-bold text-text-muted uppercase mb-2 block">{t('addPicker.full_name')} *</label>
                         <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-                            placeholder="e.g. Liam O'Connor"
+                            placeholder={t('runner.scanner.code_example', { code: "Liam O'Connor" })}
                             className="w-full px-4 py-3 rounded-xl border-2 border-border-light focus:border-primary outline-none text-text-main bg-white transition-colors" />
                     </div>
                     {choosesTeam && (
                         <div>
-                            <label className="text-xs font-bold text-text-muted uppercase mb-2 block">Team (team leader)</label>
-                            <select value={teamLeaderId} onChange={(e) => setTeamLeaderId(e.target.value)} aria-label="Team leader"
+                            <label className="text-xs font-bold text-text-muted uppercase mb-2 block">{t('addPicker.team')}</label>
+                            <select value={teamLeaderId} onChange={(e) => setTeamLeaderId(e.target.value)} aria-label={t('roles.team_leader')}
                                 className="w-full px-4 py-3 rounded-xl border-2 border-border-light focus:border-primary outline-none text-text-main bg-white">
-                                <option value="">No team yet</option>
+                                <option value="">{t('addPicker.no_team')}</option>
                                 {teamLeaders.map(tl => <option key={tl.id} value={tl.id}>{tl.name}</option>)}
                             </select>
                         </div>
                     )}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="text-xs font-bold text-text-muted uppercase mb-2 block">Picker ID *</label>
+                            <label className="text-xs font-bold text-text-muted uppercase mb-2 block">{t('tl.team.picker_id')} *</label>
                             <input type="text" value={idNumber} onChange={(e) => setIdNumber(e.target.value)}
-                                placeholder="e.g. 402"
+                                placeholder={t('runner.scanner.code_example', { code: '402' })}
                                 className="w-full px-4 py-3 rounded-xl border-2 border-border-light focus:border-primary outline-none font-mono text-text-main bg-white transition-colors" />
                         </div>
                         <div>
-                            <label className="text-xs font-bold text-primary uppercase mb-2 block">Harness No. *</label>
+                            <label className="text-xs font-bold text-primary uppercase mb-2 block">{t('tl.team.harness_no')} *</label>
                             <input type="text" value={harnessNumber} onChange={(e) => setHarnessNumber(e.target.value.toUpperCase())}
                                 placeholder="HN-402"
                                 className="w-full px-4 py-3 rounded-xl border-2 border-border-light focus:border-primary outline-none font-mono uppercase text-text-main bg-white transition-colors" />
@@ -138,14 +140,14 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="text-xs font-bold text-text-muted uppercase mb-2 block">Start Time *</label>
-                            <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} title="Start Time"
+                            <label className="text-xs font-bold text-text-muted uppercase mb-2 block">{t('addPicker.start_time')} *</label>
+                            <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} title={t('addPicker.start_time')}
                                 className="w-full px-4 py-3 rounded-xl border-2 border-border-light focus:border-primary outline-none text-text-main bg-white transition-colors" />
                         </div>
                         <div>
-                            <label className="text-xs font-bold text-text-muted uppercase mb-2 block">Row (Optional)</label>
+                            <label className="text-xs font-bold text-text-muted uppercase mb-2 block">{t('addPicker.row_optional')}</label>
                             <input type="number" value={assignedRow} onChange={(e) => setAssignedRow(e.target.value)}
-                                placeholder="e.g. 12"
+                                placeholder={t('runner.scanner.code_example', { code: '12' })}
                                 className="w-full px-4 py-3 rounded-xl border-2 border-border-light focus:border-primary outline-none text-text-main bg-white transition-colors" />
                         </div>
                     </div>
@@ -157,8 +159,8 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
                                 <span aria-hidden="true" className="material-symbols-outlined">health_and_safety</span>
                             </div>
                             <div>
-                                <h3 className="font-black text-text-main text-sm">Safety Induction</h3>
-                                <p className="text-xs font-medium text-text-muted">Cooper Lane Protocols</p>
+                                <h3 className="font-black text-text-main text-sm">{t('addPicker.safety_induction')}</h3>
+                                <p className="text-xs font-medium text-text-muted">{t('addPicker.protocols', { name: 'Cooper Lane' })}</p>
                             </div>
                         </div>
 
@@ -175,13 +177,13 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
                                 }}
                                 className="hidden"
                             />
-                            <span className="font-bold text-text-sub text-sm">Safety Induction Completed (Inducción Completada)</span>
+                            <span className="font-bold text-text-sub text-sm">{t('addPicker.induction_done')}</span>
                         </label>
                     </div>
                     <button onClick={handleAdd}
                         disabled={!name || !idNumber || !harnessNumber || !startTime || isSubmitting || !allSafetyChecksPassed}
                         className="w-full mt-6 py-4 gradient-primary glow-primary text-white rounded-xl font-bold uppercase tracking-widest disabled:bg-surface-tertiary disabled:shadow-none disabled:cursor-not-allowed active:scale-95 transition-all">
-                        {isSubmitting ? 'Adding...' : 'Add Picker to Team'}
+                        {isSubmitting ? t('addPicker.adding') : t('addPicker.submit')}
                     </button>
                 </div>
             </div>

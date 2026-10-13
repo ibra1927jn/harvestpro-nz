@@ -74,7 +74,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
                         className="w-full pl-12 pr-12 py-3.5 rounded-xl bg-white border-2 border-slate-200 focus:border-lilac focus:ring-4 focus:ring-lilac/10 text-slate-800 placeholder-slate-300 outline-none transition-all duration-300 font-medium"
                         required
                     />
-                    <button aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}
+                    <button aria-label={showPassword ? t('login.hide_password') : t('login.show_password')} aria-pressed={showPassword}
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-lilac hover:scale-110 transition-all duration-200"

@@ -114,18 +114,18 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, initia
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
-            <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Assign rows" className="bg-white w-full max-w-sm rounded-2xl shadow-2xl relative overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={t('pd.assign_rows')} className="bg-white w-full max-w-sm rounded-2xl shadow-2xl relative overflow-hidden" onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
                 <div className="px-5 pt-5 pb-3 border-b border-slate-100">
                     <div className="flex items-center justify-between">
                         <div>
                             <h2 className="text-lg font-black text-text-main">{t('assignModal.title').replace('{row}', String(initialRow))}</h2>
                             <p className="text-xs text-slate-400 mt-0.5">
-                                {selectedBlock?.name || orchard?.name || 'Orchard'}
+                                {selectedBlock?.name || orchard?.name || t('runner.orchard')}
                                 {' · '}{t('assignModal.subtitle').replace('{occupiedCount}', String(occupiedCount)).replace('{totalRows}', String(blockRows.length))}
                             </p>
                         </div>
-                        <button aria-label="Close" onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors">
+                        <button aria-label={t('common.close')} onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors">
                             <span aria-hidden="true" className="material-symbols-outlined text-slate-500 text-lg">close</span>
                         </button>
                     </div>
@@ -162,7 +162,7 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, initia
                         <select
                             value={selectedLeader}
                             onChange={(e) => setSelectedLeader(e.target.value)}
-                            aria-label="Assign team leader to row"
+                            aria-label={t('mgr.assign_tl_row')}
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none text-text-main focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
                         >
                             <option value="">{t('assignModal.select_leader')}</option>
@@ -206,7 +206,7 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, initia
                             <select
                                 value={selectedRunner}
                                 onChange={(e) => setSelectedRunner(e.target.value)}
-                                aria-label="Assign bucket runner to row"
+                                aria-label={t('mgr.assign_runner_row')}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none text-text-main focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
                             >
                                 <option value="">{t('assignModal.select_runner')}</option>

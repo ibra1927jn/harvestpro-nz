@@ -11,6 +11,7 @@ import { rpcRepository } from '@/repositories/rpc.repository';
 import { setupRepository } from '@/repositories/setup.repository';
 import { logger } from '@/utils/logger';
 import { Result, Ok, Err } from '@/types/result';
+import { todayNZST } from '@/utils/nzst';
 
 // ── Types ──────────────────────────────────────────────────── */
 export interface OrchardSetupData {
@@ -88,7 +89,7 @@ export async function createOrchardSetup(data: OrchardSetupData): Promise<Result
         // 2. Create day setup with rates (non-blocking — warn on failure)
         const { error: setupErr } = await setupRepository.insertDaySetup({
             orchard_id: orchardRow.id,
-            date: new Date().toISOString().slice(0, 10),
+            date: todayNZST(),
             start_time: data.rates.start_time,
             piece_rate: data.rates.piece_rate,
         });

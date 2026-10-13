@@ -14,6 +14,8 @@ import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { supabase } from '@/services/supabase';
 import { syncService } from '@/services/sync.service';
 import { logger } from '@/utils/logger';
+import { useTranslation } from '@/i18n';
+import { authErrorText } from '@/i18n/authErrorText';
 
 interface ReAuthModalProps {
     /** The email of the expired session user */
@@ -23,6 +25,7 @@ interface ReAuthModalProps {
 }
 
 const ReAuthModal: React.FC<ReAuthModalProps> = ({ email, onReAuthenticated }) => {
+    const { t } = useTranslation();
     // Sesión caducada: no se puede cerrar con Escape, pero el foco queda dentro
     const dialogRef = useRef<HTMLDivElement>(null);
     useDialogA11y(dialogRef, { closeOnEscape: false });
@@ -47,18 +50,18 @@ const ReAuthModal: React.FC<ReAuthModalProps> = ({ email, onReAuthenticated }) =
             });
 
             if (authError) {
-                setError(authError.message);
+                setError(authErrorText(t, authError.message));
                 return;
             }
 
             logger.info('[ReAuthModal] Re-authentication successful. Resuming sync.');
             onReAuthenticated();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Error inesperado');
+            setError(err instanceof Error ? err.message : t('common.unknown_error'));
         } finally {
             setIsLoading(false);
         }
-    }, [email, password, onReAuthenticated]);
+    }, [email, password, onReAuthenticated, t]);
 
     return (
         <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="reauth-title" style={{
@@ -83,13 +86,13 @@ const ReAuthModal: React.FC<ReAuthModalProps> = ({ email, onReAuthenticated }) =
                 border: '1px solid var(--color-border, #333)',
             }}>
                 <h2 id="reauth-title" style={{ color: 'var(--color-text, #fff)', marginTop: 0, fontSize: '20px' }}>
-                    🔒 Sesión Expirada
+                    🔒 {t('reauth.title')}
                 </h2>
 
                 <p style={{ color: 'var(--color-text-muted, #aaa)', fontSize: '14px', lineHeight: '1.5' }}>
-                    Tu sesión ha expirado, pero tienes{' '}
-                    <strong style={{ color: '#ff6b6b' }}>{pendingCount} registros</strong>{' '}
-                    pendientes de sincronización. Ingresa tu contraseña para reconectarte sin perderlos.
+                    {t('reauth.desc_before')}{' '}
+                    <strong style={{ color: '#ff6b6b' }}>{t('reauth.records_n', { n: pendingCount })}</strong>{' '}
+                    {t('reauth.desc_after')}
                 </p>
 
                 <form onSubmit={handleReAuth}>
@@ -97,7 +100,7 @@ const ReAuthModal: React.FC<ReAuthModalProps> = ({ email, onReAuthenticated }) =
                         type="email"
                         value={email}
                         disabled
-                        aria-label="Correo electrónico"
+                        aria-label={t('auth.email')}
                         style={{
                             width: '100%',
                             padding: '10px 12px',
@@ -114,10 +117,10 @@ const ReAuthModal: React.FC<ReAuthModalProps> = ({ email, onReAuthenticated }) =
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Contraseña"
+                        placeholder={t('auth.password')}
                         autoFocus
                         required
-                        aria-label="Contraseña"
+                        aria-label={t('auth.password')}
                         style={{
                             width: '100%',
                             padding: '10px 12px',
@@ -152,12 +155,12 @@ const ReAuthModal: React.FC<ReAuthModalProps> = ({ email, onReAuthenticated }) =
                             cursor: isLoading ? 'not-allowed' : 'pointer',
                         }}
                     >
-                        {isLoading ? '⏳ Reconectando...' : '🔓 Reconectar y Sincronizar'}
+                        {isLoading ? `⏳ ${t('reauth.reconnecting')}` : `🔓 ${t('reauth.reconnect')}`}
                     </button>
                 </form>
 
                 <p style={{ color: '#666', fontSize: '11px', marginTop: '16px', textAlign: 'center' }}>
-                    ⚠️ No cierres esta ventana. Tus datos están seguros en el dispositivo.
+                    ⚠️ {t('reauth.keep_open')}
                 </p>
             </div>
         </div>

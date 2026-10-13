@@ -32,14 +32,29 @@ export const SUPPORTED_LOCALES: LocaleInfo[] = [
 
 // ─── Context ──────────────────────────────────────────────────
 
+/** Valores para los placeholders {n}, {name}… de una traducción */
+export type TParams = Record<string, string | number>;
+export type TFunction = (key: string, params?: TParams) => string;
+
 interface I18nContextValue {
     locale: Locale;
     setLocale: (locale: Locale) => void;
-    t: (key: string) => string;
+    t: TFunction;
     localeInfo: LocaleInfo;
 }
 
 const I18N_STORAGE_KEY = 'harvestpro_locale';
+
+/** Sustituye {nombre} por params.nombre; deja intacto lo que no venga en params. */
+export function interpolate(text: string, params?: TParams): string {
+    if (!params) return text;
+    return text.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (m, k: string) =>
+        Object.prototype.hasOwnProperty.call(params, k) ? String(params[k]) : m);
+}
+
+function lookup(locale: Locale, key: string): string {
+    return translations[locale]?.[key] ?? translations['en'][key] ?? key;
+}
 
 function getInitialLocale(): Locale {
     try {
@@ -53,42 +68,58 @@ function getInitialLocale(): Locale {
     return 'en';
 }
 
+// Idioma actual para código fuera de React (announcer, servicios, ErrorBoundary)
+let currentLocale: Locale | null = null;
+
+export function getCurrentLocale(): Locale {
+    if (currentLocale === null) currentLocale = getInitialLocale();
+    return currentLocale;
+}
+
+/** Cambia el idioma de translate() (el I18nProvider lo hace solo; útil fuera de React/tests). */
+export function setCurrentLocale(locale: Locale): void {
+    currentLocale = locale;
+}
+
+/** t() sin hooks: usa el idioma elegido en la app (el mismo que el I18nProvider). */
+export function translate(key: string, params?: TParams, locale: Locale = getCurrentLocale()): string {
+    return interpolate(lookup(locale, key), params);
+}
+
 const I18nContext = createContext<I18nContextValue>({
     locale: 'en',
     setLocale: () => { },
-    t: (key: string) => {
-        if (import.meta.env.DEV && typeof window !== 'undefined') {
-            console.warn(`[i18n] Missing key (no provider): "${key}"`);
-        }
-        return key;
-    },
+    // Sin provider (tests aislados, ErrorBoundary raíz): mismo idioma guardado
+    t: (key: string, params?: TParams) => translate(key, params),
     localeInfo: SUPPORTED_LOCALES[0],
 });
 
 export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [locale, setLocaleState] = useState<Locale>(getInitialLocale);
+    const [locale, setLocaleState] = useState<Locale>(getCurrentLocale);
 
     // <html lang> sigue al idioma elegido: los lectores de pantalla eligen la voz por él
     useEffect(() => {
+        currentLocale = locale;
         if (typeof document !== 'undefined') document.documentElement.lang = locale;
     }, [locale]);
 
     const setLocale = useCallback((newLocale: Locale) => {
+        currentLocale = newLocale;
         setLocaleState(newLocale);
         try {
             localStorage.setItem(I18N_STORAGE_KEY, newLocale);
         } catch { /* Ignore */ }
     }, []);
 
-    const t = useCallback((key: string): string => {
-        const result = translations[locale]?.[key] ?? translations['en'][key] ?? key;
+    const t = useCallback((key: string, params?: TParams): string => {
+        const result = lookup(locale, key);
         if (result === key && import.meta.env.DEV) {
             // Solo emitir si no es un key de test/placeholder
             if (!key.startsWith('test.') && typeof window !== 'undefined') {
                 console.warn(`[i18n] Missing key: "${key}" for locale "${locale}"`);
             }
         }
-        return result;
+        return interpolate(result, params);
     }, [locale]);
 
     const localeInfo = useMemo(

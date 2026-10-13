@@ -5,14 +5,15 @@
 import React, { useState } from 'react';
 import { useRowHistory, type RowHistoryPeriod } from '@/hooks/useRowHistory';
 import type { RowVisit } from '@/types';
+import { useTranslation } from '@/i18n';
+import { formatNZTime, NZ_LOCALE, NZ_TZ } from '@/utils/nzFormat';
 
-const NZ = 'Pacific/Auckland';
-const time = (iso: string) =>
-    new Date(iso).toLocaleTimeString('en-NZ', { timeZone: NZ, hour: '2-digit', minute: '2-digit', hour12: false });
+const time = (iso: string) => formatNZTime(iso);
 const day = (iso: string) =>
-    new Date(iso).toLocaleDateString('en-NZ', { timeZone: NZ, weekday: 'short', day: 'numeric' });
+    new Date(iso).toLocaleDateString(NZ_LOCALE, { timeZone: NZ_TZ, weekday: 'short', day: 'numeric' });
 
 function VisitChip({ v, showDay }: { v: RowVisit; showDay: boolean }) {
+    const { t } = useTranslation();
     const now = v.status === 'active';
     return (
         <span
@@ -20,12 +21,12 @@ function VisitChip({ v, showDay }: { v: RowVisit; showDay: boolean }) {
             className={`inline-flex flex-col rounded-lg border px-2.5 py-1 text-xs ${now
                 ? 'border-primary bg-primary/10 text-primary font-bold'
                 : 'border-border-light bg-white text-text-main'}`}
-            title={v.status === 'completed' ? 'Row finished' : undefined}
+            title={v.status === 'completed' ? t('rowHistory.finished') : undefined}
         >
             <span>
-                Row {v.row_number}{v.side === 'south' ? ' S' : ''}
+                {t('runner.row_n', { n: v.row_number })}{v.side === 'south' ? ' S' : ''}
                 {v.status === 'completed' && ' ✓'}
-                {now && ' · now'}
+                {now && ` · ${t('rowHistory.now')}`}
             </span>
             <span className="text-[10px] font-normal text-text-muted">
                 {showDay && `${day(v.assigned_at)} `}
@@ -41,7 +42,8 @@ interface RowHistoryProps {
     title?: string;
 }
 
-export default function RowHistory({ teamLeaderId, title = 'Row history' }: RowHistoryProps) {
+export default function RowHistory({ teamLeaderId, title }: RowHistoryProps) {
+    const { t } = useTranslation();
     const [period, setPeriod] = useState<RowHistoryPeriod>('today');
     const { teams, loading, error } = useRowHistory(period, teamLeaderId);
 
@@ -50,7 +52,7 @@ export default function RowHistory({ teamLeaderId, title = 'Row history' }: RowH
             <div className="mb-3 flex items-center justify-between">
                 <h3 className="flex items-center gap-2 text-sm font-black text-text-main">
                     <span aria-hidden="true" className="material-symbols-outlined text-base">route</span>
-                    {title}
+                    {title ?? t('rowHistory.title')}
                 </h3>
                 <div className="flex gap-1 text-xs">
                     {(['today', 'week'] as const).map(p => (
@@ -59,7 +61,7 @@ export default function RowHistory({ teamLeaderId, title = 'Row history' }: RowH
                             onClick={() => setPeriod(p)}
                             className={`rounded-lg px-2.5 py-1 font-bold ${period === p ? 'bg-primary text-white' : 'bg-slate-100 text-text-muted'}`}
                         >
-                            {p === 'today' ? 'Today' : 'This week'}
+                            {p === 'today' ? t('common.today') : t('rowHistory.this_week')}
                         </button>
                     ))}
                 </div>
@@ -67,17 +69,17 @@ export default function RowHistory({ teamLeaderId, title = 'Row history' }: RowH
 
             {error && <p className="text-xs text-amber-700">{error}</p>}
             {!error && !loading && teams.length === 0 && (
-                <p className="text-xs text-text-muted">No rows assigned {period === 'today' ? 'today' : 'this week'}.</p>
+                <p className="text-xs text-text-muted">{period === 'today' ? t('rowHistory.none_today') : t('rowHistory.none_week')}</p>
             )}
 
             <div className="space-y-3">
-                {teams.map(t => (
-                    <div key={t.teamLeaderId ?? 'none'}>
+                {teams.map(team => (
+                    <div key={team.teamLeaderId ?? 'none'}>
                         {!teamLeaderId && (
-                            <p className="mb-1 text-xs font-bold text-text-secondary">{t.teamName}</p>
+                            <p className="mb-1 text-xs font-bold text-text-secondary">{team.teamName}</p>
                         )}
                         <div className="flex flex-wrap items-center gap-1.5">
-                            {t.visits.map((v, i) => (
+                            {team.visits.map((v, i) => (
                                 <React.Fragment key={v.id}>
                                     {i > 0 && <span className="text-text-muted">→</span>}
                                     <VisitChip v={v} showDay={period === 'week'} />

@@ -17,6 +17,7 @@ import { createTransportRequest } from '@/services/logistics-dept.service';
 import { binService, bucketsInBin } from '@/services/bin.service';
 import { MAX_BUCKETS_PER_BIN } from '@/types/app.types';
 import { bucketSavedAnnouncement, isOnlineNow } from './runnerAnnouncements';
+import { useTranslation } from '@/i18n';
 
 export interface DisplayInventory {
   [key: string]: unknown;
@@ -60,6 +61,7 @@ export interface UseRunnerDataResult {
 }
 
 export function useRunnerData(): UseRunnerDataResult {
+  const { t } = useTranslation();
   const rawInventory = useHarvestStore(state => state.inventory);
   const orchard = useHarvestStore(state => state.orchard);
   const crew = useHarvestStore(state => state.crew);
@@ -137,10 +139,10 @@ export function useRunnerData(): UseRunnerDataResult {
       feedbackService.vibrate(50);
       const ok = await sendBroadcast('Runner Request', message, 'normal');
       setToast(ok
-        ? { message: 'Broadcast Sent!', type: 'success' }
-        : { message: 'Broadcast not sent — check your connection', type: 'error' });
+        ? { message: t('runner.toast.broadcast_sent'), type: 'success' }
+        : { message: t('runner.toast.broadcast_failed'), type: 'error' });
     },
-    [sendBroadcast]
+    [sendBroadcast, t]
   );
 
   // Pedir bins vacíos: crea una petición de transporte que Logística ve en
@@ -150,12 +152,14 @@ export function useRunnerData(): UseRunnerDataResult {
   const handleRequestRefill = useCallback(async () => {
     feedbackService.vibrate(50);
     if (!orchard?.id || !currentUser?.id) {
-      setToast({ message: 'Cannot request bins yet — orchard not loaded', type: 'error' });
+      setToast({ message: t('runner.toast.no_orchard_for_request'), type: 'error' });
       return;
     }
     const me = crew.find(p => p.id === currentUser.id);
     const row = me?.current_row && me.current_row > 0 ? me.current_row : undefined;
+    // zone se guarda en la petición (dato para Logística); en pantalla va traducida
     const zone = row ? `Row ${row}` : (orchard.name || 'Orchard');
+    const zoneLabel = row ? t('runner.row_n', { n: row }) : (orchard.name || t('runner.orchard'));
     try {
       await createTransportRequest({
         orchard_id: orchard.id,
@@ -166,7 +170,7 @@ export function useRunnerData(): UseRunnerDataResult {
         priority: 'normal',
         notes: 'Empty bins requested from runner app',
       });
-      setToast({ message: `Bin request sent (${zone})`, type: 'success' });
+      setToast({ message: t('runner.toast.bin_request_sent', { zone: zoneLabel }), type: 'success' });
       // Aviso a Logística y manager; si no sale, la petición sigue en la cola
       sendBroadcast('Bins needed', `${currentUser.name || 'A runner'} needs empty bins at ${zone}`, 'high', [
         Role.LOGISTICS,
@@ -174,9 +178,9 @@ export function useRunnerData(): UseRunnerDataResult {
       ]).catch(() => undefined);
     } catch (e) {
       logger.error('[Runner] Refill request failed:', e);
-      setToast({ message: 'Bin request failed — try again', type: 'error' });
+      setToast({ message: t('runner.toast.bin_request_failed'), type: 'error' });
     }
-  }, [orchard?.id, orchard?.name, currentUser?.id, currentUser?.name, crew, sendBroadcast]);
+  }, [orchard?.id, orchard?.name, currentUser?.id, currentUser?.name, crew, sendBroadcast, t]);
 
   // Fila del picker: la que tiene asignada en el mapa, o su fila actual
   const rowAssignments = useHarvestStore(s => s.rowAssignments);
@@ -194,7 +198,7 @@ export function useRunnerData(): UseRunnerDataResult {
    * móvil (IndexedDB). Si la app se cierra antes, el runner no vio "Saved".
    */
   const confirmSaved = useCallback((saves: Promise<boolean>[], names: string[]) => {
-    setToast({ message: `Saving ${saves.length} bucket(s)…`, type: 'info' });
+    setToast({ message: t('runner.toast.saving', { n: saves.length }), type: 'info' });
     void Promise.all(saves.map(p => Promise.resolve(p).catch(() => false))).then(results => {
       const ok = results.filter(r => r === true).length;
       const savedFor = names.filter((_, i) => results[i] === true);
@@ -202,18 +206,20 @@ export function useRunnerData(): UseRunnerDataResult {
       if (ok > 0) feedbackService.triggerSuccess();
       if (notSaved === 0) {
         setToast({
-          message: `Saved ${ok} Bucket(s) (Offline Ready)`,
+          message: t('runner.toast.saved', { n: ok }),
           type: 'success',
-          announcement: bucketSavedAnnouncement(savedFor, isOnlineNow()),
+          announcement: bucketSavedAnnouncement(savedFor, isOnlineNow(), t),
         });
       } else {
         setToast({
-          message: `${notSaved} bucket(s) NOT saved — scan again${ok > 0 ? ` (${ok} saved)` : ''}`,
+          message: ok > 0
+            ? t('runner.toast.not_saved_some', { n: notSaved, ok })
+            : t('runner.toast.not_saved', { n: notSaved }),
           type: 'error',
         });
       }
     });
-  }, []);
+  }, [t]);
 
   const handleScanComplete = useCallback(
     (scannedData: string | string[]) => {
@@ -227,12 +233,15 @@ export function useRunnerData(): UseRunnerDataResult {
         const bin = rawInventory?.find(b => b.bin_code === binCode || b.id === binCode);
         if (bin) {
           if (bin.status === 'full' || bin.status === 'collected') {
-            setToast({ message: `Bin ${bin.bin_code || ''} is ${bin.status} — scan an empty one`, type: 'warning' });
+            setToast({
+              message: t(bin.status === 'full' ? 'runner.toast.bin_is_full' : 'runner.toast.bin_is_collected', { code: bin.bin_code || '' }),
+              type: 'warning',
+            });
             return;
           }
           setSelectedBinId(bin.id);
           feedbackService.vibrate(100);
-          setToast({ message: `Bin ${bin.bin_code || 'Selected'} Active`, type: 'info' });
+          setToast({ message: t('runner.toast.bin_active', { code: bin.bin_code || '' }), type: 'info' });
           // Vacío → en uso
           if (bin.status === 'empty') {
             setBinStatus(bin.id, 'in-progress');
@@ -243,10 +252,10 @@ export function useRunnerData(): UseRunnerDataResult {
             setGlobalState({ inventory: [...useHarvestStore.getState().inventory, newBin] });
             setSelectedBinId(newBin.id);
             feedbackService.vibrate(100);
-            setToast({ message: `New bin ${binCode} registered and active`, type: 'info' });
+            setToast({ message: t('runner.toast.bin_registered', { code: binCode }), type: 'info' });
           });
         } else {
-          setToast({ message: 'Bin not found in system', type: 'error' });
+          setToast({ message: t('runner.toast.bin_not_found'), type: 'error' });
         }
         return;
       }
@@ -278,12 +287,12 @@ export function useRunnerData(): UseRunnerDataResult {
         confirmSaved(saves, savedFor);
       } else if (codes.length > 0) {
         setToast({
-          message: '⚠️ Pickers not checked in. Ask Team Leader to check them in first.',
+          message: `⚠️ ${t('runner.toast.not_checked_in')}`,
           type: 'warning',
         });
       }
     },
-    [scanType, rawInventory, crew, addBucket, orchard?.id, rowOf, selectedBinId, setBinStatus, setGlobalState, confirmSaved]
+    [scanType, rawInventory, crew, addBucket, orchard?.id, rowOf, selectedBinId, setBinStatus, setGlobalState, confirmSaved, t]
   );
 
   const submitQuality = useCallback(
@@ -320,8 +329,8 @@ export function useRunnerData(): UseRunnerDataResult {
     setBinStatus(selectedBinId, 'full');
     setSelectedBinId(undefined);
     feedbackService.triggerSuccess();
-    setToast({ message: `Bin ${bin?.bin_code || ''} full (${MAX_BUCKETS_PER_BIN}) — scan the next bin`, type: 'info' });
-  }, [selectedBinId, bucketsInActiveBin, setBinStatus]);
+    setToast({ message: t('runner.toast.bin_now_full', { code: bin?.bin_code || '', max: MAX_BUCKETS_PER_BIN }), type: 'info' });
+  }, [selectedBinId, bucketsInActiveBin, setBinStatus, t]);
 
   const inventory = useMemo<DisplayInventory>(() => {
     const full = (rawInventory || []).filter(b => b.status === 'full').length;

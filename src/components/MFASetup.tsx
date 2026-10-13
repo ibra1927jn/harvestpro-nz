@@ -9,6 +9,7 @@
 
 import { useState } from 'react';
 import { useMFA } from '../hooks/useMFA';
+import { useTranslation } from '@/i18n';
 
 interface MFASetupProps {
   onComplete?: () => void;
@@ -17,6 +18,7 @@ interface MFASetupProps {
 }
 
 export function MFASetup({ onComplete, onCancel, requireSetup = false }: MFASetupProps) {
+  const { t } = useTranslation();
   const { qrCode, secret, factorId, isLoading, setupMFA, verifySetupCode } = useMFA();
   const [step, setStep] = useState<'generate' | 'scan' | 'verify'>('generate');
   const [verificationCode, setVerificationCode] = useState('');
@@ -29,14 +31,14 @@ export function MFASetup({ onComplete, onCancel, requireSetup = false }: MFASetu
       await setupMFA('HarvestPro Authenticator');
       setStep('scan');
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to generate QR code';
+      const errorMessage = err instanceof Error ? err.message : t('mfa.qr_failed');
       setError(errorMessage);
     }
   };
 
   const handleVerify = async () => {
     if (verificationCode.length !== 6) {
-      setError('Please enter a 6-digit code');
+      setError(t('auth.twoFactor.error_length'));
       return;
     }
 
@@ -45,7 +47,7 @@ export function MFASetup({ onComplete, onCancel, requireSetup = false }: MFASetu
       await verifySetupCode(verificationCode, factorId!);
       onComplete?.();
     } catch (_err: unknown) {
-      setError('Invalid code. Please try again.');
+      setError(t('auth.twoFactor.error_invalid'));
     }
   };
 
@@ -64,16 +66,16 @@ export function MFASetup({ onComplete, onCancel, requireSetup = false }: MFASetu
         <span aria-hidden="true" className="material-symbols-outlined text-5xl mx-auto mb-3 text-blue-600">
           shield
         </span>
-        <h2 className="text-2xl font-bold">Set Up Two-Factor Authentication</h2>
+        <h2 className="text-2xl font-bold">{t('mfa.setup_title')}</h2>
         <p className="text-text-secondary mt-2">
-          Protect your account with an extra layer of security
+          {t('mfa.setup_desc')}
         </p>
       </div>
 
       {/* Step 1: Generate QR */}
       {step === 'generate' && (
         <div className="text-center">
-          <p className="mb-4 text-text-primary">Click below to generate your secure QR code</p>
+          <p className="mb-4 text-text-primary">{t('mfa.generate_hint')}</p>
           <button
             onClick={handleGenerateQR}
             disabled={isLoading}
@@ -84,12 +86,12 @@ export function MFASetup({ onComplete, onCancel, requireSetup = false }: MFASetu
                 <span aria-hidden="true" className="material-symbols-outlined text-xl animate-spin">
                   progress_activity
                 </span>
-                Generating...
+                {t('mfa.generating')}
               </>
             ) : (
               <>
                 <span aria-hidden="true" className="material-symbols-outlined text-xl">shield</span>
-                Generate QR Code
+                {t('mfa.generate')}
               </>
             )}
           </button>
@@ -100,32 +102,31 @@ export function MFASetup({ onComplete, onCancel, requireSetup = false }: MFASetu
       {step === 'scan' && qrCode && (
         <div>
           <div className="mb-4">
-            <h3 className="font-semibold mb-2">Step 1: Scan QR Code</h3>
+            <h3 className="font-semibold mb-2">{t('mfa.step1')}</h3>
             <p className="text-sm text-text-secondary mb-3">
-              Open your authenticator app (Google Authenticator, Authy, Microsoft Authenticator) and
-              scan this QR code:
+              {t('mfa.step1_desc')}
             </p>
 
             {/* QR Code */}
             <div className="bg-white p-4 rounded border-2 border-border-light mb-3">
-              <img src={qrCode} alt="MFA QR Code" className="w-full max-w-xs mx-auto" />
+              <img src={qrCode} alt={t('mfa.qr_alt')} className="w-full max-w-xs mx-auto" />
             </div>
 
             {/* Manual Entry Option */}
             <details className="text-sm">
               <summary className="cursor-pointer text-blue-600 hover:text-blue-800">
-                Can't scan? Enter manually
+                {t('mfa.cant_scan')}
               </summary>
               <div className="mt-2 p-3 bg-background-light rounded">
-                <p className="text-text-primary mb-2">Secret Key:</p>
+                <p className="text-text-primary mb-2">{t('mfa.secret_key')}</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 p-2 bg-white border rounded text-xs break-all">
                     {secret}
                   </code>
-                  <button aria-label="Copy secret"
+                  <button aria-label={t('mfa.copy_secret')}
                     onClick={handleCopySecret}
                     className="p-2 bg-surface-secondary hover:bg-surface-tertiary rounded"
-                    title="Copy secret"
+                    title={t('mfa.copy_secret')}
                   >
                     {copied ? (
                       <span aria-hidden="true" className="material-symbols-outlined text-base text-green-600">
@@ -144,7 +145,7 @@ export function MFASetup({ onComplete, onCancel, requireSetup = false }: MFASetu
             onClick={() => setStep('verify')}
             className="w-full px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            I've Scanned the Code →
+            {t('mfa.scanned_next')} →
           </button>
         </div>
       )}
@@ -153,9 +154,9 @@ export function MFASetup({ onComplete, onCancel, requireSetup = false }: MFASetu
       {step === 'verify' && (
         <div>
           <div className="mb-4">
-            <h3 className="font-semibold mb-2">Step 2: Verify Code</h3>
+            <h3 className="font-semibold mb-2">{t('mfa.step2')}</h3>
             <p className="text-sm text-text-secondary mb-3">
-              Enter the 6-digit code from your authenticator app:
+              {t('auth.twoFactor.subtitle')}:
             </p>
 
             <input
@@ -182,14 +183,14 @@ export function MFASetup({ onComplete, onCancel, requireSetup = false }: MFASetu
               onClick={() => setStep('scan')}
               className="flex-1 px-4 py-3 bg-surface-secondary hover:bg-surface-tertiary rounded"
             >
-              ← Back
+              ← {t('common.back')}
             </button>
             <button
               onClick={handleVerify}
               disabled={verificationCode.length !== 6 || isLoading}
               className="flex-1 px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-surface-tertiary"
             >
-              {isLoading ? 'Verifying...' : 'Verify & Activate'}
+              {isLoading ? t('auth.twoFactor.verifying') : t('mfa.verify_activate')}
             </button>
           </div>
         </div>
@@ -208,7 +209,7 @@ export function MFASetup({ onComplete, onCancel, requireSetup = false }: MFASetu
           onClick={onCancel}
           className="mt-4 w-full text-text-secondary hover:text-text-primary text-sm"
         >
-          Skip for now
+          {t('mfa.skip')}
         </button>
       )}
     </div>

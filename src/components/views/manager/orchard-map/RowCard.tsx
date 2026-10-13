@@ -6,7 +6,7 @@ import React from 'react';
 import { Picker, RowAssignment } from '@/types';
 import { RowData } from '@/hooks/useOrchardMap';
 import { getRowGradient, getVarietyStyle, AVATAR_COLORS } from '@/utils/orchardMapUtils';
-import { useTranslation } from '@/i18n';
+import { useTranslation, translate as t } from '@/i18n';
 
 
 
@@ -26,14 +26,14 @@ function renderAvatar(p: Picker, pi: number) {
 
     if (isTeamLead) {
         return (
-            <div key={p.id} className="w-6 h-6 rounded-full flex items-center justify-center text-[7px] font-bold text-white bg-slate-800 ring-2 ring-amber-400 shadow-sm" title={`${p.name} (Team Leader)`}>
+            <div key={p.id} className="w-6 h-6 rounded-full flex items-center justify-center text-[7px] font-bold text-white bg-slate-800 ring-2 ring-amber-400 shadow-sm" title={`${p.name} (${t('roles.team_leader')})`}>
                 {initials}
             </div>
         );
     }
     if (isRunner) {
         return (
-            <div key={p.id} className="w-6 h-6 rounded-full flex items-center justify-center text-[7px] font-bold text-white bg-blue-500 ring-2 ring-white/80 shadow-sm" title={`${p.name} (Runner)`}>
+            <div key={p.id} className="w-6 h-6 rounded-full flex items-center justify-center text-[7px] font-bold text-white bg-blue-500 ring-2 ring-white/80 shadow-sm" title={`${p.name} (${t('roles.runner')})`}>
                 {initials}
             </div>
         );
@@ -78,7 +78,7 @@ const RowCard: React.FC<RowCardProps> = ({ rd, index, rowAssignments, onRowClick
                         <span className="w-1.5 h-1.5 rounded-full variety-dot" />
                         {rd.variety}
                     </span>
-                    {isComplete && <span className="text-xs" title="Complete">✅</span>}
+                    {isComplete && <span className="text-xs" title={t('orchardMap.status.complete')}>✅</span>}
                     {hasActivePickers && !isComplete && <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-breathe" />}
                 </div>
             </div>

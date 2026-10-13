@@ -4,6 +4,7 @@
 import React, { Suspense } from 'react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { translate } from '@/i18n';
 import { Role } from './types';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { HarvestSyncBridge } from './components/common/HarvestSyncBridge';
@@ -29,11 +30,11 @@ const PageLoader = () => (
     className="h-screen flex items-center justify-center bg-slate-50"
     role="status"
     aria-live="polite"
-    aria-label="Loading application"
+    aria-label={translate('ui.loading_app')}
   >
     <div className="text-center">
       <div className="w-12 h-12 border-4 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" aria-hidden="true" />
-      <p className="text-slate-500 text-sm font-medium">Loading...</p>
+      <p className="text-slate-500 text-sm font-medium">{translate('common.loading')}</p>
     </div>
   </div>
 );

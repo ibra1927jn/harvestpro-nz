@@ -60,7 +60,7 @@ describe('PayrollTab', () => {
         render(<PayrollTab payroll={payroll} summary={summary} />);
         expect(screen.getByText('$950')).toBeTruthy();
         expect(screen.getByText('$680')).toBeTruthy();
-        expect(screen.getByText('$1100')).toBeTruthy();
+        expect(screen.getByText('$1,100')).toBeTruthy();
     });
 
     it('renders hours worked', () => {

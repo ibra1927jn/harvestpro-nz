@@ -5,8 +5,12 @@ import type { QueuedSyncItem } from '@/services/db';
 import { syncService } from '@/services/sync.service';
 import type { DeadLetterItem, CategorizedErrors } from './deadLetterQueue.types';
 import { getErrorTooltip } from './deadLetterQueue.types';
+import { useTranslation } from '@/i18n';
+import { formatNZDateTime } from '@/utils/nzFormat';
+import { syncTypeLabel } from '@/components/common/syncTypeLabel';
 
 const DeadLetterQueueView: React.FC = () => {
+    const { t } = useTranslation();
     const [deadLetters, setDeadLetters] = useState<CategorizedErrors>({
         critical: [],
         warnings: [],
@@ -127,10 +131,10 @@ const DeadLetterQueueView: React.FC = () => {
             await loadDeadLetters();
         } catch (e) {
             if (e instanceof SyntaxError) {
-                setEditError('Invalid JSON. Please fix syntax errors.');
+                setEditError(t('dlq.invalid_json'));
             } else {
                 logger.error('[DLQ] Edit & Retry failed:', e);
-                setEditError('Retry failed. Check console for details.');
+                setEditError(t('dlq.retry_failed'));
             }
         } finally {
             setLoading(false);
@@ -139,8 +143,8 @@ const DeadLetterQueueView: React.FC = () => {
 
     const handleDiscardAll = async (severity: 'critical' | 'all') => {
         const message = severity === 'all'
-            ? '⚠️ This will permanently delete ALL failed sync items. Are you sure?'
-            : '⚠️ This will delete all critical errors (50+ retries). Are you sure?';
+            ? `⚠️ ${t('dlq.confirm_all')}`
+            : `⚠️ ${t('dlq.confirm_critical')}`;
 
         if (!confirm(message)) return;
 
@@ -165,15 +169,7 @@ const DeadLetterQueueView: React.FC = () => {
         }
     };
 
-    const formatTimestamp = (ts: number) => {
-        return new Date(ts).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland',
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
+    const formatTimestamp = (ts: number) => formatNZDateTime(ts);
 
     const renderErrorSection = (
         title: string,
@@ -195,12 +191,12 @@ const DeadLetterQueueView: React.FC = () => {
                             {items.length}
                         </span>
                     </div>
-                    {title === 'Critical Errors' && (
+                    {title === t('dlq.critical') && (
                         <button
                             onClick={() => handleDiscardAll('critical')}
                             className="text-xs px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
                         >
-                            Discard Critical
+                            {t('dlq.discard_critical')}
                         </button>
                     )}
                 </div>
@@ -215,43 +211,43 @@ const DeadLetterQueueView: React.FC = () => {
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
                                         <span className={`px-2 py-0.5 ${bgColor} ${textColor} rounded text-xs font-bold uppercase`}>
-                                            {item.type}
+                                            {syncTypeLabel(t, item.type)}
                                         </span>
                                         <span className="text-xs text-text-muted">
                                             {formatTimestamp(item.timestamp)}
                                         </span>
                                     </div>
                                     <div className="text-xs text-text-sub mb-1">
-                                        Retries: <span className={`font-bold ${textColor}`}>{item.retryCount}</span>
+                                        {t('dlq.retries')} <span className={`font-bold ${textColor}`}>{item.retryCount}</span>
                                     </div>
 
                                     {(item.errorCode || item.failureReason) && (
                                         <div className="text-xs text-red-600 font-mono mt-1 bg-red-50 p-2 rounded border border-red-100">
-                                            {getErrorTooltip(item)}
+                                            {getErrorTooltip(item, t)}
                                         </div>
                                     )}
                                 </div>
                                 <div className="flex gap-1">
-                                    <button aria-label="Retry sync"
+                                    <button aria-label={t('sync.retry_sync')}
                                         onClick={() => handleRetry(item)}
                                         disabled={loading}
                                         className="p-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
-                                        title="Retry sync"
+                                        title={t('sync.retry_sync')}
                                     >
                                         <span aria-hidden="true" className="material-symbols-outlined text-sm">refresh</span>
                                     </button>
-                                    <button aria-label="Edit payload and retry"
+                                    <button aria-label={t('dlq.edit_retry')}
                                         onClick={() => handleStartEdit(item)}
                                         disabled={loading}
                                         className="p-1.5 bg-amber-500 text-white rounded hover:bg-amber-600 transition-colors disabled:opacity-50"
-                                        title="Edit payload & retry"
+                                        title={t('dlq.edit_retry')}
                                     >
                                         <span aria-hidden="true" className="material-symbols-outlined text-sm">edit</span>
                                     </button>
-                                    <button aria-label="Discard item"
+                                    <button aria-label={t('dlq.discard_item')}
                                         onClick={() => handleDiscard(item)}
                                         className="p-1.5 bg-slate-200 text-text-sub rounded hover:bg-slate-300 transition-colors"
-                                        title="Discard item"
+                                        title={t('dlq.discard_item')}
                                     >
                                         <span aria-hidden="true" className="material-symbols-outlined text-sm">cancel</span>
                                     </button>
@@ -260,7 +256,7 @@ const DeadLetterQueueView: React.FC = () => {
 
                             <details className="text-xs mt-2">
                                 <summary className="cursor-pointer text-text-muted hover:text-text-sub font-medium">
-                                    View Payload
+                                    {t('dlq.view_payload')}
                                 </summary>
                                 <pre className="bg-slate-50 p-2 rounded overflow-auto max-h-32 border border-border-light mt-1">
                                     <code className="text-xs text-text-main">
@@ -271,13 +267,13 @@ const DeadLetterQueueView: React.FC = () => {
 
                             {editingItem === item.id && (
                                 <div className="mt-2 border border-amber-300 rounded p-2 bg-amber-50">
-                                    <label className="text-xs font-bold text-amber-700 block mb-1">Edit Payload (JSON)</label>
+                                    <label className="text-xs font-bold text-amber-700 block mb-1">{t('dlq.edit_payload')}</label>
                                     <textarea
                                         value={editPayload}
                                         onChange={(e) => setEditPayload(e.target.value)}
                                         className="w-full h-32 text-xs font-mono bg-white border border-amber-200 rounded p-2 resize-y"
                                         spellCheck={false}
-                                        aria-label="Edit Payload JSON"
+                                        aria-label={t('dlq.edit_payload')}
                                     />
                                     {editError && (
                                         <div className="text-xs text-red-600 mt-1 font-bold">{editError}</div>
@@ -288,13 +284,13 @@ const DeadLetterQueueView: React.FC = () => {
                                             disabled={loading}
                                             className="px-3 py-1 bg-amber-500 text-white rounded text-xs font-bold hover:bg-amber-600 disabled:opacity-50"
                                         >
-                                            Save & Retry
+                                            {t('dlq.save_retry')}
                                         </button>
                                         <button
                                             onClick={() => setEditingItem(null)}
                                             className="px-3 py-1 bg-slate-200 text-text-sub rounded text-xs hover:bg-slate-300"
                                         >
-                                            Cancel
+                                            {t('common.cancel')}
                                         </button>
                                     </div>
                                 </div>
@@ -314,7 +310,7 @@ const DeadLetterQueueView: React.FC = () => {
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
                         <span aria-hidden="true" className="material-symbols-outlined text-2xl text-amber-600">warning</span>
-                        <h2 className="text-2xl font-bold text-text-main">Dead Letter Queue</h2>
+                        <h2 className="text-2xl font-bold text-text-main">{t('sync.dead_letter')}</h2>
                     </div>
                     {totalErrors > 0 && (
                         <button
@@ -322,12 +318,12 @@ const DeadLetterQueueView: React.FC = () => {
                             className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
                         >
                             <span aria-hidden="true" className="material-symbols-outlined text-base">delete</span>
-                            Discard All ({totalErrors})
+                            {t('dlq.discard_all', { n: totalErrors })}
                         </button>
                     )}
                 </div>
                 <p className="text-text-sub text-sm">
-                    Monitor and manage failed sync items. Errors are classified by severity.
+                    {t('dlq.desc')}
                 </p>
             </div>
 
@@ -336,13 +332,13 @@ const DeadLetterQueueView: React.FC = () => {
                     <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <span className="text-3xl">✓</span>
                     </div>
-                    <h3 className="text-lg font-bold text-green-900 mb-2">All Clear!</h3>
-                    <p className="text-green-700">No failed sync items.</p>
+                    <h3 className="text-lg font-bold text-green-900 mb-2">{t('sync.all_clear')}</h3>
+                    <p className="text-green-700">{t('dlq.none')}</p>
                 </div>
             ) : (
                 <>
                     {renderErrorSection(
-                        'Critical Errors',
+                        t('dlq.critical'),
                         deadLetters.critical,
                         <span aria-hidden="true" className="material-symbols-outlined text-xl text-red-600">error</span>,
                         'border-red-300',
@@ -351,7 +347,7 @@ const DeadLetterQueueView: React.FC = () => {
                     )}
 
                     {renderErrorSection(
-                        'Warnings',
+                        t('dlq.warnings'),
                         deadLetters.warnings,
                         <span aria-hidden="true" className="material-symbols-outlined text-xl text-amber-600">warning</span>,
                         'border-amber-300',
@@ -360,7 +356,7 @@ const DeadLetterQueueView: React.FC = () => {
                     )}
 
                     {renderErrorSection(
-                        'Recent Failures',
+                        t('dlq.recent'),
                         deadLetters.recent,
                         <span aria-hidden="true" className="material-symbols-outlined text-xl text-blue-600">info</span>,
                         'border-blue-300',

@@ -23,18 +23,6 @@ vi.mock('@/utils/logger', () => ({
 vi.mock('@/config/sentry', () => ({
     captureSentryError: mocks.captureSentryError,
 }));
-vi.mock('@/services/i18n.service', () => ({
-    t: (key: string) => {
-        const m: Record<string, string> = {
-            'error.title': 'Something went wrong',
-            'error.description': 'An unexpected error occurred',
-            'error.reload': 'Reload',
-            'error.clearCache': 'Clear Cache',
-        };
-        return m[key] || key;
-    },
-}));
-
 import ErrorBoundary from './ErrorBoundary';
 
 const Bomb = ({ shouldThrow }: { shouldThrow: boolean }) => {
@@ -73,12 +61,12 @@ describe('ErrorBoundary', () => {
 
     it('renders Reload button', () => {
         render(<ErrorBoundary><Bomb shouldThrow={true} /></ErrorBoundary>);
-        expect(screen.getByText('Reload')).toBeTruthy();
+        expect(screen.getByText('Reload Application')).toBeTruthy();
     });
 
     it('renders Clear Cache button', () => {
         render(<ErrorBoundary><Bomb shouldThrow={true} /></ErrorBoundary>);
-        expect(screen.getByText('Clear Cache')).toBeTruthy();
+        expect(screen.getByText('Clear Cache & Reload')).toBeTruthy();
     });
 
     it('does not show error UI when child is fine', () => {

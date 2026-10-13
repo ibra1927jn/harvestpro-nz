@@ -1,65 +1,71 @@
-/**
- * Hindi locale — known keys translated, rest falls back to EN
- * TODO translate: settings.*, teams.*, insights.*, panel.*
- */
 import type { TranslationDict } from '../../types';
-import en from '../en';
+import nav from './nav';
+import dashboard from './dashboard';
+import settings from './settings';
+import teams from './teams';
+import insights from './insights';
+import panel from './panel';
+import common from './common';
+import auth from './auth';
+import fraud from './fraud';
+import scanner from './scanner';
+import misc from './misc';
+import orchardMap from './orchardMap';
+import assignModal from './assignModal';
+import logistics from './logistics';
+import admin from './admin';
+import chat from './chat';
+import hr from './hr';
+import legal from './legal';
+import login from './login';
+import logistics2 from './logistics2';
+import manager from './manager';
+import manager2 from './manager2';
+import manager3 from './manager3';
+import payroll from './payroll';
+import pickerDetails from './pickerDetails';
+import qc from './qc';
+import runner from './runner';
+import settings2 from './settings2';
+import shared from './shared';
+import status from './status';
+import sync from './sync';
+import teamLeader from './teamLeader';
 
+// Claves propias de este idioma (sin heredar de otro: el checker exige todas)
 const hi: TranslationDict = {
-    ...en,
-    'nav.dashboard': 'डैशबोर्ड',
-    'nav.teams': 'टीमें',
-    'nav.map': 'बाग का नक्शा',
-    'nav.orchard_map': 'बाग का नक्शा',
-    'nav.logistics': 'लॉजिस्टिक्स',
-    'nav.insights': 'विश्लेषण',
-    'nav.messaging': 'संदेश',
-    'nav.timesheet': 'टाइमशीट',
-    'nav.settings': 'सेटिंग्स',
-    'nav.more': 'और',
-    'dashboard.title': 'बाग का अवलोकन',
-    'dashboard.live_monitoring': 'लाइव निगरानी',
-    'dashboard.velocity': 'गति',
-    'dashboard.production': 'उत्पादन',
-    'dashboard.est_cost': 'अनुमानित लागत',
-    'dashboard.active_crew': 'सक्रिय टीम',
-    'dashboard.buckets': 'बाल्टियाँ',
-    'dashboard.pickers': 'तोड़ने वाले',
-    'dashboard.daily_target': 'दैनिक लक्ष्य',
-    'dashboard.complete': 'पूर्ण',
-    'dashboard.remaining': 'शेष',
-    'dashboard.broadcast': 'प्रसारण',
-    'settings.title': 'सेटिंग्स',
-    'settings.header': 'सेटिंग्स',
-    'settings.language': 'भाषा',
-    'settings.language_desc': 'अपनी पसंदीदा भाषा चुनें',
-    'common.loading': 'लोड हो रहा है…',
-    'common.error': 'कुछ गलत हो गया',
-    'common.retry': 'पुनः प्रयास करें',
-    'common.cancel': 'रद्द करें',
-    'common.save': 'सहेजें',
-    'common.close': 'बंद करें',
-    'common.search': 'खोजें',
-    'common.today': 'आज',
-    'common.sign_out': 'साइन आउट',
-    'auth.welcome': 'वापस स्वागत है!',
-    'auth.sign_in': 'साइन इन करें',
-    'auth.email': 'ईमेल',
-    'auth.password': 'पासवर्ड',
-    'fraud.title': 'धोखाधड़ी सुरक्षा',
-    'fraud.live': 'लाइव',
-    'fraud.high': 'उच्च',
-    'fraud.medium': 'मध्यम',
-    'fraud.low': 'कम',
-    'fraud.dismissed': 'खारिज',
-    'fraud.all_flags': 'सभी',
-    'fraud.analyzing': 'स्कैन पैटर्न का विश्लेषण…',
-    'fraud.refresh': 'असामान्यताएं ताज़ा करें',
-    'timesheet.title': 'टाइमशीट संपादक',
-    'timesheet.hours': 'घंटे',
-    'sync.title': 'सिंक त्रुटियाँ',
-    'sync.all_clear': 'सब ठीक है!',
-    'sync.no_errors': 'कोई सिंक त्रुटि नहीं',
+    ...nav,
+    ...dashboard,
+    ...settings,
+    ...teams,
+    ...insights,
+    ...panel,
+    ...common,
+    ...auth,
+    ...fraud,
+    ...scanner,
+    ...misc,
+    ...orchardMap,
+    ...assignModal,
+    ...logistics,
+    ...admin,
+    ...chat,
+    ...hr,
+    ...legal,
+    ...login,
+    ...logistics2,
+    ...manager,
+    ...manager2,
+    ...manager3,
+    ...payroll,
+    ...pickerDetails,
+    ...qc,
+    ...runner,
+    ...settings2,
+    ...shared,
+    ...status,
+    ...sync,
+    ...teamLeader,
 };
 
 export default hi;

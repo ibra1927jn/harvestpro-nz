@@ -9,8 +9,10 @@
  */
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useTranslation } from '@/i18n';
 
 export default function OrchardSwitcher() {
+  const { t } = useTranslation();
   const { orchardId, orchardName, availableOrchards, switchOrchard } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -38,13 +40,13 @@ export default function OrchardSwitcher() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors border border-border-light"
-        aria-label="Switch orchard"
+        aria-label={t('orchards.switch')}
         aria-expanded={isOpen ? 'true' : 'false'}
         aria-haspopup="listbox"
       >
         <span aria-hidden="true" className="material-symbols-outlined text-base text-primary">park</span>
         <span className="max-w-[140px] truncate text-text-main">
-          {orchardName || 'Select Orchard'}
+          {orchardName || t('orchards.select')}
         </span>
         <span aria-hidden="true" className="material-symbols-outlined text-base text-text-muted">
           {isOpen ? 'expand_less' : 'expand_more'}
@@ -55,7 +57,7 @@ export default function OrchardSwitcher() {
         <div
           className="absolute top-full right-0 mt-1 w-64 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50"
           role="listbox"
-          aria-label="Available orchards"
+          aria-label={t('orchards.available')}
         >
           {orchards.map(orchard => {
             const isActive = orchard.id === orchardId;
@@ -79,9 +81,9 @@ export default function OrchardSwitcher() {
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{orchard.name}</p>
-                  <p className="text-xs text-slate-500">{orchard.total_rows} rows</p>
+                  <p className="text-xs text-slate-500">{t('orchards.rows_n', { n: orchard.total_rows ?? 0 })}</p>
                 </div>
-                {isActive && <span className="text-xs text-indigo-500 font-medium">Active</span>}
+                {isActive && <span className="text-xs text-indigo-500 font-medium">{t('common.active')}</span>}
               </button>
             );
           })}

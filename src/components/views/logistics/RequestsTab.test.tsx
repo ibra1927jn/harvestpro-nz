@@ -68,14 +68,14 @@ describe('RequestsTab', () => {
 
   it('renders priority badges', () => {
     render(<RequestsTab {...defaultProps} />);
-    expect(screen.getByText('high')).toBeTruthy();
+    expect(screen.getAllByText(/^high$/i).length).toBeGreaterThan(0);
     expect(screen.getByText('medium')).toBeTruthy();
   });
 
   it('renders status badges', () => {
     render(<RequestsTab {...defaultProps} />);
-    expect(screen.getByText('pending')).toBeTruthy();
-    expect(screen.getByText('assigned')).toBeTruthy();
+    expect(screen.getAllByText(/^pending$/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^assigned$/i).length).toBeGreaterThan(0);
   });
 
   it('renders filter bar', () => {
@@ -108,7 +108,7 @@ describe('RequestsTab', () => {
 
   it('shows Cancel button for pending requests', () => {
     render(<RequestsTab {...defaultProps} />);
-    const cancelBtns = screen.getAllByTitle('Cancel Request');
+    const cancelBtns = screen.getAllByTitle('Cancel request');
     expect(cancelBtns.length).toBeGreaterThanOrEqual(1);
   });
 });

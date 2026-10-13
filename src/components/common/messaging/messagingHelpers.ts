@@ -2,15 +2,19 @@
  * Messaging helpers, constants, and shared types
  */
 import { MessagePriority } from '../../../types';
+import { translate, type TFunction } from '@/i18n';
+import { dateInNZST, todayNZST, yesterdayNZST } from '@/utils/nzst';
+import { formatNZDate, formatNZTime } from '@/utils/nzFormat';
 
 // ── Quick Reply presets for field context ──
+// label = clave de traducción (la respuesta se envía en el idioma de quien la toca)
 export const QUICK_REPLIES = [
-    { emoji: '👍', label: 'Acknowledged' },
-    { emoji: '✅', label: 'Done' },
-    { emoji: '🚜', label: 'On my way' },
-    { emoji: '⚠️', label: 'Issue here' },
-    { emoji: '☔', label: 'Weather stop' },
-    { emoji: '🔄', label: 'Need backup' },
+    { emoji: '👍', label: 'chat.qr.acknowledged' },
+    { emoji: '✅', label: 'chat.qr.done' },
+    { emoji: '🚜', label: 'chat.qr.on_my_way' },
+    { emoji: '⚠️', label: 'chat.qr.issue_here' },
+    { emoji: '☔', label: 'chat.qr.weather_stop' },
+    { emoji: '🔄', label: 'chat.qr.need_backup' },
 ];
 
 export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
@@ -27,21 +31,16 @@ export const getAvatarColor = (name: string) => AVATAR_COLORS[Math.abs(name.spli
 export const isSameDay = (d1: Date, d2: Date) =>
     d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
 
-export const getDateLabel = (dateStr: string) => {
-    const d = new Date(dateStr);
-    const now = new Date();
-    if (isSameDay(d, now)) return 'Today';
-    const yesterday = new Date(now);
-    yesterday.setDate(now.getDate() - 1);
-    if (isSameDay(d, yesterday)) return 'Yesterday';
-    return d.toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' });
+// Día de NZ (no el del móvil): un mensaje de las 23:30 NZ es de "hoy" aunque el móvil esté en otra zona
+export const getDateLabel = (dateStr: string, t: TFunction = translate) => {
+    const day = dateInNZST(dateStr);
+    if (day === todayNZST()) return t('common.today');
+    if (day === yesterdayNZST()) return t('common.yesterday');
+    return formatNZDate(dateStr, 'weekdayShort');
 };
 
-export const formatTime = (dateStr: string) => {
-    try {
-        return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch { return ''; }
-};
+/** Hora del mensaje en hora de NZ, 24 h */
+export const formatTime = (dateStr: string) => formatNZTime(dateStr);
 
 // ── Role badge helper (for NewChatModal) ──
 export const getRoleBadge = (role: string) => {

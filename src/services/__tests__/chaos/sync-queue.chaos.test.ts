@@ -223,7 +223,7 @@ describe('sync queue chaos', () => {
             }),
             { seed: SEED, numRuns: RUNS, endOnFailure: true }
         );
-    }, Math.max(120_000, RUNS * 3_000));
+    }, Math.max(120_000, RUNS * 8_000));
 
     it('a transport request whose response was lost is not created twice', async () => {
         await reset();

@@ -4,7 +4,9 @@
  * Historical/trend queries live in analytics-trends.service.ts
  */
 import { Picker, BucketRecord } from '../types';
-import { nowNZST } from '@/utils/nzst';
+import { formatNZTime } from '@/utils/nzFormat';
+import { getNZShiftBoundaryMs } from '@/utils/time';
+import { translate } from '@/i18n';
 import { computePerPicker } from './harvestMetrics/perPicker';
 import { PAY_RULES } from './harvestMetrics/pay';
 import { AnalyticsTrendsService, analyticsTrendsService } from './analytics-trends.service';
@@ -61,24 +63,23 @@ class AnalyticsService extends AnalyticsTrendsService {
      * Group bucket records by hour for velocity chart
      */
     groupByHour(bucketRecords: BucketRecord[], hoursBack: number = 8): { hour: string; count: number }[] {
-        const now = new Date(nowNZST());
+        // Horas de NZ: el desfase de NZ es de horas enteras, así que las horas UTC y las de NZ
+        // empiezan en el mismo instante (antes se usaba la zona del móvil para cortar y etiquetar)
+        const HOUR = 3_600_000;
+        const now = Date.now();
+        const currentHourStart = now - (now % HOUR);
         const result: { hour: string; count: number }[] = [];
 
         for (let i = hoursBack - 1; i >= 0; i--) {
-            const hourStart = new Date(now);
-            hourStart.setHours(now.getHours() - i, 0, 0, 0);
-            const hourEnd = new Date(hourStart);
-            hourEnd.setHours(hourStart.getHours() + 1);
+            const hourStart = currentHourStart - i * HOUR;
+            const hourEnd = hourStart + HOUR;
 
             const count = bucketRecords.filter((r) => {
-                const recordTime = new Date(r.scanned_at || '');
+                const recordTime = new Date(r.scanned_at || '').getTime();
                 return recordTime >= hourStart && recordTime < hourEnd;
             }).length;
 
-            result.push({
-                hour: hourStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                count
-            });
+            result.push({ hour: formatNZTime(hourStart), count });
         }
         return result;
     }
@@ -95,23 +96,19 @@ class AnalyticsService extends AnalyticsTrendsService {
         shiftEndTime: string = '17:00'
     ): { eta: string; status: 'ahead' | 'on_track' | 'behind'; hoursRemaining: number } {
         const remainingTons = targetTons - currentTons;
-        if (remainingTons <= 0) return { eta: 'Complete!', status: 'ahead', hoursRemaining: 0 };
-        if (velocityPerHour <= 0) return { eta: 'Awaiting data...', status: 'behind', hoursRemaining: Infinity };
+        if (remainingTons <= 0) return { eta: translate('analytics.eta_complete'), status: 'ahead', hoursRemaining: 0 };
+        if (velocityPerHour <= 0) return { eta: translate('analytics.eta_awaiting'), status: 'behind', hoursRemaining: Infinity };
 
         const hoursNeeded = (remainingTons * bucketsPerTon) / velocityPerHour;
-        const etaDate = new Date(nowNZST());
-        etaDate.setHours(etaDate.getHours() + hoursNeeded);
-
-        // Parsear shiftEndTime (HH:MM) para definir el final del turno
-        const [endH, endM] = shiftEndTime.split(':').map(Number);
-        const endOfDay = new Date(nowNZST());
-        endOfDay.setHours(endH ?? 17, endM ?? 0, 0, 0);
+        // Instantes absolutos; el fin de turno es HH:MM de hoy en NZ (antes: zona horaria del móvil)
+        const etaMs = Date.now() + hoursNeeded * 3_600_000;
+        const endOfDayMs = getNZShiftBoundaryMs(shiftEndTime || '17:00');
 
         let status: 'ahead' | 'on_track' | 'behind';
-        if (etaDate < endOfDay) status = hoursNeeded <= 2 ? 'ahead' : 'on_track';
+        if (etaMs < endOfDayMs) status = hoursNeeded <= 2 ? 'ahead' : 'on_track';
         else status = 'behind';
 
-        return { eta: etaDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), status, hoursRemaining: hoursNeeded };
+        return { eta: formatNZTime(etaMs), status, hoursRemaining: hoursNeeded };
     }
 
     /**

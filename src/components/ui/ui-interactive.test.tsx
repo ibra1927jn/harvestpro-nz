@@ -19,7 +19,7 @@ describe('InlineSelect', () => {
 
     it('renders display pill with formatted value', () => {
         render(<InlineSelect {...defaultProps} />);
-        expect(screen.getByText('active')).toBeTruthy();
+        expect(screen.getByText('Active')).toBeTruthy();
     });
 
     it('uses labelMap for display', () => {
@@ -36,14 +36,14 @@ describe('InlineSelect', () => {
 
     it('enters edit mode on click', () => {
         render(<InlineSelect {...defaultProps} />);
-        fireEvent.click(screen.getByText('active'));
+        fireEvent.click(screen.getByText('Active'));
         const select = screen.getByRole('combobox');
         expect(select).toBeTruthy();
     });
 
     it('shows all options in edit mode', () => {
         render(<InlineSelect {...defaultProps} />);
-        fireEvent.click(screen.getByText('active'));
+        fireEvent.click(screen.getByText('Active'));
         const options = screen.getAllByRole('option');
         expect(options).toHaveLength(3);
     });
@@ -51,7 +51,7 @@ describe('InlineSelect', () => {
     it('calls onSave when selection changes', () => {
         const onSave = vi.fn();
         render(<InlineSelect {...defaultProps} onSave={onSave} />);
-        fireEvent.click(screen.getByText('active'));
+        fireEvent.click(screen.getByText('Active'));
         fireEvent.change(screen.getByRole('combobox'), { target: { value: 'on_leave' } });
         expect(onSave).toHaveBeenCalledWith('on_leave');
     });
@@ -59,14 +59,14 @@ describe('InlineSelect', () => {
     it('does not call onSave when same value selected', () => {
         const onSave = vi.fn();
         render(<InlineSelect {...defaultProps} onSave={onSave} />);
-        fireEvent.click(screen.getByText('active'));
+        fireEvent.click(screen.getByText('Active'));
         fireEvent.change(screen.getByRole('combobox'), { target: { value: 'active' } });
         expect(onSave).not.toHaveBeenCalled();
     });
 
     it('exits edit mode on blur', () => {
         render(<InlineSelect {...defaultProps} />);
-        fireEvent.click(screen.getByText('active'));
+        fireEvent.click(screen.getByText('Active'));
         fireEvent.blur(screen.getByRole('combobox'));
         expect(screen.queryByRole('combobox')).toBeNull();
     });

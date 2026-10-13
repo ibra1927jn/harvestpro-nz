@@ -5,8 +5,11 @@ import { useAuth } from '@/context/AuthContext';
 import { useHarvestMetrics } from '@/hooks/useHarvestMetrics';
 import { selectTeamOf, selectPresentPickers } from '@/services/harvestMetrics/roster';
 import { UnclosedShiftsAlert } from '@/components/common/UnclosedShiftsAlert';
+import { useTranslation } from '@/i18n';
+import { formatNZD, formatNZDate } from '@/utils/nzFormat';
 
 const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
+    const { t } = useTranslation();
     const { stats, crew: orchardCrew, settings } = useHarvest();
     const { appUser } = useAuth();
     const currentUser = appUser ? { name: appUser.full_name, id: appUser.id } : null;
@@ -32,9 +35,9 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
     const progressPercent = Math.min((currentAvg / dailyGoalPerPicker) * 100, 100);
 
     const cards = [
-        { label: 'Buckets', value: teamBuckets, icon: 'shopping_basket', color: 'primary' },
-        { label: 'Pay Est.', value: `$${teamPay.toFixed(0)}`, icon: 'payments', color: 'text-main' },
-        { label: 'Tons', value: stats.tons.toFixed(1), icon: 'scale', color: 'text-main' },
+        { label: t('tl.home.buckets'), value: teamBuckets, icon: 'shopping_basket', color: 'primary' },
+        { label: t('tl.home.pay_est'), value: formatNZD(teamPay, 0), icon: 'payments', color: 'text-main' },
+        { label: t('tl.home.tons'), value: stats.tons.toFixed(1), icon: 'scale', color: 'text-main' },
     ];
 
     const rankedCrew = useMemo(() => {
@@ -45,7 +48,7 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
         <div className="bg-slate-50 min-h-screen pb-24 font-sans selection:bg-primary/20">
             {crew.length > 0 && (
                 <div className="px-4 pt-4">
-                    <UnclosedShiftsAlert pickerIds={crew.map(p => p.id)} hint="Close these shifts in Attendance with the real check-out time." />
+                    <UnclosedShiftsAlert pickerIds={crew.map(p => p.id)} hint={t('tl.home.unclosed_hint')} />
                 </div>
             )}
             {/* Header Section - Glassmorphic */}
@@ -53,14 +56,14 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                 <div className="flex justify-between items-start mb-6">
                     <div onClick={() => onNavigate && onNavigate('profile')} className="cursor-pointer group">
                         <h1 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 tracking-tight transition-all duration-300 group-hover:opacity-80">
-                            Kia Ora, {currentUser?.name?.split(' ')[0] || 'Team Leader'}
+                            {t('tl.home.greeting', { name: currentUser?.name?.split(' ')[0] || t('panel.role.team_leader') })}
                         </h1>
                         <p className="text-slate-500 font-medium mt-1">
-                            {new Date().toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Pacific/Auckland' })}
+                            {formatNZDate(new Date(), 'weekday')}
                         </p>
                     </div>
                     <div
-                        {...buttonLike(() => onNavigate?.('profile'), 'Open my profile')}
+                        {...buttonLike(() => onNavigate?.('profile'), t('tl.home.open_profile'))}
                         className="size-12 rounded-full bg-gradient-to-tr from-primary/10 to-primary/5 flex items-center justify-center border border-primary/20 shadow-inner cursor-pointer hover:scale-105 transition-transform duration-300 ring-4 ring-white"
                     >
                         <span className="text-primary font-bold text-sm tracking-wider">
@@ -91,12 +94,12 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
 
                     <div className="relative z-10">
                         <h3 className={`font-bold text-lg tracking-tight ${safetyStatus === 'issue' ? 'text-red-800' : 'text-slate-800'}`}>
-                            {safetyStatus === 'issue' ? 'Action Required' : 'Morning Huddle'}
+                            {safetyStatus === 'issue' ? t('tl.home.action_required') : t('tl.home.morning_huddle')}
                         </h3>
                         <p className={`text-xs font-semibold mt-1 ${safetyStatus === 'issue' ? 'text-red-600' : 'text-slate-500'}`}>
                             {safetyStatus === 'issue'
-                                ? `Check: ${safetyIssuePicker?.name} (${safetyIssuePicker?.status?.toUpperCase()})`
-                                : 'All crew active & verified.'
+                                ? t('tl.home.check_picker', { name: safetyIssuePicker?.name ?? '', status: safetyIssuePicker?.status === 'suspended' ? t('tl.status.suspended') : t('tl.status.issue') })
+                                : t('tl.home.all_verified')
                             }
                         </p>
                     </div>
@@ -111,17 +114,17 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                 {/* 2. PERFORMANCE ANALYTICS (REAL GOAL) */}
                 <div onClick={() => onNavigate && onNavigate('tasks')} className="cursor-pointer group">
                     <div className="flex justify-between items-end mb-3 px-1">
-                        <h2 className="text-slate-800 font-bold text-lg tracking-tight">Crew Performance</h2>
+                        <h2 className="text-slate-800 font-bold text-lg tracking-tight">{t('tl.home.crew_performance')}</h2>
                         <div className="text-right">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Team Target</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('tl.home.team_target')}</span>
                             <p className="text-xs font-bold text-primary">
-                                {settings?.min_buckets_per_hour || 3.6} bkt/hr
+                                {t('tl.home.bkt_per_hr', { n: settings?.min_buckets_per_hour || 3.6 })}
                             </p>
                         </div>
                     </div>
                     <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-white/60 shadow-sm transition-all duration-300 group-hover:shadow-md group-hover:border-slate-200">
                         <div className="flex justify-between text-sm font-bold text-slate-500 mb-3">
-                            <span>Daily Progress</span>
+                            <span>{t('tl.home.daily_progress')}</span>
                             <span className="text-slate-800">{Math.round(progressPercent)}%</span>
                         </div>
                         <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden border border-slate-200/50 shadow-inner">
@@ -134,7 +137,7 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                             </div>
                         </div>
                         <p className="text-center text-[11px] text-slate-500 font-medium mt-4 tracking-wide">
-                            {progressPercent < 50 ? 'Pace is slow. Encouragement needed.' : 'Good pace! Keep it up.'}
+                            {progressPercent < 50 ? t('tl.home.pace_slow') : t('tl.home.pace_good')}
                         </p>
                     </div>
                 </div>
@@ -146,13 +149,13 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                             <div className="p-1.5 bg-primary/10 rounded-lg text-primary flex items-center justify-center">
                                 <span aria-hidden="true" className="material-symbols-outlined text-sm">group</span>
                             </div>
-                            Active Crew ({totalCrew})
+                            {t('tl.home.active_crew', { n: totalCrew })}
                         </h3>
                         <button
                             onClick={() => onNavigate && onNavigate('team')}
                             className="text-primary text-xs font-bold uppercase tracking-wider hover:opacity-80 transition-opacity"
                         >
-                            View All
+                            {t('tl.home.view_all')}
                         </button>
                     </div>
 
@@ -172,11 +175,11 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                                             {/* Row/Bench Status */}
                                             {!picker.orchard_id ? (
                                                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                                                    Bench
+                                                    {t('tl.bench')}
                                                 </span>
                                             ) : (
                                                 <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
-                                                    Row {picker.current_row || '-'}
+                                                    {t('runner.row_n', { n: picker.current_row || '-' })}
                                                 </span>
                                             )}
 
@@ -193,7 +196,7 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                                     <span className="block text-2xl font-black text-slate-800 leading-none">
                                         {picker.total_buckets_today || 0}
                                     </span>
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">Buckets</span>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">{t('tl.home.buckets')}</span>
                                 </div>
                             </div>
                         ))}

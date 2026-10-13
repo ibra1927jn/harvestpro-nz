@@ -6,6 +6,7 @@
  * Soporta paste de 6 dígitos de golpe.
  */
 import React, { useRef, useCallback } from 'react';
+import { useTranslation } from '@/i18n';
 
 interface OtpInputProps {
     value: string;
@@ -15,6 +16,7 @@ interface OtpInputProps {
 }
 
 const OtpInput: React.FC<OtpInputProps> = ({ value, onChange, disabled = false, hasError = false }) => {
+    const { t } = useTranslation();
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const digits = Array.from({ length: 6 }, (_, i) => value[i] ?? '');
 
@@ -80,7 +82,7 @@ const OtpInput: React.FC<OtpInputProps> = ({ value, onChange, disabled = false, 
                     disabled={disabled}
                     autoFocus={idx === 0}
                     autoComplete={idx === 0 ? 'one-time-code' : 'off'}
-                    aria-label={`OTP digit ${idx + 1}`}
+                    aria-label={t('ui.otp_digit', { n: idx + 1 })}
                     onChange={(e) => handleChange(idx, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(idx, e)}
                     onFocus={(e) => e.target.select()}

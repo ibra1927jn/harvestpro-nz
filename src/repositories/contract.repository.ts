@@ -2,6 +2,7 @@
  * Contract Repository — Domain queries for contracts table
  */
 import { supabase } from '@/services/supabase';
+import { todayNZST } from '@/utils/nzst';
 
 export const contractRepository2 = {
     /** Get pending/draft contracts */
@@ -44,7 +45,7 @@ export const contractRepository2 = {
 
     /** Get expired contracts still marked active */
     async getExpiredButActive(orchardId?: string) {
-        const today = new Date().toISOString().split('T')[0];
+        const today = todayNZST();
         let query = supabase
             .from('contracts')
             .select('id, employee_id')

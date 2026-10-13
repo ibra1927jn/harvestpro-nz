@@ -29,6 +29,7 @@ import PredictionsCard from './PredictionsCard';
 import { useVelocityDrilldown } from '@/hooks/useVelocityDrilldown';
 import { UnclosedShiftsAlert } from '@/components/common/UnclosedShiftsAlert';
 import RejectedScansAlert from '@/components/common/RejectedScansAlert';
+import { formatNZD, formatNZDateTime } from '@/utils/nzFormat';
 
 interface DashboardViewProps {
   stats: HarvestState['stats'];
@@ -125,8 +126,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({
   const handleExport = useCallback(() => {
     const now = new Date();
     const metadata = {
-      generated_at: now.toLocaleString(undefined, { timeZone: 'Pacific/Auckland' }),
-      last_sync: now.toLocaleString(undefined, { timeZone: 'Pacific/Auckland' }),
+      generated_at: formatNZDateTime(now),
+      last_sync: formatNZDateTime(now),
       pending_queue_count: 0,
       orchard_name: orchard?.name || 'Orchard',
       is_offline_data: !navigator.onLine,
@@ -193,7 +194,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
         <div>
           <h1 className="text-2xl font-black text-text-main">{t('dashboard.title')}</h1>
           <p className="text-sm text-text-muted font-medium">
-            {t('dashboard.live_monitoring')} • {orchard?.name || 'Orchard'}
+            {t('dashboard.live_monitoring')} • {orchard?.name || t('runner.orchard')}
           </p>
           <div className="flex items-center gap-3 mt-1.5">
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">
@@ -263,7 +264,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
         />
         <DashboardStatCard
           title={t('dashboard.est_cost')}
-          value={`$${animCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+          value={formatNZD(animCost, 0)}
           unit={t('dashboard.kpi.nzd')}
           icon="payments"
           iconBg="bg-green-50"
