@@ -53,6 +53,7 @@ export function bucketCount(pickerId: string): number {
 /** Borra el picker de prueba y todo lo que cuelga de él. */
 export function removePicker(pickerId: string): void {
   const id = lit(pickerId);
+  sql(`delete from public.rejected_scans where picker_id = ${id}`);
   sql(`delete from public.bucket_records where picker_id = ${id}`);
   sql(`delete from public.qc_inspections where picker_id = ${id}`);
   sql(`delete from public.quality_inspections where picker_id = ${id}`);

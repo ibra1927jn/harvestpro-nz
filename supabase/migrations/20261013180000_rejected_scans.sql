@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS public.rejected_scans (
     orchard_id   uuid REFERENCES public.orchards(id) DEFAULT public.get_my_orchard_id(),
     reported_by  uuid NOT NULL REFERENCES public.users(id) DEFAULT auth.uid(),
     picker_code  text NOT NULL,
-    picker_id    uuid REFERENCES public.pickers(id),
+    picker_id    uuid REFERENCES public.pickers(id) ON DELETE SET NULL,
     scanned_at   timestamptz,
     quality_grade text,
     kind         text NOT NULL DEFAULT 'rejected' CHECK (kind IN ('rejected', 'flagged')),

@@ -223,6 +223,8 @@ test.describe('offline chaos', () => {
     await snap(page, test.info(), 'chaos-runner-rejected');
     await expectNothingPending(page);
     expect(bucketCount(p.id)).toBe(0);
+    // Y el servidor lo dejó apuntado para el manager (antes solo estaba en este móvil)
+    expect(sql(`select kind from public.rejected_scans where picker_id = '${p.id}'`)).toEqual(['rejected', 'rejected']);
 
     // No se reintenta en bucle
     const before = requests;
