@@ -141,19 +141,18 @@ const HOLIDAY_SET = new Set<string>(NZ_PUBLIC_HOLIDAYS);
  * Devuelve true si la fecha dada es un public holiday NZ nacional.
  * Acepta Date object o ISO string (YYYY-MM-DD o ISO completo).
  *
- * Usa la parte fecha en UTC para consistencia — los holidays están definidos
- * por día de calendario NZ, pero la comparación ISO usa Z. Si el servidor
- * está en UTC (prod), Auckland=UTC+12/+13, una fecha NZ cae en el día
- * siguiente UTC en horas de la mañana local. Para payroll (granularidad día)
- * usamos toISOString().slice(0,10) — aceptable approximación para la mayoría
- * de casos. Para exactitud, el caller debe pasar la fecha NZ como string.
+ * Un string se toma tal cual (primeros 10 caracteres = fecha NZ). Un Date se
+ * convierte a la fecha del calendario de Nueva Zelanda (antes usaba la fecha
+ * UTC y por la mañana NZ caía en el día anterior).
  */
 export function isPublicHoliday(date: Date | string): boolean {
   if (typeof date === 'string') {
     // Asume ISO YYYY-MM-DD directo o ISO completo — tomamos los primeros 10 chars
     return HOLIDAY_SET.has(date.slice(0, 10));
   }
-  return HOLIDAY_SET.has(date.toISOString().slice(0, 10));
+  // Fecha del calendario NZ (no UTC): el 25-dic a las 09:00 NZ es el 24 en UTC
+  const nzDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' }).format(date);
+  return HOLIDAY_SET.has(nzDate);
 }
 
 /**

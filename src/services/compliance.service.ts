@@ -202,7 +202,9 @@ export function getMinimumBucketsPerHour(
   pieceRate: number = NZ_DEFAULT_PIECE_RATE,
   minWage: number = NZ_MINIMUM_WAGE
 ): number {
-  return Math.ceil((minWage / pieceRate) * 10) / 10; // Round up to 1 decimal
+  // Redondeo hacia arriba a 1 decimal; se quita el ruido de coma flotante antes
+  // (24.60 / 6 = 4.1 exacto daba 4.1000000000000005 → 4.2)
+  return Math.ceil(Number(((minWage / pieceRate) * 10).toFixed(9))) / 10;
 }
 
 // =============================================

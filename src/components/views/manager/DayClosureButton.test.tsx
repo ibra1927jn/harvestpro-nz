@@ -83,7 +83,9 @@ vi.mock('@/services/supabase', () => ({
 }));
 
 // ── Mock nzst utils ────────────────────────
-vi.mock('@/utils/nzst', () => ({
+// Parcial: el resto de utilidades NZ son las reales
+vi.mock('@/utils/nzst', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@/utils/nzst')>()),
     todayNZST: () => '2026-02-14',
     nowNZST: () => '2026-02-14T10:00:00+13:00',
 }));

@@ -9,7 +9,7 @@ import { logger } from '@/utils/logger';
 import { payrollRepository } from '@/repositories/payroll.repository';
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
 import { supabase } from '@/services/supabase';
-import { todayNZST, toNZST } from '@/utils/nzst';
+import { todayNZST, nzMidnight, nzEndOfDay } from '@/utils/nzst';
 import { PayrollResultSchema, validateResponse } from '@/schemas/api.schemas';
 import { analytics } from '@/config/analytics';
 import { shiftHours, dayPay, payForRange, pieceRateFor, isNZPublicHoliday, PAY_RULES, type PayDay } from '@/services/harvestMetrics/pay';
@@ -112,9 +112,9 @@ export interface DailyTimesheetRecord extends TimesheetEntry {
  * cuentan hasta que se cierren.
  */
 async function computeDayOfPeople(pickerIds: string[], date: string, minWage: number = PAY_RULES.minWageFloor) {
-  const offset = toNZST(new Date(`${date}T12:00:00Z`)).slice(-6);
+  // Limites del dia NZ con el desfase de cada extremo (el dia del cambio de hora difieren)
   const { shifts, buckets } = await payrollRepository.fetchDayOfPeople(
-    pickerIds, date, `${date}T00:00:00${offset}`, `${date}T23:59:59${offset}`,
+    pickerIds, date, nzMidnight(date), nzEndOfDay(date),
   );
   const rates = await payRatesRepository.load().catch(() => ({ varietyRates: [], orchardRates: {} as Record<string, number> }));
   const holiday = isNZPublicHoliday(date);
@@ -339,9 +339,8 @@ export const payrollService = {
 
     // 2. Obtener bucket_records del dia (excluir rejected)
     // Límites del día en hora NZ (no la zona del navegador)
-    const nzOffset = toNZST(new Date(`${targetDate}T12:00:00Z`)).slice(-6);
-    const startISO = `${targetDate}T00:00:00${nzOffset}`;
-    const endISO = `${targetDate}T23:59:59${nzOffset}`;
+    const startISO = nzMidnight(targetDate);
+    const endISO = nzEndOfDay(targetDate);
 
     const { data: bucketRecords } = await supabase
       .from('bucket_records')

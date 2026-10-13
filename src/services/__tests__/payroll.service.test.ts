@@ -22,7 +22,9 @@ vi.mock('@/services/config.service', () => ({
     }),
 }));
 
-vi.mock('@/utils/nzst', () => ({
+// Parcial: el resto de utilidades NZ son las reales
+vi.mock('@/utils/nzst', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@/utils/nzst')>()),
     todayNZST: () => '2026-02-13',
 }));
 

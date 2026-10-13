@@ -13,7 +13,7 @@ import { useTranslation } from '@/i18n';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { payrollService, PickerBreakdown } from '@/services/payroll.service';
 import { analyticsService } from '@/services/analytics.service';
-import { startOfWeekNZ, toNZST } from '@/utils/nzst';
+import { startOfWeekNZ, nzMidnight, nzEndOfDay } from '@/utils/nzst';
 import { TrendDataPoint, DayMeta } from '@/components/charts/TrendLineChart';
 import { logger } from '@/utils/logger';
 import { Picker, VarietyRate } from '@/types';
@@ -182,7 +182,6 @@ export function useWeeklyReport(): WeeklyReportData {
                         const nzFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' });
                         const todayStr = nzFmt.format(new Date());
                         const weekStart = startOfWeekNZ();
-                        const nzOffset = toNZST(new Date()).slice(-6); // "+12:00" o "+13:00"
 
                         const [bucketRows, attendanceRows] = await Promise.all([
                             fetchAllRows<WeekBucketRow>((from, to) => supabase
@@ -190,8 +189,8 @@ export function useWeeklyReport(): WeeklyReportData {
                                 .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
                                 .eq('orchard_id', orchardId)
                                 .is('deleted_at', null)
-                                .gte('scanned_at', `${weekStart}T00:00:00${nzOffset}`)
-                                .lte('scanned_at', `${todayStr}T23:59:59${nzOffset}`)
+                                .gte('scanned_at', nzMidnight(weekStart))
+                                .lte('scanned_at', nzEndOfDay(todayStr))
                                 .order('id')
                                 .range(from, to)),
                             fetchAllRows<WeekAttendanceRow>((from, to) => supabase

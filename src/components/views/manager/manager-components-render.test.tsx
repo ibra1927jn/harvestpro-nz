@@ -238,7 +238,7 @@ describe('VelocityChart', () => {
             { picker_id: 'p1', created_at: '2026-03-01T09:00:00Z' },
         ];
         const { container } = render(<VelocityChart bucketRecords={records} />);
-        expect(container).toBeDefined();
+        expect(container.firstChild).not.toBeNull();
     });
 });
 
@@ -250,7 +250,7 @@ describe('MapToggleView', () => {
         const { container } = render(
             <MapToggleView crew={[]} rows={[]} orchardBlocks={[]} />
         );
-        expect(container).toBeDefined();
+        expect(container.firstChild).not.toBeNull();
     });
 });
 

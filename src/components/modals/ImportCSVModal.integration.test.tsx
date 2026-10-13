@@ -55,6 +55,6 @@ describe('ImportCSVModal Integration', () => {
 
     it('does not render when not open', () => {
         render(React.createElement(ImportCSVModal, { ...defaultProps, isOpen: false }));
-        // Component should not render content when closed
+        expect(screen.queryByTestId('modal-overlay')).toBeNull();
     });
 });

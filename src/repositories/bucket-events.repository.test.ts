@@ -49,3 +49,11 @@ describe('bucketEventsRepository', () => {
         expect(insertMock).toHaveBeenCalledWith([]);
     });
 });
+
+describe('bucketEventsRepository.insertSingle errors', () => {
+    it('returns the error instead of throwing (merged from bucketEvents.repository.test.ts)', async () => {
+        insertMock.mockResolvedValue({ error: { message: 'fail' } });
+        const res = await bucketEventsRepository.insertSingle({ picker_id: 'p1' });
+        expect(res.error).toMatchObject({ message: 'fail' });
+    });
+});

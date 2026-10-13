@@ -8,7 +8,7 @@
 import { supabase } from '@/services/supabase';
 import { offlineService } from '@/services/offline.service';
 import { logger } from '@/utils/logger';
-import { todayNZST, toNZST } from '@/utils/nzst';
+import { todayNZST, nzMidnight } from '@/utils/nzst';
 import { fetchAllRows } from '@/utils/fetchAllRows';
 import { BucketRecord, Picker, AttendanceShift } from '@/types';
 import type { HarvestStoreState, ScannedBucket } from './storeTypes';
@@ -155,8 +155,8 @@ export async function fetchOrchardData(
   // toNZST(new Date()) devuelve el offset correcto (+12:00 NZST o +13:00 NZDT).
   // d.setHours(0,0,0,0) usaba medianoche local → en timezone negativo (ej. UTC-3)
   // el corte caía a las 15:00 NZ, perdiendo registros de la mañana NZ.
-  const nzOffset = toNZST(new Date()).slice(-6); // "+12:00" o "+13:00"
-  const startOfDayNZ = `${today}T00:00:00${nzOffset}`;
+  // nzMidnight usa el desfase vigente a medianoche (el dia del cambio de hora no es el de ahora)
+  const startOfDayNZ = nzMidnight(today);
 
   const mapPickerWithAttendance = (p: PickerWithAttendance): Picker =>
     ({

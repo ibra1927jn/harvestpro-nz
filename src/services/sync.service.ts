@@ -375,6 +375,9 @@ export const syncService = {
   categorizeError(error: unknown): 'network' | 'server' | 'validation' | 'unknown' {
     if (!navigator.onLine) return 'network';
 
+    // Payload que no pasa el esquema: no se arregla reintentando
+    if (error instanceof z.ZodError) return 'validation';
+
     if (error instanceof Error) {
       const msg = error.message.toLowerCase();
       if (
@@ -394,7 +397,8 @@ export const syncService = {
         return 'server';
       }
       if (
-        msg.includes('23') ||
+        // SQLSTATE clase 23 (integridad), no cualquier "23" (LOC-023, fila 23...)
+        /\b23\d{3}\b/.test(msg) ||
         msg.includes('constraint') ||
         msg.includes('violat') ||
         msg.includes('unique') ||

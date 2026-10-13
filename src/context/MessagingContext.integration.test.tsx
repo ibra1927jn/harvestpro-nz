@@ -87,6 +87,8 @@ describe('MessagingContext Integration', () => {
     it('setUserId and setOrchardId do not crash', async () => {
         render(React.createElement(MessagingProvider, null, React.createElement(MsgConsumer)));
         await act(async () => { screen.getByTestId('set-user').click(); });
+        // El proveedor sigue montado y sin datos inventados
+        expect(screen.getByTestId('unread').textContent).toBe('0');
     });
 
     it('sendMessage adds optimistic message', async () => {

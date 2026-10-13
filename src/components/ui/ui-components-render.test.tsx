@@ -45,7 +45,7 @@ describe('EmptyState', () => {
 
     it('compact mode applies smaller padding', () => {
         const { container } = render(<EmptyState icon="info" title="Compact" compact={true} />);
-        expect(container.firstChild).toBeDefined();
+        expect(container.firstChild).not.toBeNull();
     });
 });
 
@@ -78,7 +78,7 @@ describe('StatusBadge', () => {
 
     it('applies sm size class', () => {
         const { container } = render(<StatusBadge status="active" label="Small" size="sm" />);
-        expect(container.firstChild).toBeDefined();
+        expect(container.firstChild).not.toBeNull();
     });
 });
 
@@ -244,7 +244,7 @@ describe('LoadingSkeleton', () => {
         const mod = await import('@/components/ui/LoadingSkeleton');
         const LoadingSkeleton = mod.default;
         const { container } = render(<LoadingSkeleton />);
-        expect(container).toBeDefined();
+        expect(container.firstChild).not.toBeNull();
     });
 });
 
@@ -320,6 +320,6 @@ describe('ThemeToggle', () => {
         const mod = await import('@/components/ui/ThemeToggle');
         const ThemeToggle = mod.default;
         const { container } = render(<ThemeToggle />);
-        expect(container).toBeDefined();
+        expect(container.firstChild).not.toBeNull();
     });
 });

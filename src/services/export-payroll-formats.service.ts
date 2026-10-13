@@ -6,9 +6,10 @@ import type { PayrollExportData } from './export.service';
 
 // CSV cell sanitizer (protect against formula injection)
 const escCsv = (val: string): string => {
-    const s = String(val);
-    if (/^[=+\-@\t\r]/.test(s)) return `'${s}`;
-    if (/[,"\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    let s = String(val);
+    // Antes devolvía aquí sin entrecomillar: "=x,y" partía la fila en dos columnas
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+    if (/[,"\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
     return s;
 };
 

@@ -81,6 +81,7 @@ describe('useOfflineQueue', () => {
     await new Promise(r => setTimeout(r, 0));
     // When offline, queue processing should NOT start
     // (the where call happens only from processQueue)
+    expect(_db.sync_queue.where).not.toHaveBeenCalled();
   });
 
   it('processes pending unlink items', async () => {

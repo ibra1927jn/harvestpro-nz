@@ -307,10 +307,13 @@ describe('MessagingContext', () => {
         it('does nothing without userId', async () => {
             const { result } = renderHook(() => useMessaging(), { wrapper });
 
-            // Should not throw
+            const before = { unread: result.current.unreadCount, messages: result.current.messages };
             await act(async () => {
                 await result.current.markMessageRead('msg-1');
             });
+            // Sin usuario no cambia nada
+            expect(result.current.unreadCount).toBe(before.unread);
+            expect(result.current.messages).toEqual(before.messages);
         });
     });
 
@@ -319,9 +322,11 @@ describe('MessagingContext', () => {
         it('does nothing without userId', async () => {
             const { result } = renderHook(() => useMessaging(), { wrapper });
 
+            const before = result.current.broadcasts;
             await act(async () => {
                 await result.current.acknowledgeBroadcast('bc-1');
             });
+            expect(result.current.broadcasts).toEqual(before);
         });
     });
 

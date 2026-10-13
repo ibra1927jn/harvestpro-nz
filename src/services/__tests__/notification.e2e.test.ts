@@ -81,14 +81,17 @@ describe('notificationService — E2E deep tests', () => {
 
     describe('startChecking / stopChecking', () => {
         it('starts and stops without error', () => {
-            notificationService.startChecking();
-            notificationService.stopChecking();
-            // No crash
+            expect(() => {
+                notificationService.startChecking();
+                notificationService.stopChecking();
+            }).not.toThrow();
         });
 
         it('calling stop twice is safe', () => {
-            notificationService.stopChecking();
-            notificationService.stopChecking();
+            expect(() => {
+                notificationService.stopChecking();
+                notificationService.stopChecking();
+            }).not.toThrow();
         });
     });
 

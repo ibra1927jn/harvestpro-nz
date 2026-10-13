@@ -3,6 +3,7 @@
  */
 import { supabase } from '@/services/supabase';
 import { fetchAllRows } from '@/utils/fetchAllRows';
+import { nzMidnight, nzEndOfDay } from '@/utils/nzst';
 
 export interface DailyAggregate {
     /** Fecha en formato YYYY-MM-DD (fecha local NZ, no UTC) */
@@ -21,10 +22,6 @@ export interface PayInputs {
 export const analyticsTrendsRepository = {
     /** Fichajes y cubetas de un rango de días NZ — entrada del cálculo único de pago */
     async getPayInputs(orchardId: string, startDate: string, endDate: string): Promise<PayInputs> {
-        const offset = (d: string) =>
-            new Intl.DateTimeFormat('en-US', { timeZone: 'Pacific/Auckland', timeZoneName: 'longOffset' })
-                .formatToParts(new Date(`${d}T12:00:00Z`))
-                .find(p => p.type === 'timeZoneName')?.value.replace('GMT', '') || '+13:00';
         const [attendance, buckets] = await Promise.all([
             fetchAllRows<PayInputs['attendance'][number]>((from, to) => supabase
                 .from('daily_attendance')
@@ -40,8 +37,8 @@ export const analyticsTrendsRepository = {
                 .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
                 .eq('orchard_id', orchardId)
                 .is('deleted_at', null)
-                .gte('scanned_at', `${startDate}T00:00:00${offset(startDate)}`)
-                .lte('scanned_at', `${endDate}T23:59:59${offset(endDate)}`)
+                .gte('scanned_at', nzMidnight(startDate))
+                .lte('scanned_at', nzEndOfDay(endDate))
                 .order('id')
                 .range(from, to)),
         ]);

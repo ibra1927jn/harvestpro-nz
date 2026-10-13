@@ -135,7 +135,7 @@ describe('TasksView', () => {
   it('renders without crashing', async () => {
     const { default: TasksView } = await import('./TasksView');
     const { container } = render(<TasksView />);
-    expect(container.firstChild).toBeDefined();
+    expect(container.firstChild).not.toBeNull();
   });
 });
 
@@ -143,7 +143,7 @@ describe('ProfileView', () => {
   it('renders user profile', async () => {
     const { default: ProfileView } = await import('./ProfileView');
     const { container } = render(<ProfileView />);
-    expect(container.firstChild).toBeDefined();
+    expect(container.firstChild).not.toBeNull();
   });
 });
 
@@ -153,6 +153,6 @@ describe('team-leader RunnersView', () => {
   it('renders runners section', async () => {
     const { default: RunnersView } = await import('./RunnersView');
     const { container } = render(<RunnersView />);
-    expect(container.firstChild).toBeDefined();
+    expect(container.firstChild).not.toBeNull();
   });
 });
