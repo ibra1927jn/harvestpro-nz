@@ -5,42 +5,29 @@
  */
 import { useEffect } from 'react';
 import { db } from '@/services/db';
-import { userService } from '@/services/user.service';
+import { syncService } from '@/services/sync.service';
 import { logger } from '@/utils/logger';
 
 /**
- * Processes pending offline queue items (e.g. UNLINK operations) when the
- * browser comes back online. Retries up to 3 times before giving up.
- * 
+ * Al volver la conexión (o al abrir la pantalla con red) sube las bajas
+ * (UNLINK) pendientes y refresca los datos.
+ *
+ * La subida la hace la cola general (syncService): bajo el mismo cerrojo entre
+ * pestañas y con la misma política de reintentos y dead letter queue. Antes
+ * este hook las procesaba por su cuenta (fuera del cerrojo: la misma baja podía
+ * mandarse dos veces) y las BORRABA sin aviso tras 3 fallos.
+ *
  * @param fetchGlobalData - Callback to refresh store data after processing
  */
 export function useOfflineQueue(fetchGlobalData: () => void) {
     useEffect(() => {
         const processQueue = async () => {
             try {
-                const pending = await db.sync_queue
-                    .where('type').equals('UNLINK')
-                    .toArray();
-                if (pending.length === 0) return;
+                const pending = await db.sync_queue.where('type').equals('UNLINK').count();
+                if (pending === 0) return;
 
-                logger.info(`[Offline] Connection restored — processing ${pending.length} queued unlinks`);
-                for (const item of pending) {
-                    try {
-                        const userId = (item.payload as { userId: string }).userId;
-                        await userService.unassignUserFromOrchard(userId);
-                        await db.sync_queue.delete(item.id);
-                        logger.info(`[Offline] Unlink processed for ${userId}`);
-                    } catch (e) {
-                        logger.error(`[Offline] Failed to process unlink ${item.id}:`, e);
-                        // Increment retry count; give up after 3 attempts
-                        if ((item.retryCount || 0) >= 3) {
-                            await db.sync_queue.delete(item.id);
-                            logger.warn(`[Offline] Gave up on unlink ${item.id} after 3 retries`);
-                        } else {
-                            await db.sync_queue.update(item.id, { retryCount: (item.retryCount || 0) + 1 });
-                        }
-                    }
-                }
+                logger.info(`[Offline] Connection restored — processing ${pending} queued unlinks`);
+                await syncService.processQueue();
                 await fetchGlobalData();
             } catch (e) {
                 logger.error('[Offline] Queue processing error:', e);
