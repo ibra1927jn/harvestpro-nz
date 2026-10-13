@@ -44,6 +44,9 @@ SELECT sec_test.allow('A.team_leader', 'archives a picker', $$UPDATE pickers SET
 SELECT sec_test.deny('A.manager', 'cannot archive a picker', $$UPDATE pickers SET status = 'archived', archived_at = now() WHERE id = {A.picker}$$);
 SELECT sec_test.deny('A.manager', 'cannot move a picker to another team', $$UPDATE pickers SET team_leader_id = {A.team_leader2} WHERE id = {A.picker}$$);
 SELECT sec_test.deny('A.manager', 'cannot delete a picker', $$DELETE FROM pickers WHERE id = {A.picker}$$);
+-- Rodeo en dos pasos: cambiar el rol (picker → runner), mover/archivar y volver
+SELECT sec_test.deny('A.manager', 'cannot turn a picker into another role', $$UPDATE pickers SET role = 'runner' WHERE id = {A.picker}$$);
+SELECT sec_test.deny('A.manager', 'cannot turn a runner row into a picker', $$UPDATE pickers SET role = 'picker' WHERE id = {A.runner}$$);
 SELECT sec_test.deny(w, 'cannot edit pickers', $$UPDATE pickers SET name = 'Hacked' WHERE id = {A.picker}$$)
 FROM unnest(ARRAY['anon', 'A.runner', 'A.qc_inspector', 'A.logistics', 'A.payroll_admin']) AS w;
 SELECT sec_test.allow('A.manager', 'assigns a picker to a row', $$UPDATE pickers SET current_row = 3 WHERE id = {A.picker}$$);
