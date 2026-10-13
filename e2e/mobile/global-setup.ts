@@ -59,7 +59,10 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   removeLeftoverPickers();
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL ?? 'http://127.0.0.1:54321';
-  if (process.env.MOBILE_FN_SHIM === '0' || (await edgeRuntimeWorks(supabaseUrl))) {
+  // MOBILE_FN_SHIM=force: usar el shim aunque el edge runtime funcione (el
+  // runtime compartido sirve las funciones de otro checkout, no las de este)
+  const force = process.env.MOBILE_FN_SHIM === 'force';
+  if (!force && (process.env.MOBILE_FN_SHIM === '0' || (await edgeRuntimeWorks(supabaseUrl)))) {
     return async () => removeLeftoverPickers();
   }
 
