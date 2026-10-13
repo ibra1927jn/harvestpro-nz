@@ -14,7 +14,7 @@ export const DonutChart: React.FC<{ pieceRate: number; topUp: number; pieceRateL
                     <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" strokeWidth="3" strokeDasharray="2 2" className="animate-spin" style={{ animationDuration: '20s', transformOrigin: 'center' } as React.CSSProperties} />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="material-symbols-outlined text-xl text-slate-300 mb-1">donut_large</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-xl text-slate-300 mb-1">donut_large</span>
                     <span className="text-[10px] text-text-muted font-medium">Awaiting scan data</span>
                 </div>
             </div>
@@ -70,7 +70,7 @@ export const KPICard: React.FC<{ icon: string; label: string; value: string; gra
     <div className={`relative overflow-hidden rounded-2xl p-4 shadow-lg shadow-slate-200/50 border border-white/80 ${gradient} dash-card-enter anim-delay`} style={{ '--delay': `${delay}ms` } as React.CSSProperties}>
         <div className="flex items-center gap-2 mb-2">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconColor} bg-white/60 shadow-sm`}>
-                <span className="material-symbols-outlined text-base">{icon}</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-base">{icon}</span>
             </div>
             <span className="text-[10px] text-text-sub uppercase font-bold tracking-wider">{label}</span>
         </div>

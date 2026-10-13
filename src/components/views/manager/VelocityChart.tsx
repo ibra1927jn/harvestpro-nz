@@ -116,7 +116,7 @@ const VelocityChart: React.FC<VelocityChartProps> = ({
             <div className="p-4 border-b border-slate-100 flex justify-between items-center">
                 <div>
                     <h3 className="font-bold text-text-main flex items-center gap-2">
-                        <span className="material-symbols-outlined text-blue-500">trending_up</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-blue-500">trending_up</span>
                         {t('dashboard.velocity.title')}
                     </h3>
                     <p className="text-[10px] text-slate-400 mt-0.5">
@@ -136,7 +136,7 @@ const VelocityChart: React.FC<VelocityChartProps> = ({
                 {!hasData ? (
                     <div className="h-[180px] flex flex-col items-center justify-center text-center">
                         <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                            <span className="material-symbols-outlined text-3xl text-slate-300 dash-hourglass">hourglass_empty</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-3xl text-slate-300 dash-hourglass">hourglass_empty</span>
                         </div>
                         <p className="text-sm font-bold text-slate-500">{t('dashboard.velocity.awaiting')}</p>
                         <p className="text-xs text-slate-400 mt-1">{t('dashboard.velocity.awaiting_desc')}</p>
@@ -265,7 +265,7 @@ const VelocityChart: React.FC<VelocityChartProps> = ({
                     </span>
                     {isClickable && (
                         <span className="flex items-center gap-1 text-blue-400">
-                            <span className="material-symbols-outlined text-[12px]">touch_app</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-[12px]">touch_app</span>
                             {t('dashboard.velocity.tap_bar_details')}
                         </span>
                     )}

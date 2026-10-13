@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useRef } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 interface QualityRatingModalProps {
     scannedCode: string;
@@ -7,12 +8,21 @@ interface QualityRatingModalProps {
 }
 
 const QualityRatingModal: React.FC<QualityRatingModalProps> = ({ scannedCode, onRate, onCancel }) => {
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useDialogA11y(dialogRef, { onClose: onCancel });
     return (
         <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom duration-300">
+            <div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="quality-rating-title"
+                aria-describedby="quality-rating-desc"
+                className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom duration-300"
+            >
                 <div className="text-center mb-6">
-                    <h3 className="text-2xl font-black text-text-main">Quality Check</h3>
-                    <p className="text-text-muted font-medium">Rate the bucket from {scannedCode}</p>
+                    <h3 id="quality-rating-title" className="text-2xl font-black text-text-main">Quality Check</h3>
+                    <p id="quality-rating-desc" className="text-text-muted font-medium">Rate the bucket from {scannedCode}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mb-4">

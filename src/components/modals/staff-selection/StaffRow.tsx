@@ -35,7 +35,7 @@ export const StaffRow: React.FC<StaffRowProps> = ({
                         : 'border-slate-300 group-hover:border-indigo-400'
                     }`}>
                     {(isSelected || alreadyHere) && (
-                        <span className={`material-symbols-outlined text-xs ${alreadyHere ? 'text-green-600' : 'text-white'}`}>check</span>
+                        <span aria-hidden="true" className={`material-symbols-outlined text-xs ${alreadyHere ? 'text-green-600' : 'text-white'}`}>check</span>
                     )}
                 </div>
 
@@ -46,7 +46,7 @@ export const StaffRow: React.FC<StaffRowProps> = ({
                     <p className="font-bold text-text-main">{person.full_name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${roleColor(person.role)}`}>
-                            <span className="material-symbols-outlined text-[10px] mr-0.5 align-middle">{roleIcon(person.role)}</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-[10px] mr-0.5 align-middle">{roleIcon(person.role)}</span>
                             {roleLabel(person.role)}
                         </span>
                         {alreadyHere && (
@@ -72,18 +72,18 @@ export const StaffRow: React.FC<StaffRowProps> = ({
                         <div className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
                     ) : isConfirming ? (
                         <>
-                            <span className="material-symbols-outlined text-xs">warning</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-xs">warning</span>
                             Confirm?
                         </>
                     ) : (
                         <>
-                            <span className="material-symbols-outlined text-sm">link_off</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-sm">link_off</span>
                             Unlink
                         </>
                     )}
                 </button>
             ) : isSelected ? (
-                <span className="material-symbols-outlined text-indigo-600">check_circle</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-indigo-600">check_circle</span>
             ) : null}
         </div>
 );

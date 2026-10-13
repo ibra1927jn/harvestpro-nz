@@ -62,7 +62,7 @@ export const ComparisonBadge: React.FC<ComparisonBadgeProps> = ({ diff, suffix =
     return React.createElement('span', {
         className: `inline-flex items-center gap-0.5 text-[11px] font-bold px-1.5 py-0.5 rounded-full ${isPositive ? 'text-emerald-700 bg-emerald-50' : 'text-red-600 bg-red-50'}`,
     },
-        React.createElement('span', { className: 'material-symbols-outlined text-[12px]' },
+        React.createElement('span', { 'aria-hidden': true, className: 'material-symbols-outlined text-[12px]' },
             isPositive ? 'trending_up' : 'trending_down'),
         `${isPositive ? '+' : ''}${diff}${suffix}`
     );

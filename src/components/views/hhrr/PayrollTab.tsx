@@ -48,7 +48,7 @@ const PayrollTab: React.FC<PayrollTabProps> = ({ payroll, summary }) => (
                         <span>{entry.buckets_picked} buckets</span>
                         {entry.wage_shield_applied && (
                             <span className="flex items-center gap-0.5 text-amber-600">
-                                <span className="material-symbols-outlined text-xs">shield</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-xs">shield</span>
                                 Wage Shield
                             </span>
                         )}

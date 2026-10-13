@@ -196,7 +196,7 @@ export const HeatMapView: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2.5">
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/20">
-                        <span className="material-symbols-outlined text-white text-lg">local_fire_department</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-white text-lg">local_fire_department</span>
                     </div>
                     <div>
                         <h2 className="text-lg font-black text-slate-800 leading-tight">Heat Map</h2>
@@ -216,7 +216,7 @@ export const HeatMapView: React.FC = () => {
                                 : 'text-slate-500 hover:text-slate-700'
                             }`}
                     >
-                        <span className="material-symbols-outlined text-sm">{opt.icon}</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm">{opt.icon}</span>
                         {opt.label}
                     </button>
                 ))}
@@ -337,7 +337,7 @@ export const HeatMapView: React.FC = () => {
             {/* ── Empty State ─────────────────────────── */}
             {!loading && gridData.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <span className="material-symbols-outlined text-5xl text-slate-300 mb-3">grid_off</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-5xl text-slate-300 mb-3">grid_off</span>
                     <p className="text-sm font-bold text-slate-500">No hay datos de cosecha</p>
                     <p className="text-xs text-slate-400 mt-1">Los datos aparecerán cuando se escaneen cubetas</p>
                 </div>

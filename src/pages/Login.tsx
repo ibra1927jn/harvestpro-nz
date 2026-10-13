@@ -133,7 +133,7 @@ const Login: React.FC = () => {
               <div className="relative inline-block">
                 <div className="absolute -inset-3 rounded-2xl border border-lilac/20 animate-ping opacity-30" style={{ animationDuration: '3s' }} />
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-lilac to-lilac-dark shadow-xl shadow-lilac/25 mb-4 relative">
-                  <span className="material-symbols-outlined text-white text-3xl">agriculture</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-white text-3xl">agriculture</span>
                 </div>
               </div>
               <h1 className="text-3xl font-black text-slate-900 tracking-tight">HarvestPro<span className="text-lilac">NZ</span></h1>
@@ -149,7 +149,7 @@ const Login: React.FC = () => {
             <div className="flex p-1.5 bg-slate-100/80 rounded-2xl mb-8 border border-slate-200/50 relative">
               {tabs.map((m) => (
                 <button key={m} onClick={() => switchTab(m)} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all duration-300 relative z-10 ${mode === m ? 'bg-white text-lilac-dark shadow-md shadow-lilac/10 border border-lilac/20' : 'text-slate-500 hover:text-lilac-dark hover:bg-white/40 border border-transparent'}`}>
-                  <span className={`material-symbols-outlined text-base transition-transform duration-300 ${mode === m ? 'scale-110' : ''}`}>{tabIcons[m]}</span>
+                  <span aria-hidden="true" className={`material-symbols-outlined text-base transition-transform duration-300 ${mode === m ? 'scale-110' : ''}`}>{tabIcons[m]}</span>
                   {tabLabels[m]}
                 </button>
               ))}
@@ -172,7 +172,7 @@ const Login: React.FC = () => {
                 <div className="absolute inset-0 rounded-2xl bg-red-400/20 animate-login-error-flash pointer-events-none" />
                 <div className="p-4 bg-red-50 border-2 border-red-300 rounded-2xl flex items-center gap-3 relative z-10 shadow-lg shadow-red-500/10 animate-login-error-glow">
                   <div className="relative">
-                    <span className="material-symbols-outlined text-red-500 text-lg animate-bounce">error</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-red-500 text-lg animate-bounce">error</span>
                     <div className="absolute inset-0 rounded-full bg-red-400/20 animate-ping" />
                   </div>
                   <p className="text-sm text-red-700 font-medium">{error}</p>

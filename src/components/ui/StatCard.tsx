@@ -79,7 +79,7 @@ const StatCard: React.FC<StatCardProps> = ({
         <div className="flex items-start justify-between">
             {/* Icon */}
             <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', iconBg)}>
-                <span className={cn('material-symbols-outlined text-xl', iconColor)}>{icon}</span>
+                <span aria-hidden="true" className={cn('material-symbols-outlined text-xl', iconColor)}>{icon}</span>
             </div>
 
             {/* Trend badge */}
@@ -88,7 +88,7 @@ const StatCard: React.FC<StatCardProps> = ({
                     'inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full',
                     TREND_STYLES[trend.direction],
                 )}>
-                    <span className="material-symbols-outlined text-sm">{TREND_ICONS[trend.direction]}</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm">{TREND_ICONS[trend.direction]}</span>
                     {trend.value}
                 </span>
             )}

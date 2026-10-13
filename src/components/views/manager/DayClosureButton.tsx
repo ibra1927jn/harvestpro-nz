@@ -20,7 +20,7 @@ const ClosureConfirmModal = ({ summary, onConfirm, onCancel, isLoading }: Closur
                 <h2>🔒 End & Lock Day</h2>
 
                 <div className="closure-warning">
-                    <span className="material-symbols-outlined">warning</span>
+                    <span aria-hidden="true" className="material-symbols-outlined">warning</span>
                     <p>
                         Once closed, records for this date <strong>cannot be edited or added</strong>.
                         This closure is <strong>permanent and immutable</strong> for legal compliance.

@@ -105,7 +105,7 @@ export const ExportTab: React.FC<{
                         className="group bg-white/80 backdrop-blur-xl rounded-2xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-white/60 flex items-center gap-4 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:bg-white transition-all duration-300 text-left disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <div className="size-12 rounded-xl bg-orange-50 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
-                            <span className="material-symbols-outlined text-[24px] text-orange-500">{exp.icon}</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-[24px] text-orange-500">{exp.icon}</span>
                         </div>
                         <div>
                             <h4 className="font-extrabold text-slate-800 text-sm tracking-tight">{exp.label}</h4>

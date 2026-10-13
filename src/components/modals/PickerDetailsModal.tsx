@@ -79,13 +79,13 @@ const PickerDetailsModal: React.FC<PickerDetailsModalProps> = ({
                     <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -mr-12 -mt-12"></div>
                     <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-8 -mb-8"></div>
 
-                    <button onClick={onClose} className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors z-20">
-                        <span className="material-symbols-outlined">close</span>
+                    <button aria-label="Close" onClick={onClose} className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors z-20">
+                        <span aria-hidden="true" className="material-symbols-outlined">close</span>
                     </button>
 
                     <div className="relative z-10 flex items-center gap-4">
                         <div className="size-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center font-bold text-2xl text-white border border-white/20 shadow-lg">
-                            {picker.avatar || <span className="material-symbols-outlined text-3xl">{roleIcon(role)}</span>}
+                            {picker.avatar || <span aria-hidden="true" className="material-symbols-outlined text-3xl">{roleIcon(role)}</span>}
                         </div>
                         <div>
                             <h3 className="text-xl font-black text-white tracking-tight">{picker.name}</h3>
@@ -143,18 +143,18 @@ const PickerDetailsModal: React.FC<PickerDetailsModalProps> = ({
                             <div className="space-y-2">
                                 <div className="grid grid-cols-2 gap-2">
                                     <button onClick={() => setSubView('message')} className={`flex items-center justify-center gap-2 rounded-xl py-3 font-bold text-sm transition-colors ${accent.light}`}>
-                                        <span className="material-symbols-outlined text-[20px]">chat</span>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">chat</span>
                                         Message
                                     </button>
                                     <button onClick={() => setSubView('history')} className="flex items-center justify-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl py-3 font-bold text-sm transition-colors">
-                                        <span className="material-symbols-outlined text-[20px]">history</span>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">history</span>
                                         History
                                     </button>
                                 </div>
                                 {showDeleteButton && onDelete && (
                                     <button onClick={handleDelete} disabled={isDeleting}
                                         className="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
-                                        <span className="material-symbols-outlined text-[20px]">person_remove</span>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">person_remove</span>
                                         {isDeleting ? 'Removing...' : `Remove ${roleLabel(role)}`}
                                     </button>
                                 )}

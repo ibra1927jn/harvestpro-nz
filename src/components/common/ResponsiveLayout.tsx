@@ -79,7 +79,8 @@ const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
                 onNavigateToMessaging={onNavigateToMessaging}
             />
             
-            <main className="flex-1 overflow-y-auto w-full relative">
+            {/* id: destino del enlace "Skip to content" de index.html */}
+            <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto w-full relative outline-none">
                 {children}
             </main>
             

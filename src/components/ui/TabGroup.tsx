@@ -85,7 +85,7 @@ const TabGroup: React.FC<TabGroupProps> = ({
                         )}
                     >
                         {tab.icon && (
-                            <span className={cn(
+                            <span aria-hidden="true" className={cn(
                                 'material-symbols-outlined',
                                 size === 'sm' ? 'text-sm' : 'text-base',
                             )}>{tab.icon}</span>

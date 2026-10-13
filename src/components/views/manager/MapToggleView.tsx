@@ -61,7 +61,7 @@ const MapToggleView: React.FC<MapToggleViewProps> = ({
                                 : 'text-text-sub hover:text-text-main'
                                 }`}
                         >
-                            <span className="material-symbols-outlined text-base">{m.icon}</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-base">{m.icon}</span>
                             {m.label}
                         </button>
                     ))}

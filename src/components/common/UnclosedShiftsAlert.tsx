@@ -43,10 +43,10 @@ export const UnclosedShiftsAlert: React.FC<{
         <div role="alert" data-testid="unclosed-shifts-alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-900">
             <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between gap-3 text-left">
                 <span className="text-sm font-bold flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[20px]">timer_off</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[20px]">timer_off</span>
                     {rows.length} shift{rows.length === 1 ? '' : 's'} from past days with no check-out ({people} {people === 1 ? 'person' : 'people'}). Hours are estimated until fixed.
                 </span>
-                <span className="material-symbols-outlined text-[18px]">{open ? 'expand_less' : 'expand_more'}</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-[18px]">{open ? 'expand_less' : 'expand_more'}</span>
             </button>
             {open && (
                 <div className="mt-2 text-sm">

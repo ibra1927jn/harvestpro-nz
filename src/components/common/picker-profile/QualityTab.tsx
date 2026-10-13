@@ -48,7 +48,7 @@ const QualityTab: React.FC<QualityTabProps> = ({ quality }) => {
             </div>
             {quality.total === 0 && (
                 <div className="flex flex-col items-center py-6">
-                    <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">search_off</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-4xl text-slate-300 mb-2">search_off</span>
                     <p className="text-sm text-text-muted">{t('panel.quality.none')}</p>
                 </div>
             )}

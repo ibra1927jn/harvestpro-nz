@@ -39,7 +39,7 @@ export default function OrchardMapView({
             {/* ═══ FLOATING HUD ═══ */}
             <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-white/70 backdrop-blur-lg border border-border-light shadow-sm">
                 <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-xl text-primary material-icon-filled">agriculture</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-xl text-primary material-icon-filled">agriculture</span>
                     <div>
                         <h2 className="text-sm font-black text-text-main tracking-tight">
                             {map.orchardName} — {t('orchardMap.command_center')}
@@ -66,7 +66,7 @@ export default function OrchardMapView({
             {map.selectedBlock && (
                 <div className="flex items-center gap-2 px-1 text-xs animate-fade-in">
                     <button onClick={() => map.setSelectedBlock(null)} className="flex items-center gap-1 text-primary hover:text-primary/80 font-bold transition-colors">
-                        <span className="material-symbols-outlined text-sm">arrow_back</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm">arrow_back</span>
                         <span>🍒 {map.orchardName}</span>
                     </button>
                     <span className="text-text-muted">›</span>

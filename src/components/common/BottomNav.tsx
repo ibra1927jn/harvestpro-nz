@@ -27,7 +27,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ tabs, activeTab, onTabChange }) =
             aria-label="Main navigation"
         >
             {/* h-[60px] bar — buttons stretch full height → 60px touch target each */}
-            <div className="flex items-stretch justify-around h-[60px] px-1 max-w-5xl mx-auto">
+            {/* overflow-x-auto: con zoom 200% / letra grande la barra se desplaza en vez de ensanchar la página */}
+            <div className="flex items-stretch justify-around h-[60px] px-1 max-w-5xl mx-auto overflow-x-auto no-scrollbar">
                 {tabs.map((tab) => {
                     const isActive = activeTab === tab.id;
                     return (
@@ -35,7 +36,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ tabs, activeTab, onTabChange }) =
                             key={tab.id}
                             onClick={() => onTabChange(tab.id)}
                             aria-current={isActive ? 'page' : undefined}
-                            aria-label={tab.label}
+                            // El contador va en el nombre: un aria-label en un <span> sin rol se ignora
+                            aria-label={tab.badge !== undefined && tab.badge > 0 ? `${tab.label} (${tab.badge})` : tab.label}
                             className={`
                                 flex flex-col items-center justify-center gap-0.5
                                 min-w-[56px] flex-1 relative
@@ -62,7 +64,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ tabs, activeTab, onTabChange }) =
                                 {tab.badge !== undefined && tab.badge > 0 && (
                                     <span
                                         className="absolute -top-1 -right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"
-                                        aria-label={`${tab.badge} pending`}
+                                        aria-hidden="true"
                                     />
                                 )}
                             </div>

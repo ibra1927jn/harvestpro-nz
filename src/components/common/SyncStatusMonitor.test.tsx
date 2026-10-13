@@ -47,6 +47,7 @@ vi.mock('../../hooks/useNetworkStatus', () => ({
 }));
 
 import SyncStatusMonitor from './SyncStatusMonitor';
+import { subscribeAnnouncer, resetAnnouncerForTests } from '../../services/announcer';
 
 describe('SyncStatusMonitor', () => {
     beforeEach(() => {
@@ -102,5 +103,20 @@ describe('SyncStatusMonitor', () => {
         const { container } = render(<SyncStatusMonitor />);
         const icon = container.querySelector('.material-symbols-outlined');
         expect(icon?.textContent).toBe('wifi_off');
+    });
+
+    it('tells a screen reader user when the signal drops and comes back', () => {
+        resetAnnouncerForTests();
+        const heard: string[] = [];
+        const off = subscribeAnnouncer(m => heard.push(m));
+        const { rerender } = render(<SyncStatusMonitor />);
+        expect(heard).toEqual([]);
+        mocks.isOnline = false;
+        rerender(<SyncStatusMonitor />);
+        expect(heard[0]).toMatch(/^No signal\. Scans are saved on this phone/);
+        mocks.isOnline = true;
+        rerender(<SyncStatusMonitor />);
+        off();
+        expect(heard[1]).toMatch(/^Back online/);
     });
 });

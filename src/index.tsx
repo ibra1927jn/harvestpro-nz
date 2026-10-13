@@ -5,6 +5,7 @@ import { AppProvider } from './context';
 import { router } from './routes';
 import { MFAGuard } from './components/MFAGuard';
 import { I18nProvider } from './i18n';
+import LiveAnnouncer from './components/ui/LiveAnnouncer';
 import { addSentryBreadcrumb, installEarlyErrorCapture } from './config/sentry';
 import { analytics } from './config/analytics';
 import { runAfterInteractionOrIdle } from './utils/runAfterInteractionOrIdle';
@@ -101,6 +102,8 @@ if (container) {
           </React.Suspense>
         </MFAGuard>
       </AppProvider>
+      {/* Regiones aria-live persistentes para announce() */}
+      <LiveAnnouncer />
     </I18nProvider>
   );
 

@@ -5,7 +5,8 @@
  * and WCAG 2.1 AA dialog semantics (role, aria-modal, focus trap).
  * Set `static` prop to prevent click-outside closing (for ScannerModal).
  */
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 interface ModalOverlayProps {
     children: React.ReactNode;
@@ -27,28 +28,16 @@ const ModalOverlay: React.FC<ModalOverlayProps> = ({
 }) => {
     const dialogRef = useRef<HTMLDivElement>(null);
 
-    const handleEscape = useCallback((e: KeyboardEvent) => {
-        if (e.key === 'Escape' && !isStatic) {
-            onClose();
-        }
-    }, [onClose, isStatic]);
+    // Foco dentro, Tab atrapado, Escape cierra y el foco vuelve al botón que lo abrió
+    useDialogA11y(dialogRef, { onClose, closeOnEscape: !isStatic });
 
-    // Focus dialog and lock body scroll on mount (once only)
+    // Bloquear scroll del body mientras está abierto
     useEffect(() => {
         document.body.style.overflow = 'hidden';
-        dialogRef.current?.focus();
         return () => {
             document.body.style.overflow = '';
         };
     }, []);
-
-    // Escape key listener (re-attaches if handler changes)
-    useEffect(() => {
-        document.addEventListener('keydown', handleEscape);
-        return () => {
-            document.removeEventListener('keydown', handleEscape);
-        };
-    }, [handleEscape]);
 
     const handleBackdropClick = (e: React.MouseEvent) => {
         if (!isStatic && e.target === e.currentTarget) {

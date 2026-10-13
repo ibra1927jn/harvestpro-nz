@@ -27,7 +27,7 @@ export function UploadStep({ dragActive, onDragActiveChange, onDrop, onFileSelec
                 onDrop={onDrop}
                 onClick={() => fileInputRef.current?.click()}
             >
-                <span className="material-symbols-outlined text-5xl mx-auto text-text-muted mb-4">upload</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-5xl mx-auto text-text-muted mb-4">upload</span>
                 <p className="text-text-sub font-medium">
                     Drag & drop your CSV file here
                 </p>
@@ -49,7 +49,7 @@ export function UploadStep({ dragActive, onDragActiveChange, onDrop, onFileSelec
                 onClick={onDownloadTemplate}
                 className="flex items-center gap-2 text-primary hover:text-primary/80 text-sm font-medium"
             >
-                <span className="material-symbols-outlined text-base">download</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-base">download</span>
                 Download CSV Template
             </button>
 
@@ -79,19 +79,19 @@ export function PreviewStep({ parseResult }: { parseResult: ParseResult }) {
             {/* Summary Cards */}
             <div className="grid grid-cols-3 gap-3">
                 <SummaryCard
-                    icon={<span className="material-symbols-outlined text-xl text-success">check_circle</span>}
+                    icon={<span aria-hidden="true" className="material-symbols-outlined text-xl text-success">check_circle</span>}
                     label="Ready to import"
                     value={parseResult.valid.length}
                     color="green"
                 />
                 <SummaryCard
-                    icon={<span className="material-symbols-outlined text-xl text-warning">warning</span>}
+                    icon={<span aria-hidden="true" className="material-symbols-outlined text-xl text-warning">warning</span>}
                     label="Duplicates"
                     value={parseResult.duplicates.length}
                     color="yellow"
                 />
                 <SummaryCard
-                    icon={<span className="material-symbols-outlined text-xl text-danger">cancel</span>}
+                    icon={<span aria-hidden="true" className="material-symbols-outlined text-xl text-danger">cancel</span>}
                     label="Errors"
                     value={parseResult.errors.length}
                     color="red"
@@ -172,7 +172,7 @@ export function PreviewStep({ parseResult }: { parseResult: ParseResult }) {
 export function ImportingStep({ count }: { count: number }) {
     return (
         <div className="flex flex-col items-center justify-center py-16">
-            <span className="material-symbols-outlined text-5xl text-primary animate-spin mb-4">progress_activity</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-5xl text-primary animate-spin mb-4">progress_activity</span>
             <p className="text-text-sub font-medium">Importing {count} pickers...</p>
             <p className="text-sm text-text-muted mt-1">This may take a moment</p>
         </div>
@@ -184,9 +184,9 @@ export function DoneStep({ importResult }: { importResult: ImportResult }) {
         <div className="space-y-4">
             <div className="flex flex-col items-center py-8">
                 {importResult.created > 0 ? (
-                    <span className="material-symbols-outlined text-6xl text-success mb-4">check_circle</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-6xl text-success mb-4">check_circle</span>
                 ) : (
-                    <span className="material-symbols-outlined text-6xl text-danger mb-4">cancel</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-6xl text-danger mb-4">cancel</span>
                 )}
                 <h3 className="text-xl font-bold text-text-main">
                     {importResult.created > 0 ? 'Import Successful!' : 'Import Failed'}

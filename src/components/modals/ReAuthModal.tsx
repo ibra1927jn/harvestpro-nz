@@ -9,7 +9,8 @@
  * The modal is ineludible — it overlays the entire app until the user
  * successfully re-authenticates with their password.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { supabase } from '@/services/supabase';
 import { syncService } from '@/services/sync.service';
 import { logger } from '@/utils/logger';
@@ -22,6 +23,9 @@ interface ReAuthModalProps {
 }
 
 const ReAuthModal: React.FC<ReAuthModalProps> = ({ email, onReAuthenticated }) => {
+    // Sesión caducada: no se puede cerrar con Escape, pero el foco queda dentro
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useDialogA11y(dialogRef, { closeOnEscape: false });
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -57,7 +61,7 @@ const ReAuthModal: React.FC<ReAuthModalProps> = ({ email, onReAuthenticated }) =
     }, [email, password, onReAuthenticated]);
 
     return (
-        <div style={{
+        <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="reauth-title" style={{
             position: 'fixed',
             top: 0,
             left: 0,
@@ -78,7 +82,7 @@ const ReAuthModal: React.FC<ReAuthModalProps> = ({ email, onReAuthenticated }) =
                 boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
                 border: '1px solid var(--color-border, #333)',
             }}>
-                <h2 style={{ color: 'var(--color-text, #fff)', marginTop: 0, fontSize: '20px' }}>
+                <h2 id="reauth-title" style={{ color: 'var(--color-text, #fff)', marginTop: 0, fontSize: '20px' }}>
                     🔒 Sesión Expirada
                 </h2>
 

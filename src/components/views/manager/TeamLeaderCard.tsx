@@ -88,7 +88,7 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                     </div>
                     {/* Profile hint on hover */}
                     <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity shadow-sm">
-                        <span className="material-symbols-outlined text-[12px]">person</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-[12px]">person</span>
                     </div>
                 </div>
 
@@ -105,7 +105,7 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                             <>
                                 <span>•</span>
                                 <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded inline-flex items-center gap-1">
-                                    <span className="material-symbols-outlined text-[11px]">pin_drop</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined text-[11px]">pin_drop</span>
                                     {leaderRows.length === 1 ? `Row ${leaderRows[0]}` : `R${leaderRows.join(', R')}`}
                                 </span>
                             </>
@@ -130,7 +130,7 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                             }`}
                         title={confirmId === leader.id ? t('teams.confirm_q') : 'Unlink from orchard'}
                     >
-                        <span className="material-symbols-outlined text-lg">
+                        <span aria-hidden="true" className="material-symbols-outlined text-lg">
                             {unlinking === leader.id ? 'hourglass_top' : 'link_off'}
                         </span>
                         {confirmId === leader.id && <span>{t('teams.confirm_q')}</span>}
@@ -138,7 +138,7 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                 )}
 
                 {/* Chevron */}
-                <span className={`material-symbols-outlined text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                <span aria-hidden="true" className={`material-symbols-outlined text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
                     expand_more
                 </span>
             </div>
@@ -211,7 +211,7 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                                             }`}
                                         title={confirmId === member.id ? t('teams.confirm_q') : 'Unlink'}
                                     >
-                                        <span className="material-symbols-outlined text-sm">
+                                        <span aria-hidden="true" className="material-symbols-outlined text-sm">
                                             {unlinking === member.id ? 'hourglass_top' : 'link_off'}
                                         </span>
                                     </button>

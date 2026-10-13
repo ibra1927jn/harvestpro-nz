@@ -69,7 +69,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete }) => {
                     {/* Header con icono */}
                     <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-8 py-10 text-center">
                         <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
-                            <span className="material-symbols-outlined text-white text-5xl">agriculture</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-white text-5xl">agriculture</span>
                         </div>
                         <h1 className="text-2xl font-black text-white mb-1">Welcome to HarvestPro</h1>
                         <p className="text-emerald-100 text-sm font-medium">
@@ -105,7 +105,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete }) => {
                             onClick={handleStartSetup}
                             className="w-full py-3.5 gradient-primary glow-primary text-white rounded-xl font-bold text-sm shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                         >
-                            <span className="material-symbols-outlined text-lg">rocket_launch</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-lg">rocket_launch</span>
                             Start Setup
                         </button>
                         <button
@@ -141,7 +141,7 @@ function WelcomeStep({
     return (
         <div className="flex items-start gap-4">
             <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-                <span className="material-symbols-outlined text-emerald-600 text-lg">{icon}</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-emerald-600 text-lg">{icon}</span>
             </div>
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">

@@ -8,7 +8,8 @@
  * - Delete con confirmation (soft-delete + storage cleanup)
  * - Download via signed URL (5 min expiry)
  */
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import {
     hrDocumentsRepository,
     HR_DOCUMENT_TYPE_LABELS,
@@ -117,7 +118,7 @@ const DocumentsTab: React.FC = () => {
                         onClick={() => setUploadOpen(true)}
                         className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition-colors"
                     >
-                        <span className="material-symbols-outlined text-base align-middle mr-1">cloud_upload</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-base align-middle mr-1">cloud_upload</span>
                         Upload
                     </button>
                 </div>
@@ -129,7 +130,7 @@ const DocumentsTab: React.FC = () => {
 
             {!loading && docs.length === 0 && (
                 <div data-testid="hr-docs-empty" className="bg-slate-50 rounded-xl p-8 text-center border border-dashed border-slate-200">
-                    <span className="material-symbols-outlined text-5xl text-slate-300 mb-2 block">folder_open</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-5xl text-slate-300 mb-2 block">folder_open</span>
                     <p className="text-sm text-text-secondary">No hay documentos subidos todavía.</p>
                 </div>
             )}
@@ -146,7 +147,7 @@ const DocumentsTab: React.FC = () => {
                         return (
                             <div key={doc.id} data-testid={`hr-doc-${doc.id}`} className="bg-white rounded-xl p-4 shadow-sm border border-border-light flex items-center gap-3">
                                 <div className="size-10 rounded-lg bg-indigo-50 flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-indigo-600">description</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined text-indigo-600">description</span>
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <h4 className="font-bold text-text-primary text-sm truncate">
@@ -157,21 +158,21 @@ const DocumentsTab: React.FC = () => {
                                         {nameOf(doc)} · {HR_DOCUMENT_TYPE_LABELS[doc.document_type]} · {formatBytes(doc.file_size_bytes)}
                                     </p>
                                 </div>
-                                <button
+                                <button aria-label="Download"
                                     data-testid={`hr-doc-download-${doc.id}`}
                                     onClick={() => handleDownload(doc)}
                                     className="text-indigo-600 hover:text-indigo-800 p-1"
                                     title="Descargar"
                                 >
-                                    <span className="material-symbols-outlined">download</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined">download</span>
                                 </button>
-                                <button
+                                <button aria-label="Delete"
                                     data-testid={`hr-doc-delete-${doc.id}`}
                                     onClick={() => handleDelete(doc)}
                                     className="text-red-500 hover:text-red-700 p-1"
                                     title="Eliminar"
                                 >
-                                    <span className="material-symbols-outlined">delete</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined">delete</span>
                                 </button>
                             </div>
                         );
@@ -204,6 +205,8 @@ interface UploadModalProps {
 }
 
 const UploadModal: React.FC<UploadModalProps> = ({ orchardId, staff, onClose, onUploaded }) => {
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useDialogA11y(dialogRef, { onClose });
     const { appUser } = useAuth();
     const [personId, setPersonId] = useState('');
     const [file, setFile] = useState<File | null>(null);
@@ -243,9 +246,9 @@ const UploadModal: React.FC<UploadModalProps> = ({ orchardId, staff, onClose, on
     };
 
     return (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4">
-                <h3 className="font-bold text-lg">Subir documento</h3>
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="hr-upload-title" className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4">
+                <h3 id="hr-upload-title" className="font-bold text-lg">Subir documento</h3>
 
                 {err && <div role="alert" className="bg-red-50 border border-red-200 text-red-800 text-sm rounded px-3 py-2">{err}</div>}
 

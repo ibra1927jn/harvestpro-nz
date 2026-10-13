@@ -60,7 +60,7 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
         <div className="space-y-4 relative">
             {toast && (
                 <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] text-[13px] font-bold flex items-center gap-2 ${toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
-                    <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[18px]">check_circle</span>
                     {toast.message}
                 </div>
             )}
@@ -78,7 +78,7 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                     </div>
                 ) : pending.length === 0 ? (
                     <div className="text-center py-8 text-text-muted">
-                        <span className="material-symbols-outlined text-4xl mb-2 block">task_alt</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-4xl mb-2 block">task_alt</span>
                         <p className="font-medium">All timesheets approved</p>
                     </div>
                 ) : (
@@ -99,10 +99,10 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                                 </div>
                                 <div className="flex gap-2">
                                     <button onClick={() => handleApprove(t.id, t.picker_name)} className="flex-1 py-2.5 rounded-xl bg-emerald-50 text-emerald-600 text-[11px] uppercase tracking-widest font-bold hover:bg-emerald-500 hover:text-white transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm">
-                                        <span className="material-symbols-outlined text-[16px]">check</span>Approve
+                                        <span aria-hidden="true" className="material-symbols-outlined text-[16px]">check</span>Approve
                                     </button>
                                     <button onClick={() => handleReject(t.id, t.picker_name)} className="flex-1 py-2.5 rounded-xl bg-red-50 text-red-600 text-[11px] uppercase tracking-widest font-bold hover:bg-red-500 hover:text-white transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm">
-                                        <span className="material-symbols-outlined text-[16px]">close</span>Reject
+                                        <span aria-hidden="true" className="material-symbols-outlined text-[16px]">close</span>Reject
                                     </button>
                                 </div>
                             </div>
@@ -121,7 +121,7 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                                 <div className="flex items-center justify-between mb-2">
                                     <h4 className="font-bold text-slate-800 text-sm tracking-tight">{t.picker_name}</h4>
                                     <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-100/50 text-emerald-600 uppercase tracking-widest border border-emerald-100">
-                                        <span className="material-symbols-outlined text-[14px]">check</span> Verified
+                                        <span aria-hidden="true" className="material-symbols-outlined text-[14px]">check</span> Verified
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">

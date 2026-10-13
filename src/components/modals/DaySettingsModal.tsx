@@ -38,8 +38,8 @@ const DaySettingsModal: React.FC<DaySettingsModalProps> = ({ settings, onClose, 
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-border-light">
                 <h3 className="text-lg font-bold text-text-main">Day Settings</h3>
-                <button onClick={onClose} className="text-text-muted hover:text-text-main transition-colors">
-                    <span className="material-symbols-outlined">close</span>
+                <button aria-label="Close" onClick={onClose} className="text-text-muted hover:text-text-main transition-colors">
+                    <span aria-hidden="true" className="material-symbols-outlined">close</span>
                 </button>
             </div>
 

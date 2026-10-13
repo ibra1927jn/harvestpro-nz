@@ -9,12 +9,12 @@ import { clampToFloor, fillMinWarning } from './settingsLogic';
 export const LockedField: React.FC<{ label: string; value: string; tooltip: string }> = ({ label, value, tooltip }) => (
     <div className="flex items-center justify-between py-1">
         <span className="text-sm font-medium text-text-sub flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm text-amber-500">lock</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-sm text-amber-500">lock</span>
             {label}
         </span>
         <span title={tooltip} className="text-sm text-text-muted font-medium bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-help">
             {value}
-            <span className="material-symbols-outlined text-[13px] text-amber-400">info</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[13px] text-amber-400">info</span>
         </span>
     </div>
 );
@@ -47,7 +47,7 @@ export const ComplianceTargetField: React.FC<ComplianceTargetFieldProps> = ({ va
                 />
             </div>
             <p className={`text-[11px] font-medium flex items-center gap-1 ${isAtFloor ? 'text-amber-600' : 'text-emerald-600'}`}>
-                <span className="material-symbols-outlined text-sm">{isAtFloor ? 'warning' : 'check_circle'}</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-sm">{isAtFloor ? 'warning' : 'check_circle'}</span>
                 {/* Fórmula visible: ceil(minWage / pieceRate) */}
                 {fillMinWarning(t('settings.harvest.min_warning'), minWage, pieceRate, floor)}
                 {!isAtFloor && <span className="text-text-muted ml-1">(override: {value})</span>}
@@ -68,7 +68,7 @@ interface OrchardSelectorProps {
 export const OrchardSelector: React.FC<OrchardSelectorProps> = ({ orchards, selectedId, onSelect }) => (
     <div className="flex items-center justify-between py-1">
         <span className="text-sm font-medium text-text-sub flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm text-text-muted">location_on</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-sm text-text-muted">location_on</span>
             {/* OrchardSelector is rendered inside SettingsView which has translation context */}
             Orchard
         </span>

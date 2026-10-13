@@ -278,7 +278,7 @@ const Manager = () => {
           onClick={() => setShowBroadcast(true)}
           className="gradient-primary glow-primary text-white rounded-full h-14 px-6 flex items-center justify-center gap-2 transition-all active:scale-95 hover:scale-105 shadow-2xl dash-fab-pulse"
         >
-          <span className="material-symbols-outlined">campaign</span>
+          <span aria-hidden="true" className="material-symbols-outlined">campaign</span>
           <span className="font-bold tracking-wide">Broadcast</span>
         </button>
       </div>
@@ -332,7 +332,7 @@ const Manager = () => {
       />
 
       {/* Content — animate on tab switch */}
-      <main className="flex-1 overflow-y-auto">
+      <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto outline-none">
         <div key={activeTab} className="animate-scale-in">
           {renderContent()}
         </div>

@@ -64,7 +64,7 @@ export default function TimesheetRow({
             className={`font-mono ${!record.check_out ? 'text-red-500' : ''}`}
           >
             {!record.check_out && (
-              <span className="material-symbols-outlined text-sm inline mr-1 text-red-500">
+              <span aria-hidden="true" className="material-symbols-outlined text-sm inline mr-1 text-red-500">
                 warning
               </span>
             )}
@@ -99,7 +99,7 @@ export default function TimesheetRow({
           {hours !== null ? `${hours}h` : unclosed ? 'Not closed' : '—'}
         </span>
         {abnormal && (
-          <span className="material-symbols-outlined text-sm inline ml-1 text-red-500">
+          <span aria-hidden="true" className="material-symbols-outlined text-sm inline ml-1 text-red-500">
             warning
           </span>
         )}
@@ -109,7 +109,7 @@ export default function TimesheetRow({
       <td className="px-4 py-3">
         {record.corrected_at ? (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
-            <span className="material-symbols-outlined text-xs">edit</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-xs">edit</span>
             Corrected
           </span>
         ) : (
@@ -135,7 +135,7 @@ export default function TimesheetRow({
                 aria-label="Cancel edit"
                 disabled={saving}
               >
-                <span className="material-symbols-outlined text-base">close</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-base">close</span>
               </button>
               <button
                 onClick={() => onSave(record)}
@@ -144,11 +144,11 @@ export default function TimesheetRow({
                 aria-label="Save correction"
               >
                 {saving ? (
-                  <span className="material-symbols-outlined text-base animate-spin">
+                  <span aria-hidden="true" className="material-symbols-outlined text-base animate-spin">
                     progress_activity
                   </span>
                 ) : (
-                  <span className="material-symbols-outlined text-base">save</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-base">save</span>
                 )}
               </button>
             </div>
@@ -159,7 +159,7 @@ export default function TimesheetRow({
             className="p-2 text-text-muted hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
             aria-label={`Edit ${record.picker?.name}'s timesheet`}
           >
-            <span className="material-symbols-outlined text-base">edit</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-base">edit</span>
           </button>
         )}
       </td>

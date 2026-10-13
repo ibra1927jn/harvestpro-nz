@@ -36,8 +36,15 @@ export const test = base.extend<{ functionsShim: void }>({
             await route.abort('connectionfailed').catch(() => undefined);
             return;
           }
+          // CORS: el allowlist de las funciones solo tiene localhost:3000; con
+          // MOBILE_PORT distinto se refleja el origen de la página
+          const headers = { ...res.headers() };
+          const origin = req.headers()['origin'];
+          if (origin && headers['access-control-allow-origin'] !== origin) {
+            headers['access-control-allow-origin'] = origin;
+          }
           // La página puede haberse quedado sin red o cerrado mientras tanto
-          await route.fulfill({ response: res }).catch(() => undefined);
+          await route.fulfill({ response: res, headers }).catch(() => undefined);
         });
       }
       await use();

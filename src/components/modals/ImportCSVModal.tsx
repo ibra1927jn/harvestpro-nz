@@ -129,7 +129,7 @@ export default function ImportCSVModal({
             <div className="flex items-center justify-between px-6 py-4 border-b border-border-light">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                        <span className="material-symbols-outlined text-xl text-primary">group</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-xl text-primary">group</span>
                     </div>
                     <div>
                         <h2 className="text-lg font-bold text-text-main">Import Pickers</h2>
@@ -139,7 +139,7 @@ export default function ImportCSVModal({
                     </div>
                 </div>
                 <button onClick={handleClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors" aria-label="Close import modal">
-                    <span className="material-symbols-outlined text-xl text-text-muted">close</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-xl text-text-muted">close</span>
                 </button>
             </div>
 
@@ -173,7 +173,7 @@ export default function ImportCSVModal({
                         onClick={handleImport}
                         className="px-6 py-2.5 gradient-primary glow-primary text-white rounded-xl font-medium text-sm transition-all flex items-center gap-2 active:scale-95"
                     >
-                        <span className="material-symbols-outlined text-base">description</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">description</span>
                         Import {parseResult.valid.length} Pickers
                     </button>
                 )}

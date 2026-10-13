@@ -78,7 +78,7 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
                         onClick={onAddPicker}
                         className="px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold flex items-center gap-2 hover:bg-indigo-700"
                     >
-                        <span className="material-symbols-outlined text-base">person_add</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">person_add</span>
                         Add picker
                     </button>
                 </div>
@@ -129,19 +129,19 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
                                             onSave={(val) => update(emp, { status: val as Employee['status'] })}
                                         />
                                         <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/50 border border-slate-100 ${VISA_COLORS[emp.visa_status] || 'text-slate-500'}`}>
-                                            <span className="material-symbols-outlined text-[14px]">public</span>
+                                            <span aria-hidden="true" className="material-symbols-outlined text-[14px]">public</span>
                                             {visaLabel(emp)}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100/60">
                                         <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-                                            <span className="material-symbols-outlined text-[14px]">event</span>
+                                            <span aria-hidden="true" className="material-symbols-outlined text-[14px]">event</span>
                                             Hired {new Date(emp.hire_date).toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', month: 'short', day: 'numeric', year: 'numeric' })}
                                         </div>
                                     </div>
                                 </div>
-                                <button className="size-8 rounded-full border border-slate-200 bg-white/50 text-slate-400 flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100 transition-all opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0">
-                                    <span className="material-symbols-outlined text-lg">chevron_right</span>
+                                <button aria-hidden="true" tabIndex={-1} className="size-8 rounded-full border border-slate-200 bg-white/50 text-slate-400 flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100 transition-all opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0">
+                                    <span aria-hidden="true" className="material-symbols-outlined text-lg">chevron_right</span>
                                 </button>
                             </div>
                         </div>
@@ -173,7 +173,7 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
                                 alert.severity === 'high' ? 'bg-amber-50 text-amber-600' :
                                 'bg-slate-50 text-slate-600'
                             }`}>
-                                <span className="material-symbols-outlined text-[20px]">
+                                <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
                                     {alert.severity === 'critical' ? 'error' : 'warning'}
                                 </span>
                             </div>

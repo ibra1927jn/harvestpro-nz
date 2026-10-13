@@ -43,24 +43,25 @@ export const TrustBadges: React.FC = () => {
     const alertCount = useHarvestStore(s => s.alerts?.length ?? 0);
 
     return (
-        <div className="flex gap-2 mb-4 overflow-x-auto md:flex-wrap no-scrollbar pb-1">
+        // Fila con scroll horizontal: enfocable para poder desplazarla con teclado
+        <div role="region" aria-label="System status" tabIndex={0} className="flex gap-2 mb-4 overflow-x-auto md:flex-wrap no-scrollbar pb-1">
             <Badge
-                icon={<span className="material-symbols-outlined text-sm">shield</span>}
+                icon={<span aria-hidden="true" className="material-symbols-outlined text-sm">shield</span>}
                 label={t('dashboard.trust.rls')}
                 variant="success"
             />
             <Badge
-                icon={<span className="material-symbols-outlined text-sm">database</span>}
+                icon={<span aria-hidden="true" className="material-symbols-outlined text-sm">database</span>}
                 label={t('dashboard.trust.records').replace('{n}', String(recordCount > 0 ? recordCount.toLocaleString() : crewCount))}
                 variant="info"
             />
             <Badge
-                icon={<span className="material-symbols-outlined text-sm">check_circle</span>}
+                icon={<span aria-hidden="true" className="material-symbols-outlined text-sm">check_circle</span>}
                 label={alertCount > 0 ? t('dashboard.trust.alerts').replace('{n}', String(alertCount)) : t('dashboard.trust.compliant')}
                 variant={alertCount > 0 ? 'warning' : 'success'}
             />
             <Badge
-                icon={<span className="material-symbols-outlined text-sm">schedule</span>}
+                icon={<span aria-hidden="true" className="material-symbols-outlined text-sm">schedule</span>}
                 label={t('dashboard.trust.live')}
                 variant="neutral"
             />

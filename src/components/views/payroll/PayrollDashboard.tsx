@@ -11,7 +11,7 @@ import { PayWeekDetail } from './PayWeekDetail';
 export const SummaryCard: React.FC<{ icon: string; iconColor: string; label: string; value: string; highlight?: boolean }> = ({ icon, iconColor, label, value, highlight }) => (
     <div className={`rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border ${highlight ? 'bg-orange-50/90 border-orange-200 backdrop-blur-md' : 'bg-white/80 border-white/60 backdrop-blur-xl'}`}>
         <div className="flex items-center gap-3 mb-2">
-            <span className={`material-symbols-outlined text-[20px] ${iconColor}`}>{icon}</span>
+            <span aria-hidden="true" className={`material-symbols-outlined text-[20px] ${iconColor}`}>{icon}</span>
             <span className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">{label}</span>
         </div>
         <p className={`text-3xl font-black tracking-tight ${highlight ? 'text-orange-600' : 'text-slate-800'}`}>{value}</p>
@@ -37,7 +37,7 @@ export const PayrollDashboard: React.FC<{ pickers: PickerBreakdown[]; settings: 
 
             {pickers.length === 0 ? (
                 <div className="text-center py-10 text-slate-400 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                    <span className="material-symbols-outlined text-5xl mb-3 block opacity-50">payments</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-5xl mb-3 block opacity-50">payments</span>
                     <p className="font-bold text-slate-500">No payroll data yet</p>
                     <p className="text-[11px] uppercase tracking-widest mt-1">Data will appear when scans are submitted</p>
                 </div>
@@ -92,11 +92,11 @@ export const PayrollDashboard: React.FC<{ pickers: PickerBreakdown[]; settings: 
                                 <td className="py-3 px-4 text-center">
                                     {p.is_below_minimum ? (
                                         <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-100 uppercase tracking-widest">
-                                            <span className="material-symbols-outlined text-[14px]">shield</span> Shield
+                                            <span aria-hidden="true" className="material-symbols-outlined text-[14px]">shield</span> Shield
                                         </span>
                                     ) : (
                                         <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-widest">
-                                            <span className="material-symbols-outlined text-[14px]">check</span> OK
+                                            <span aria-hidden="true" className="material-symbols-outlined text-[14px]">check</span> OK
                                         </span>
                                     )}
                                 </td>

@@ -30,7 +30,7 @@ const PickerDrawerToday: React.FC<PickerDrawerTodayProps> = ({
     if (today.empty) {
         return (
             <div className="flex flex-col items-center justify-center py-10 space-y-2">
-                <span className="material-symbols-outlined text-5xl text-slate-300">hourglass_empty</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-5xl text-slate-300">hourglass_empty</span>
                 <p className="text-sm text-text-muted">{t('panel.no_data')}</p>
             </div>
         );
@@ -88,7 +88,7 @@ const PickerDrawerToday: React.FC<PickerDrawerTodayProps> = ({
             ) : today.bins > 0 ? (
                 /* Bins escaneados pero aún no se registró check_in */
                 <div className="bg-slate-50 rounded-xl border border-slate-100 p-3 shadow-sm text-center">
-                    <span className="material-symbols-outlined text-slate-400 text-2xl block mb-1">schedule</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-slate-400 text-2xl block mb-1">schedule</span>
                     <p className="text-xs font-bold text-slate-500">{t('panel.picker.not_started')}</p>
                     <p className="text-[10px] text-slate-400 mt-0.5">{t('panel.picker.not_started_desc')}</p>
                 </div>
@@ -130,11 +130,11 @@ const PickerDrawerToday: React.FC<PickerDrawerTodayProps> = ({
             {/* Acciones de picker */}
             <div className="flex gap-2">
                 <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white/80 border border-slate-100 text-xs font-bold text-indigo-700 hover:bg-indigo-50 transition-colors shadow-sm">
-                    <span className="material-symbols-outlined text-sm">chat</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm">chat</span>
                     {t('panel.picker.message_tl')}
                 </button>
                 <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white/80 border border-slate-100 text-xs font-bold text-amber-700 hover:bg-amber-50 transition-colors shadow-sm">
-                    <span className="material-symbols-outlined text-sm">flag</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm">flag</span>
                     {t('panel.picker.flag_qc')}
                 </button>
             </div>

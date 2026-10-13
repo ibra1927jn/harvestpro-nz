@@ -89,7 +89,7 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
             {toast && (
                 <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2
                     ${toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
-                    <span className="material-symbols-outlined text-sm">
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm">
                         {toast.type === 'success' ? 'check_circle' : 'warning'}
                     </span>
                     {toast.message}
@@ -159,7 +159,7 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
                             <p className="text-xs text-slate-500 italic mb-3 relative z-10 bg-slate-50/50 p-2 rounded-lg border border-slate-100">{req.notes}</p>
                         )}
                         <div className="flex items-center gap-2 text-[10px] text-slate-400 mb-4 relative z-10 font-medium">
-                            <span className="material-symbols-outlined text-[14px]">schedule</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-[14px]">schedule</span>
                             {new Date(req.created_at).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })} — {new Date(req.created_at).toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland' })}
                         </div>
 
@@ -204,7 +204,7 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
                                                 onClick={() => setAssigningId(req.id)}
                                                 className="flex-1 py-2 rounded-xl bg-indigo-50/80 text-indigo-700 text-sm font-bold border border-indigo-100 shadow-sm hover:bg-indigo-100 transition-all flex items-center justify-center gap-1.5 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 group-hover:shadow-md group-hover:shadow-indigo-600/20"
                                             >
-                                                <span className="material-symbols-outlined text-[16px]">agriculture</span>
+                                                <span aria-hidden="true" className="material-symbols-outlined text-[16px]">agriculture</span>
                                                 Assign Vehicle
                                             </button>
                                             <button
@@ -213,7 +213,7 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
                                                                                                 aria-label="Cancel request"
                                                                                                 title="Cancel Request"
                                             >
-                                                <span className="material-symbols-outlined text-[16px]">close</span>
+                                                <span aria-hidden="true" className="material-symbols-outlined text-[16px]">close</span>
                                             </button>
                                         </div>
                                     )}
@@ -226,7 +226,7 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
                                         onClick={() => handleComplete(req.id, req.updated_at)}
                                         className="flex-1 py-2 rounded-xl bg-emerald-500 text-white text-sm font-bold shadow-md shadow-emerald-500/20 hover:bg-emerald-600 hover:shadow-emerald-500/40 transition-all flex items-center justify-center gap-1.5"
                                     >
-                                        <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-[16px]">check_circle</span>
                                         Mark Completed
                                     </button>
                                     <button
@@ -235,7 +235,7 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
                                                                                 aria-label="Cancel request"
                                                                                 title="Cancel Request"
                                     >
-                                        <span className="material-symbols-outlined text-[16px]">close</span>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-[16px]">close</span>
                                     </button>
                                 </div>
                             )}

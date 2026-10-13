@@ -151,13 +151,13 @@ const Dropdown: React.FC<DropdownProps> = ({
                     {selected ? (
                         <span className="flex items-center gap-2">
                             {selected.icon && (
-                                <span className="material-symbols-outlined text-base">{selected.icon}</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-base">{selected.icon}</span>
                             )}
                             {selected.label}
                         </span>
                     ) : placeholder}
                 </span>
-                <span
+                <span aria-hidden="true"
                     className={`material-symbols-outlined text-base text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
                 >
                     expand_more
@@ -216,11 +216,11 @@ const Dropdown: React.FC<DropdownProps> = ({
                                 disabled={opt.disabled}
                             >
                                 {opt.icon && (
-                                    <span className="material-symbols-outlined text-base">{opt.icon}</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined text-base">{opt.icon}</span>
                                 )}
                                 {opt.label}
                                 {opt.value === value && (
-                                    <span className="material-symbols-outlined text-base ml-auto text-indigo-500">check</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined text-base ml-auto text-indigo-500">check</span>
                                 )}
                             </button>
                         ))
@@ -230,7 +230,7 @@ const Dropdown: React.FC<DropdownProps> = ({
 
             {error && (
                 <p className="text-xs text-red-500 mt-0.5 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">error</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-xs">error</span>
                     {error}
                 </p>
             )}

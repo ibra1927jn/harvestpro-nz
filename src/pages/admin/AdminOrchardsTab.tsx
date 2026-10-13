@@ -20,7 +20,7 @@ const AdminOrchardsTab: React.FC<AdminOrchardsTabProps> = ({ orchards, onNewOrch
                     onClick={onNewOrchard}
                     className="flex items-center gap-1 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-emerald-700 transition-colors"
                 >
-                    <span className="material-symbols-outlined text-sm">add</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm">add</span>
                     New Orchard
                 </button>
             </div>

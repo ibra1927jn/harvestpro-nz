@@ -39,7 +39,7 @@ const MoreMenuView: React.FC<MoreMenuViewProps> = ({ onNavigate }) => {
                         className="glass-card glass-card-hover p-4 flex flex-col items-start gap-3 text-left transition-all active:scale-[0.97] active:ring-2 active:ring-primary/30 group"
                     >
                         <div className={`${item.color} text-white p-2.5 rounded-xl shadow-lg group-hover:scale-110 transition-transform`}>
-                            <span className="material-symbols-outlined text-xl">{item.icon}</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-xl">{item.icon}</span>
                         </div>
                         <div>
                             <h3 className="font-bold text-text-main text-sm">{item.label}</h3>

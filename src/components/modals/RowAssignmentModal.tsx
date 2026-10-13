@@ -58,11 +58,11 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, onAssi
       <div className="p-6 max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-black text-text-main">Assign Row</h3>
-          <button
+          <button aria-label="Close"
             onClick={onClose}
             className="text-text-muted hover:text-text-main transition-colors"
           >
-            <span className="material-symbols-outlined">close</span>
+            <span aria-hidden="true" className="material-symbols-outlined">close</span>
           </button>
         </div>
         <div className="grid grid-cols-2 gap-4 mb-6">
@@ -96,7 +96,7 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, onAssi
         </p>
         {activePickers.length === 0 ? (
           <div className="bg-slate-50 rounded-xl p-6 text-center border border-border-light mb-6">
-            <span className="material-symbols-outlined text-text-muted text-4xl mb-2">
+            <span aria-hidden="true" className="material-symbols-outlined text-text-muted text-4xl mb-2">
               group_off
             </span>
             <p className="text-sm text-text-muted">No active pickers available</p>

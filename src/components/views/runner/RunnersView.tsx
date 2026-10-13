@@ -20,11 +20,11 @@ const RunnersView: React.FC<RunnersViewProps> = ({ onBack }) => {
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500/10 blur-3xl pointer-events-none"></div>
 
             <header className="pt-10 pb-6 px-6 flex items-center justify-between z-20 bg-white/70 backdrop-blur-xl sticky top-0 border-b border-white/50 shadow-[0_4px_30px_-5px_rgba(0,0,0,0.05)]">
-                <button
+                <button aria-label="Back"
                     onClick={onBack}
                     className="size-11 flex items-center justify-center rounded-2xl bg-white/80 border border-white/60 shadow-sm text-slate-600 active:scale-95 transition-all hover:bg-white hover:text-primary hover:shadow-md"
                 >
-                    <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[20px]">arrow_back</span>
                 </button>
                 <div className="text-center">
                     <h1 className="text-xl font-black bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent uppercase tracking-tight">
@@ -64,7 +64,7 @@ const RunnersView: React.FC<RunnersViewProps> = ({ onBack }) => {
                                     <h3 className="font-extrabold text-slate-800 text-lg leading-tight tracking-tight">{picker.name}</h3>
                                     <div className="flex items-center gap-1.5 mt-1.5">
                                         <div className="flex items-center justify-center size-5 rounded-full bg-primary/10">
-                                            <span className="material-symbols-outlined text-[12px] text-primary filled">location_on</span>
+                                            <span aria-hidden="true" className="material-symbols-outlined text-[12px] text-primary filled">location_on</span>
                                         </div>
                                         <span className="text-xs font-semibold text-slate-500 tracking-wide">Row {picker.current_row || '?'}</span>
                                     </div>
@@ -84,7 +84,7 @@ const RunnersView: React.FC<RunnersViewProps> = ({ onBack }) => {
                                 </div>
                             </div>
                             <div className="size-10 rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-primary">
-                                <span className="material-symbols-outlined text-[20px]">shopping_basket</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-[20px]">shopping_basket</span>
                             </div>
                         </div>
                     </div>

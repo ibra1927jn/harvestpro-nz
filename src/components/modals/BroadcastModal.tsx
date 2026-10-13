@@ -36,15 +36,15 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose, onSend }) => {
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                         <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-primary text-2xl">campaign</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-primary text-2xl">campaign</span>
                         </div>
                         <div>
                             <h3 className="text-xl font-black text-text-main">New Broadcast</h3>
                             <p className="text-xs text-text-muted">Send to all field staff</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-text-muted hover:text-text-main transition-colors">
-                        <span className="material-symbols-outlined">close</span>
+                    <button aria-label="Close" onClick={onClose} className="text-text-muted hover:text-text-main transition-colors">
+                        <span aria-hidden="true" className="material-symbols-outlined">close</span>
                     </button>
                 </div>
 

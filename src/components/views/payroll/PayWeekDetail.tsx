@@ -3,7 +3,8 @@
  * qué hora, descanso, horas pagables, cubetas por variedad y lo que cobra.
  * Sale del mismo cálculo que la nómina (calculate-payroll → days).
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { createPortal } from 'react-dom';
 import type { PickerBreakdown } from '@/services/payroll.service';
 import { loadOrchardNames } from '@/repositories/pay-rates.repository';
@@ -21,10 +22,12 @@ export const PayWeekDetail: React.FC<{ picker: PickerBreakdown; onClose: () => v
         loadOrchardNames().then(setOrchards).catch(() => setOrchards({}));
     }, []);
     const days = picker.days ?? [];
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useDialogA11y(dialogRef, { onClose });
 
     // Portal al body: dentro del layout un contenedor con transform descolocaba el fixed
     return createPortal(
-        <div role="dialog" aria-modal="true" aria-label={`Week detail ${picker.picker_name}`} className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
+        <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={`Week detail ${picker.picker_name}`} className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
             <div className="bg-white w-full sm:max-w-3xl max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl p-5 shadow-xl" onClick={e => e.stopPropagation()}>
                 <div className="flex items-start justify-between gap-3 mb-4">
                     <div>
@@ -34,7 +37,7 @@ export const PayWeekDetail: React.FC<{ picker: PickerBreakdown; onClose: () => v
                         </p>
                     </div>
                     <button type="button" onClick={onClose} aria-label="Close" className="p-2 rounded-xl hover:bg-slate-100">
-                        <span className="material-symbols-outlined">close</span>
+                        <span aria-hidden="true" className="material-symbols-outlined">close</span>
                     </button>
                 </div>
 

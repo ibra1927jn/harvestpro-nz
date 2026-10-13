@@ -61,7 +61,7 @@ export function MFASetup({ onComplete, onCancel, requireSetup = false }: MFASetu
     <div className="mfa-setup max-w-lg mx-auto p-6 bg-white rounded-lg shadow-lg">
       {/* Header */}
       <div className="mb-6 text-center">
-        <span className="material-symbols-outlined text-5xl mx-auto mb-3 text-blue-600">
+        <span aria-hidden="true" className="material-symbols-outlined text-5xl mx-auto mb-3 text-blue-600">
           shield
         </span>
         <h2 className="text-2xl font-bold">Set Up Two-Factor Authentication</h2>
@@ -81,14 +81,14 @@ export function MFASetup({ onComplete, onCancel, requireSetup = false }: MFASetu
           >
             {isLoading ? (
               <>
-                <span className="material-symbols-outlined text-xl animate-spin">
+                <span aria-hidden="true" className="material-symbols-outlined text-xl animate-spin">
                   progress_activity
                 </span>
                 Generating...
               </>
             ) : (
               <>
-                <span className="material-symbols-outlined text-xl">shield</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-xl">shield</span>
                 Generate QR Code
               </>
             )}
@@ -122,17 +122,17 @@ export function MFASetup({ onComplete, onCancel, requireSetup = false }: MFASetu
                   <code className="flex-1 p-2 bg-white border rounded text-xs break-all">
                     {secret}
                   </code>
-                  <button
+                  <button aria-label="Copy secret"
                     onClick={handleCopySecret}
                     className="p-2 bg-surface-secondary hover:bg-surface-tertiary rounded"
                     title="Copy secret"
                   >
                     {copied ? (
-                      <span className="material-symbols-outlined text-base text-green-600">
+                      <span aria-hidden="true" className="material-symbols-outlined text-base text-green-600">
                         check
                       </span>
                     ) : (
-                      <span className="material-symbols-outlined text-base">content_copy</span>
+                      <span aria-hidden="true" className="material-symbols-outlined text-base">content_copy</span>
                     )}
                   </button>
                 </div>

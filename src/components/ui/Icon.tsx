@@ -15,7 +15,7 @@ interface IconProps {
 }
 
 const Icon: React.FC<IconProps> = ({ name, size, className = '' }) => (
-    <span
+    <span aria-hidden="true"
         className={`material-symbols-outlined ${className}`}
         style={size ? { fontSize: `${size}px` } : undefined}
     >

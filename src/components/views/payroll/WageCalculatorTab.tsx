@@ -43,7 +43,7 @@ export const WageCalculatorTab: React.FC<{ settings: { bucket_rate: number; min_
                     {topUp > 0 && (
                         <div className="flex justify-between py-1.5 text-amber-500 bg-amber-50/50 -mx-3 px-3 rounded-lg">
                             <span className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5">
-                                <span className="material-symbols-outlined text-[16px]">shield</span>Wage Shield Top-Up
+                                <span aria-hidden="true" className="material-symbols-outlined text-[16px]">shield</span>Wage Shield Top-Up
                             </span>
                             <span className="text-sm font-bold">+${topUp.toFixed(2)}</span>
                         </div>

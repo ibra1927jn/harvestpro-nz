@@ -39,10 +39,10 @@ export const RejectedScansAlert: React.FC<{ orchardId: string; days?: number }> 
         <div role="alert" data-testid="rejected-scans-alert" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
             <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between gap-3 text-left">
                 <span className="text-sm font-bold flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[20px]">report</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[20px]">report</span>
                     {parts.join(' · ')} — last {days} days
                 </span>
-                <span className="material-symbols-outlined text-[18px]">{open ? 'expand_less' : 'expand_more'}</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-[18px]">{open ? 'expand_less' : 'expand_more'}</span>
             </button>
             {open && (
                 <ul className="mt-2 text-sm list-disc pl-5 space-y-0.5">

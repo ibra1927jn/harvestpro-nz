@@ -197,7 +197,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
           </p>
           <div className="flex items-center gap-3 mt-1.5">
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">
-              <span className="material-symbols-outlined text-sm">schedule</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-sm">schedule</span>
               {nzTimeStr}
             </span>
             {remainingHours > 0 && (
@@ -208,13 +208,13 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                     : 'text-emerald-700 bg-emerald-50'
                 }`}
               >
-                <span className="material-symbols-outlined text-sm">hourglass_top</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-sm">hourglass_top</span>
                 {remainingHours.toFixed(1)}h {t('dashboard.remaining')}
               </span>
             )}
             {remainingHours <= 0 && (
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded-full">
-                <span className="material-symbols-outlined text-sm">timer_off</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-sm">timer_off</span>
                 {t('dashboard.overtime')}
               </span>
             )}
@@ -225,14 +225,14 @@ const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={handleExport}
             className="bg-white border border-primary/30 text-primary px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-primary/5 hover:border-primary/50 transition-all flex items-center gap-2 shadow-sm"
           >
-            <span className="material-symbols-outlined text-lg">download</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-lg">download</span>
             {t('dashboard.export')}
           </button>
           <button
             onClick={() => setActiveTab('map')}
             className="gradient-primary glow-primary text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg hover:scale-105 transition-all flex items-center gap-2"
           >
-            <span className="material-symbols-outlined text-lg">map</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-lg">map</span>
             {t('dashboard.live_map')}
           </button>
         </div>

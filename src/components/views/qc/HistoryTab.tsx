@@ -2,7 +2,8 @@
  * HistoryTab — QC Inspection History
  * Extracted from QualityControl.tsx monolith
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import EmptyState from '@/components/ui/EmptyState';
 import FilterBar from '@/components/ui/FilterBar';
 import VirtualList from '@/components/ui/VirtualList';
@@ -25,6 +26,8 @@ export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+    const lightboxRef = useRef<HTMLDivElement>(null);
+    useDialogA11y(lightboxRef, { onClose: () => setLightboxUrl(null), enabled: !!lightboxUrl });
 
     const gradeOptions = useMemo(() =>
         [...new Set(inspections.map(i => i.grade))].sort(),
@@ -120,7 +123,9 @@ export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
                     className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
                     onClick={() => setLightboxUrl(null)}
                     role="dialog"
+                    aria-modal="true"
                     aria-label="Photo preview"
+                    ref={lightboxRef}
                 >
                     <div className="relative max-w-2xl max-h-[80vh]">
                         <img
@@ -134,7 +139,7 @@ export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
                             className="absolute top-2 right-2 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
                             aria-label="Close photo preview"
                         >
-                            <span className="material-symbols-outlined text-text-sub">close</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-text-sub">close</span>
                         </button>
                     </div>
                 </div>

@@ -132,7 +132,7 @@ const WageShieldPanel: React.FC<WageShieldPanelProps> = ({
                 <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-2">
                         <div className={`p-2 rounded-lg ${hasCritical ? 'bg-rose-100' : 'bg-emerald-100'}`}>
-                            <span className={`material-symbols-outlined text-xl ${hasCritical ? 'text-rose-600' : 'text-emerald-600'}`}>
+                            <span aria-hidden="true" className={`material-symbols-outlined text-xl ${hasCritical ? 'text-rose-600' : 'text-emerald-600'}`}>
                                 {hasCritical ? 'shield' : 'verified_user'}
                             </span>
                         </div>
@@ -168,7 +168,7 @@ const WageShieldPanel: React.FC<WageShieldPanelProps> = ({
                 {/* 7-Day Bleed Trend */}
                 <div className="section-enter stagger-1">
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-sm">trending_down</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm">trending_down</span>
                         {t('dashboard.wage.trend_title')}
                     </h4>
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -186,7 +186,7 @@ const WageShieldPanel: React.FC<WageShieldPanelProps> = ({
                 {teamBleed.length > 0 && (
                     <div className="section-enter stagger-2">
                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-sm">groups</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-sm">groups</span>
                             {t('dashboard.wage.bleed_by_team')}
                         </h4>
                         <div className="space-y-3">
@@ -211,13 +211,13 @@ const WageShieldPanel: React.FC<WageShieldPanelProps> = ({
                 {/* Critical Pickers */}
                 <div className="section-enter stagger-3">
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-sm">attach_money</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm">attach_money</span>
                         {hasCritical ? t('dashboard.wage.critical') : t('dashboard.wage.all_safe')}
                     </h4>
 
                     {!hasCritical ? (
                         <div className="p-6 text-center bg-emerald-50 rounded-xl border border-emerald-100">
-                            <span className="material-symbols-outlined text-4xl text-emerald-500 mb-2">check_circle</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-4xl text-emerald-500 mb-2">check_circle</span>
                             <p className="text-sm font-bold text-emerald-700">
                                 {t('dashboard.wage.all_safe_msg').replace('{n}', String(counts.safe))}
                             </p>
@@ -245,7 +245,7 @@ const WageShieldPanel: React.FC<WageShieldPanelProps> = ({
                                                 {result.picker.name}
                                             </p>
                                             <p className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
-                                                <span className="material-symbols-outlined text-xs">supervisor_account</span>
+                                                <span aria-hidden="true" className="material-symbols-outlined text-xs">supervisor_account</span>
                                                 {result.teamLeaderName}
                                             </p>
                                         </div>
@@ -255,7 +255,7 @@ const WageShieldPanel: React.FC<WageShieldPanelProps> = ({
                                             <p className="text-sm font-bold text-rose-600 tabular-nums">-${result.deficit.toFixed(2)}</p>
                                             <p className="text-[10px] text-slate-400 font-bold uppercase">{result.pace} b/hr</p>
                                         </div>
-                                        <span className="material-symbols-outlined text-slate-300 group-hover:text-rose-500 text-lg">
+                                        <span aria-hidden="true" className="material-symbols-outlined text-slate-300 group-hover:text-rose-500 text-lg">
                                             chevron_right
                                         </span>
                                     </div>

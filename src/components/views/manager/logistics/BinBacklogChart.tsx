@@ -25,7 +25,7 @@ const BinBacklogChart: React.FC<BinBacklogChartProps> = ({ series }) => {
         <p className="text-sm font-bold text-slate-700 mb-0.5">{t('logistics.backlog.title')}</p>
         <p className="text-xs text-slate-400 mb-4">{t('logistics.backlog.subtitle')}</p>
         <div className="h-[120px] flex flex-col items-center justify-center gap-2">
-          <span className="material-symbols-outlined text-3xl text-slate-300">inventory_2</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-3xl text-slate-300">inventory_2</span>
           <p className="text-xs text-slate-400">{t('logistics.backlog.empty')}</p>
         </div>
       </div>
