@@ -116,11 +116,13 @@ const mockGetHoursSummary = vi.fn().mockResolvedValue([
     picker_id: 'u1',
     check_in: '2026-03-10T06:00:00Z',
     check_out: '2026-03-10T14:00:00Z',
+    break_start: '2026-03-10T10:00:00Z', // descanso anotado por el team leader
   },
   {
     picker_id: 'u2',
     check_in: '2026-03-10T07:00:00Z',
     check_out: '2026-03-10T13:00:00Z',
+    break_start: '2026-03-10T10:00:00Z',
   },
 ]);
 

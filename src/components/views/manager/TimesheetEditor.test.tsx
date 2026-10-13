@@ -213,8 +213,22 @@ describe('TimesheetEditor', () => {
         ]);
         render(<TimesheetEditor orchardId="o1" />);
         await waitFor(() => screen.getByText('Alice Smith'));
-        expect(screen.getByText('7.5h')).toBeTruthy(); // 07:00–15:00 = 8 h − 30 min
+        expect(screen.getByText('8h')).toBeTruthy(); // 07:00–15:00, sin descanso anotado: no se descuenta
         expect(screen.getByText('Not closed')).toBeTruthy();
+    });
+
+    it('warns about meal breaks not recorded on shifts over 4 h (they are not deducted)', async () => {
+        mockGetAttendanceByDate.mockResolvedValueOnce([
+            { ...mockRecords[0] },
+            { ...mockRecords[0], id: 'with-break', picker: { name: 'Bea', picker_id: 'PK-7' }, break_start: '2026-03-10T11:00:00+13:00' },
+            { id: 'short', date: '2026-03-10', picker: { name: 'Short', picker_id: 'PK-8' }, check_in: '2026-03-10T07:00:00+13:00', check_out: '2026-03-10T10:00:00+13:00', status: 'completed', corrected_at: null },
+        ]);
+        render(<TimesheetEditor orchardId="o1" />);
+        await waitFor(() => screen.getByText('Alice Smith'));
+        // Solo Alice: Bea lo tiene anotado (7.5 h) y el turno corto no lo necesita
+        expect(screen.getAllByText('Not recorded')).toHaveLength(1);
+        expect(screen.getByText('7.5h')).toBeTruthy();
+        expect(screen.getByRole('status').textContent).toContain('Meal break not recorded on 1 shift(s) over 4 h');
     });
 
     it('shows empty state when no records for date', async () => {

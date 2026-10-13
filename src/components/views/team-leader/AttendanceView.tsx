@@ -103,6 +103,13 @@ const AttendanceView = () => {
                                         : t('tl.attendance.not_checked_in')
                                     }
                                 </p>
+                                {item.breakMissing && (
+                                    <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-amber-700" title={t('tl.attendance.break_missing_hint')}>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-sm">warning</span>
+                                        {t('tl.attendance.break_missing')}
+                                        <span className="sr-only">. {t('tl.attendance.break_missing_hint')}</span>
+                                    </p>
+                                )}
                             </div>
                         </div>
 

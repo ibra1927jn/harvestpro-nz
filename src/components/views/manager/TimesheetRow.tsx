@@ -2,7 +2,7 @@
  * TimesheetRow — una fila del editor de hojas de horas (ver o corregir).
  */
 import { todayNZST } from '@/utils/nzst';
-import { AttendanceRow, CorrectionForm, formatTime, calculateHours, isAbnormal } from './timesheet-utils';
+import { AttendanceRow, CorrectionForm, formatTime, calculateHours, isAbnormal, isMealBreakMissing } from './timesheet-utils';
 import { statusLabel } from '@/i18n/statusLabel';
 import { useTranslation } from '@/i18n';
 
@@ -24,6 +24,7 @@ export default function TimesheetRow({
   const hours = calculateHours(record);
   const unclosed = !!record.check_in && !record.check_out && record.date < todayNZST();
   const abnormal = isAbnormal(hours);
+  const breakMissing = isMealBreakMissing(record);
 
   return (
     <tr
@@ -76,7 +77,7 @@ export default function TimesheetRow({
         )}
       </td>
 
-      {/* Break (descanso de 30 min no pagado, lo anota el team leader) */}
+      {/* Break (descanso de 30 min no pagado, lo anota el team leader; solo se descuenta si está anotado) */}
       <td className="px-4 py-3">
         {isEditing ? (
           <input
@@ -88,8 +89,14 @@ export default function TimesheetRow({
           />
         ) : record.break_start ? (
           <span className="font-mono">{formatTime(record.break_start)}</span>
+        ) : breakMissing ? (
+          // Sin anotar en un turno de más de 4 h: no se descuenta nada, hay que anotarlo
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700" title={t('tse.break_missing_title')}>
+            <span aria-hidden="true" className="material-symbols-outlined text-sm">warning</span>
+            {t('tse.break_missing')}
+          </span>
         ) : (
-          <span className="text-xs text-text-muted" title={t('tse.auto_break_title')}>{t('tse.auto')}</span>
+          <span className="text-xs text-text-muted">—</span>
         )}
       </td>
 

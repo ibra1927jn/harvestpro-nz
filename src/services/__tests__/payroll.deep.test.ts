@@ -85,7 +85,7 @@ describe('payrollService.fetchTimesheets', () => {
         const result = await payrollService.fetchTimesheets('o1');
         expect(result).toHaveLength(1);
         expect(result[0].picker_name).toBe('Alice');
-        expect(result[0].hours_worked).toBe(7.5); // 8 h − 30 min de descanso no pagado
+        expect(result[0].hours_worked).toBe(8); // 8 h, sin descanso anotado (no se descuenta)
         expect(result[0].is_verified).toBe(true);
     });
 

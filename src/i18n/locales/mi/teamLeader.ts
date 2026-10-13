@@ -13,6 +13,8 @@ const teamLeader: TranslationDict = {
     'tl.attendance.present': 'Kei konei',
     'tl.attendance.absent': 'Kāore i konei',
     'tl.attendance.in_at': 'Tae: {time}',
+    'tl.attendance.break_missing': 'Kāore i tuhia te okioki kai',
+    'tl.attendance.break_missing_hint': 'Neke atu i te 4h te neke. Tuhia te wā okioki ki ngā Rēhita Wā i mua i te kati o te rā.',
     'tl.attendance.not_checked_in': 'Kāore anō kia tae',
     'tl.attendance.check_in': 'Whakauru',
     'tl.attendance.check_out': 'Wehe',

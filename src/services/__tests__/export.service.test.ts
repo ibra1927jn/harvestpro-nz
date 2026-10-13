@@ -26,7 +26,7 @@ describe('exportService.preparePayrollData', () => {
         // Ana: lunes 80 cubetas en 9.5 h (sin complemento); martes 10 cubetas en 9.5 h
         const breakdown = buildWeekBreakdown({
             attendance: ['2026-10-05', '2026-10-06'].map(date => ({
-                picker_id: 'p1', date, check_in: t(date, '07:00'), check_out: t(date, '17:00'),
+                picker_id: 'p1', date, check_in: t(date, '07:00'), check_out: t(date, '17:00'), break_start: t(date, '12:00'),
             })),
             buckets: [
                 ...Array.from({ length: 80 }, () => ({ picker_id: 'p1', scanned_at: t('2026-10-05', '10:00') })),

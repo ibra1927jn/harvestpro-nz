@@ -42,9 +42,11 @@ describe('buildTimesheetEntry', () => {
     expect(e).toMatchObject({ hours_worked: 7.25, picker_name: 'Aroha', is_verified: false, requires_review: false, break_minutes: PAY_RULES.mealBreakMinutes });
   });
 
-  it('falls back to the shift itself (8.5 h minus the 30 min unpaid break)', () => {
+  it('falls back to the shift itself (8.5 h; only a recorded break is deducted)', () => {
     const e = buildTimesheetEntry(att(), undefined, undefined, '2026-10-13');
-    expect(e.hours_worked).toBe(8);
+    expect(e.hours_worked).toBe(8.5);
+    const withBreak = buildTimesheetEntry(att({ break_start: '2026-10-12T23:00:00Z' }), undefined, undefined, '2026-10-13');
+    expect(withBreak.hours_worked).toBe(8);
     expect(e.picker_name).toBe('Unknown');
   });
 

@@ -9,10 +9,31 @@ vi.mock('@/utils/logger', () => ({
 
 import {
     formatTimeForInput, formatTime, calculateHours, isAbnormal, nzTimeToIso,
-    buildCorrectionUpdates, correctionFormFor, dailyTimesheetTotals,
+    buildCorrectionUpdates, correctionFormFor, dailyTimesheetTotals, isMealBreakMissing,
 } from './timesheet-utils';
 
 describe('timesheet-utils', () => {
+    describe('isMealBreakMissing (aviso al team leader: solo se descuenta lo anotado)', () => {
+        const r = (check_in: string | null, check_out: string | null, extra: Record<string, unknown> = {}) =>
+            ({ date: '2026-03-07', check_in, check_out, ...extra });
+        it('closed shift over 4 h without a break: missing', () => {
+            expect(isMealBreakMissing(r('2026-03-07T07:00:00Z', '2026-03-07T11:30:00Z'), '2026-03-07')).toBe(true);
+        });
+        it('4 h or less: not needed', () => {
+            expect(isMealBreakMissing(r('2026-03-07T07:00:00Z', '2026-03-07T11:00:00Z'), '2026-03-07')).toBe(false);
+        });
+        it('break recorded inside the shift: not missing', () => {
+            expect(isMealBreakMissing(r('2026-03-07T07:00:00Z', '2026-03-07T15:00:00Z', { break_start: '2026-03-07T11:00:00Z' }), '2026-03-07')).toBe(false);
+        });
+        it('open shift today counts until now', () => {
+            expect(isMealBreakMissing(r('2026-03-07T07:00:00Z', null), '2026-03-07', new Date('2026-03-07T10:00:00Z'))).toBe(false);
+            expect(isMealBreakMissing(r('2026-03-07T07:00:00Z', null), '2026-03-07', new Date('2026-03-07T12:00:00Z'))).toBe(true);
+        });
+        it('open shift of a past day is flagged as not closed instead', () => {
+            expect(isMealBreakMissing(r('2026-03-07T07:00:00Z', null), '2026-03-08')).toBe(false);
+        });
+    });
+
     describe('formatTimeForInput', () => {
         it('formats ISO string to HH:MM pattern', () => {
             const result = formatTimeForInput('2026-03-07T09:30:00Z');
@@ -45,16 +66,20 @@ describe('timesheet-utils', () => {
             expect(calculateHours(row(null, null), '2026-03-07')).toBeNull();
         });
 
-        it('8 h shift pays 7.5 h', () => {
-            expect(calculateHours(row('2026-03-07T07:00:00Z', '2026-03-07T15:00:00Z'), '2026-03-07')).toBe(7.5);
+        it('8 h shift with the break recorded pays 7.5 h', () => {
+            expect(calculateHours(row('2026-03-07T07:00:00Z', '2026-03-07T15:00:00Z', { break_start: '2026-03-07T11:00:00Z' }), '2026-03-07')).toBe(7.5);
+        });
+
+        it('8 h shift without a recorded break pays 8 h (nothing deducted)', () => {
+            expect(calculateHours(row('2026-03-07T07:00:00Z', '2026-03-07T15:00:00Z'), '2026-03-07')).toBe(8);
         });
 
         it('short shift (≤ 4 h) has no break deducted', () => {
             expect(calculateHours(row('2026-03-07T07:00:00Z', '2026-03-07T10:30:00Z'), '2026-03-07')).toBe(3.5);
         });
 
-        it('recorded break outside the shift falls back to the default rule', () => {
-            expect(calculateHours(row('2026-03-07T07:00:00Z', '2026-03-07T15:00:00Z', { break_start: '2026-03-06T12:00:00Z' }), '2026-03-07')).toBe(7.5);
+        it('recorded break outside the shift is not deducted', () => {
+            expect(calculateHours(row('2026-03-07T07:00:00Z', '2026-03-07T15:00:00Z', { break_start: '2026-03-06T12:00:00Z' }), '2026-03-07')).toBe(8);
         });
 
         it('open shift today counts until now', () => {

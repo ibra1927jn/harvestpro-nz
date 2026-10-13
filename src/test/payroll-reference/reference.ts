@@ -11,9 +11,10 @@
  *  R2  Horas = unión de tramos (entrada→salida) + trayectos entre huertos
  *      DISTINTOS (hueco entre un tramo y el siguiente) − UN descanso de comida
  *      no pagado al día.
- *  R3  Descanso: si el team leader anotó la hora dentro de un tramo se
- *      descuenta (como mucho lo que quedaba del tramo); si no, se descuenta
- *      entero cuando el día bruto pasa de 4 h. Descansos cortos: pagados.
+ *  R3  Descanso: SOLO si el team leader anotó la hora dentro de un tramo se
+ *      descuenta (como mucho lo que quedaba del tramo). Sin anotar (o anotado
+ *      fuera de todo tramo) no se descuenta nada, ni en días sin fichaje
+ *      (decisión del dueño 2026-10-14). Descansos cortos: pagados.
  *  R4  Tramo abierto hoy: hasta ahora (sin pisar el siguiente tramo). Abierto
  *      de un día pasado: hasta su último escaneo (estimado).
  *  R5  Sin fichaje: del primer al último escaneo pagable de ese día.
@@ -31,7 +32,6 @@
  */
 
 export const REF_LEGAL_MIN_WAGE = 23.95;
-const MEAL_AFTER_MIN = 4 * 60;
 const DEFAULT_MEAL_MIN = 30;
 
 export interface RefShift {
@@ -263,18 +263,17 @@ export function referencePay(shifts: ReadonlyArray<RefShift>, buckets: ReadonlyA
                     const bs = ms(s.shift.breakStart);
                     return bs !== null && bs >= s.start && bs < s.end;
                 });
+                // R3: solo el descanso anotado; nunca uno supuesto
                 if (withBreak) {
                     const bs = ms(withBreak.shift.breakStart) as number;
                     breakMin = Math.min(mealSetting, (withBreak.end - bs) / MIN_MS);
-                } else if ((workMs + travelMs) / MIN_MS > MEAL_AFTER_MIN) {
-                    breakMin = mealSetting;
                 }
                 weights = clipped.map((s, i) => ({ orchardId: s.shift.orchardId, w: (s.end - s.start) + travelBySeg[i] }));
             } else {
                 const times = dayBuckets.map(b => ms(b.scannedAt) as number);
                 if (times.length > 0) {
+                    // Sin fichaje no hay descanso anotado: no se descuenta (R3)
                     workMs = Math.max(...times) - Math.min(...times);
-                    if (workMs / MIN_MS > MEAL_AFTER_MIN) breakMin = DEFAULT_MEAL_MIN;
                 }
             }
             let hours = Math.max(0, (workMs + travelMs) / MIN_MS - breakMin) / 60;

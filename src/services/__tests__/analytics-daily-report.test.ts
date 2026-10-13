@@ -13,9 +13,10 @@ describe('analyticsService.generateDailyReport', () => {
     it('usa horas del fichaje y el complemento del día', () => {
         const crew = [{
             id: 'p1', picker_id: 'EMP001', name: 'Ana', role: 'picker', status: 'active',
-            // 8 h fichadas → 7.5 h pagables; contador viejo de la ficha a 99 (se ignora)
+            // 8 h fichadas, descanso anotado → 7.5 h pagables; contador viejo de la ficha a 99 (se ignora)
             check_in: new Date(nowMs - 8 * 3_600_000).toISOString(),
             check_out: new Date(nowMs).toISOString(),
+            break_start: new Date(nowMs - 4 * 3_600_000).toISOString(),
             total_buckets_today: 99, hours: 0, avatar: 'A', current_row: 1, safety_verified: true, qcStatus: [],
         }] as unknown as Picker[];
         const buckets = Array.from({ length: 10 }, (_, i) => ({

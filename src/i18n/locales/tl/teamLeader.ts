@@ -13,6 +13,8 @@ const teamLeader: TranslationDict = {
     'tl.attendance.present': 'Narito',
     'tl.attendance.absent': 'Wala',
     'tl.attendance.in_at': 'Pasok: {time}',
+    'tl.attendance.break_missing': 'Hindi naitala ang meal break',
+    'tl.attendance.break_missing_hint': 'Lampas 4 h na ang shift. Itala ang oras ng break sa Timesheets bago isara ang araw.',
     'tl.attendance.not_checked_in': 'Hindi pa naka-check in',
     'tl.attendance.check_in': 'Check in',
     'tl.attendance.check_out': 'Check out',

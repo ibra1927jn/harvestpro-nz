@@ -11,10 +11,10 @@ const nz = (date: string, hhmm: string) => new Date(`${date}T${hhmm}:00+13:00`).
 
 describe('payForRange — tramos solapados', () => {
     it('dos tramos que se solapan media hora no pagan esa media hora dos veces', () => {
-        // 08:00–12:00 y 11:30–15:00 en el mismo huerto = 7 h reales − 30 min de comida = 6.5 h
+        // 08:00–12:00 y 11:30–15:00 en el mismo huerto = 7 h reales − 30 min de comida anotados = 6.5 h
         const [p] = payForRange({
             attendance: [
-                { pickerId: 'p1', date: '2026-10-14', orchardId: 'o1', checkIn: nz('2026-10-14', '08:00'), checkOut: nz('2026-10-14', '12:00') },
+                { pickerId: 'p1', date: '2026-10-14', orchardId: 'o1', checkIn: nz('2026-10-14', '08:00'), checkOut: nz('2026-10-14', '12:00'), breakStart: nz('2026-10-14', '10:00') },
                 { pickerId: 'p1', date: '2026-10-14', orchardId: 'o1', checkIn: nz('2026-10-14', '11:30'), checkOut: nz('2026-10-14', '15:00') },
             ],
             buckets: [],
@@ -28,10 +28,10 @@ describe('payForRange — tramos solapados', () => {
 
     it('un tramo entero dentro de otro (de otro huerto) no inventa trayectos', () => {
         // A 08:00–14:00 contiene B 09:00–09:10; luego A otra vez 15:00–16:00.
-        // Real: 7 h en A, sin trayecto (de A a A no se paga) − 30 min = 6.5 h
+        // Real: 7 h en A, sin trayecto (de A a A no se paga) − 30 min anotados = 6.5 h
         const [p] = payForRange({
             attendance: [
-                { pickerId: 'p1', date: '2026-10-14', orchardId: 'A', checkIn: nz('2026-10-14', '08:00'), checkOut: nz('2026-10-14', '14:00') },
+                { pickerId: 'p1', date: '2026-10-14', orchardId: 'A', checkIn: nz('2026-10-14', '08:00'), checkOut: nz('2026-10-14', '14:00'), breakStart: nz('2026-10-14', '12:00') },
                 { pickerId: 'p1', date: '2026-10-14', orchardId: 'B', checkIn: nz('2026-10-14', '09:00'), checkOut: nz('2026-10-14', '09:10') },
                 { pickerId: 'p1', date: '2026-10-14', orchardId: 'A', checkIn: nz('2026-10-14', '15:00'), checkOut: nz('2026-10-14', '16:00') },
             ],
@@ -47,14 +47,14 @@ describe('payForRange — tramos solapados', () => {
 
 describe('payForRange — turno que cruza la medianoche', () => {
     it('las cubetas de después de medianoche son del día del turno (no un día aparte con horas estimadas)', () => {
-        // Turno 20:00 → 02:00: 6 h − 30 min = 5.5 h. 10 cubetas a las 21:00 y 10 a la 01:00, a 6.50.
+        // Turno 20:00 → 02:00: 6 h − 30 min anotados = 5.5 h. 10 cubetas a las 21:00 y 10 a la 01:00, a 6.50.
         // Día del turno: 20 cubetas = 130.00; mínimo 5.5 × 23.95 = 131.725 → complemento 1.73.
         const buckets = [
             ...Array.from({ length: 10 }, () => ({ pickerId: 'p1', scannedAt: nz('2026-10-14', '21:00'), pieceRate: 6.5 })),
             ...Array.from({ length: 10 }, (_, i) => ({ pickerId: 'p1', scannedAt: nz('2026-10-15', `01:0${i}`), pieceRate: 6.5 })),
         ];
         const [p] = payForRange({
-            attendance: [{ pickerId: 'p1', date: '2026-10-14', orchardId: 'o1', checkIn: nz('2026-10-14', '20:00'), checkOut: nz('2026-10-15', '02:00') }],
+            attendance: [{ pickerId: 'p1', date: '2026-10-14', orchardId: 'o1', checkIn: nz('2026-10-14', '20:00'), checkOut: nz('2026-10-15', '02:00'), breakStart: nz('2026-10-14', '23:00') }],
             buckets,
             pieceRate: 6.5,
             minWage: MIN,

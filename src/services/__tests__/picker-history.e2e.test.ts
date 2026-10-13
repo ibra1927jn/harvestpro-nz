@@ -91,7 +91,7 @@ describe('pickerHistoryService — E2E deep tests', () => {
             const history = await pickerHistoryService.getPickerHistory('p1', 'o1');
             const mar8 = history!.dailyRecords.find(r => r.date === '2026-03-08');
             expect(mar8).toBeDefined();
-            expect(mar8!.hours).toBe(7.5); // 8 h − 30 min de descanso no pagado
+            expect(mar8!.hours).toBe(8); // 8 h, sin descanso anotado (no se descuenta)
         });
 
         it('open shift on a past day: estimated from check-in to last scan and flagged', async () => {

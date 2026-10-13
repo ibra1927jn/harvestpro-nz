@@ -4,7 +4,7 @@
  * @module views/manager/timesheet-utils
  */
 import { logger } from '@/utils/logger';
-import { shiftHours } from '@/services/harvestMetrics/pay';
+import { mealBreakMissing, shiftHours } from '@/services/harvestMetrics/pay';
 import { todayNZST, nzOffsetOn } from '@/utils/nzst';
 
 /** Attendance record row shape */
@@ -96,6 +96,21 @@ export function calculateHours(
         breakMinutes: row.break_minutes,
         now,
     }).hours;
+}
+
+/**
+ * Turno de más de 4 h sin descanso de comida anotado (ERA 2000 Parte 6D).
+ * El pago solo descuenta descansos anotados: el team leader debe anotarlo.
+ * Un turno sin cerrar de un día pasado no cuenta (ya sale como "sin cerrar").
+ */
+export function isMealBreakMissing(
+    row: Pick<AttendanceRow, 'check_in' | 'check_out' | 'date' | 'break_start'>,
+    today: string = todayNZST(),
+    now: Date = new Date(),
+): boolean {
+    if (!row.check_in) return false;
+    if (!row.check_out && row.date < today) return false;
+    return mealBreakMissing([{ checkIn: row.check_in, checkOut: row.check_out, breakStart: row.break_start }], now);
 }
 
 /** Flag abnormal hour counts (>12 or <0) */

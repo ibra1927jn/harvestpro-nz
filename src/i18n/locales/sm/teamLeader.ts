@@ -13,6 +13,8 @@ const teamLeader: TranslationDict = {
     'tl.attendance.present': 'O iai',
     'tl.attendance.absent': 'Toesea',
     'tl.attendance.in_at': 'Ulufale: {time}',
+    'tl.attendance.break_missing': 'E leʻi faamauina le malolo mo le taumafataga',
+    'tl.attendance.break_missing_hint': 'Ua sili i le 4h le sifi. Faamau le taimi o le malolo i Lisi Taimi aʻo leʻi tapunia le aso.',
     'tl.attendance.not_checked_in': 'E le\'i resitala',
     'tl.attendance.check_in': 'Resitala',
     'tl.attendance.check_out': 'Alu ese',
