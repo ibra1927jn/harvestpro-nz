@@ -126,7 +126,24 @@ serve(async req => {
 
     // ── Send to User ────────────────────────
     if (input.action === 'send_to_user') {
-      const { data: subs } = await supabase
+      // Las suscripciones de OTRA persona solo se leen con la clave de servicio
+      // (RLS solo enseña las propias: antes nunca se enviaba nada). Por eso se
+      // limita, como broadcast, a gente activa del huerto de quien envía.
+      const adminSupabase = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+      const { data: pair } = await adminSupabase
+        .from('users')
+        .select('id, orchard_id, is_active')
+        .in('id', [user.id, input.user_id]);
+      const sender = (pair ?? []).find((u: { id: string }) => u.id === user.id);
+      const recipient = (pair ?? []).find((u: { id: string }) => u.id === input.user_id);
+      if (!recipient || !recipient.is_active || !sender?.orchard_id || recipient.orchard_id !== sender.orchard_id) {
+        return jsonResponse({ error: 'You can only notify active people in your orchard' }, origin, 403);
+      }
+
+      const { data: subs } = await adminSupabase
         .from('push_subscriptions')
         .select('endpoint, keys_p256dh, keys_auth')
         .eq('user_id', input.user_id);
@@ -144,9 +161,9 @@ serve(async req => {
       };
 
       const { sent, expired } = await deliverToSubscriptions(subs, payload, vapidKeys);
-      // Limpiar suscripciones caducadas
-      for (const endpoint of expired) {
-        await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint);
+      // Limpiar suscripciones caducadas (del destinatario: clave de servicio)
+      if (expired.length > 0) {
+        await adminSupabase.from('push_subscriptions').delete().eq('user_id', input.user_id).in('endpoint', expired);
       }
 
       return jsonResponse({ success: true, sent, total: subs.length }, origin);
@@ -163,7 +180,8 @@ serve(async req => {
       // Solo a la gente del huerto de quien envía (antes iba a todos los
       // suscritos de todas las empresas), y al rol pedido si lo hay
       const { data: me } = await adminSupabase.from('users').select('orchard_id').eq('id', user.id).single();
-      let people = adminSupabase.from('users').select('id').eq('orchard_id', me?.orchard_id ?? '00000000-0000-0000-0000-000000000000');
+      // (solo cuentas activas: una persona dada de baja no recibe avisos)
+      let people = adminSupabase.from('users').select('id').eq('is_active', true).eq('orchard_id', me?.orchard_id ?? '00000000-0000-0000-0000-000000000000');
       if (input.role) people = people.eq('role', input.role);
       const { data: recipients } = await people;
       const ids = (recipients ?? []).map((u: { id: string }) => u.id);
