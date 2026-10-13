@@ -168,3 +168,17 @@ describe('exportService — festivo', () => {
         expect(sum(exportService.generatePaySauceCSV(data))).toBeCloseTo(450, 2);
     });
 });
+
+describe('exportService.generateCSV — CSV injection guard keeps columns intact', () => {
+    it('a name starting with "=" and containing a comma stays in one quoted cell', async () => {
+        const { default: Papa } = await import('papaparse');
+        const csv = exportService.generateCSV({
+            date: 'w',
+            crew: [{ id: '1', name: '=SUM(A1,A2)', employeeId: '-7', buckets: 1, hours: 1, pieceEarnings: 6.5, minimumTopUp: 17.45, totalEarnings: 23.95, status: 'ok' }],
+            summary: { totalBuckets: 1, totalHours: 1, totalPieceEarnings: 6.5, totalMinimumTopUp: 17.45, grandTotal: 23.95, averageBucketsPerHour: 1 },
+        });
+        const row = Papa.parse<string[]>(csv).data.find(r => r[0] === "'-7");
+        expect(row?.slice(0, 3)).toEqual(["'-7", "'=SUM(A1,A2)", '1']);
+        expect(row).toHaveLength(10);
+    });
+});

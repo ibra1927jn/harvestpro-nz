@@ -8,10 +8,11 @@ import { analytics } from '@/config/analytics';
 
 // 🔧 V2: Sanitize CSV cells to prevent formula injection in Excel/Sheets
 const escCsv = (val: string): string => {
-  const s = String(val);
-  if (/^[=+\-@\t\r]/.test(s)) return `'${s}`;
+  let s = String(val);
+  // Prefijo contra fórmulas y, además, comillas si hace falta (antes se saltaba las comillas)
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   // Wrap in quotes if contains comma, quote, or newline
-  if (/[,"\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  if (/[,"\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 };
 
