@@ -4,6 +4,7 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { ChatGroup, DBMessage } from '../../../context/MessagingContext';
 import { QUICK_REPLIES, REACTION_EMOJIS, getAvatarColor, formatTime, getDateLabel } from './messagingHelpers';
+import { useTranslation } from '@/i18n';
 
 // Extend DBMessage with optional metadata for reply threading
 interface MessageWithMetadata extends DBMessage {
@@ -26,6 +27,7 @@ interface Props {
 const ChatWindow: React.FC<Props> = ({
     selectedChat, messages, appUserId, userNameMap, isSending, onSend, onRetry, onBack,
 }) => {
+    const { t } = useTranslation();
     const [newMessage, setNewMessage] = useState('');
     const [showQuickReplies, setShowQuickReplies] = useState(false);
     const [replyTo, setReplyTo] = useState<DBMessage | null>(null);
@@ -62,12 +64,12 @@ const ChatWindow: React.FC<Props> = ({
         const groups: { label: string; messages: DBMessage[] }[] = [];
         let currentLabel = '';
         messages.forEach(m => {
-            const label = getDateLabel(m.created_at);
+            const label = getDateLabel(m.created_at, t);
             if (label !== currentLabel) { currentLabel = label; groups.push({ label, messages: [m] }); }
             else { groups[groups.length - 1].messages.push(m); }
         });
         return groups;
-    }, [messages]);
+    }, [messages, t]);
 
     // Auto-scroll on new messages
     React.useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
@@ -77,7 +79,7 @@ const ChatWindow: React.FC<Props> = ({
             {/* Chat Header */}
             <header className="h-16 flex items-center justify-between px-5 glass-chat-header sticky top-0 z-10">
                 <div className="flex items-center gap-3">
-                    <button aria-label="Back to conversations" onClick={onBack} className="md:hidden size-9 rounded-lg text-slate-400 hover:bg-slate-50 flex items-center justify-center">
+                    <button aria-label={t('chat.back')} onClick={onBack} className="md:hidden size-9 rounded-lg text-slate-400 hover:bg-slate-50 flex items-center justify-center">
                         <span aria-hidden="true" className="material-symbols-outlined">arrow_back</span>
                     </button>
                     <div className="relative">
@@ -89,11 +91,11 @@ const ChatWindow: React.FC<Props> = ({
                     <div>
                         <h3 className="text-sm font-bold text-slate-800">{selectedChat.name}</h3>
                         <p className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
-                            {selectedChat.isGroup ? `${selectedChat.members.length} members` : <><span className="inline-block size-1.5 rounded-full bg-emerald-400 mr-1"></span>Online</>}
+                            {selectedChat.isGroup ? t('teams.members_count_other', { n: selectedChat.members.length }) : <><span className="inline-block size-1.5 rounded-full bg-emerald-400 mr-1"></span>{t('common.online')}</>}
                         </p>
                     </div>
                 </div>
-                <button aria-label="Chat info" className="size-9 rounded-xl hover:bg-slate-50 text-slate-400 flex items-center justify-center transition" title="Chat info">
+                <button aria-label={t('chat.info')} className="size-9 rounded-xl hover:bg-slate-50 text-slate-400 flex items-center justify-center transition" title={t('chat.info')}>
                     <span aria-hidden="true" className="material-symbols-outlined text-xl">more_vert</span>
                 </button>
             </header>
@@ -105,12 +107,12 @@ const ChatWindow: React.FC<Props> = ({
                         <div className="size-24 rounded-3xl bg-white/80 backdrop-blur-sm shadow-lg flex items-center justify-center mb-5 animate-[breathe_3s_ease-in-out_infinite]">
                             <span aria-hidden="true" className="material-symbols-outlined text-5xl text-indigo-300">waving_hand</span>
                         </div>
-                        <h4 className="text-base font-black text-slate-600 mb-1">Start the conversation</h4>
-                        <p className="text-sm text-slate-400 max-w-xs">Send a message, use a quick reply, or record a voice note</p>
+                        <h4 className="text-base font-black text-slate-600 mb-1">{t('chat.start_title')}</h4>
+                        <p className="text-sm text-slate-400 max-w-xs">{t('chat.start_desc')}</p>
                         <div className="flex gap-2 mt-4">
                             {QUICK_REPLIES.slice(0, 3).map(qr => (
-                                <button key={qr.label} onClick={() => handleSend(`${qr.emoji} ${qr.label}`)} className="px-3 py-1.5 bg-white/90 rounded-full text-xs font-bold text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 shadow-sm transition active:scale-95">
-                                    {qr.emoji} {qr.label}
+                                <button key={qr.label} onClick={() => handleSend(`${qr.emoji} ${t(qr.label)}`)} className="px-3 py-1.5 bg-white/90 rounded-full text-xs font-bold text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 shadow-sm transition active:scale-95">
+                                    {qr.emoji} {t(qr.label)}
                                 </button>
                             ))}
                         </div>
@@ -141,7 +143,7 @@ const ChatWindow: React.FC<Props> = ({
                                             <div className={`relative px-4 py-2.5 rounded-2xl text-sm font-medium leading-relaxed transition-shadow ${isMe ? 'bg-gradient-to-br from-indigo-500 to-blue-600 text-white rounded-br-sm shadow-lg shadow-indigo-500/15 msg-tail-sent' : 'bg-white text-slate-700 rounded-bl-sm shadow-md shadow-slate-200/50 msg-tail-received'}`}>
                                                 {(m as MessageWithMetadata).metadata?.replyTo && (
                                                     <div className={`reply-quote ${isMe ? 'reply-quote-sent' : ''} mb-1.5 text-xs`}>
-                                                        <p className={`font-bold ${isMe ? 'text-white/70' : 'text-indigo-500'} text-[10px]`}>Reply</p>
+                                                        <p className={`font-bold ${isMe ? 'text-white/70' : 'text-indigo-500'} text-[10px]`}>{t('chat.reply')}</p>
                                                         <p className={`${isMe ? 'text-white/60' : 'text-slate-400'} truncate`}>{(m as MessageWithMetadata).metadata!.replyTo}</p>
                                                     </div>
                                                 )}
@@ -155,13 +157,13 @@ const ChatWindow: React.FC<Props> = ({
                                             <div className={`flex items-center gap-1 mt-0.5 px-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
                                                 <span className="text-[9px] font-medium text-slate-400">{formatTime(m.created_at)}</span>
                                                 {isMe && m.delivery === 'pending' && (
-                                                    <span aria-hidden="true" className="material-symbols-outlined text-[12px] text-slate-400" title="Waiting for signal — will send automatically" aria-label="Waiting to send">schedule</span>
+                                                    <span aria-hidden="true" className="material-symbols-outlined text-[12px] text-slate-400" title={t('chat.waiting_signal')} aria-label={t('chat.waiting_send')}>schedule</span>
                                                 )}
                                                 {isMe && m.delivery === 'failed' && (
                                                     <span role="alert" className="flex items-center gap-1 text-[10px] font-bold text-red-600" title={m.failure_reason}>
-                                                        Not sent
+                                                        {t('chat.not_sent')}
                                                         {onRetry && (
-                                                            <button type="button" onClick={() => onRetry(m.id)} className="underline">Retry</button>
+                                                            <button type="button" onClick={() => onRetry(m.id)} className="underline">{t('common.retry')}</button>
                                                         )}
                                                     </span>
                                                 )}
@@ -169,16 +171,16 @@ const ChatWindow: React.FC<Props> = ({
                                             </div>
                                             {hoveredMsg === msgId && (
                                                 <div className={`absolute top-0 ${isMe ? '-left-24' : '-right-24'} flex gap-0.5 msg-enter`}>
-                                                    <button aria-label="Reply" onClick={() => setReplyTo(m)} className="size-7 rounded-full bg-white shadow-md flex items-center justify-center text-slate-400 hover:text-indigo-500 transition" title="Reply">
+                                                    <button aria-label={t('chat.reply')} onClick={() => setReplyTo(m)} className="size-7 rounded-full bg-white shadow-md flex items-center justify-center text-slate-400 hover:text-indigo-500 transition" title={t('chat.reply')}>
                                                         <span aria-hidden="true" className="material-symbols-outlined text-[14px]">reply</span>
                                                     </button>
-                                                    <button className="size-7 rounded-full bg-white shadow-md flex items-center justify-center text-slate-400 hover:text-amber-500 transition relative group/react" title="React">
+                                                    <button className="size-7 rounded-full bg-white shadow-md flex items-center justify-center text-slate-400 hover:text-amber-500 transition relative group/react" title={t('chat.react')}>
                                                         <span aria-hidden="true" className="material-symbols-outlined text-[14px]">add_reaction</span>
                                                         <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 reaction-bar hidden group-hover/react:flex">
                                                             {REACTION_EMOJIS.map(emoji => <button key={emoji} className="reaction-btn" onClick={() => toggleReaction(msgId, emoji)}>{emoji}</button>)}
                                                         </div>
                                                     </button>
-                                                    <button className="size-7 rounded-full bg-white shadow-md flex items-center justify-center text-slate-400 hover:text-slate-600 transition" aria-label="More" title="More">
+                                                    <button className="size-7 rounded-full bg-white shadow-md flex items-center justify-center text-slate-400 hover:text-slate-600 transition" aria-label={t('nav.more')} title={t('nav.more')}>
                                                         <span aria-hidden="true" className="material-symbols-outlined text-[14px]">more_horiz</span>
                                                     </button>
                                                 </div>
@@ -208,9 +210,9 @@ const ChatWindow: React.FC<Props> = ({
                 showQuickReplies && (
                     <div className="px-5 py-2 bg-white border-t border-slate-100 flex gap-1.5 overflow-x-auto no-scrollbar">
                         {QUICK_REPLIES.map(qr => (
-                            <button key={qr.label} onClick={() => handleSend(`${qr.emoji} ${qr.label}`)}
+                            <button key={qr.label} onClick={() => handleSend(`${qr.emoji} ${t(qr.label)}`)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-indigo-50 border border-slate-100 hover:border-indigo-200 rounded-full text-xs font-bold text-slate-600 hover:text-indigo-600 transition whitespace-nowrap active:scale-95">
-                                <span>{qr.emoji}</span>{qr.label}
+                                <span>{qr.emoji}</span>{t(qr.label)}
                             </button>
                         ))}
                     </div>
@@ -225,17 +227,17 @@ const ChatWindow: React.FC<Props> = ({
                             <p className="text-[10px] font-bold text-indigo-500">{getSenderName(replyTo.sender_id)}</p>
                             <p className="text-xs text-slate-400 truncate">{replyTo.content}</p>
                         </div>
-                        <button aria-label="Cancel reply" onClick={() => setReplyTo(null)} className="size-6 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 transition">
+                        <button aria-label={t('chat.cancel_reply')} onClick={() => setReplyTo(null)} className="size-6 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 transition">
                             <span aria-hidden="true" className="material-symbols-outlined text-sm">close</span>
                         </button>
                     </div>
                 )}
                 <div className="flex items-center gap-1.5 p-2.5">
-                    <button aria-label="Quick replies" aria-expanded={showQuickReplies} onClick={() => setShowQuickReplies(!showQuickReplies)}
+                    <button aria-label={t('chat.quick_replies')} aria-expanded={showQuickReplies} onClick={() => setShowQuickReplies(!showQuickReplies)}
                         className={`size-9 rounded-full flex items-center justify-center transition shrink-0 ${showQuickReplies ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}>
                         <span aria-hidden="true" className="material-symbols-outlined text-[20px]">emoji_emotions</span>
                     </button>
-                    <button className="size-9 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-50 flex items-center justify-center transition shrink-0" aria-label="Attach file" title="Attach file">
+                    <button className="size-9 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-50 flex items-center justify-center transition shrink-0" aria-label={t('chat.attach')} title={t('chat.attach')}>
                         <span aria-hidden="true" className="material-symbols-outlined text-[20px]">attach_file</span>
                     </button>
                     <div className="flex-1 flex items-center bg-slate-50/80 border border-slate-100 rounded-3xl px-4 py-0.5 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-50 transition">
@@ -250,16 +252,16 @@ const ChatWindow: React.FC<Props> = ({
                                 if (e.target.value.length === 0) setIsTyping(false);
                             }}
                             onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
-                            placeholder={replyTo ? 'Type your reply...' : 'Type a message...'}
+                            placeholder={replyTo ? t('chat.type_reply') : t('chat.type_message')}
                             className="flex-1 bg-transparent py-2.5 text-sm focus:outline-none placeholder:text-slate-300 font-medium text-slate-800" />
                     </div>
                     {newMessage.trim() ? (
-                        <button aria-label={isSending ? 'Sending message' : 'Send message'} onClick={() => handleSend()} disabled={isSending}
+                        <button aria-label={isSending ? t('chat.sending') : t('chat.send')} onClick={() => handleSend()} disabled={isSending}
                             className="size-10 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-lg shadow-indigo-500/20 flex items-center justify-center transition active:scale-90 disabled:opacity-40 shrink-0">
                             <span aria-hidden="true" className="material-symbols-outlined filled text-lg">{isSending ? 'hourglass_empty' : 'send'}</span>
                         </button>
                     ) : (
-                        <button aria-label={isRecording ? 'Stop recording' : 'Record voice message'} aria-pressed={isRecording} onClick={() => setIsRecording(!isRecording)}
+                        <button aria-label={isRecording ? t('chat.stop_recording') : t('chat.record_voice')} aria-pressed={isRecording} onClick={() => setIsRecording(!isRecording)}
                             className={`size-10 rounded-full flex items-center justify-center transition active:scale-90 shrink-0 ${isRecording ? 'voice-recording text-white' : 'bg-slate-50 text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
                             <span aria-hidden="true" className="material-symbols-outlined text-lg">{isRecording ? 'stop' : 'mic'}</span>
                         </button>

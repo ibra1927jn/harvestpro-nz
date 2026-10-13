@@ -40,9 +40,9 @@ describe('BroadcastModal', () => {
 
     it('renders priority buttons', () => {
         render(<BroadcastModal onClose={onClose} />);
-        expect(screen.getByText('normal')).toBeTruthy();
-        expect(screen.getByText('high')).toBeTruthy();
-        expect(screen.getByText('urgent')).toBeTruthy();
+        expect(screen.getByText('Normal')).toBeTruthy();
+        expect(screen.getByText('High')).toBeTruthy();
+        expect(screen.getByText('Urgent')).toBeTruthy();
     });
 
     it('renders Send Broadcast button', () => {

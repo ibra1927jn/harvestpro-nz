@@ -114,3 +114,27 @@ describe('getRoleBadge', () => {
         expect(getRoleBadge('MANAGER').icon).toBe('admin_panel_settings');
     });
 });
+
+describe('chat times use NZ time even if the phone is set to another zone', () => {
+    const realTz = process.env.TZ;
+    beforeEach(() => {
+        process.env.TZ = 'UTC'; // móvil/portátil con la zona mal puesta
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-04-18T12:30:00Z')); // 19 abr 00:30 en NZ
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+        process.env.TZ = realTz;
+    });
+
+    it('shows the NZ clock time and the NZ day', () => {
+        // 18 abr 23:30 en NZ: en UTC serían las 11:30 del mismo día
+        expect(formatTime('2026-04-18T11:30:00Z')).toBe('23:30');
+        expect(getDateLabel('2026-04-18T11:30:00Z')).toBe('Yesterday');
+        expect(getDateLabel('2026-04-18T12:15:00Z')).toBe('Today');
+    });
+
+    it('labels the day in the app language', () => {
+        expect(getDateLabel('2026-04-18T12:15:00Z', k => (k === 'common.today' ? 'Hoy' : k))).toBe('Hoy');
+    });
+});
