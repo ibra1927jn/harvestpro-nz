@@ -33,6 +33,7 @@ const mocks = vi.hoisted(() => ({
   identify: vi.fn(),
   removeAllChannels: vi.fn(),
   dbDelete: vi.fn().mockResolvedValue(undefined),
+  clearDeviceTrust: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/services/supabase', () => ({
@@ -85,6 +86,9 @@ vi.mock('@/repositories/auth-context.repository', () => ({
 }));
 vi.mock('@/utils/logger', () => ({
   logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
+}));
+vi.mock('@/services/deviceTrust.service', () => ({
+  clearDeviceTrust: mocks.clearDeviceTrust,
 }));
 vi.mock('@/components/modals/ReAuthModal', () => ({
   default: () => null,
@@ -390,6 +394,43 @@ describe('AuthContext', () => {
 
       expect(mocks.stopChecking).toHaveBeenCalled();
       expect(mocks.signOut).toHaveBeenCalled();
+    });
+
+    it('session lost (SIGNED_OUT from Supabase) clears the device trust of the signed-in user', async () => {
+      // Antes: el listener usaba el signOut del primer render (user = null) y no limpiaba nada
+      let authListener: ((event: string, session: unknown) => Promise<void>) | undefined;
+      mocks.onAuthStateChange.mockImplementation((cb: typeof authListener) => {
+        authListener = cb;
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
+      mocks.signInWithPassword.mockResolvedValue({
+        data: { user: { id: 'u-lost', email: 't@h.nz' }, session: {} },
+        error: null,
+      });
+      mocks.getUserById.mockResolvedValue({
+        data: { id: 'u-lost', name: 'Test', role: 'manager', orchard_id: 'o1', is_active: true },
+        error: null,
+      });
+      mocks.getPendingCount.mockResolvedValue(0);
+      mocks.signOut.mockResolvedValue({ error: null });
+      Object.defineProperty(window, 'location', {
+        value: { ...window.location, reload: vi.fn(), origin: 'http://localhost' },
+        writable: true,
+        configurable: true,
+      });
+
+      const { result } = await renderAuthHook();
+      await act(async () => {
+        await result.current.signIn('t@h.nz', 'pass123');
+      });
+      expect(result.current.isAuthenticated).toBe(true);
+
+      await act(async () => {
+        await authListener!('SIGNED_OUT', null);
+      });
+
+      expect(mocks.signOut).toHaveBeenCalled();
+      expect(mocks.clearDeviceTrust).toHaveBeenCalledWith('u-lost');
     });
 
     it('warns user when pending sync items exist', async () => {
