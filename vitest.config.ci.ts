@@ -2,6 +2,9 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+// Zona horaria fija antes de crear los workers (ver vitest.config.ts)
+process.env.TZ = 'Pacific/Auckland';
+
 // CI config for GitHub Actions runners (7GB RAM)
 //
 // Strategy: pool 'forks' + 5 shards
@@ -21,9 +24,9 @@ export default defineConfig({
     hookTimeout: 10_000,
     teardownTimeout: 5_000,
     pool: 'forks',
-    poolOptions: {
-      forks: { isolate: false }
-    },
+    // isolate debe seguir en true (por defecto): con isolate:false los módulos se
+    // comparten entre archivos y los vi.mock() de un archivo no se aplican en otro.
+    // (`poolOptions.forks.isolate` ya no existe en Vitest 4 y se ignoraba.)
     maxWorkers: 1,
     fileParallelism: false,
     coverage: {
