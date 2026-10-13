@@ -3,7 +3,7 @@
  */
 import React from 'react';
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SUPPORTED_LOCALES, I18nProvider, useI18n } from './index';
 
 describe('SUPPORTED_LOCALES', () => {
@@ -47,6 +47,18 @@ describe('I18nProvider', () => {
       )
     );
     expect(screen.getByTestId('child')).toBeDefined();
+  });
+
+  it('keeps <html lang> in sync with the selected locale', async () => {
+    document.documentElement.lang = 'en';
+    function Switcher() {
+      const { setLocale } = useI18n();
+      return React.createElement('button', { onClick: () => setLocale('es') }, 'es');
+    }
+    render(React.createElement(I18nProvider, null, React.createElement(Switcher)));
+    fireEvent.click(screen.getByRole('button', { name: 'es' }));
+    await waitFor(() => expect(document.documentElement.lang).toBe('es'));
+    localStorage.removeItem('harvestpro_locale');
   });
 });
 

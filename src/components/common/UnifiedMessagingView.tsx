@@ -171,7 +171,8 @@ const UnifiedMessagingView = () => {
         isSidebarOpen={isSidebarOpen}
       />
 
-      <main
+      <section
+        aria-label="Conversation"
         // Móvil: lista o conversación, nunca las dos a la vez (antes se partía la pantalla en dos)
         className={`flex-1 flex flex-col ${isSidebarOpen ? 'hidden md:flex' : 'flex'}`}
       >
@@ -195,7 +196,7 @@ const UnifiedMessagingView = () => {
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center px-6 chat-bg-pattern">
             <div className="size-28 rounded-3xl bg-gradient-to-br from-indigo-100 to-blue-100 flex items-center justify-center mb-5 shadow-sm">
-              <span className="material-symbols-outlined text-6xl text-indigo-400">forum</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-6xl text-indigo-400">forum</span>
             </div>
             <h3 className="text-xl font-black text-slate-800 mb-1">Field Communications</h3>
             <p className="text-sm text-slate-400 font-medium text-center max-w-xs mb-6">
@@ -207,7 +208,7 @@ const UnifiedMessagingView = () => {
                 onClick={() => setShowNewChatModal(true)}
                 className="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/30 transition active:scale-95"
               >
-                <span className="material-symbols-outlined text-sm mr-1 align-middle">add</span>New
+                <span aria-hidden="true" className="material-symbols-outlined text-sm mr-1 align-middle">add</span>New
                 Chat
               </button>
               {isManager && (
@@ -215,7 +216,7 @@ const UnifiedMessagingView = () => {
                   onClick={() => setShowBroadcastModal(true)}
                   className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:border-amber-300 hover:text-amber-600 transition active:scale-95"
                 >
-                  <span className="material-symbols-outlined text-sm mr-1 align-middle">
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm mr-1 align-middle">
                     campaign
                   </span>
                   Broadcast
@@ -224,7 +225,7 @@ const UnifiedMessagingView = () => {
             </div>
           </div>
         )}
-      </main>
+      </section>
 
       {showNewChatModal && (
         <NewChatModal

@@ -13,7 +13,7 @@
  *
  * Fallback chain: requested locale → EN → return key itself
  */
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import type { Locale, LocaleInfo } from './types';
 import { translations } from './locales';
 
@@ -67,6 +67,11 @@ const I18nContext = createContext<I18nContextValue>({
 
 export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [locale, setLocaleState] = useState<Locale>(getInitialLocale);
+
+    // <html lang> sigue al idioma elegido: los lectores de pantalla eligen la voz por él
+    useEffect(() => {
+        if (typeof document !== 'undefined') document.documentElement.lang = locale;
+    }, [locale]);
 
     const setLocale = useCallback((newLocale: Locale) => {
         setLocaleState(newLocale);

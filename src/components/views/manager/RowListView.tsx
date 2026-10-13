@@ -68,11 +68,11 @@ const RowListView: React.FC<RowListViewProps> = ({
             <div className="absolute inset-0 technical-grid z-0"></div>
 
             {/* HEADER DINÁMICO */}
-            <header className="z-50 px-4 pt-6 pb-4 flex flex-col gap-4 bg-white/90 backdrop-blur-sm border-b border-border-light relative">
+            <div className="z-50 px-4 pt-6 pb-4 flex flex-col gap-4 bg-white/90 backdrop-blur-sm border-b border-border-light relative">
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
                         <div className="p-2 border border-primary/30 bg-primary/5 rounded">
-                            <span className="material-symbols-outlined text-primary text-xl">grid_view</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-primary text-xl">grid_view</span>
                         </div>
                         <div>
                             <h1 className="text-sm font-bold tracking-widest text-text-main uppercase flex items-center gap-2">
@@ -115,10 +115,10 @@ const RowListView: React.FC<RowListViewProps> = ({
                         ></div>
                     </div>
                 </div>
-            </header>
+            </div>
 
             {/* MAIN LIST */}
-            <main className="flex-1 overflow-y-auto custom-scrollbar px-4 py-4 space-y-2 relative z-10 pb-24">
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-4 space-y-2 relative z-10 pb-24">
                 {/* Column Headers */}
                 <div className="grid grid-cols-12 px-3 text-[8px] text-text-muted uppercase tracking-widest mb-1">
                     <div className="col-span-2">{t('orchardMap.list.col.id')}</div>
@@ -171,7 +171,7 @@ const RowListView: React.FC<RowListViewProps> = ({
                         </div>
                     );
                 })}
-            </main>
+            </div>
         </div>
     );
 };

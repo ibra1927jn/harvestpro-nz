@@ -35,7 +35,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ tabs, activeTab, onTabChange }) =
                             key={tab.id}
                             onClick={() => onTabChange(tab.id)}
                             aria-current={isActive ? 'page' : undefined}
-                            aria-label={tab.label}
+                            // El contador va en el nombre: un aria-label en un <span> sin rol se ignora
+                            aria-label={tab.badge !== undefined && tab.badge > 0 ? `${tab.label} (${tab.badge})` : tab.label}
                             className={`
                                 flex flex-col items-center justify-center gap-0.5
                                 min-w-[56px] flex-1 relative
@@ -62,7 +63,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ tabs, activeTab, onTabChange }) =
                                 {tab.badge !== undefined && tab.badge > 0 && (
                                     <span
                                         className="absolute -top-1 -right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"
-                                        aria-label={`${tab.badge} pending`}
+                                        aria-hidden="true"
                                     />
                                 )}
                             </div>
