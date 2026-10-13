@@ -41,6 +41,9 @@ export interface AttendanceForTimesheet {
   break_start?: string | null;
   break_minutes?: number | null;
   verified_by: string | null;
+  /** Rechazada por nómina/manager (vuelve a pendiente al corregirla) */
+  rejected_at?: string | null;
+  rejection_reason?: string | null;
   orchard_id: string;
   updated_at?: string;
 }
@@ -73,6 +76,8 @@ export function buildTimesheetEntry(
     hours_worked: hoursWorked,
     verified_by: a.verified_by,
     is_verified: !!a.verified_by,
+    is_rejected: !a.verified_by && !!a.rejected_at,
+    rejection_reason: a.rejection_reason ?? null,
     orchard_id: a.orchard_id,
     updated_at: a.updated_at,
     requires_review: staleOpen || hoursWorked > REVIEW_HOURS_THRESHOLD,

@@ -337,6 +337,9 @@ export const ComplianceCheckSchema = z.object({
 // Timesheet Approval
 export const TimesheetApprovalSchema = z.object({
   attendance_id: z.string().uuid('attendance_id must be a valid UUID'),
+  // Aprobar (por defecto) o rechazar; el motivo solo cuenta al rechazar
+  decision: z.enum(['approve', 'reject']).default('approve'),
+  reason: z.string().trim().max(500).optional(),
   // Se ignora: quien aprueba es siempre quien llama. La pantalla de Nómina
   // manda 'current_user' (no es un UUID) y antes toda aprobación daba 400.
   verified_by: z.string().optional(),

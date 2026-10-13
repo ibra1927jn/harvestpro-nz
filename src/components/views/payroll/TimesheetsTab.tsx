@@ -4,7 +4,6 @@
  */
 import React, { useState, useEffect } from 'react';
 import { payrollService } from '@/services/payroll.service';
-import { attendanceRepository } from '@/repositories/attendance.repository';
 import { logger } from '@/utils/logger';
 import { nzClock } from './payrollTabsLogic';
 import { useTranslation } from '@/i18n';
@@ -32,31 +31,45 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { loadTimesheets(); }, [orchardId]);
 
+    /** Semana de pago cerrada: mensaje propio (si no, el genérico) */
+    const failureMessage = (err: unknown, fallbackKey: 'pay.ts.approve_failed' | 'pay.ts.reject_failed', name: string) =>
+        err instanceof Error && err.message.includes('PAY_WEEK_CLOSED')
+            ? t('pay.ts.week_closed', { name })
+            : t(fallbackKey, { name });
+
     const handleApprove = async (id: string, name: string) => {
         const entry = timesheets.find(ts => ts.id === id);
         try {
-            await payrollService.approveTimesheet(id, 'current_user', entry?.updated_at);
-            setTimesheets(prev => prev.map(ts => ts.id === id ? { ...ts, is_verified: true, verified_by: 'current_user' } : ts));
+            const res = await payrollService.approveTimesheet(id, 'current_user', entry?.updated_at);
+            setTimesheets(prev => prev.map(ts => ts.id === id
+                ? { ...ts, is_verified: true, is_rejected: false, verified_by: 'current_user', updated_at: res?.updated_at ?? ts.updated_at }
+                : ts));
             showToast(t('pay.ts.approved_for', { name }));
         } catch (err) {
             logger.error('[Payroll] Failed to approve timesheet:', err);
-            showToast(t('pay.ts.approve_failed', { name }), 'error');
+            showToast(failureMessage(err, 'pay.ts.approve_failed', name), 'error');
         }
     };
 
+    // Rechazar: en el servidor (approve-timesheet, decision 'reject'). Antes se
+    // escribían columnas inexistentes con la sesión del usuario y siempre fallaba.
     const handleReject = async (id: string, name: string) => {
+        const entry = timesheets.find(ts => ts.id === id);
         try {
-            await attendanceRepository.update(id, { rejected: true, rejected_at: new Date().toISOString() });
-            setTimesheets(prev => prev.filter(ts => ts.id !== id));
+            const res = await payrollService.rejectTimesheet(id, entry?.updated_at);
+            setTimesheets(prev => prev.map(ts => ts.id === id
+                ? { ...ts, is_verified: false, is_rejected: true, verified_by: null, updated_at: res?.updated_at ?? ts.updated_at }
+                : ts));
             showToast(t('pay.ts.rejected_for', { name }), 'error');
         } catch (err) {
             logger.error('[Payroll] Failed to reject timesheet:', err);
-            showToast(t('pay.ts.reject_failed', { name }), 'error');
+            showToast(failureMessage(err, 'pay.ts.reject_failed', name), 'error');
         }
     };
 
-    const pending = timesheets.filter(ts => !ts.is_verified);
+    const pending = timesheets.filter(ts => !ts.is_verified && !ts.is_rejected);
     const approved = timesheets.filter(ts => ts.is_verified);
+    const rejected = timesheets.filter(ts => ts.is_rejected);
 
     return (
         <div className="space-y-4 relative">
@@ -133,6 +146,32 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                                         {nzClock(ts.check_in, '—')} → {nzClock(ts.check_out, t('common.active'))}
                                     </span>
                                 </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {rejected.length > 0 && (
+                <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 relative overflow-hidden">
+                    <h3 className="font-extrabold text-slate-800 text-lg tracking-tight mb-5">{t('status.rejected')} <span className="text-slate-400 font-medium ml-1">({rejected.length})</span></h3>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        {rejected.map(ts => (
+                            <div key={ts.id} className="rounded-2xl p-4 border border-red-100/50 bg-red-50/40">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h4 className="font-bold text-slate-800 text-sm tracking-tight">{ts.picker_name}</h4>
+                                    <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-100/50 text-red-600 uppercase tracking-widest border border-red-100">
+                                        <span aria-hidden="true" className="material-symbols-outlined text-[14px]">close</span> {t('status.rejected')}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+                                    <span className="bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">{ts.hours_worked.toFixed(1)} {t('pay.ts.hrs')}</span>
+                                    <span className="text-slate-300">•</span>
+                                    <span>
+                                        {nzClock(ts.check_in, '—')} → {nzClock(ts.check_out, t('common.active'))}
+                                    </span>
+                                </div>
+                                {ts.rejection_reason && <p className="mt-2 text-xs text-slate-600">{ts.rejection_reason}</p>}
                             </div>
                         ))}
                     </div>

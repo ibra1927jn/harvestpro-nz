@@ -29,8 +29,8 @@ const ROLE_FUNCTIONS: { fn: string; allowed: Role[]; wrongTypes: unknown[] }[] =
     },
     {
         fn: 'approve-timesheet',
-        allowed: ['admin', 'manager'],
-        wrongTypes: [{ attendance_id: 42 }, { attendance_id: 'not-a-uuid' }, ['x']],
+        allowed: ['admin', 'manager', 'payroll_admin'],
+        wrongTypes: [{ attendance_id: 42 }, { attendance_id: 'not-a-uuid' }, ['x'], { attendance_id: '00000000-0000-4000-8000-000000000000', decision: 'delete' }],
     },
     {
         fn: 'calculate-payroll',

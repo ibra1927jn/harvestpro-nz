@@ -82,6 +82,7 @@ const payroll: TranslationDict = {
     'pay.ts.approve_failed': 'Hindi naaprubahan ang timesheet ni {name}',
     'pay.ts.rejected_for': 'Tinanggihan ang timesheet ni {name}',
     'pay.ts.reject_failed': 'Hindi matanggihan ang timesheet ni {name}',
+    'pay.ts.week_closed': 'Sarado na ang linggong ito ng sahod. Buksan itong muli para baguhin ang timesheet ni {name}',
     'pay.ts.pending_approval': 'Naghihintay ng Pag-apruba',
     'pay.ts.pending_count': '{n} nakabinbin',
     'pay.ts.loading': 'Nilo-load ang mga timesheet...',
