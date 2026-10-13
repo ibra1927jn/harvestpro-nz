@@ -7,24 +7,6 @@ vi.mock('@/utils/logger', () => ({
     logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
 
-vi.mock('./bucket-ledger.service', () => ({
-    bucketLedgerService: { processItem: vi.fn() },
-}));
-vi.mock('./simple-messaging.service', () => ({
-    simpleMessagingService: {},
-}));
-vi.mock('./user.service', () => ({
-    userService: {},
-}));
-vi.mock('./conflict.service', () => ({
-    conflictService: { resolve: vi.fn() },
-}));
-vi.mock('./db', () => ({
-    dexieDb: {
-        syncQueue: { toArray: vi.fn().mockResolvedValue([]), count: vi.fn().mockResolvedValue(0), put: vi.fn(), delete: vi.fn() },
-        meta: { get: vi.fn().mockResolvedValue(undefined), put: vi.fn() },
-    },
-}));
 vi.mock('@/services/supabase', () => ({
     supabase: {
         from: vi.fn().mockReturnThis(),

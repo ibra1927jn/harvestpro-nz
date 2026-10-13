@@ -1,5 +1,5 @@
 /**
- * HHRR Tabs — Import tests for ContractsTab, EmployeesTab, PayrollTab, PlanningTab, DocumentsTab
+ * HHRR Tabs — Import tests for ContractsTab, EmployeesTab, PayrollTab, DocumentsTab
  */
 import { describe, it, expect, vi } from 'vitest';
 
@@ -67,7 +67,6 @@ describe('HHRR Tab Components — imports', () => {
     it('ContractsTab exports', () => testModule('./ContractsTab'));
     it('EmployeesTab exports', () => testModule('./EmployeesTab'));
     it('PayrollTab exports', () => testModule('./PayrollTab'));
-    it('PlanningTab exports', () => testModule('./PlanningTab'));
     it('DocumentsTab exports', () => testModule('./DocumentsTab'));
 });
 

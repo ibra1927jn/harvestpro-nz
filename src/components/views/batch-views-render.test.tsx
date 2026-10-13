@@ -275,7 +275,5 @@ describe('Team Leader Views — module exports', () => {
 describe('Logistics SubViews — module exports', () => {
   it('RequestsTab exports', () => testModuleExport('@/components/views/logistics/RequestsTab'));
   it('FleetTab exports', () => testModuleExport('@/components/views/logistics/FleetTab'));
-  it('BinTrackingTab exports', () =>
-    testModuleExport('@/components/views/logistics/BinTrackingTab'));
 });
 

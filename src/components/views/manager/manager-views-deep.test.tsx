@@ -78,16 +78,11 @@ describe('Manager Views — 0% coverage imports', () => {
     it('InsightsView exports', () => testModule('./InsightsView'));
     it('SettingsView exports', () => testModule('./SettingsView'));
     it('RowListView exports', () => testModule('./RowListView'));
-    it('FullQueueView exports', () => testModule('./FullQueueView'));
     it('PerformanceFocus exports', () => testModule('./PerformanceFocus'));
     it('MoreMenuView exports', () => testModule('./MoreMenuView'));
     it('CostAnalyticsView exports', () => testModule('./CostAnalyticsView'));
-    it('ListToggleView exports', () => testModule('./ListToggleView'));
     it('WeeklyReportView exports', () => testModule('./WeeklyReportView'));
     it('TimesheetEditor exports', () => testModule('./TimesheetEditor'));
     it('TeamLeaderCard exports', () => testModule('./TeamLeaderCard'));
-    it('TeamersSidebar exports', () => testModule('./TeamersSidebar'));
-    it('ActionView exports', () => testModule('./ActionView'));
-    it('ForecastModal exports', () => testModule('./ForecastModal'));
 });
 

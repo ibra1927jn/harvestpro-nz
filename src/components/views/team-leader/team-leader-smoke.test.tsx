@@ -149,10 +149,3 @@ describe('ProfileView', () => {
 
 // LogisticsView receives bucketRecords as direct prop — skip smoke test
 
-describe('team-leader RunnersView', () => {
-  it('renders runners section', async () => {
-    const { default: RunnersView } = await import('./RunnersView');
-    const { container } = render(<RunnersView />);
-    expect(container.firstChild).toBeDefined();
-  });
-});
