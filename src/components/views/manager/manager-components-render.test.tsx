@@ -169,54 +169,6 @@ describe('GoalProgress', () => {
     });
 });
 
-// ── LiveFloor ──────────────────────────────────────
-describe('LiveFloor', () => {
-    let LiveFloor: React.FC<any>;
-    beforeEach(async () => {
-        const mod = await import('@/components/views/manager/LiveFloor');
-        LiveFloor = mod.default;
-    });
-
-    it('shows empty state when no records', () => {
-        render(<LiveFloor bucketRecords={[]} />);
-        expect(screen.getByText(/No scans recorded/)).toBeDefined();
-    });
-
-    it('renders list of bucket records', () => {
-        const records = [
-            { picker_id: 'p1', picker_name: 'Alice', row_number: 3, created_at: '2026-03-01T10:00:00Z' },
-            { picker_id: 'p2', picker_name: 'Bob', row_number: 5, created_at: '2026-03-01T10:05:00Z' },
-        ];
-        render(<LiveFloor bucketRecords={records} />);
-        expect(screen.getByText('Alice')).toBeDefined();
-        expect(screen.getByText('Bob')).toBeDefined();
-    });
-
-    it('shows max 10 records', () => {
-        const records = Array.from({ length: 15 }, (_, i) => ({
-            picker_id: `p${i}`, picker_name: `Picker${i}`, row_number: i,
-            created_at: '2026-03-01T10:00:00Z',
-        }));
-        const { container } = render(<LiveFloor bucketRecords={records} />);
-        // Should render only 10 items
-        const items = container.querySelectorAll('.divide-y > div');
-        expect(items.length).toBeLessThanOrEqual(10);
-    });
-
-    it('calls onUserSelect when clicking a record', () => {
-        const onUserSelect = vi.fn();
-        const records = [{ picker_id: 'p1', picker_name: 'Alice', row_number: 1, created_at: '2026-03-01T10:00:00Z' }];
-        render(<LiveFloor bucketRecords={records} onUserSelect={onUserSelect} />);
-        fireEvent.click(screen.getByText('Alice'));
-        expect(onUserSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }));
-    });
-
-    it('shows # for missing picker_name initial', () => {
-        const records = [{ picker_id: 'p1', picker_name: '', row_number: 1, created_at: '2026-03-01T10:00:00Z' }];
-        render(<LiveFloor bucketRecords={records} />);
-        expect(screen.getByText('#')).toBeDefined();
-    });
-});
 
 // ── DashboardEmptyState ───────────────────────────
 describe('DashboardEmptyState', () => {

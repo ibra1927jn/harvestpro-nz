@@ -117,10 +117,6 @@ describe('View Components Import Coverage', { timeout: 30000 }, () => {
     expect(mod).toBeDefined();
   });
 
-  it('imports PickerProfileDrawer', async () => {
-    const mod = await import('@/components/common/PickerProfileDrawer');
-    expect(mod.default).toBeDefined();
-  });
 
   it('imports ChatWindow', async () => {
     const mod = await import('@/components/common/messaging/ChatWindow');

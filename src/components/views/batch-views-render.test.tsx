@@ -266,12 +266,10 @@ async function testModuleExport(path: string): Promise<void> {
 describe('Team Leader Views — module exports', () => {
   it('AttendanceView exports', () =>
     testModuleExport('@/components/views/team-leader/AttendanceView'));
-  it('Header exports', () => testModuleExport('@/components/views/team-leader/Header'));
   it('HomeView exports', () => testModuleExport('@/components/views/team-leader/HomeView'));
   it('MessagingView exports', () =>
     testModuleExport('@/components/views/team-leader/MessagingView'));
   it('ProfileView exports', () => testModuleExport('@/components/views/team-leader/ProfileView'));
-  it('RunnersView exports', () => testModuleExport('@/components/views/team-leader/RunnersView'));
   it('TasksView exports', () => testModuleExport('@/components/views/team-leader/TasksView'));
   it('TeamView exports', () => testModuleExport('@/components/views/team-leader/TeamView'));
 });

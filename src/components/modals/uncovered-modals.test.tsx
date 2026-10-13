@@ -55,25 +55,6 @@ vi.mock('@/utils/nzst', () => ({
 }));
 
 describe('Uncovered modal modules', () => {
-  it('AddRunnerModal exports default', async () => {
-    const mod = await import('./AddRunnerModal');
-    expect(mod.default).toBeDefined();
-  });
-
-  it('AddVehicleModal exports default', async () => {
-    const mod = await import('./AddVehicleModal');
-    expect(mod.default).toBeDefined();
-  });
-
-  it('NewTransportRequestModal exports default', async () => {
-    const mod = await import('./NewTransportRequestModal');
-    expect(mod.default).toBeDefined();
-  });
-
-  it('RunnerSelectionModal exports default', async () => {
-    const mod = await import('./RunnerSelectionModal');
-    expect(mod.default).toBeDefined();
-  });
 
   // ScannerModal skipped — requires @capacitor-community/barcode-scanner native dep
 

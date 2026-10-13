@@ -93,7 +93,6 @@ describe('QC Tab Components', () => {
 describe('Logistics Tab Components', () => {
     it('FleetTab exports', () => testModule('../views/logistics/FleetTab'));
     it('RequestsTab exports', () => testModule('../views/logistics/RequestsTab'));
-    it('RoutesTab exports', () => testModule('../views/logistics/RoutesTab'));
     it('HistoryTab exports', () => testModule('../views/logistics/HistoryTab'));
 });
 
@@ -102,9 +101,7 @@ describe('Logistics Tab Components', () => {
 // =============================================
 describe('Team Leader View Components', () => {
     it('AttendanceView exports', () => testModule('../views/team-leader/AttendanceView'));
-    it('Header exports', () => testModule('../views/team-leader/Header'));
     it('ProfileView exports', () => testModule('../views/team-leader/ProfileView'));
-    it('RunnersView exports', () => testModule('../views/team-leader/RunnersView'));
     it('TasksView exports', () => testModule('../views/team-leader/TasksView'));
     it('TeamView exports', () => testModule('../views/team-leader/TeamView'));
 });
@@ -125,7 +122,6 @@ describe('Other 0% Components', () => {
     it('MFAGuard exports', () => testModule('../MFAGuard'));
     it('MFASetup exports', () => testModule('../MFASetup'));
     it('MFAVerify exports', () => testModule('../MFAVerify'));
-    it('SimpleChat exports', () => testModule('../SimpleChat'));
     it('AuditLogViewer exports', () => testModule('../AuditLogViewer'));
     it('SetupWizard exports', () => testModule('../common/SetupWizard'));
     it('ProfileDrawer exports', () => testModule('../common/ProfileDrawer'));

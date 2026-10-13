@@ -118,9 +118,6 @@ vi.mock('@/components/common/Header', () => ({
     default: ({ title }: { title: string }) =>
         React.createElement('header', { 'data-testid': 'header' }, title),
 }));
-vi.mock('@/components/common/PickerProfileDrawer', () => ({
-    default: () => React.createElement('div', { 'data-testid': 'profile-drawer' }),
-}));
 vi.mock('@/components/PickerDrawer', () => ({
     PickerDrawer: () => React.createElement('div', { 'data-testid': 'profile-drawer' }),
 }));

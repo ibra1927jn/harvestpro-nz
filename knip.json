@@ -1,7 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": [
-    "src/index.tsx",
+    "src/index.tsx!",
     "src/mocks/browser.ts",
     "src/**/*.{test,spec}.{ts,tsx}",
     "tests/**/*.test.ts",
@@ -9,7 +9,7 @@
     "scripts/*.{ts,mjs,cjs,js}"
   ],
   "project": [
-    "src/**/*.{ts,tsx}",
+    "src/**/*.{ts,tsx}!",
     "tests/**/*.ts",
     "e2e/**/*.ts",
     "scripts/**/*.{ts,mjs,cjs,js}"

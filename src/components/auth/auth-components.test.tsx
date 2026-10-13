@@ -1,11 +1,10 @@
 /**
- * Tests for auth components: Decorations, DemoAccess, LoginForm
+ * Tests for auth components: Decorations, LoginForm
  */
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@/test-utils';
 import { VineLeaf, GrapeCluster, ParticleDots } from './login/Decorations';
-import DemoAccess from './DemoAccess';
 import LoginForm from './LoginForm';
 
 describe('Decorations', () => {
@@ -29,39 +28,6 @@ describe('Decorations', () => {
         const { container } = render(<ParticleDots />);
         const dots = container.querySelectorAll('.rounded-full');
         expect(dots.length).toBe(18);
-    });
-});
-
-describe('DemoAccess', () => {
-    it('renders all 8 demo role buttons', () => {
-        render(<DemoAccess isSubmitting={false} onDemoAccess={vi.fn()} />);
-        expect(screen.getByText('Manager')).toBeTruthy();
-        expect(screen.getByText('Team Leader')).toBeTruthy();
-        expect(screen.getByText('Bucket Runner')).toBeTruthy();
-        expect(screen.getByText('QC Inspector')).toBeTruthy();
-        expect(screen.getByText('Payroll Admin')).toBeTruthy();
-        expect(screen.getByText('Admin')).toBeTruthy();
-        expect(screen.getByText('HR Admin')).toBeTruthy();
-        expect(screen.getByText('Logistics')).toBeTruthy();
-    });
-
-    it('calls onDemoAccess with correct role', () => {
-        const onDemoAccess = vi.fn();
-        render(<DemoAccess isSubmitting={false} onDemoAccess={onDemoAccess} />);
-        fireEvent.click(screen.getByText('Manager'));
-        expect(onDemoAccess).toHaveBeenCalledWith('manager');
-    });
-
-    it('disables buttons when submitting', () => {
-        render(<DemoAccess isSubmitting={true} onDemoAccess={vi.fn()} />);
-        const buttons = screen.getAllByRole('button');
-        buttons.forEach(btn => expect(btn).toBeDisabled());
-    });
-
-    it('shows role descriptions', () => {
-        render(<DemoAccess isSubmitting={false} onDemoAccess={vi.fn()} />);
-        expect(screen.getByText('Command center & analytics')).toBeTruthy();
-        expect(screen.getByText('Manage pickers & rows')).toBeTruthy();
     });
 });
 

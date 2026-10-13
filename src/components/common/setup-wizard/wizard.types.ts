@@ -16,12 +16,6 @@ export interface OrchardStepProps extends StepProps {
     onUpdate: (field: keyof WizardData['orchard'], value: string | number) => void;
 }
 
-export interface TeamsStepProps extends StepProps {
-    onUpdateTeam: (idx: number, field: keyof WizardData['teams'][0], value: string | number) => void;
-    onAddTeam: () => void;
-    onRemoveTeam: (idx: number) => void;
-}
-
 export interface RatesStepProps extends StepProps {
     onUpdate: (field: keyof WizardData['rates'], value: string | number) => void;
 }

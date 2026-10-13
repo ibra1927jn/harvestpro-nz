@@ -152,10 +152,6 @@ vi.mock('@/components/views/manager/RowAssignmentModal', () => ({
 vi.mock('@/components/modals/PickerDetailsModal', () => ({
   default: () => <div>Picker Details</div>,
 }));
-vi.mock('@/components/common/PickerProfileDrawer', () => ({
-  default: () => <div>Picker Drawer</div>,
-}));
-
 vi.mock('@/components/ui/ComponentErrorBoundary', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));

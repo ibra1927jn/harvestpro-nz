@@ -103,13 +103,11 @@ async function testModuleExport(path: string): Promise<void> {
 // ── Common Components ────────────────────────────
 describe('Common Components — module exports', () => {
     it('BottomNav exports', () => testModuleExport('@/components/common/BottomNav'));
-    it('ConflictResolver exports', () => testModuleExport('@/components/common/ConflictResolver'));
     it('DesktopLayout exports', () => testModuleExport('@/components/common/DesktopLayout'));
     it('ErrorBoundary exports', () => testModuleExport('@/components/common/ErrorBoundary'));
     it('HarvestSyncBridge exports', () => testModuleExport('@/components/common/HarvestSyncBridge'));
     it('Header exports', () => testModuleExport('@/components/common/Header'));
     it('NotificationPanel exports', () => testModuleExport('@/components/common/NotificationPanel'));
-    it('PickerProfileDrawer exports', () => testModuleExport('@/components/common/PickerProfileDrawer'));
     it('PwaInstallBanner exports', () => testModuleExport('@/components/common/PwaInstallBanner'));
     it('SetupWizard exports', () => testModuleExport('@/components/common/SetupWizard'));
     it('SyncStatusMonitor exports', () => testModuleExport('@/components/common/SyncStatusMonitor'));
@@ -134,7 +132,6 @@ describe('Setup Wizard Steps — module exports', () => {
     it('OrchardStep exports', () => testModuleExport('@/components/common/setup-wizard/OrchardStep'));
     it('RatesStep exports', () => testModuleExport('@/components/common/setup-wizard/RatesStep'));
     it('SummaryStep exports', () => testModuleExport('@/components/common/setup-wizard/SummaryStep'));
-    it('TeamsStep exports', () => testModuleExport('@/components/common/setup-wizard/TeamsStep'));
 });
 
 // ── QC View Components ──────────────────────────
