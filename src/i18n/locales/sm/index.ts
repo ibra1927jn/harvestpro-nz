@@ -1,68 +1,37 @@
-/**
- * Gagana Samoa locale — known keys translated, rest falls back to EN
- * TODO translate: settings.*, teams.*, insights.*, panel.*
- */
 import type { TranslationDict } from '../../types';
-import en from '../en';
+import nav from './nav';
+import dashboard from './dashboard';
+import settings from './settings';
+import teams from './teams';
+import insights from './insights';
+import panel from './panel';
+import common from './common';
+import auth from './auth';
+import fraud from './fraud';
+import scanner from './scanner';
+import misc from './misc';
+import orchardMap from './orchardMap';
+import assignModal from './assignModal';
+import logistics from './logistics';
+import legal from './legal';
 
+// Claves propias de este idioma (sin heredar de otro: el checker exige todas)
 const sm: TranslationDict = {
-    ...en,
-    'nav.dashboard': "Fa'amatalaga",
-    'nav.teams': 'Vaega',
-    'nav.map': "Fa'afanua o le Togāfua",
-    'nav.orchard_map': "Fa'afanua o le Togāfua",
-    'nav.logistics': "Fa'asologa",
-    'nav.insights': 'Iloiloga',
-    'nav.messaging': "Fe'au",
-    'nav.timesheet': 'Lisi Taimi',
-    'nav.settings': "Fa'atulagaga",
-    'nav.sync_errors': 'Mea Sese',
-    'nav.more': 'Toe Isi',
-    'dashboard.title': "Va'aiga Togāfua",
-    'dashboard.live_monitoring': "Va'aiga Ola",
-    'dashboard.velocity': 'Saoasaoa',
-    'dashboard.production': 'Gaosiga',
-    'dashboard.est_cost': "Tupe Fa'amoemoe",
-    'dashboard.active_crew': 'Vaega Galue',
-    'dashboard.buckets': 'ātigi',
-    'dashboard.pickers': 'tagata selesele',
-    'dashboard.daily_target': 'Sini o le Aso',
-    'dashboard.complete': "Maeʻa",
-    'dashboard.remaining': 'totoe',
-    'dashboard.broadcast': "Fa'asalalau",
-    'settings.title': "Fa'atulagaga",
-    'settings.header': "Fa'atulagaga",
-    'settings.language': 'Gagana',
-    'settings.language_desc': 'Filifili lau gagana',
-    'common.loading': "Fa'atali…",
-    'common.error': 'Sa i ai se mea sese',
-    'common.retry': 'Toe Taumafai',
-    'common.cancel': "Fa'aleaogaina",
-    'common.save': "Fa'asao",
-    'common.close': 'Tapuni',
-    'common.search': "Su'e",
-    'common.filter': 'Loli',
-    'common.today': 'Ananafi',
-    'common.sign_out': 'Ese',
-    'auth.welcome': 'Afio Mai!',
-    'auth.sign_in': 'Ulufale',
-    'auth.email': 'Imeli',
-    'auth.password': "Upu Fa'ailo",
-    'fraud.title': "Puipuiga Fa'asese",
-    'fraud.live': 'Ola',
-    'fraud.high': 'Maualuga',
-    'fraud.medium': 'Totonu',
-    'fraud.low': 'Maualalo',
-    'fraud.dismissed': "Fa'aleaogaina",
-    'fraud.no_anomalies': 'E leai ni mea eseese',
-    'fraud.all_flags': 'Uma',
-    'fraud.analyzing': "Su'esu'e…",
-    'fraud.refresh': "Toe Fa'afou",
-    'timesheet.title': "Fa'asologa Taimi",
-    'timesheet.hours': 'Itula',
-    'sync.title': "Mea Sese Fa'afesoʻotaʻi",
-    'sync.all_clear': 'Lelei!',
-    'sync.no_errors': 'E leai ni mea sese',
+    ...nav,
+    ...dashboard,
+    ...settings,
+    ...teams,
+    ...insights,
+    ...panel,
+    ...common,
+    ...auth,
+    ...fraud,
+    ...scanner,
+    ...misc,
+    ...orchardMap,
+    ...assignModal,
+    ...logistics,
+    ...legal,
 };
 
 export default sm;

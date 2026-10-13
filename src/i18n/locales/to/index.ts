@@ -1,63 +1,37 @@
-/**
- * Lea Faka-Tonga locale — known keys translated, rest falls back to EN
- * TODO translate: settings.*, teams.*, insights.*, panel.*
- */
 import type { TranslationDict } from '../../types';
-import en from '../en';
+import nav from './nav';
+import dashboard from './dashboard';
+import settings from './settings';
+import teams from './teams';
+import insights from './insights';
+import panel from './panel';
+import common from './common';
+import auth from './auth';
+import fraud from './fraud';
+import scanner from './scanner';
+import misc from './misc';
+import orchardMap from './orchardMap';
+import assignModal from './assignModal';
+import logistics from './logistics';
+import legal from './legal';
 
+// Claves propias de este idioma (sin heredar de otro: el checker exige todas)
 const to: TranslationDict = {
-    ...en,
-    'nav.dashboard': 'Peesi Mālohi',
-    'nav.teams': 'Ngaahi Kautaha',
-    'nav.map': "Mape 'o e Ngaahi'anga",
-    'nav.orchard_map': "Mape 'o e Ngaahi'anga",
-    'nav.logistics': 'Ngaahi Ngāue',
-    'nav.insights': 'Fakakaukau',
-    'nav.messaging': 'Ngaahi Pōpoaki',
-    'nav.timesheet': 'Lēkooti Taimi',
-    'nav.settings': 'Ngaahi Setenga',
-    'nav.more': 'Toe Lahi Ange',
-    'dashboard.title': "Vakai ki he Ngaahi'anga",
-    'dashboard.live_monitoring': 'Vakai Moʻui',
-    'dashboard.velocity': 'Vave',
-    'dashboard.production': 'Ngaahi Koloa',
-    'dashboard.buckets': 'ngaahi ipu',
-    'dashboard.pickers': 'kau toli',
-    'dashboard.daily_target': "Sīpinga 'o e Aho",
-    'dashboard.complete': 'Kakato',
-    'dashboard.remaining': 'toe',
-    'dashboard.broadcast': 'Fakaholoholo',
-    'settings.title': 'Ngaahi Setenga',
-    'settings.header': 'Ngaahi Setenga',
-    'settings.language': 'Lea',
-    'settings.language_desc': "Fili ho'o lea",
-    'common.loading': 'ʻOku hiki…',
-    'common.error': 'Kuó hoko ha hala',
-    'common.retry': 'Toe Feinga',
-    'common.cancel': "Fakatoʻo",
-    'common.save': 'Tauhi',
-    'common.close': 'Kāpuni',
-    'common.search': 'Kumi',
-    'common.today': "ʻAho Ni",
-    'common.sign_out': 'Maʻu Kimui',
-    'auth.welcome': 'Mālō e lelei!',
-    'auth.sign_in': 'Hū ki Loto',
-    'auth.email': 'Īmeli',
-    'auth.password': "Leá Hūfi",
-    'fraud.title': "Maluʻi mei he Kākā",
-    'fraud.live': 'Moʻui',
-    'fraud.high': 'Māʻolunga',
-    'fraud.medium': 'Waenganoa',
-    'fraud.low': 'Māʻulalo',
-    'fraud.dismissed': "Siʻaki",
-    'fraud.all_flags': 'Kotoa',
-    'fraud.analyzing': 'ʻOku tātā…',
-    'fraud.refresh': 'Fohola Foʻou',
-    'timesheet.title': 'Fakatonutonu Taimi',
-    'timesheet.hours': 'Ngaahi Houa',
-    'sync.title': 'Ngaahi Hala Fesiofaki',
-    'sync.all_clear': 'ʻOku Lelei!',
-    'sync.no_errors': 'ʻOku ʻikai ha hala',
+    ...nav,
+    ...dashboard,
+    ...settings,
+    ...teams,
+    ...insights,
+    ...panel,
+    ...common,
+    ...auth,
+    ...fraud,
+    ...scanner,
+    ...misc,
+    ...orchardMap,
+    ...assignModal,
+    ...logistics,
+    ...legal,
 };
 
 export default to;

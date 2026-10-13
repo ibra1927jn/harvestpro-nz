@@ -50,10 +50,6 @@ vi.mock('@/stores/useHarvestStore', () => ({
 vi.mock('@/utils/logger', () => ({
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
-vi.mock('@/services/i18n.service', () => ({
-    t: (key: string) => key,
-    i18n: { t: (key: string) => key, getLanguage: () => 'en', subscribe: () => () => { } },
-}));
 vi.mock('@/hooks/useTranslation', () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));

@@ -1,66 +1,37 @@
-/**
- * Filipino/Tagalog locale — known keys translated, rest falls back to EN
- * TODO translate: settings.*, teams.*, insights.*, panel.*
- */
 import type { TranslationDict } from '../../types';
-import en from '../en';
+import nav from './nav';
+import dashboard from './dashboard';
+import settings from './settings';
+import teams from './teams';
+import insights from './insights';
+import panel from './panel';
+import common from './common';
+import auth from './auth';
+import fraud from './fraud';
+import scanner from './scanner';
+import misc from './misc';
+import orchardMap from './orchardMap';
+import assignModal from './assignModal';
+import logistics from './logistics';
+import legal from './legal';
 
+// Claves propias de este idioma (sin heredar de otro: el checker exige todas)
 const tl: TranslationDict = {
-    ...en,
-    'nav.dashboard': 'Dashboard',
-    'nav.teams': 'Mga Koponan',
-    'nav.map': 'Mapa ng Taniman',
-    'nav.orchard_map': 'Mapa ng Taniman',
-    'nav.logistics': 'Logistics',
-    'nav.insights': 'Pagsusuri',
-    'nav.messaging': 'Pagmemensahe',
-    'nav.timesheet': 'Timesheet',
-    'nav.settings': 'Mga Setting',
-    'nav.more': 'Higit Pa',
-    'dashboard.title': 'Pangkalahatang-tanaw ng Taniman',
-    'dashboard.live_monitoring': 'Live na Pagsubaybay',
-    'dashboard.velocity': 'Bilis',
-    'dashboard.production': 'Produksyon',
-    'dashboard.est_cost': 'Tinatayang Gastos',
-    'dashboard.active_crew': 'Aktibong Pangkat',
-    'dashboard.buckets': 'mga timba',
-    'dashboard.pickers': 'mga manguha',
-    'dashboard.daily_target': 'Araw-araw na Target',
-    'dashboard.complete': 'Tapos na',
-    'dashboard.remaining': 'natitira',
-    'dashboard.broadcast': 'I-broadcast',
-    'settings.title': 'Mga Setting',
-    'settings.header': 'Mga Setting',
-    'settings.language': 'Wika',
-    'settings.language_desc': 'Piliin ang iyong ginustong wika',
-    'common.loading': 'Naglo-load…',
-    'common.error': 'May naganap na error',
-    'common.retry': 'Subukan Muli',
-    'common.cancel': 'Kanselahin',
-    'common.save': 'I-save',
-    'common.close': 'Isara',
-    'common.search': 'Maghanap',
-    'common.today': 'Ngayon',
-    'common.sign_out': 'Mag-sign Out',
-    'auth.welcome': 'Maligayang pagbabalik!',
-    'auth.sign_in': 'Mag-sign In',
-    'auth.email': 'Email',
-    'auth.password': 'Password',
-    'fraud.title': 'Kalasag Laban sa Pandaraya',
-    'fraud.live': 'Live',
-    'fraud.high': 'Mataas',
-    'fraud.medium': 'Katamtaman',
-    'fraud.low': 'Mababa',
-    'fraud.dismissed': 'Tinanggal',
-    'fraud.no_anomalies': 'Walang anomaliya na natagpuan',
-    'fraud.all_flags': 'Lahat',
-    'fraud.analyzing': 'Sinusuri ang mga pattern…',
-    'fraud.refresh': 'I-refresh ang mga anomaliya',
-    'timesheet.title': 'Editor ng Timesheet',
-    'timesheet.hours': 'Mga Oras',
-    'sync.title': 'Mga Error sa Sync',
-    'sync.all_clear': 'Maayos Na!',
-    'sync.no_errors': 'Walang sync error na natukoy',
+    ...nav,
+    ...dashboard,
+    ...settings,
+    ...teams,
+    ...insights,
+    ...panel,
+    ...common,
+    ...auth,
+    ...fraud,
+    ...scanner,
+    ...misc,
+    ...orchardMap,
+    ...assignModal,
+    ...logistics,
+    ...legal,
 };
 
 export default tl;

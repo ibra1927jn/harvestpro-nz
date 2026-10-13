@@ -13,7 +13,9 @@ import misc from './misc';
 import orchardMap from './orchardMap';
 import assignModal from './assignModal';
 import logistics from './logistics';
+import legal from './legal';
 
+// Claves propias de este idioma (sin heredar de otro: el checker exige todas)
 const en: TranslationDict = {
     ...nav,
     ...dashboard,
@@ -29,6 +31,7 @@ const en: TranslationDict = {
     ...orchardMap,
     ...assignModal,
     ...logistics,
+    ...legal,
 };
 
 export default en;

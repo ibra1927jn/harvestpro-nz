@@ -1,6 +1,6 @@
 import { logger } from '@/utils/logger';
 import { captureSentryError } from '@/config/sentry';
-import { t } from '@/services/i18n.service';
+import { translate as t } from '@/i18n';
 import { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {

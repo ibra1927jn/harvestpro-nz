@@ -1,78 +1,37 @@
-/**
- * Te Reo Māori locale — known keys translated, rest falls back to EN
- * TODO translate: settings.*, teams.*, insights.*, panel.*
- */
 import type { TranslationDict } from '../../types';
-import en from '../en';
+import nav from './nav';
+import dashboard from './dashboard';
+import settings from './settings';
+import teams from './teams';
+import insights from './insights';
+import panel from './panel';
+import common from './common';
+import auth from './auth';
+import fraud from './fraud';
+import scanner from './scanner';
+import misc from './misc';
+import orchardMap from './orchardMap';
+import assignModal from './assignModal';
+import logistics from './logistics';
+import legal from './legal';
 
+// Claves propias de este idioma (sin heredar de otro: el checker exige todas)
 const mi: TranslationDict = {
-    ...en, // fallback to EN for untranslated keys
-    'nav.dashboard': 'Papatohu',
-    'nav.teams': 'Ngā Rōpū',
-    'nav.map': 'Mahere Māra',
-    'nav.orchard_map': 'Mahere Māra',
-    'nav.logistics': 'Whakahaere Rawa',
-    'nav.insights': 'Ngā Tirohanga',
-    'nav.messaging': 'Ngā Karere',
-    'nav.timesheet': 'Rēhita Wā',
-    'nav.settings': 'Ngā Tautuhinga',
-    'nav.sync_errors': 'Hapa Tukutahi',
-    'nav.more': 'Ētahi Atu',
-    'dashboard.title': 'Tirohanga Māra',
-    'dashboard.live_monitoring': 'Aroturuki Ora',
-    'dashboard.velocity': 'Tere',
-    'dashboard.production': 'Whakaputa',
-    'dashboard.est_cost': 'Utu Whakatau',
-    'dashboard.active_crew': 'Rōpū Hohe',
-    'dashboard.buckets': 'ngā pākete',
-    'dashboard.pickers': 'ngā kaikohi',
-    'dashboard.daily_target': 'Whāinga o te Rā',
-    'dashboard.complete': 'Oti',
-    'dashboard.remaining': 'e toe ana',
-    'dashboard.export': 'Tuku ki Waho',
-    'dashboard.live_map': 'Mahere Ora',
-    'dashboard.broadcast': 'Pāpāho',
-    'settings.title': 'Ngā Tautuhinga',
-    'settings.header': 'Ngā Tautuhinga',
-    'settings.language': 'Reo',
-    'settings.language_desc': 'Kōwhiria tō reo',
-    'common.loading': 'E uta ana…',
-    'common.error': 'He hapa',
-    'common.retry': 'Ngana anō',
-    'common.cancel': 'Whakakore',
-    'common.save': 'Tiaki',
-    'common.close': 'Kati',
-    'common.search': 'Rapu',
-    'common.filter': 'Tātari',
-    'common.today': 'I tēnei rā',
-    'common.yesterday': 'Inanahi',
-    'common.sign_out': 'Takiputa',
-    'auth.welcome': 'Nau mai!',
-    'auth.sign_in': 'Takiuru',
-    'auth.sign_in_desc': 'Takiuru ki tō papatohu',
-    'auth.register': 'Rēhita',
-    'auth.email': 'Īmēra',
-    'auth.password': 'Kupuhipa',
-    'auth.forgot_password': 'Kua wareware tō kupuhipa?',
-    'fraud.title': 'Puāwai Haumaru',
-    'fraud.live': 'Ora',
-    'fraud.demo': 'Whakaatu',
-    'fraud.high': 'Teitei',
-    'fraud.medium': 'Waenga',
-    'fraud.low': 'Iti',
-    'fraud.dismissed': 'Whakakore',
-    'fraud.no_anomalies': 'Kāore he rerekētanga i kitea',
-    'fraud.normal_patterns': 'He pai ngā tauira katoa',
-    'fraud.all_flags': 'Katoa',
-    'fraud.analyzing': 'E tātari ana i ngā tauira…',
-    'fraud.refresh': 'Whakahou',
-    'timesheet.title': 'Rēhita Wā',
-    'timesheet.attendance': 'Ngā Rekoata Haere',
-    'timesheet.hours': 'Ngā Hāora',
-    'sync.title': 'Hapa Tukutahi',
-    'sync.dead_letter': 'Rārangi Tāhuri',
-    'sync.all_clear': 'Katoa Māmā!',
-    'sync.no_errors': 'Kāore he hapa i kitea',
+    ...nav,
+    ...dashboard,
+    ...settings,
+    ...teams,
+    ...insights,
+    ...panel,
+    ...common,
+    ...auth,
+    ...fraud,
+    ...scanner,
+    ...misc,
+    ...orchardMap,
+    ...assignModal,
+    ...logistics,
+    ...legal,
 };
 
 export default mi;

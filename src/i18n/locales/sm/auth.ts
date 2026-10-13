@@ -1,0 +1,38 @@
+import type { TranslationDict } from '../../types';
+
+const auth: TranslationDict = {
+    'auth.welcome': 'Afio mai!',
+    'auth.sign_in': 'Saini i totonu',
+    'auth.sign_in_desc': 'Saini i totonu e va\'ai i lau laupepa',
+    'auth.register': 'Resitala',
+    'auth.email': 'Imeli',
+    'auth.password': 'Upu fa\'alilolilo',
+    'auth.forgot_password': 'Ua galo lau upu fa\'alilolilo?',
+    'auth.twoFactor.title': 'Fa\'amaoniga Lua-Laasaga',
+    'auth.twoFactor.subtitle': 'Tusi le numera 6 mai lau app fa\'amaoni',
+    'auth.twoFactor.verify': 'Fa\'amaonia',
+    'auth.twoFactor.verifying': 'O lo\'o fa\'amaonia...',
+    'auth.twoFactor.cancel': 'Fa\'aleaoga',
+    'auth.twoFactor.back': '← Toe fo\'i i le saini',
+    'auth.twoFactor.resend': 'Toe auina le numera',
+    'auth.twoFactor.resend_in': 'Toe auina i le {n}s',
+    'auth.twoFactor.expires_in': 'E muta le numera i le {mm}:{ss}',
+    'auth.twoFactor.lost_access': 'Ua leiloa lau app fa\'amaoni?',
+    'auth.twoFactor.contact_admin': 'Fa\'afeso\'ota\'i lou pule mo se fesoasoani.',
+    'auth.twoFactor.error_length': 'Tusi se numera e 6',
+    'auth.twoFactor.error_invalid': 'Sese le numera. Toe taumafai.',
+    'auth.signing_in': 'O lo\'o saini i totonu...',
+    'auth.sign_up': 'Resitala',
+    'auth.full_name': 'Igoa Atoa',
+    'auth.or_register': 'E fou? Fai se tala',
+    'auth.or_login': 'E i ai sau tala? Saini i totonu',
+    'auth.create_account': 'Fai se Tala',
+    'auth.creating_account': 'O lo\'o faia le tala...',
+    'auth.welcome_back': 'Afio mai!',
+    'auth.sign_in_desc_alt': 'Saini i totonu e va\'ai i lau laupepa',
+    'auth.register_desc': 'Fai lau tala',
+    'auth.register_hr_notice': 'Resitala i le imeli na fa\'atagaina e le HR',
+    'auth.register_hr_notice_full': 'Resitala i le imeli na fa\'atagaina e le HR. E tofia otometi lau tulaga ma le matagaluega.',
+};
+
+export default auth;
