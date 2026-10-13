@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { formatNZTime, formatNZDate, formatNZDateTime, formatNZD, formatNZNumber } from './nzFormat';
+import { addDaysYMD } from './nzst';
 
 // 2026-10-13T18:30Z = 14 Oct 07:30 NZDT (+13): otro día y otra hora que en UTC
 const EVENING_UTC = '2026-10-13T18:30:00Z';
@@ -30,5 +31,12 @@ describe('nzFormat', () => {
         expect(formatNZD(-5)).toBe('-$5.00');
         expect(formatNZNumber(12345.678, 1)).toBe('12,345.7');
         expect(formatNZD(Number.NaN)).toBe('');
+    });
+
+    it('adds calendar days without time zone drift (also across DST and month/year ends)', () => {
+        expect(addDaysYMD('2026-04-05', -1)).toBe('2026-04-04'); // fin del horario de verano NZ
+        expect(addDaysYMD('2026-12-31', 1)).toBe('2027-01-01');
+        expect(addDaysYMD('2026-03-01', -1)).toBe('2026-02-28');
+        expect(formatNZDate('2026-10-13', 'dayMonthNumeric')).toBe('13/10');
     });
 });

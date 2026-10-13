@@ -29,6 +29,7 @@ import PredictionsCard from './PredictionsCard';
 import { useVelocityDrilldown } from '@/hooks/useVelocityDrilldown';
 import { UnclosedShiftsAlert } from '@/components/common/UnclosedShiftsAlert';
 import RejectedScansAlert from '@/components/common/RejectedScansAlert';
+import { formatNZD, formatNZDateTime } from '@/utils/nzFormat';
 
 interface DashboardViewProps {
   stats: HarvestState['stats'];
@@ -125,8 +126,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({
   const handleExport = useCallback(() => {
     const now = new Date();
     const metadata = {
-      generated_at: now.toLocaleString(undefined, { timeZone: 'Pacific/Auckland' }),
-      last_sync: now.toLocaleString(undefined, { timeZone: 'Pacific/Auckland' }),
+      generated_at: formatNZDateTime(now),
+      last_sync: formatNZDateTime(now),
       pending_queue_count: 0,
       orchard_name: orchard?.name || 'Orchard',
       is_offline_data: !navigator.onLine,
@@ -263,7 +264,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
         />
         <DashboardStatCard
           title={t('dashboard.est_cost')}
-          value={`$${animCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+          value={formatNZD(animCost, 0)}
           unit={t('dashboard.kpi.nzd')}
           icon="payments"
           iconBg="bg-green-50"

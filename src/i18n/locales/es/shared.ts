@@ -37,7 +37,7 @@ const shared: TranslationDict = {
     'heatmap.days_7': '7 días',
     'heatmap.days_30': '30 días',
     'heatmap.active': 'Activas',
-    'heatmap.complete': 'Completas',
+    'heatmap.complete': 'Listas',
     'heatmap.critical': 'Críticas',
     'heatmap.no_data': 'Sin datos',
     'heatmap.loading': 'Cargando mapa de calor...',

@@ -22,10 +22,11 @@ import ClickableRow from '@/components/primitives/ClickableRow';
 import TeamDrawer, { SelectedTeamData } from './TeamDrawer';
 import { useTranslation } from '@/i18n';
 import { TeamRanking } from '@/hooks/useWeeklyReport';
+import { formatNZDate } from '@/utils/nzFormat';
 
 const WeeklyReportView: React.FC = () => {
     const report = useWeeklyReport();
-    const { t, locale } = useTranslation();
+    const { t } = useTranslation();
     const [selectedTeam, setSelectedTeam] = useState<SelectedTeamData | null>(null);
 
     const buildTeamData = (team: TeamRanking): SelectedTeamData => {
@@ -84,7 +85,7 @@ const WeeklyReportView: React.FC = () => {
                 <div>
                     <h2 className="text-xl font-black text-text-main">{t('insights.weekly.title')}</h2>
                     <p className="text-xs text-text-muted">
-                        {report.orchard?.name || 'Orchard'} — {new Date().toLocaleDateString(locale === 'es' ? 'es-NZ' : 'en-NZ', { timeZone: 'Pacific/Auckland', weekday: 'long', month: 'long', day: 'numeric' })}
+                        {report.orchard?.name || 'Orchard'} — {formatNZDate(new Date(), 'weekday')}
                     </p>
                 </div>
                 <button

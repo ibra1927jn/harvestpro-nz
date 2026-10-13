@@ -18,6 +18,7 @@ import { PayWeekCloseBar } from '@/components/views/payroll/PayWeekCloseBar';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import { UnclosedShiftsAlert } from '@/components/common/UnclosedShiftsAlert';
+import { formatNZNumber } from '@/utils/nzFormat';
 
 const PAYROLL_NAV: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', labelKey: 'nav.dashboard', icon: 'dashboard' },
@@ -83,7 +84,7 @@ const Payroll: React.FC = () => {
             )}
 
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-                <SummaryCard icon="inventory_2" iconColor="text-indigo-500" label="Total Buckets" value={pay.summary.total_buckets.toLocaleString()} />
+                <SummaryCard icon="inventory_2" iconColor="text-indigo-500" label="Total Buckets" value={formatNZNumber(pay.summary.total_buckets)} />
                 <SummaryCard icon="schedule" iconColor="text-sky-500" label="Total Hours" value={`${pay.summary.total_hours.toFixed(1)}h`} />
                 <SummaryCard icon="payments" iconColor="text-emerald-500" label="Piece Rate" value={`$${pay.summary.total_piece_rate_earnings.toFixed(0)}`} />
                 <SummaryCard icon="shield" iconColor="text-amber-500" label="Top-Up Required" value={`$${pay.summary.total_top_up.toFixed(0)}`} />

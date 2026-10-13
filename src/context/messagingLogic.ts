@@ -5,6 +5,7 @@
  * confirmaciones, contadores) para poder probarlas sin red.
  */
 import type { ChatGroup, MessagingState } from './messaging.types';
+import { formatNZTime } from '@/utils/nzFormat';
 
 /** Conversación tal como llega de la tabla conversations */
 export interface ConversationRow {
@@ -24,8 +25,8 @@ export interface LastMessageRow {
 /** Longitud máxima de la vista previa del último mensaje */
 const PREVIEW_MAX_CHARS = 40;
 
-const timeNZ = (iso: string): string =>
-  new Date(iso).toLocaleTimeString([], { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' });
+// Hora NZ en 24 h (antes con el formato del móvil: "1:05 pm" / "13:05")
+const timeNZ = (iso: string): string => formatNZTime(iso);
 
 /** Total de no leídos a partir del mapa por conversación */
 export function sumUnread(map: Record<string, number>): number {

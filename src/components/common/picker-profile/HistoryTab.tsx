@@ -6,6 +6,7 @@ import React from 'react';
 import { useTranslation } from '@/i18n';
 import { PickerHistory } from '@/services/picker-history.service';
 import Sparkline from './Sparkline';
+import { formatNZDate } from '@/utils/nzFormat';
 
 interface HistoryTabProps {
     history: PickerHistory;
@@ -13,7 +14,7 @@ interface HistoryTabProps {
 }
 
 const HistoryTab: React.FC<HistoryTabProps> = ({ history, dailyBuckets }) => {
-    const { t, locale } = useTranslation();
+    const { t } = useTranslation();
 
     return (
         <div className="space-y-4">
@@ -66,7 +67,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history, dailyBuckets }) => {
                                 <div key={r.date} className="flex items-center gap-2 px-4 py-2.5 hover:bg-slate-50 transition-colors text-xs">
                                     {/* Fecha */}
                                     <span className="text-text-muted w-16 flex-shrink-0">
-                                        {new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(new Date(r.date + 'T12:00:00'))}
+                                        {formatNZDate(r.date, 'dayMonth')}
                                     </span>
                                     {/* Huerto */}
                                     <span className="text-text-muted truncate w-20 flex-shrink-0" title={r.orchard_name ?? '—'}>

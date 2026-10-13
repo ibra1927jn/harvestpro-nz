@@ -4,6 +4,7 @@
 import React from 'react';
 import type { Anomaly } from '../../../../services/fraud-detection.service';
 import { ANOMALY_CONFIG, SEVERITY_STYLES, RULE_BADGE } from './anomaly.constants';
+import { formatNZTime } from '@/utils/nzFormat';
 
 interface AnomalyCardProps {
     anomaly: Anomaly;
@@ -34,10 +35,7 @@ const AnomalyCard: React.FC<AnomalyCardProps> = ({ anomaly, index, onViewProfile
                             </h4>
                             <p className="text-xs text-slate-400 font-mono mt-0.5 flex items-center gap-1">
                                 <span aria-hidden="true" className="material-symbols-outlined text-xs">schedule</span>
-                                {new Date(anomaly.timestamp).toLocaleTimeString([], { timeZone: 'Pacific/Auckland',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                })}
+                                {formatNZTime(anomaly.timestamp)}
                             </p>
                         </div>
                     </div>

@@ -38,7 +38,7 @@ const shared: TranslationDict = {
     'heatmap.days_30': 'ʻAho 30',
     'heatmap.active': 'Ngāue',
     'heatmap.complete': 'Kakato',
-    'heatmap.critical': 'Fakatuʻutāmaki',
+    'heatmap.critical': 'Tōmui',
     'heatmap.no_data': 'ʻIkai ha fakamatala',
     'heatmap.loading': 'Tatali ki he mape...',
     'heatmap.target': 'Taumuʻa',

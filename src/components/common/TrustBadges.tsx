@@ -10,6 +10,7 @@
 import React from 'react';
 import { useTranslation } from '@/i18n';
 import { useHarvestStore } from '../../stores/useHarvestStore';
+import { formatNZNumber } from '@/utils/nzFormat';
 
 interface BadgeProps {
     icon: React.ReactNode;
@@ -52,7 +53,7 @@ export const TrustBadges: React.FC = () => {
             />
             <Badge
                 icon={<span aria-hidden="true" className="material-symbols-outlined text-sm">database</span>}
-                label={t('dashboard.trust.records').replace('{n}', String(recordCount > 0 ? recordCount.toLocaleString() : crewCount))}
+                label={t('dashboard.trust.records').replace('{n}', String(recordCount > 0 ? formatNZNumber(recordCount) : crewCount))}
                 variant="info"
             />
             <Badge

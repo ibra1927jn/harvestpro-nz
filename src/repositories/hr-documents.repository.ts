@@ -3,6 +3,7 @@
  * Gestiona hr_documents table + hr-documents storage bucket.
  */
 import { supabase } from '@/services/supabase';
+import { addDaysYMD, todayNZST } from '@/utils/nzst';
 
 export type HRDocumentType =
   | 'employment_agreement'
@@ -173,9 +174,7 @@ export const hrDocumentsRepository = {
 
   /** Docs expiring in the next N days across an orchard. */
   async listExpiringSoon(orchardId: string, daysAhead = 60): Promise<HRDocumentRow[]> {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() + daysAhead);
-    const cutoffIso = cutoff.toISOString().slice(0, 10);
+    const cutoffIso = addDaysYMD(todayNZST(), daysAhead);
 
     const { data, error } = await supabase
       .from('hr_documents')

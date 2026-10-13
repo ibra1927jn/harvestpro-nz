@@ -14,6 +14,7 @@
  */
 import { supabase } from '@/services/supabase';
 import { logger } from '@/utils/logger';
+import { addDaysYMD, dateInNZST, todayNZST } from '@/utils/nzst';
 
 // =============================================
 // TYPES
@@ -124,7 +125,7 @@ export const predictionsService = {
 
     if (!records?.length) {
       return Array.from({ length: daysAhead }, (_, i) => ({
-        date: new Date(Date.now() + (i + 1) * 86400000).toISOString().split('T')[0],
+        date: addDaysYMD(todayNZST(), i + 1),
         predicted_buckets: 0,
         confidence: 0,
       }));
@@ -133,7 +134,8 @@ export const predictionsService = {
     // Aggregate by day
     const dailyCounts = new Map<string, number>();
     for (const r of records) {
-      const day = r.scanned_at.split('T')[0];
+      // Día de NZ del escaneo (no el día UTC)
+      const day = dateInNZST(r.scanned_at);
       dailyCounts.set(day, (dailyCounts.get(day) || 0) + 1);
     }
 
@@ -158,7 +160,7 @@ export const predictionsService = {
       const confidence = Math.max(0.3, 1 - i * 0.08);
 
       predictions.push({
-        date: new Date(Date.now() + i * 86400000).toISOString().split('T')[0],
+        date: addDaysYMD(todayNZST(), i),
         predicted_buckets: predicted,
         confidence: Math.round(confidence * 100) / 100,
       });
@@ -208,7 +210,8 @@ export const predictionsService = {
     // Group by day
     const dailyGrades = new Map<string, Map<string, number>>();
     for (const r of records) {
-      const day = r.scanned_at.split('T')[0];
+      // Día de NZ del escaneo (no el día UTC)
+      const day = dateInNZST(r.scanned_at);
       if (!dailyGrades.has(day)) dailyGrades.set(day, new Map());
       const grade = (r.quality_grade || 'ungraded').toUpperCase();
       const normalized = grade === 'A' ? 'A' : grade === 'B' ? 'B' : grade === 'C' ? 'C' : 'reject';

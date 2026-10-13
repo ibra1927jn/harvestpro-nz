@@ -21,6 +21,7 @@ import {
 } from '@/services/wage-rates.service';
 import { type JobType, NZ_MINIMUM_WAGE_2026 } from '@/constants/nz-law';
 import { useAuth } from '@/context';
+import { todayNZST } from '@/utils/nzst';
 
 const JOB_TYPE_LABELS: Record<JobType, string> = {
   picker:       '🍒 Picker (Piece Rate)',
@@ -70,7 +71,8 @@ export function WageRatesPanel({ orchardId }: { orchardId: string }) {
           hourly_rate: rate.hourly_rate.toFixed(2),
           piece_rate_per_bin: rate.piece_rate_per_bin.toFixed(2),
           is_piece_rate_eligible: rate.is_piece_rate_eligible,
-          effective_from: new Date().toISOString().split('T')[0],
+          // Hoy en NZ (con la fecha UTC, por la mañana la tarifa nueva quedaba con fecha de ayer)
+          effective_from: todayNZST(),
           notes: rate.notes ?? '',
           saving: false,
           error: null,
@@ -240,7 +242,7 @@ export function WageRatesPanel({ orchardId }: { orchardId: string }) {
                       type="date"
                       className="date-input"
                       value={state.effective_from}
-                      min={new Date().toISOString().split('T')[0]}
+                      min={todayNZST()}
                       onChange={e => updateEdit(jt, 'effective_from', e.target.value)}
                     />
                     <p className="form-hint">Future date = rate change scheduled, not immediate</p>
