@@ -88,7 +88,11 @@ describe('useRunnerData', () => {
         expect(result.current.toast?.message).toMatch(/Saving 1 bucket/);
 
         await act(async () => { finish(true); await Promise.resolve(); await Promise.resolve(); });
-        expect(result.current.toast).toEqual({ message: 'Saved 1 Bucket(s) (Offline Ready)', type: 'success' });
+        expect(result.current.toast).toEqual({
+            message: 'Saved 1 Bucket(s) (Offline Ready)',
+            type: 'success',
+            announcement: 'Bucket saved for Alice.',
+        });
     });
 
     it('tells the runner when a bucket was NOT stored (scan again)', async () => {

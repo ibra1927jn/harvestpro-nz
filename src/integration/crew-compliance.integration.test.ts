@@ -254,23 +254,22 @@ describe('Store Persistence — Integration', () => {
         expect(persisted).not.toHaveProperty('buckets');
     });
 
-    it('clockSkew persisted and affects bucket validation', () => {
+    it('clockSkew persisted and corrects scan times beyond tolerance (never drops)', () => {
         resetStore({
-            clockSkew: 3 * 60 * 1000, // 3 minutes
+            clockSkew: 90 * 1000, // 1.5 min: dentro de tolerancia
             crew: [{ id: 'p1', name: 'A', status: 'active', checked_in_today: true, total_buckets_today: 0, hours: 0, current_row: 1, role: 'picker', avatar: 'A' }],
         });
+        const t = new Date().toISOString();
 
-        useHarvestStore.getState().addBucket({
-            picker_id: 'p1', quality_grade: 'A', timestamp: new Date().toISOString(), orchard_id: 'o1',
-        });
-        expect(useHarvestStore.getState().buckets.length).toBe(1); // Within tolerance
+        useHarvestStore.getState().addBucket({ picker_id: 'p1', quality_grade: 'A', timestamp: t, orchard_id: 'o1' });
+        expect(useHarvestStore.getState().buckets[0].timestamp).toBe(t);
 
-        // Now set skew beyond tolerance
-        useHarvestStore.setState({ clockSkew: 6 * 60 * 1000 } as any);
-        useHarvestStore.getState().addBucket({
-            picker_id: 'p1', quality_grade: 'A', timestamp: new Date().toISOString(), orchard_id: 'o1',
-        });
-        expect(useHarvestStore.getState().buckets.length).toBe(1); // Still 1, second rejected
+        // Fuera de tolerancia: se guarda igualmente, con la hora corregida
+        useHarvestStore.setState({ clockSkew: 6 * 60 * 1000 } as never);
+        useHarvestStore.getState().addBucket({ picker_id: 'p1', quality_grade: 'A', timestamp: t, orchard_id: 'o1' });
+        const buckets = useHarvestStore.getState().buckets;
+        expect(buckets.length).toBe(2);
+        expect(Math.abs(Date.parse(buckets[0].timestamp) - Date.parse(t) - (6 * 60 * 1000))).toBeLessThan(1000);
     });
 });
 

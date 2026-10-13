@@ -169,36 +169,40 @@ describe('Bucket Pipeline — Integration', () => {
 
     // ── Validation: Clock Skew ───────────────
 
-    it('addBucket with clock skew >5min → REJECTED (anti-fraud)', () => {
+    // Reloj del móvil desfasado: la cubeta NUNCA se descarta; con más de 2 min
+    // de desfase se corrige la hora del escaneo y se marca clock_skew_ms.
+    it('addBucket with clock skew >5min → kept, scan time corrected', () => {
         resetAndSeed({ clockSkew: 6 * 60 * 1000 });
+        const b = makeBucket('p1');
 
-        useHarvestStore.getState().addBucket(makeBucket('p1'));
+        useHarvestStore.getState().addBucket(b);
 
-        expect(useHarvestStore.getState().buckets.length).toBe(0);
-    });
-
-    it('addBucket with clock skew exactly 5min → REJECTED (boundary)', () => {
-        resetAndSeed({ clockSkew: 5 * 60 * 1000 + 1 });
-
-        useHarvestStore.getState().addBucket(makeBucket('p1'));
-
-        expect(useHarvestStore.getState().buckets.length).toBe(0);
-    });
-
-    it('addBucket with clock skew <5min → ALLOWED', () => {
-        resetAndSeed({ clockSkew: 4 * 60 * 1000 });
-
-        useHarvestStore.getState().addBucket(makeBucket('p1'));
-
+        const [saved] = useHarvestStore.getState().buckets;
         expect(useHarvestStore.getState().buckets.length).toBe(1);
+        expect(saved.clock_skew_ms).toBe(6 * 60 * 1000);
+        expect(Math.abs(Date.parse(saved.timestamp) - Date.parse(b.timestamp) - (6 * 60 * 1000))).toBeLessThan(1000);
     });
 
-    it('addBucket with negative clock skew >5min → REJECTED', () => {
+    it('addBucket with clock skew <2min → kept unchanged', () => {
+        resetAndSeed({ clockSkew: 2 * 60 * 1000 });
+        const b = makeBucket('p1');
+
+        useHarvestStore.getState().addBucket(b);
+
+        const [saved] = useHarvestStore.getState().buckets;
+        expect(saved.timestamp).toBe(b.timestamp);
+        expect(saved.clock_skew_ms).toBeUndefined();
+    });
+
+    it('addBucket with negative clock skew >5min → kept, scan time moved back', () => {
         resetAndSeed({ clockSkew: -6 * 60 * 1000 });
+        const b = makeBucket('p1');
 
-        useHarvestStore.getState().addBucket(makeBucket('p1'));
+        useHarvestStore.getState().addBucket(b);
 
-        expect(useHarvestStore.getState().buckets.length).toBe(0);
+        const [saved] = useHarvestStore.getState().buckets;
+        expect(useHarvestStore.getState().buckets.length).toBe(1);
+        expect(Math.abs(Date.parse(saved.timestamp) - Date.parse(b.timestamp) - (-6 * 60 * 1000))).toBeLessThan(1000);
     });
 
     it('addBucket with zero clock skew → ALLOWED', () => {
