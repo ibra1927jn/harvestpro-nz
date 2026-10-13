@@ -3,10 +3,13 @@ import React from 'react';
 import { bucketsInBin } from '@/services/bin.service';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { avatarUrl } from '@/utils/avatarUrl';
+import type { RejectedScan } from '@/hooks/useRunnerData';
 
 interface LogisticsViewProps {
   onScan: (type?: 'BIN' | 'BUCKET') => void;
   pendingUploads?: number;
+  /** Escaneos que el servidor no aceptó: no cuentan para la paga hasta que alguien lo resuelva */
+  rejectedScans?: RejectedScan[];
   inventory?: {
     empty_bins?: number;
     raw?: { status: string; sunExposureStart?: number }[];
@@ -21,6 +24,7 @@ interface LogisticsViewProps {
 const LogisticsView: React.FC<LogisticsViewProps> = ({
   onScan,
   pendingUploads = 0,
+  rejectedScans = [],
   inventory,
   onBroadcast,
   onRequestRefill,
@@ -42,6 +46,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
 
   // Calculate Max Sun Exposure from raw bins (if passed)
   const [maxExposure, setMaxExposure] = React.useState('00:00:00');
+  const [showRejected, setShowRejected] = React.useState(false);
 
   React.useEffect(() => {
     const timer = setInterval(() => {
@@ -126,6 +131,37 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
                 {pendingUploads} Pending
               </span>
             </div>
+          </div>
+        )}
+
+        {/* Escaneos rechazados por el servidor: antes desaparecían sin aviso */}
+        {rejectedScans.length > 0 && (
+          <div data-testid="rejected-scans" className="bg-red-50/90 border-y border-red-200/60 px-6 py-3" role="alert">
+            <button
+              type="button"
+              onClick={() => setShowRejected(v => !v)}
+              aria-expanded={showRejected}
+              className="w-full flex items-center justify-between gap-2 text-left"
+            >
+              <span className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-red-600 text-[18px]" aria-hidden="true">error</span>
+                <span className="text-red-800 text-sm font-bold tracking-tight">
+                  {rejectedScans.length} {rejectedScans.length === 1 ? 'scan' : 'scans'} not accepted — tell your manager
+                </span>
+              </span>
+              <span className="material-symbols-outlined text-red-500 text-[18px]" aria-hidden="true">
+                {showRejected ? 'expand_less' : 'expand_more'}
+              </span>
+            </button>
+            {showRejected && (
+              <ul className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                {rejectedScans.map(r => (
+                  <li key={r.id} className="text-xs text-red-800">
+                    <span className="font-bold">{r.picker_id}</span> · {r.timestamp.slice(0, 16).replace('T', ' ')} · {r.reason}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
       </header>

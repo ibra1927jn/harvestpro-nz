@@ -2,9 +2,18 @@
  * Fixture base de la suite móvil: si global-setup levantó el shim de funciones,
  * redirige /functions/v1/* al shim (mismo código y BD que el edge runtime).
  */
-import { test as base, expect } from '@playwright/test';
+import { test as base, expect, type Route } from '@playwright/test';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? 'http://127.0.0.1:54321';
+
+/** navigator.onLine de la página que hizo la petición (true si no se puede saber) */
+export async function pageIsOnline(route: Route): Promise<boolean> {
+  try {
+    return await route.request().frame().evaluate(() => navigator.onLine);
+  } catch {
+    return true;
+  }
+}
 
 export const test = base.extend<{ functionsShim: void }>({
   functionsShim: [
@@ -14,12 +23,21 @@ export const test = base.extend<{ functionsShim: void }>({
         await context.route(`${SUPABASE_URL}/functions/v1/**`, async route => {
           const req = route.request();
           const target = req.url().replace(SUPABASE_URL, shim);
-          try {
-            const res = await route.fetch({ url: target });
-            await route.fulfill({ response: res });
-          } catch {
-            await route.abort('connectionfailed');
+          // route.fetch sale desde Node: sin esto el "modo sin red" del navegador no
+          // afectaba a las funciones redirigidas al shim (llegaban al servidor)
+          if (!(await pageIsOnline(route))) {
+            await route.abort('internetdisconnected').catch(() => undefined);
+            return;
           }
+          let res;
+          try {
+            res = await route.fetch({ url: target });
+          } catch {
+            await route.abort('connectionfailed').catch(() => undefined);
+            return;
+          }
+          // La página puede haberse quedado sin red o cerrado mientras tanto
+          await route.fulfill({ response: res }).catch(() => undefined);
         });
       }
       await use();

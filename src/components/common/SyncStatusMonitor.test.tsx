@@ -6,10 +6,10 @@
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 
 const mocks = vi.hoisted(() => ({
-    buckets: [] as Array<{ synced: boolean }>,
+    buckets: [] as Array<{ synced: boolean; failed?: boolean }>,
     isOnline: true,
     wasOffline: false,
     clearWasOffline: vi.fn(),
@@ -59,6 +59,13 @@ describe('SyncStatusMonitor', () => {
         const { container } = render(<SyncStatusMonitor />);
         // Should return null when all synced and online
         expect(container.textContent).toBe('');
+    });
+
+    it('a scan rejected by the server is not shown as pending forever', async () => {
+        mocks.buckets = [{ synced: true }, { synced: false, failed: true }];
+        const { container } = render(<SyncStatusMonitor />);
+        await act(async () => { await Promise.resolve(); });
+        expect(container.textContent).not.toMatch(/pending|syncing|queued/i);
     });
 
     it('shows offline warning when not online', () => {

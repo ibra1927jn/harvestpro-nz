@@ -43,6 +43,46 @@ async function resolveBadge(supabase: any, code: string, orchardId: string): Pro
     return match?.id ?? null
 }
 
+/** Errores que no se arreglan reintentando: datos (22xxx), integridad (23xxx), RLS, triggers */
+function isPermanent(code: string): boolean {
+    return code.startsWith('22') || code.startsWith('23') || code === '42501' || code === 'P0001'
+}
+
+type InsertOutcome = { status: 'saved' | 'duplicate' | 'rejected' | 'retry'; reason?: string }
+
+/**
+ * Inserta un escaneo del lote. Idempotente por id: si el id ya existe es
+ * "duplicate". La restricción única (picker_id, scanned_at) NO identifica el
+ * escaneo: el móvil guarda la hora al segundo y dos cubetas de la misma persona
+ * en el mismo segundo (modo lote, dos runners) son cubetas distintas. Antes la
+ * segunda volvía como "duplicate" y el móvil la daba por subida: se perdía de la
+ * paga sin aviso. Ahora se guarda desplazando la hora unos milisegundos.
+ */
+// deno-lint-ignore no-explicit-any
+async function insertScan(supabase: any, row: Record<string, unknown> & { scanned_at: string }): Promise<InsertOutcome> {
+    const base = Date.parse(row.scanned_at)
+    for (let shift = 0; shift < 50; shift++) {
+        const scannedAt = shift === 0 || Number.isNaN(base) ? row.scanned_at : new Date(base + shift).toISOString()
+        const { error } = await supabase.from('bucket_records').insert({ ...row, scanned_at: scannedAt })
+        if (!error) return { status: 'saved' }
+        const code = error.code ?? ''
+        if (code === '23505') {
+            const text = `${error.message ?? ''} ${error.details ?? ''}`
+            if (text.includes('picker_scan_unique') && !Number.isNaN(base)) continue
+            return { status: 'duplicate' }
+        }
+        // Los triggers (día/semana de pago cerrados) saltan ANTES que la clave
+        // única: un reenvío de algo ya guardado volvía "rejected" aunque la
+        // cubeta está en la tabla (y pagada). Si el id ya existe es "duplicate".
+        const { data: existing } = await supabase.from('bucket_records').select('id').eq('id', row.id).maybeSingle()
+        if (existing) return { status: 'duplicate' }
+        // Errores de datos o de permisos (42501: RLS, p. ej. otro huerto o persona
+        // archivada) → rechazo definitivo; el resto (BD caída…) → reintentar luego.
+        return { status: isPermanent(code) ? 'rejected' : 'retry', reason: error.message }
+    }
+    return { status: 'rejected', reason: 'TOO_MANY_SCANS_SAME_SECOND' }
+}
+
 serve(async (req) => {
     const preflight = handlePreflight(req)
     if (preflight) return preflight
@@ -81,7 +121,7 @@ serve(async (req) => {
                         if (!resolved) throw new Error(`UNKNOWN_BADGE: "${pickerId}"`)
                         pickerId = resolved
                     }
-                    const { error } = await supabase.from('bucket_records').insert({
+                    const row = {
                         id: s.id,
                         picker_id: pickerId,
                         orchard_id: s.orchard_id,
@@ -90,14 +130,10 @@ serve(async (req) => {
                         bin_id: s.bin_id,
                         scanned_by: s.scanned_by ?? user.id,
                         scanned_at: s.scanned_at,
-                    })
-                    if (error) {
-                        if (error.code === '23505') { results.push({ id: s.id, status: 'duplicate' }); continue }
-                        // Errores de datos o de permisos (42501: RLS, p. ej. otro huerto o persona
-                        // archivada) → rechazo definitivo; el resto (BD caída…) → reintentar luego.
-                        // Antes 42501 volvía como "retry" y el móvil lo reintentaba para siempre.
-                        const permanent = ['P0001', '23503', '23514', '22P02', '22007', '23502', '42501'].includes(error.code ?? '')
-                        results.push({ id: s.id, status: permanent ? 'rejected' : 'retry', reason: error.message })
+                    }
+                    const outcome = await insertScan(supabase, row)
+                    if (outcome.status !== 'saved') {
+                        results.push({ id: s.id, ...outcome })
                         continue
                     }
                     results.push({ id: s.id, status: 'saved' })

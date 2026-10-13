@@ -22,12 +22,17 @@ const AttendanceView = () => {
     } = useAttendance(appUser ?? undefined);
     const { toast, showToast, hideToast } = useToast();
 
+    const noSignal = (what: string) =>
+        typeof navigator !== 'undefined' && navigator.onLine === false
+            ? `No signal — ${what} not saved. Try again when you have signal.`
+            : null;
+
     // Handlers
     const handleCheckIn = async (picker: Picker) => {
         try {
             await checkIn(picker.id);
         } catch (error: unknown) {
-            showToast((error as Error).message || 'Failed to check in', 'error');
+            showToast(noSignal('check-in') || (error as Error).message || 'Failed to check in', 'error');
         }
     };
 
@@ -35,8 +40,9 @@ const AttendanceView = () => {
         try {
             await checkOut(attendanceId);
         } catch (err) {
-
+            // Antes solo iba al log: sin red el botón no hacía nada y nadie se enteraba
             logger.error(err);
+            showToast(noSignal('check-out') || (err as Error)?.message || 'Failed to check out', 'error');
         }
     };
 

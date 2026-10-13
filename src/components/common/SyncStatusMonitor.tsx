@@ -7,7 +7,8 @@ import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 
 const SyncStatusMonitor: React.FC = () => {
     const buckets = useHarvestStore((state) => state.buckets);
-    const storePending = buckets.filter(b => !b.synced).length;
+    // Los rechazados no están "pendientes": antes dejaban el aviso de sincronizando para siempre
+    const storePending = buckets.filter(b => !b.synced && !b.failed).length;
     const [vaultPending, setVaultPending] = useState<number>(0);
     const [lastSyncAgo, setLastSyncAgo] = useState<string | null>(null);
     const [maxRetries, setMaxRetries] = useState(0);

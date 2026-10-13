@@ -37,15 +37,42 @@ function isZodError(error: unknown): boolean {
 // navigator.locks works across all tabs in the same origin.
 let isProcessing = false; // Fallback for browsers without Web Locks
 
+// Reintento automático: si queda algo tras una pasada con red (503, timeout),
+// antes nadie volvía a intentarlo hasta otro evento (volver la red, encolar
+// otra cosa, reabrir la app, el botón de sincronizar). Espera creciente.
+const RETRY_BASE_MS = 15_000;
+const RETRY_MAX_MS = 300_000;
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let retryDelay = RETRY_BASE_MS;
+
+const isOnline = (): boolean => typeof navigator === 'undefined' || navigator.onLine;
+
+function scheduleRetry(remaining: number): void {
+  if (retryTimer) clearTimeout(retryTimer);
+  retryTimer = null;
+  if (remaining === 0 || typeof window === 'undefined') {
+    retryDelay = RETRY_BASE_MS;
+    return;
+  }
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    syncService.processQueue();
+  }, retryDelay);
+  retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS);
+}
+
 export const syncService = {
   // 1. Add to Queue (Persist to IndexedDB immediately)
   // updated_at: pass the record's current updated_at to enable optimistic locking on UPDATEs
   async addToQueue(type: PendingItem['type'], payload: SyncPayload, updated_at?: string) {
+    // Marca de orden estrictamente creciente: dos acciones en el mismo ms, o con
+    // el reloj del móvil atrasado de golpe, se suben en el orden en que se hicieron
+    const last = await db.sync_queue.orderBy('timestamp').last();
     const newItem: QueuedSyncItem = {
       id: safeUUID(),
       type,
       payload: payload as Record<string, unknown>,
-      timestamp: Date.now(),
+      timestamp: Math.max(Date.now(), (last?.timestamp ?? 0) + 1),
       retryCount: 0,
       ...(updated_at ? { updated_at } : {}),
     };
@@ -63,7 +90,9 @@ export const syncService = {
   // 2. Get Queue (from IndexedDB)
   async getQueue(): Promise<QueuedSyncItem[]> {
     try {
-      return await db.sync_queue.toArray();
+      // En el orden en que se encoló (el id es un UUID aleatorio: por id el orden
+      // era al azar, y "aprobar" y luego "rechazar" offline podía quedar aprobado)
+      return await db.sync_queue.orderBy('timestamp').toArray();
     } catch (e) {
       logger.error('SyncService: Failed to read queue from IndexedDB', e);
       return [];
@@ -83,6 +112,7 @@ export const syncService = {
           return;
         }
         await this._doProcessQueue();
+        scheduleRetry(isOnline() ? await db.sync_queue.count() : 0);
       });
     } else {
       // Fallback for browsers without Web Locks (Safari private mode, etc.)
@@ -90,6 +120,7 @@ export const syncService = {
       isProcessing = true;
       try {
         await this._doProcessQueue();
+        scheduleRetry(isOnline() ? await db.sync_queue.count() : 0);
       } finally {
         isProcessing = false;
       }
@@ -105,6 +136,7 @@ export const syncService = {
     const schemas = await import('./sync.schemas');
 
     const processedIds: string[] = [];
+    let consecutiveNetworkErrors = 0;
 
     for (const item of queue) {
       try {
@@ -171,19 +203,30 @@ export const syncService = {
 
         // If we reach here, sync was successful — mark for removal
         processedIds.push(item.id);
+        consecutiveNetworkErrors = 0;
       } catch (e) {
         const errorCategory = this.categorizeError(e);
         logger.error(`[SyncService] Failed to sync item ${item.id} (${errorCategory})`, e);
 
-        // 🔧 U2: If network is down, abort the entire loop immediately
+        // 🔧 U2: sin red se corta la pasada (no tiene sentido seguir). Con red
+        // ("online" pero la petición falló) cuenta como un reintento y se sigue
+        // con los de detrás; tres fallos de red seguidos cortan la pasada (señal
+        // mala de verdad). Antes se cortaba siempre y sin límite: un elemento que
+        // fallaba con un mensaje con "fetch" bloqueaba toda la cola para siempre.
         if (errorCategory === 'network') {
-          logger.warn('[SyncService] Network down — aborting queue processing');
-          await db.sync_queue.update(item.id, { retryCount: item.retryCount + 1 });
-          break;
+          consecutiveNetworkErrors++;
+          if (!navigator.onLine || consecutiveNetworkErrors >= 3) {
+            logger.warn('[SyncService] Network down — aborting queue processing');
+            await db.sync_queue.update(item.id, { retryCount: item.retryCount + 1 });
+            break;
+          }
+        } else {
+          consecutiveNetworkErrors = 0;
         }
 
         const newRetryCount = item.retryCount + 1;
-        const maxRetries = errorCategory === 'validation' ? 5 : 50;
+        // Red: más margen (horas de mala señal no deben mandar nada a la DLQ)
+        const maxRetries = errorCategory === 'validation' ? 5 : errorCategory === 'network' ? 200 : 50;
 
         if (newRetryCount < maxRetries) {
           await db.sync_queue.update(item.id, { retryCount: newRetryCount });
