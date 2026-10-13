@@ -104,12 +104,17 @@ export const authContextRepository = {
 
   /** Check allowed_registrations whitelist */
   async checkWhitelist(email: string) {
-    const { data, error } = await supabase
-      .from('allowed_registrations')
-      .select('id, role, orchard_id, used_at')
-      .eq('email', email.toLowerCase().trim())
-      .maybeSingle();
-    return { data, error };
+    // Función del servidor: devuelve solo la invitación de este email
+    const { data, error } = await supabase.rpc('check_registration', {
+      p_email: email.toLowerCase().trim(),
+    });
+    const rows = (data ?? []) as {
+      id: string;
+      role: string | null;
+      orchard_id: string | null;
+      used_at: string | null;
+    }[];
+    return { data: rows[0] ?? null, error };
   },
 
   /** Insert new user profile */
