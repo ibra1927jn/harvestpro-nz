@@ -20,6 +20,8 @@ interface Sample {
   scenario: string;
   interactiveMs: number;
   lcpMs: number | null;
+  lcpElement: string | null;
+  lcpHistory: string[];
   jsKB: number;
   totalKB: number;
   requests: number;
@@ -27,6 +29,7 @@ interface Sample {
   scripts: string[];
   fonts: string[];
   cpuTop?: string[];
+  waterfall: string[];
 }
 
 async function throttle(page: Page): Promise<CDPSession> {
@@ -48,6 +51,20 @@ function trackBytes(cdp: CDPSession) {
   const scripts: { url: string; kb: number }[] = [];
   const fonts: { url: string; kb: number }[] = [];
   const short = (u: string) => u.replace(/^https?:\/\/[^/]+/, '').split('?')[0];
+  // Cascada: inicio→fin (ms desde la primera petición) de cada recurso
+  const started = new Map<string, number>();
+  const waterfall: { t0: number; t1: number; url: string }[] = [];
+  let base: number | null = null;
+  cdp.on('Network.requestWillBeSent', e => {
+    base ??= e.timestamp;
+    started.set(e.requestId, e.timestamp);
+  });
+  cdp.on('Network.loadingFailed', e => {
+    const t = started.get(e.requestId);
+    if (t !== undefined && base !== null) {
+      waterfall.push({ t0: t - base, t1: e.timestamp - base, url: `FAILED ${urls.get(e.requestId) ?? e.requestId}` });
+    }
+  });
   cdp.on('Network.responseReceived', e => {
     types.set(e.requestId, e.type);
     urls.set(e.requestId, e.response.url);
@@ -62,6 +79,8 @@ function trackBytes(cdp: CDPSession) {
       scripts.push(entry);
     }
     if (types.get(e.requestId) === 'Font') fonts.push(entry);
+    const t = started.get(e.requestId);
+    if (t !== undefined && base !== null) waterfall.push({ t0: t - base, t1: e.timestamp - base, url: entry.url });
   });
   return () => ({
     jsKB: Math.round(js / 1024),
@@ -73,6 +92,9 @@ function trackBytes(cdp: CDPSession) {
       .map(x => `${x.kb}KB ${short(x.url)}`),
     scripts: scripts.map(x => `${x.kb}KB ${short(x.url)}`),
     fonts: fonts.map(x => `${x.kb}KB ${short(x.url)}`),
+    waterfall: waterfall
+      .sort((a, b) => a.t0 - b.t0)
+      .map(w => `${(w.t0).toFixed(1)}s→${(w.t1).toFixed(1)}s ${short(w.url)}`),
   });
 }
 
@@ -108,15 +130,34 @@ function summarizeProfile(profile: Profile): string[] {
   return [...top(perFile, 10, 'file'), ...top(self, 15, 'fn')];
 }
 
-async function lcp(page: Page): Promise<number | null> {
+/** LCP (ms desde la navegación) y qué elemento fue. */
+interface LcpResult {
+  lcpMs: number | null;
+  lcpElement: string | null;
+  lcpHistory: string[];
+}
+async function lcp(page: Page): Promise<LcpResult> {
   return page.evaluate(
     () =>
-      new Promise<number | null>(resolve => {
-        let last: number | null = null;
+      new Promise<LcpResult>(resolve => {
+        let last: { lcpMs: number; lcpElement: string | null } | null = null;
+        const history: string[] = [];
         new PerformanceObserver(list => {
-          for (const e of list.getEntries()) last = e.startTime;
+          for (const e of list.getEntries() as (PerformanceEntry & { element?: Element | null; size?: number })[]) {
+            const el = e.element;
+            last = {
+              lcpMs: Math.round(e.startTime),
+              lcpElement: el
+                ? `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 60)} "${(el.textContent ?? '').trim().slice(0, 40)}" ${e.size ?? ''}px²`
+                : null,
+            };
+            history.push(`${last.lcpMs}ms ${last.lcpElement ?? '?'}`);
+          }
         }).observe({ type: 'largest-contentful-paint', buffered: true });
-        setTimeout(() => resolve(last === null ? null : Math.round(last)), 1_000);
+        setTimeout(
+          () => resolve({ ...(last ?? { lcpMs: null, lcpElement: null }), lcpHistory: history }),
+          1_000
+        );
       })
   );
 }
@@ -143,7 +184,7 @@ test.describe('performance (Slow 3G + 4x CPU)', () => {
       await page.locator('input[type="email"]').waitFor({ state: 'visible', timeout: 300_000 });
       const interactiveMs = Date.now() - t0;
       await page.waitForLoadState('networkidle', { timeout: 300_000 }).catch(() => undefined);
-      samples.push({ scenario: 'login cold', interactiveMs, lcpMs: await lcp(page), ...bytes() });
+      samples.push({ scenario: 'login cold', interactiveMs, ...(await lcp(page)), ...bytes() });
       await ctx.close();
     }
 
@@ -161,7 +202,7 @@ test.describe('performance (Slow 3G + 4x CPU)', () => {
       await page.reload({ waitUntil: 'commit' });
       await page.locator('input[type="email"]').waitFor({ state: 'visible', timeout: 300_000 });
       const interactiveMs = Date.now() - t0;
-      samples.push({ scenario: 'login warm (SW)', interactiveMs, lcpMs: await lcp(page), ...bytes() });
+      samples.push({ scenario: 'login warm (SW)', interactiveMs, ...(await lcp(page)), ...bytes() });
       await ctx.close();
     }
 
@@ -189,7 +230,7 @@ test.describe('performance (Slow 3G + 4x CPU)', () => {
       samples.push({
         scenario: 'runner cold',
         interactiveMs,
-        lcpMs: await lcp(page),
+        ...(await lcp(page)),
         ...bytes(),
         cpuTop: summarizeProfile(profile),
       });
@@ -212,7 +253,7 @@ test.describe('performance (Slow 3G + 4x CPU)', () => {
         .getByRole('button', { name: /Scan Sticker/i })
         .waitFor({ state: 'visible', timeout: 300_000 });
       const interactiveMs = Date.now() - t0;
-      samples.push({ scenario: 'runner warm (SW)', interactiveMs, lcpMs: await lcp(page), ...bytes() });
+      samples.push({ scenario: 'runner warm (SW)', interactiveMs, ...(await lcp(page)), ...bytes() });
       await ctx.close();
     }
 
