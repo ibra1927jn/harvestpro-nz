@@ -53,7 +53,7 @@ INSERT INTO public.pickers (id, picker_id, name, orchard_id, role, safety_verifi
 VALUES
   ('e22c3c09-0e79-449f-b32a-235a61ea0ace','LEAD-001','Team Leader',   'e1337e6a-54cc-431c-9c00-980e8ea270a4','team_leader',true,'active'),
   ('1e5f0893-0d09-4035-8e03-d68305811820','RUN-001', 'Bucket Runner', 'e1337e6a-54cc-431c-9c00-980e8ea270a4','runner',     true,'active')
-ON CONFLICT (picker_id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- Verificar resultado
 SELECT u.email, u.role, u.full_name,
