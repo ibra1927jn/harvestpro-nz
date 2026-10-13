@@ -173,10 +173,11 @@ describe('checkPickerCompliance', () => {
         hoursWorked: 8,
         consecutiveMinutesWorked: 120,
         totalMinutesToday: 480,
-        lastRestBreakAt: new Date(),
-        lastMealBreakAt: new Date(),
-        lastHydrationAt: new Date(),
-        workStartTime: new Date('2026-03-10T07:00:00'),
+        // Descansos 15 min antes del "ahora" mockeado (14:00 NZDT)
+        lastRestBreakAt: new Date('2026-03-10T13:45:00+13:00'),
+        lastMealBreakAt: new Date('2026-03-10T13:45:00+13:00'),
+        lastHydrationAt: new Date('2026-03-10T13:45:00+13:00'),
+        workStartTime: new Date('2026-03-10T07:00:00+13:00'),
     };
 
     it('returns compliant status for normal worker', () => {
@@ -185,6 +186,7 @@ describe('checkPickerCompliance', () => {
         expect(result).toHaveProperty('isCompliant');
         expect(result).toHaveProperty('violations');
         expect(result).toHaveProperty('workHours');
+        expect(result.violations.filter(v => v.type === 'break_overdue')).toEqual([]);
     });
 
     it('detects wage violation for low buckets', () => {
@@ -206,7 +208,7 @@ describe('checkPickerCompliance', () => {
             lastHydrationAt: null,
             consecutiveMinutesWorked: 300,
         });
-        expect(result.violations.length).toBeGreaterThan(0);
+        expect(result.violations.some(v => v.type === 'break_overdue')).toBe(true);
     });
 });
 
