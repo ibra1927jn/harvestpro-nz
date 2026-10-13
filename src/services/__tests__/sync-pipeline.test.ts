@@ -54,6 +54,16 @@ vi.mock('@/services/gateway.service', () => ({
 import { syncService } from '../sync.service';
 import { db } from '../db';
 
+// Todo el archivo sin conexión: con navigator.onLine=true, addToQueue lanza processQueue
+// en segundo plano (y el módulo programa otro a los 5 s), que vacía la cola mientras
+// el test la lee. Estos tests miden la cola, no el envío.
+beforeEach(() => {
+  Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+});
+afterEach(() => {
+  Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
+});
+
 describe('Sync Pipeline — Queue Operations', () => {
   beforeEach(async () => {
     await db.sync_queue.clear();
@@ -104,15 +114,9 @@ describe('Sync Pipeline — Queue Operations', () => {
 });
 
 describe('Sync Pipeline — Queue Summary', () => {
-  // Sin conexion: addToQueue no dispara el envio en segundo plano, que cambiaba
-  // retryCount mientras se leia el resumen (test dependiente del tiempo)
   beforeEach(async () => {
-    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
     await db.sync_queue.clear();
     await db.sync_meta.clear();
-  });
-  afterEach(() => {
-    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
   });
 
   it('returns structured summary with byType breakdown', async () => {
@@ -145,6 +149,17 @@ describe('Sync Pipeline — Queue Summary', () => {
 });
 
 describe('Sync Pipeline — Error Categorization', () => {
+  // categorizeError mira navigator.onLine: aquí con conexión (salvo el test offline)
+  beforeEach(() => {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
+  });
+
+  it('classifies any error as network while offline', () => {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+    expect(syncService.categorizeError(new Error('500 Internal Server Error'))).toBe('network');
+    expect(syncService.categorizeError({ code: '23505' })).toBe('network');
+  });
+
   it('classifies network errors correctly', () => {
     expect(syncService.categorizeError(new Error('Failed to fetch'))).toBe('network');
     expect(syncService.categorizeError(new Error('network request timeout'))).toBe('network');
@@ -197,23 +212,30 @@ describe('Sync Pipeline — Last Sync Time', () => {
     expect(time).toBeNull();
   });
 
+  // Solo se falsea Date: fake-indexeddb necesita los timers reales
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('setLastSyncTime stores and getLastSyncTime retrieves', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-04-01T00:00:00Z'));
     await syncService.setLastSyncTime();
     const time = await syncService.getLastSyncTime();
-    expect(time).toBeGreaterThan(0);
-    expect(typeof time).toBe('number');
+    expect(time).toBe(Date.parse('2026-04-01T00:00:00Z'));
   });
 
   it('setLastSyncTime updates existing value', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-04-01T00:00:00Z'));
     await syncService.setLastSyncTime();
     const first = await syncService.getLastSyncTime();
 
-    // Small delay to ensure different timestamp
-    await new Promise(r => setTimeout(r, 10));
+    vi.setSystemTime(new Date('2026-04-01T00:00:10Z'));
     await syncService.setLastSyncTime();
     const second = await syncService.getLastSyncTime();
 
-    expect(second!).toBeGreaterThanOrEqual(first!);
+    expect(second! - first!).toBe(10_000);
   });
 });
 

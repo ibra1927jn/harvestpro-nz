@@ -2,12 +2,41 @@ import { nowNZST } from '@/utils/nzst';
 import { logger } from '@/utils/logger';
 
 /**
- * AUDIT P-1: Lazy-load PostHog to remove 432KB from initial bundle.
- * PostHog is dynamically imported on first use (initPostHog call).
- * All tracking methods safely no-op until PostHog is loaded.
+ * PostHog diferido: posthog-js solo se descarga en initPostHog() (tras la primera
+ * interacción o en idle) y solo si hay VITE_POSTHOG_KEY. Los eventos anteriores se
+ * encolan (cola acotada) y se envían al inicializar; sin clave se descartan.
  */
-let posthogInstance: typeof import('posthog-js').default | null = null;
+type PostHog = typeof import('posthog-js').default;
+type PendingCall = (ph: PostHog) => void;
+
+let posthogInstance: PostHog | null = null;
 let posthogLoading: Promise<void> | null = null;
+const pending: PendingCall[] = [];
+export const MAX_PENDING_ANALYTICS_CALLS = 100;
+
+/** Analítica activa en este build (hay clave y no es desarrollo). */
+export function isAnalyticsEnabled(): boolean {
+  return import.meta.env.MODE !== 'development' && Boolean(import.meta.env.VITE_POSTHOG_KEY);
+}
+
+function withPostHog(call: PendingCall): void {
+  if (posthogInstance) {
+    call(posthogInstance);
+    return;
+  }
+  if (!isAnalyticsEnabled()) return;
+  if (pending.length < MAX_PENDING_ANALYTICS_CALLS) pending.push(call);
+}
+
+/** Las propiedades se evalúan al llamar (timestamps reales), no al reenviar. */
+function capture(event: string, properties?: Record<string, unknown>): void {
+  withPostHog(ph => ph.capture(event, properties));
+}
+
+/** Nº de eventos en cola (tests/diagnóstico). */
+export function pendingAnalyticsCalls(): number {
+  return pending.length;
+}
 
 /**
  * Initialize PostHog for product analytics (LAZY LOADED)
@@ -17,6 +46,7 @@ let posthogLoading: Promise<void> | null = null;
 export async function initPostHog() {
   // Only initialize in staging and production
   if (import.meta.env.MODE === 'development') {
+    pending.length = 0;
     logger.info('📊 PostHog disabled in development mode');
     return;
   }
@@ -25,6 +55,7 @@ export async function initPostHog() {
   const host = import.meta.env.VITE_POSTHOG_HOST || 'https://app.posthog.com';
 
   if (!apiKey) {
+    pending.length = 0;
     logger.warn('⚠️ VITE_POSTHOG_KEY not configured. Analytics will not track events.');
     return;
   }
@@ -33,8 +64,8 @@ export async function initPostHog() {
   if (!posthogLoading) {
     posthogLoading = import('posthog-js')
       .then(mod => {
-        posthogInstance = mod.default;
-        posthogInstance.init(apiKey, {
+        const ph = mod.default;
+        ph.init(apiKey, {
           api_host: host,
           autocapture: false,
           capture_pageview: true,
@@ -45,9 +76,13 @@ export async function initPostHog() {
             }
           },
         });
+        posthogInstance = ph;
+        for (const call of pending.splice(0)) call(ph);
         logger.info('✅ PostHog initialized (lazy):', import.meta.env.MODE);
       })
       .catch(err => {
+        // Offline / chunk no disponible: permitir reintento
+        posthogLoading = null;
         logger.warn('⚠️ PostHog failed to load:', err);
       });
   }
@@ -62,14 +97,14 @@ export const analytics = {
    * Identify user (set user properties)
    */
   identify(userId: string, properties?: Record<string, unknown>) {
-    posthogInstance?.identify(userId, properties);
+    withPostHog(ph => ph.identify(userId, properties));
   },
 
   /**
    * Track bucket scan
    */
   trackBucketScanned(pickerId: string, qualityGrade: string) {
-    posthogInstance?.capture('bucket_scanned', {
+    capture('bucket_scanned', {
       picker_id: pickerId,
       quality_grade: qualityGrade,
       timestamp: nowNZST(),
@@ -80,7 +115,7 @@ export const analytics = {
    * Track user login
    */
   trackLogin(role: string, orchardId?: string) {
-    posthogInstance?.capture('user_login', {
+    capture('user_login', {
       role,
       orchard_id: orchardId,
     });
@@ -90,15 +125,15 @@ export const analytics = {
    * Track logout
    */
   trackLogout() {
-    posthogInstance?.capture('user_logout');
-    posthogInstance?.reset();
+    capture('user_logout');
+    withPostHog(ph => ph.reset());
   },
 
   /**
    * Track picker check-in
    */
   trackCheckIn(pickerId: string) {
-    posthogInstance?.capture('picker_check_in', {
+    capture('picker_check_in', {
       picker_id: pickerId,
       timestamp: nowNZST(),
     });
@@ -108,7 +143,7 @@ export const analytics = {
    * Track offline sync
    */
   trackSync(itemCount: number, duration: number, success: boolean) {
-    posthogInstance?.capture('offline_sync', {
+    capture('offline_sync', {
       item_count: itemCount,
       duration_ms: duration,
       success,
@@ -119,7 +154,7 @@ export const analytics = {
    * Track broadcast sent
    */
   trackBroadcast(recipientCount: number, priority: string) {
-    posthogInstance?.capture('broadcast_sent', {
+    capture('broadcast_sent', {
       recipient_count: recipientCount,
       priority,
     });
@@ -129,7 +164,7 @@ export const analytics = {
    * Track DLQ error
    */
   trackDLQError(errorType: string, severity: string) {
-    posthogInstance?.capture('dlq_error', {
+    capture('dlq_error', {
       error_type: errorType,
       severity,
     });
@@ -139,14 +174,14 @@ export const analytics = {
    * Track feature usage
    */
   trackFeature(featureName: string, properties?: Record<string, unknown>) {
-    posthogInstance?.capture(`feature_used:${featureName}`, properties);
+    capture(`feature_used:${featureName}`, properties);
   },
 
   /**
    * Track page view manually (if needed)
    */
   trackPageView(pageName: string) {
-    posthogInstance?.capture('$pageview', {
+    capture('$pageview', {
       page: pageName,
     });
   },
@@ -155,14 +190,14 @@ export const analytics = {
    * Set user properties (for segmentation)
    */
   setUserProperties(properties: Record<string, unknown>) {
-    posthogInstance?.people?.set(properties);
+    withPostHog(ph => ph.people?.set(properties));
   },
 
   /**
    * Track timesheet approval/rejection
    */
   trackTimesheetAction(action: 'approve' | 'reject', attendanceId: string) {
-    posthogInstance?.capture('timesheet_action', {
+    capture('timesheet_action', {
       action,
       attendance_id: attendanceId,
       timestamp: nowNZST(),
@@ -173,7 +208,7 @@ export const analytics = {
    * Track payroll export
    */
   trackPayrollExport(format: string, pickerCount: number) {
-    posthogInstance?.capture('payroll_exported', {
+    capture('payroll_exported', {
       format,
       picker_count: pickerCount,
       timestamp: nowNZST(),
@@ -184,17 +219,32 @@ export const analytics = {
    * Track conflict resolution
    */
   trackConflictResolved(conflictType: string, resolution: string) {
-    posthogInstance?.capture('conflict_resolved', {
+    capture('conflict_resolved', {
       conflict_type: conflictType,
       resolution,
     });
   },
 
   /**
+   * Core Web Vitals (RUM). Antes importaba posthog-js directamente y lo
+   * descargaba aunque no hubiera clave.
+   */
+  trackWebVital(metric: {
+    name: string;
+    value: number;
+    rating: string;
+    delta: number;
+    id: string;
+    navigationType: string;
+  }) {
+    capture('web_vital', { ...metric });
+  },
+
+  /**
    * Track row assignment changes
    */
   trackRowAssignment(pickerId: string, rowNumber: number) {
-    posthogInstance?.capture('row_assigned', {
+    capture('row_assigned', {
       picker_id: pickerId,
       row_number: rowNumber,
     });

@@ -5,7 +5,17 @@ import { AppProvider } from './context';
 import { router } from './routes';
 import { MFAGuard } from './components/MFAGuard';
 import { I18nProvider } from './i18n';
+import { addSentryBreadcrumb, installEarlyErrorCapture } from './config/sentry';
+import { analytics } from './config/analytics';
+import { runAfterInteractionOrIdle } from './utils/runAfterInteractionOrIdle';
+import { markWhenIconFontReady } from './utils/iconFontReady';
 import './index.css';
+
+// Descarga la fuente de iconos ya (en paralelo con los chunks de la ruta)
+void markWhenIconFontReady();
+
+// Errores del arranque: se encolan hasta que Sentry cargue (solo si hay DSN)
+installEarlyErrorCapture();
 
 // En modo mock arrancamos MSW antes de renderizar nada
 // Ejecutar: npm run dev:mock
@@ -38,9 +48,9 @@ async function startMocks(): Promise<void> {
   }
 }
 
-// AUDIT P-1: Monitoring libraries are lazy-loaded AFTER first render to avoid
-// blocking LCP with the 432KB vendor-monitoring bundle.
-// Both Sentry and PostHog are loaded via dynamic import() in their modules.
+// Sentry (~145 KB) y PostHog (~57 KB) se cargan tras la primera interacción o
+// 10 s después de `load`: en 3G no compiten con el JS de la primera pantalla.
+// Sin DSN/clave no se descargan nunca.
 function initMonitoring() {
   // Import and call within dynamic import — ensures no static reference
   Promise.all([
@@ -58,14 +68,10 @@ if (navigator.storage?.persist) {
     if (!granted) {
       // Marcar en sessionStorage para mostrar banner post-login al usuario
       sessionStorage.setItem('harvest_storage_risk', '1');
-      // Capturar en Sentry cuando el monitoring se inicialice (no bloquear)
-      import('./config/sentry').then(m => {
-        m.addSentryBreadcrumb('storage_persist_denied', { platform: navigator.userAgent });
-      }).catch(() => {});
+      // Se encolan hasta que Sentry/PostHog se inicialicen (no bloquean)
+      void addSentryBreadcrumb('storage_persist_denied', { platform: navigator.userAgent });
       // Trackear en analytics para saber cuántos dispositivos están en riesgo
-      import('./config/analytics').then(m => {
-        m.analytics?.trackFeature('storage_persist_denied');
-      }).catch(() => {});
+      analytics.trackFeature('storage_persist_denied');
     }
   });
 }
@@ -98,11 +104,6 @@ if (container) {
     </I18nProvider>
   );
 
-  // Defer monitoring init until browser is idle — keeps LCP clean
-  if ('requestIdleCallback' in window) {
-    requestIdleCallback(() => initMonitoring(), { timeout: 3000 });
-  } else {
-    setTimeout(initMonitoring, 1000);
-  }
+  runAfterInteractionOrIdle(initMonitoring);
 }
 }

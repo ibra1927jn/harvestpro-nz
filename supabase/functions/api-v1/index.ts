@@ -17,7 +17,7 @@
  *
  * @module supabase/functions/api-v1
  */
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/security.ts';
 
 // Metodos HTTP permitidos por este endpoint
@@ -27,7 +27,7 @@ const ALLOWED_METHODS = 'GET, POST, OPTIONS';
 // AUTH: Validate API key
 // =============================================
 async function validateAPIKey(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   authHeader: string | null
 ): Promise<{ valid: boolean; orchardId?: string; scopes?: string[]; rateLimited?: boolean }> {
   if (!authHeader?.startsWith('Bearer hpnz_')) {
@@ -87,7 +87,7 @@ async function validateAPIKey(
 // ROUTE HANDLERS
 // =============================================
 
-async function handleGetHarvest(supabase: ReturnType<typeof createClient>, orchardId: string) {
+async function handleGetHarvest(supabase: SupabaseClient, orchardId: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -110,7 +110,7 @@ async function handleGetHarvest(supabase: ReturnType<typeof createClient>, orcha
   };
 }
 
-async function handleGetAttendance(supabase: ReturnType<typeof createClient>, orchardId: string) {
+async function handleGetAttendance(supabase: SupabaseClient, orchardId: string) {
   const today = new Date().toISOString().split('T')[0];
 
   const { data, error } = await supabase
@@ -132,7 +132,7 @@ async function handleGetAttendance(supabase: ReturnType<typeof createClient>, or
   };
 }
 
-async function handleGetPayroll(supabase: ReturnType<typeof createClient>, orchardId: string) {
+async function handleGetPayroll(supabase: SupabaseClient, orchardId: string) {
   const { data: settings } = await supabase
     .from('harvest_settings')
     .select('piece_rate')

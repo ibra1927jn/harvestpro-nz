@@ -3,7 +3,7 @@
  * cola de errores / dead letter) con IndexedDB real (fake-indexeddb).
  * Los procesadores y servicios remotos son el limite que se simula.
  */
-import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import 'fake-indexeddb/auto';
 import fc from 'fast-check';
 
@@ -32,19 +32,9 @@ vi.mock('@/config/analytics', () => ({
 }));
 vi.mock('@/utils/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
 
-import type { QueuedSyncItem } from '../db';
-
-// test-setup.ts importa el store y con el, sync.service real: sin resetModules los vi.mock
-// de arriba no se aplicarian. Se importan de nuevo aqui, ya con los mocks.
-let syncService: typeof import('../sync.service')['syncService'];
-let db: typeof import('../db')['db'];
-let analytics: typeof import('@/config/analytics')['analytics'];
-beforeAll(async () => {
-    vi.resetModules();
-    ({ syncService } = await import('../sync.service'));
-    ({ db } = await import('../db'));
-    ({ analytics } = await import('@/config/analytics'));
-});
+import { db, type QueuedSyncItem } from '../db';
+import { syncService } from '../sync.service';
+import { analytics } from '@/config/analytics';
 
 const SCAN = { picker_id: 'p1', orchard_id: 'o1', scanned_by: 'runner1', quality_grade: 'A' };
 const MSG = { receiverId: 'u2', content: 'hola' };

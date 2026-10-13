@@ -2,6 +2,11 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+// Zona horaria fija para toda la suite (payroll/nzst dependen de ella). Se fija aquí,
+// antes de crear los workers: cambiar process.env.TZ dentro de un worker thread
+// (test-setup.ts) no cambia la zona de Date, y los tests dependían de la del host.
+process.env.TZ = 'Pacific/Auckland';
+
 export default defineConfig({
   plugins: [react()],
   test: {

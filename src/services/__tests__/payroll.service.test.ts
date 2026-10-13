@@ -4,11 +4,9 @@
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 
 // Mock supabase BEFORE importing the service
-
-vi.mock('@/services/config.service', () => ({
-    getConfig: () => ({
-        SUPABASE_URL: 'https://test-project.supabase.co',
-    }),
+// (cada test sustituye supabase.from con su propia cadena de resultados)
+vi.mock('@/services/supabase', () => ({
+    supabase: { from: vi.fn(), functions: { invoke: vi.fn() } },
 }));
 
 // Parcial: el resto de utilidades NZ son las reales

@@ -2,7 +2,7 @@
  * payrollService: fechas NZ que se piden al servidor y horas de la hoja de horas
  * con el calculo unico (sin simular nzst ni pay.ts).
  */
-import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const repo = vi.hoisted(() => ({
     invokeCalculatePayroll: vi.fn(),
@@ -17,12 +17,7 @@ vi.mock('@/repositories/pay-rates.repository', () => ({
 }));
 vi.mock('@/utils/logger', () => ({ logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() } }));
 
-// test-setup.ts ya cargo los modulos reales: se recargan para que apliquen los vi.mock
-let payrollService: typeof import('../payroll.service')['payrollService'];
-beforeAll(async () => {
-    vi.resetModules();
-    ({ payrollService } = await import('../payroll.service'));
-});
+import { payrollService } from '../payroll.service';
 
 const RESULT = {
     orchard_id: 'o1', date_range: { start: '2026-10-05', end: '2026-10-11' },

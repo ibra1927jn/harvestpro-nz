@@ -22,7 +22,12 @@
     "docs": "typedoc --entryPoints src/services/*.ts src/hooks/*.ts src/schemas/*.ts --out docs --exclude **/*.test.* --skipErrorChecking",
     "prepare": "husky",
     "test:mutation": "cross-env NODE_OPTIONS=--max-old-space-size=3072 stryker run",
-    "test:assertions": "node scripts/check-test-assertions.mjs"
+    "test:assertions": "node scripts/check-test-assertions.mjs",
+    "test:mock-guard": "node scripts/check-test-mocks.mjs",
+    "test:functions": "deno test --allow-net --allow-env --allow-read --env-file=.env.local supabase/functions/tests/",
+    "icons:build": "node scripts/icons/build-icon-font.mjs",
+    "icons:check": "node scripts/icons/check-icons.mjs",
+    "perf:budget": "node scripts/perf-budget.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.2.0",

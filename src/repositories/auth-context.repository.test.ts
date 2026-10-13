@@ -78,11 +78,11 @@ describe('authContextRepository', () => {
             const user = { id: 'u1', full_name: 'Jane', orchard_id: 'o1' };
             fromSpy.mockReturnValue(mockChain({ data: user, error: null }) as never);
             await authContextRepository.getUserProfile('u1');
-            // Esperar escritura async best-effort
-            await new Promise(r => setTimeout(r, 10));
-            const cached = await db.auth_cache.get('u1');
-            expect(cached).toBeDefined();
-            expect(cached?.profile).toMatchObject({ id: 'u1' });
+            // Escritura async best-effort: se espera a que aparezca, sin depender de 10 ms fijos
+            await vi.waitFor(async () => {
+                const cached = await db.auth_cache.get('u1');
+                expect(cached?.profile).toMatchObject({ id: 'u1' });
+            });
         });
 
         it('returns cached profile when all Supabase retries fail with 504', async () => {

@@ -1,5 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
+    AuthError,
     handlePreflight,
     requireRole,
     errorResponse,
@@ -42,7 +44,17 @@ serve(async (req) => {
 
         // ── CHECK IN ─────────────────────────────────
         if (input.action === 'check_in') {
-            const { picker_id, orchard_id, verified_by } = input
+            const { picker_id, orchard_id } = input
+
+            // Solo se ficha en el huerto propio (admin en cualquiera) y nunca a uno mismo.
+            // Se comprueba ANTES de cerrar el tramo de otro huerto con la clave de servicio.
+            const { data: me } = await supabase.from('users').select('role, orchard_id').eq('id', user.id).single()
+            if (me?.role !== 'admin' && me?.orchard_id !== orchard_id) {
+                throw new AuthError('You can only check people in to your own orchard', 403)
+            }
+            if (picker_id === user.id && me?.role !== 'admin') {
+                throw new AuthError('You cannot check yourself in', 403)
+            }
 
             // Get today's date in NZST
             const today = new Intl.DateTimeFormat('en-CA', {
@@ -53,7 +65,14 @@ serve(async (req) => {
 
             // Tramos: una persona puede trabajar en varios huertos el mismo día
             // (sale de A y entra en B). Como mucho un tramo abierto por día.
-            const { data: open } = await supabase
+            // El tramo abierto puede estar en otro huerto que quien ficha no ve por
+            // RLS (un team leader solo ve su huerto): se busca y se cierra con la
+            // clave de servicio. Antes el alta fallaba con "duplicate key".
+            const admin = createClient(
+                Deno.env.get('SUPABASE_URL') ?? '',
+                Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+            )
+            const { data: open } = await admin
                 .from('daily_attendance')
                 .select('id, orchard_id')
                 .eq('picker_id', picker_id)
@@ -78,7 +97,7 @@ serve(async (req) => {
                 // Sigue abierto en otro huerto: se cierra ahora y se marca para que
                 // el team leader o el manager revisen la hora de salida real.
                 // El tiempo de viaje entre huertos no se paga.
-                const { error: closeErr } = await supabase
+                const { error: closeErr } = await admin
                     .from('daily_attendance')
                     .update({
                         check_out: nowISO,
@@ -88,7 +107,7 @@ serve(async (req) => {
                     .is('check_out', null)
                 if (closeErr) throw new Error(`Failed to close previous shift: ${closeErr.message}`)
                 closedShiftId = open.id
-                await writeAudit(supabase, {
+                await writeAudit(admin, {
                     action: 'shift_auto_closed',
                     table: 'daily_attendance',
                     recordId: open.id,
@@ -106,7 +125,8 @@ serve(async (req) => {
                     date: today,
                     check_in: nowISO,
                     status: 'present',
-                    verified_by: verified_by || user.id,
+                    // Quien ficha es quien verifica (el verified_by del cuerpo no cuenta)
+                    verified_by: user.id,
                 })
                 .select('id')
                 .single()
@@ -179,12 +199,13 @@ serve(async (req) => {
 
         // ── CORRECT ──────────────────────────────────
         if (input.action === 'correct') {
-            const { attendance_id, check_in, check_out, break_start, reason, admin_id } = input
+            const { attendance_id, check_in, check_out, break_start, reason } = input
 
-            // Build update payload
+            // Build update payload. Quien corrige es quien llama: antes se guardaba
+            // el admin_id del cuerpo (firmar en nombre de otro).
             const updatePayload: Record<string, string | number | null> = {
                 correction_reason: reason,
-                corrected_by: admin_id,
+                corrected_by: user.id,
                 corrected_at: new Date().toISOString(),
             }
 
@@ -215,19 +236,25 @@ serve(async (req) => {
             }
 
             // Apply correction
-            const { error: corrErr } = await supabase
+            const { data: corrected, error: corrErr } = await supabase
                 .from('daily_attendance')
                 .update(updatePayload)
                 .eq('id', attendance_id)
+                .select('id')
 
             if (corrErr) throw new Error(`Failed to apply correction: ${corrErr.message}`)
+            // RLS puede dejar la fila sin tocar sin dar error (p. ej. el propio
+            // fichaje): antes se respondía success y se auditaba un cambio que no hubo
+            if (!corrected || corrected.length === 0) {
+                throw new AuthError('Not allowed to correct this timesheet', 403)
+            }
 
             // Audit trail — must succeed for compliance
             const { error: auditErr } = await writeAudit(supabase, {
                 action: 'timesheet_correction',
                 table: 'daily_attendance',
                 recordId: attendance_id,
-                userId: admin_id,
+                userId: user.id,
                 oldValues: existing ?? undefined,
                 newValues: { check_in, check_out, break_start },
                 reason,
@@ -235,7 +262,7 @@ serve(async (req) => {
 
             if (auditErr) throw new Error(`Correction applied but audit trail failed: ${auditErr.message}`)
 
-            console.info(`[Attendance] Correction applied: id=${attendance_id}, by=${admin_id}`)
+            console.info(`[Attendance] Correction applied: id=${attendance_id}, by=${user.id}`)
 
             return jsonResponse({ success: true, attendance_id }, origin)
         }

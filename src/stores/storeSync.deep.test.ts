@@ -34,6 +34,8 @@ vi.mock('@/services/supabase', () => ({
       on: vi.fn().mockReturnThis(),
       subscribe: vi.fn(),
     }),
+    getChannels: vi.fn(() => []),
+    removeChannel: vi.fn(),
     removeAllChannels: vi.fn(),
   },
 }));
@@ -223,10 +225,12 @@ describe('setupRealtimeSubscriptions', () => {
     expect(setupRealtimeSubscriptions.length).toBe(3);
   });
 
-  it('does not throw when called', () => {
+  it('subscribes to the orchard channel without throwing', async () => {
+    const { supabase } = await import('@/services/supabase');
     const get = makeGet();
     const { set } = makeSet();
     expect(() => setupRealtimeSubscriptions('o1', get, set)).not.toThrow();
+    expect(supabase.channel).toHaveBeenCalledWith('harvest-live-o1');
   });
 });
 

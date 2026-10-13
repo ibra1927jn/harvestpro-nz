@@ -93,8 +93,10 @@ serve(async (req) => {
                     })
                     if (error) {
                         if (error.code === '23505') { results.push({ id: s.id, status: 'duplicate' }); continue }
-                        // Errores de datos → rechazo definitivo; el resto (BD caída…) → reintentar luego
-                        const permanent = ['P0001', '23503', '23514', '22P02', '22007', '23502'].includes(error.code ?? '')
+                        // Errores de datos o de permisos (42501: RLS, p. ej. otro huerto o persona
+                        // archivada) → rechazo definitivo; el resto (BD caída…) → reintentar luego.
+                        // Antes 42501 volvía como "retry" y el móvil lo reintentaba para siempre.
+                        const permanent = ['P0001', '23503', '23514', '22P02', '22007', '23502', '42501'].includes(error.code ?? '')
                         results.push({ id: s.id, status: permanent ? 'rejected' : 'retry', reason: error.message })
                         continue
                     }
