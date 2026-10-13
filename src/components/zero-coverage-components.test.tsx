@@ -103,7 +103,6 @@ describe('Logistics Tab Components', () => {
 describe('Team Leader View Components', () => {
     it('AttendanceView exports', () => testModule('../views/team-leader/AttendanceView'));
     it('Header exports', () => testModule('../views/team-leader/Header'));
-    it('LogisticsView exports', () => testModule('../views/team-leader/LogisticsView'));
     it('ProfileView exports', () => testModule('../views/team-leader/ProfileView'));
     it('RunnersView exports', () => testModule('../views/team-leader/RunnersView'));
     it('TasksView exports', () => testModule('../views/team-leader/TasksView'));

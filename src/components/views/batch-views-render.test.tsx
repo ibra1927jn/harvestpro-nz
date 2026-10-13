@@ -268,15 +268,12 @@ describe('Team Leader Views — module exports', () => {
     testModuleExport('@/components/views/team-leader/AttendanceView'));
   it('Header exports', () => testModuleExport('@/components/views/team-leader/Header'));
   it('HomeView exports', () => testModuleExport('@/components/views/team-leader/HomeView'));
-  it('LogisticsView exports', () =>
-    testModuleExport('@/components/views/team-leader/LogisticsView'));
   it('MessagingView exports', () =>
     testModuleExport('@/components/views/team-leader/MessagingView'));
   it('ProfileView exports', () => testModuleExport('@/components/views/team-leader/ProfileView'));
   it('RunnersView exports', () => testModuleExport('@/components/views/team-leader/RunnersView'));
   it('TasksView exports', () => testModuleExport('@/components/views/team-leader/TasksView'));
   it('TeamView exports', () => testModuleExport('@/components/views/team-leader/TeamView'));
-  it('index exports', () => testModuleExport('@/components/views/team-leader/index'));
 });
 
 // ── Logistics SubViews (import tests) ────────────

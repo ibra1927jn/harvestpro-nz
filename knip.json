@@ -1,0 +1,53 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/index.tsx",
+    "src/mocks/browser.ts",
+    "src/**/*.{test,spec}.{ts,tsx}",
+    "tests/**/*.test.ts",
+    "e2e/**/*.ts",
+    "scripts/*.{ts,mjs,cjs,js}"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "tests/**/*.ts",
+    "e2e/**/*.ts",
+    "scripts/**/*.{ts,mjs,cjs,js}"
+  ],
+  "ignore": [
+    "src/types/database.types.ts",
+    "supabase/**"
+  ],
+  "ignoreDependencies": [
+    "@capacitor/cli",
+    "@capacitor/android",
+    "@tailwindcss/forms"
+  ],
+  "vite": {
+    "config": [
+      "vite.config.ts"
+    ]
+  },
+  "vitest": {
+    "config": [
+      "vitest.config.ts",
+      "vitest.config.ci.ts",
+      "vitest.config.integration.ts"
+    ]
+  },
+  "playwright": {
+    "config": [
+      "playwright.config.ts",
+      "playwright.production.config.ts"
+    ]
+  },
+  "storybook": {
+    "config": [
+      ".storybook/main.ts"
+    ],
+    "entry": [
+      ".storybook/preview.ts",
+      "src/**/*.stories.{ts,tsx}"
+    ]
+  }
+}
