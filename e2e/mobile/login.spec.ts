@@ -9,6 +9,13 @@ test('login screen is usable on the phone and light on data', async ({ page }) =
   const errs = collectErrors(page);
   const requested: string[] = [];
   page.on('request', r => requested.push(r.url()));
+  const fontBytes: number[] = [];
+  page.on('response', async r => {
+    if (r.url().startsWith('https://fonts.gstatic.com/') && r.url().includes('materialsymbols')) {
+      const body = await r.body().catch(() => null);
+      if (body) fontBytes.push(body.length);
+    }
+  });
 
   await page.goto('/login');
   await expect(page.locator('input[type="email"]')).toBeVisible();
@@ -30,5 +37,7 @@ test('login screen is usable on the phone and light on data', async ({ page }) =
   if (vw < 1024) {
     expect(requested.filter(u => u.includes('orchard-hero'))).toEqual([]);
   }
+  // Fuente de iconos: solo los ejes usados (la variable completa pesaba 1.1 MB)
+  for (const b of fontBytes) expect(b).toBeLessThan(600 * 1024);
   expect(errs.errors, errs.errors.join('\n')).toEqual([]);
 });

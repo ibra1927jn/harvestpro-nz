@@ -66,6 +66,17 @@ export default defineConfig(() => {
               },
             },
             {
+              // Ficheros de fuentes (iconos incluidos): sin esto, sin red los iconos
+              // salen como texto ("local_shipping") cuando caduca la caché HTTP
+              urlPattern: ({ url }) => url.origin === 'https://fonts.gstatic.com',
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts-webfonts',
+                cacheableResponse: { statuses: [0, 200] },
+                expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              },
+            },
+            {
               urlPattern: ({ url }) => url.origin.includes('googleapis.com'),
               handler: 'StaleWhileRevalidate',
               options: {
