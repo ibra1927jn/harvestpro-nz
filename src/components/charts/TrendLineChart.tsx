@@ -7,6 +7,7 @@
  * responsive via viewBox, clickable data points with day detail.
  */
 import React, { useId, useState } from 'react';
+import { useTranslation } from '@/i18n';
 
 export interface DayMeta {
     date?: string;
@@ -57,6 +58,7 @@ export const TrendLineChart: React.FC<TrendLineChartProps> = ({
     height = 220,
     onPointClick,
 }) => {
+    const { t } = useTranslation();
     const uniqueId = useId().replace(/:/g, '');
     const [activeIndex, setActiveIndex] = useState<number | null>(null);
     const isCompact = height < 140;
@@ -67,7 +69,7 @@ export const TrendLineChart: React.FC<TrendLineChartProps> = ({
                 style={{ height }}>
                 <div className="text-center">
                     <span aria-hidden="true" className="material-symbols-outlined text-3xl text-slate-300 block mb-1">show_chart</span>
-                    <span>No trend data available</span>
+                    <span>{t('mgr.no_trend')}</span>
                 </div>
             </div>
         );

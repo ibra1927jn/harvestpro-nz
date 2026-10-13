@@ -82,7 +82,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history, dailyBuckets }) => {
                                     {/* Horas */}
                                     <span
                                         className={`w-10 flex-shrink-0 ${r.estimated ? 'text-amber-600 font-bold' : 'text-text-muted'}`}
-                                        title={r.estimated ? 'Estimated: shift not closed — check the timesheet' : undefined}
+                                        title={r.estimated ? t('mgr.estimated_shift') : undefined}
                                     >
                                         {r.hours.toFixed(1)}h{r.estimated ? '*' : ''}
                                     </span>

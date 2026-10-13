@@ -111,7 +111,7 @@ class ErrorBoundary extends Component<Props, State> {
                                 className="w-full py-3 bg-white border border-border-light text-text-secondary rounded-xl font-bold hover:bg-background-light transition-colors flex items-center justify-center gap-2"
                             >
                                 <span aria-hidden="true" className="material-symbols-outlined text-sm">bug_report</span>
-                                Report Issue
+                                {t('errorBoundary.report')}
                             </a>
                         </div>
                     </div>

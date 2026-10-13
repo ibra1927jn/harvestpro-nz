@@ -4,6 +4,8 @@
  */
 import React from 'react';
 import { DayMeta } from '@/components/charts/TrendLineChart';
+import { formatNZD, formatNZDate } from '@/utils/nzFormat';
+import { useTranslation } from '@/i18n';
 
 interface DayDetailPanelProps {
     meta: DayMeta;
@@ -11,17 +13,18 @@ interface DayDetailPanelProps {
 }
 
 const DayDetailPanel: React.FC<DayDetailPanelProps> = ({ meta, onClose }) => {
+    const { t } = useTranslation();
     const kpis = [
-        { label: 'Pickers', value: String(meta.totalPickers ?? '—') },
-        { label: 'Buckets', value: String(meta.totalBuckets ?? '—') },
-        { label: 'Tons', value: meta.totalTons?.toFixed(1) ?? '—' },
-        { label: 'Cost/Bin', value: meta.costPerBin != null ? `$${meta.costPerBin.toFixed(2)}` : '—' },
-        { label: 'Top-Up', value: `$${(meta.topUpCost || 0).toFixed(0)}`, isNegative: (meta.topUpCost || 0) > 0 },
+        { label: t('pd.pickers'), value: String(meta.totalPickers ?? '—') },
+        { label: t('tl.home.buckets'), value: String(meta.totalBuckets ?? '—') },
+        { label: t('tl.home.tons'), value: meta.totalTons?.toFixed(1) ?? '—' },
+        { label: t('mgr.cost_per_bin'), value: meta.costPerBin != null ? formatNZD(meta.costPerBin) : '—' },
+        { label: t('mgr.top_up'), value: formatNZD(meta.topUpCost || 0, 0), isNegative: (meta.topUpCost || 0) > 0 },
     ];
 
     return (
         <div className="relative bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-slate-200 p-5 animate-fade-in shadow-sm">
-            <button aria-label="Close"
+            <button aria-label={t('common.close')}
                 onClick={onClose}
                 className="absolute top-3 right-3 w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
             >
@@ -36,10 +39,10 @@ const DayDetailPanel: React.FC<DayDetailPanelProps> = ({ meta, onClose }) => {
                 <div>
                     <h4 className="font-bold text-slate-800">
                         {meta.date
-                            ? new Date(meta.date + 'T00:00:00').toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'short' })
-                            : 'Day Detail'}
+                            ? formatNZDate(meta.date, 'weekday')
+                            : t('mgr.day_detail')}
                     </h4>
-                    <p className="text-xs text-slate-500">{meta.orchardName || 'Orchard'}</p>
+                    <p className="text-xs text-slate-500">{meta.orchardName || t('runner.orchard')}</p>
                 </div>
             </div>
 
@@ -57,7 +60,7 @@ const DayDetailPanel: React.FC<DayDetailPanelProps> = ({ meta, onClose }) => {
             {meta.teams && meta.teams.length > 0 && (
                 <div>
                     <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                        <span aria-hidden="true" className="material-symbols-outlined text-sm">groups</span> Teams on Site
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm">groups</span> {t('mgr.teams_on_site')}
                     </h5>
                     <div className="space-y-2">
                         {meta.teams.map((team, idx) => {

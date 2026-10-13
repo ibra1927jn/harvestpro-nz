@@ -137,7 +137,7 @@ const TeamsView: React.FC<TeamsViewProps> = ({
                             <section className="glass-card p-5" data-testid="unassigned-pickers">
                                 <h3 className="text-lg font-black flex items-center gap-2 mb-3">
                                     <span aria-hidden="true" className="material-symbols-outlined text-amber-500">person_off</span>
-                                    Without team leader
+                                    {t('mgr.without_leader')}
                                     <span className="text-xs bg-amber-50 text-amber-700 px-3 py-1 rounded-full font-bold">{unassigned.length}</span>
                                 </h3>
                                 <div className="flex flex-wrap gap-2">

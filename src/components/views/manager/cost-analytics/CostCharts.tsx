@@ -2,10 +2,12 @@
  * Cost Analytics chart sub-components — DonutChart, HBar, KPICard
  */
 import React from 'react';
+import { useTranslation } from '@/i18n';
 
 /* ── Donut Chart ─────────────────────────── */
 
 export const DonutChart: React.FC<{ pieceRate: number; topUp: number; pieceRateLabel?: string }> = ({ pieceRate, topUp, pieceRateLabel = 'Piece Rate' }) => {
+    const { t } = useTranslation();
     const total = pieceRate + topUp;
     if (total === 0) {
         return (
@@ -15,7 +17,7 @@ export const DonutChart: React.FC<{ pieceRate: number; topUp: number; pieceRateL
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span aria-hidden="true" className="material-symbols-outlined text-xl text-slate-300 mb-1">donut_large</span>
-                    <span className="text-[10px] text-text-muted font-medium">Awaiting scan data</span>
+                    <span className="text-[10px] text-text-muted font-medium">{t('insights.cost_breakdown.empty')}</span>
                 </div>
             </div>
         );

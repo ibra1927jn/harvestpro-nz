@@ -6,6 +6,8 @@ import React, { useState, useRef } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { Picker } from '@/types';
 import { TeamRanking } from '@/hooks/useWeeklyReport';
+import { formatNZD } from '@/utils/nzFormat';
+import { useTranslation } from '@/i18n';
 
 // Subconjunto de Picker necesario para mostrar miembros del equipo
 type TeamMember = Pick<Picker, 'id' | 'name' | 'role' | 'status' | 'total_buckets_today'>;
@@ -42,6 +44,7 @@ function roleLabel(role: string | undefined): string {
 }
 
 const TeamDrawer: React.FC<TeamDrawerProps> = ({ teamData, onClose }) => {
+    const { t } = useTranslation();
     const dialogRef = useRef<HTMLDivElement>(null);
     useDialogA11y(dialogRef, { onClose });
 
@@ -65,13 +68,13 @@ const TeamDrawer: React.FC<TeamDrawerProps> = ({ teamData, onClose }) => {
             />
 
             {/* Panel */}
-            <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Team details" className="fixed right-0 top-0 bottom-0 w-full max-w-sm bg-white shadow-2xl z-50 overflow-y-auto animate-slide-in-right">
+            <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={t('mgr.team_details')} className="fixed right-0 top-0 bottom-0 w-full max-w-sm bg-white shadow-2xl z-50 overflow-y-auto animate-slide-in-right">
 
                 {/* Header con gradiente indigo */}
                 <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-5">
                     <button
                         onClick={onClose}
-                        aria-label="Close team drawer"
+                        aria-label={t('mgr.close_team_drawer')}
                         className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/70 flex items-center justify-center hover:bg-white transition-colors z-10"
                     >
                         <span aria-hidden="true" className="material-symbols-outlined text-lg text-slate-600">close</span>
@@ -84,7 +87,7 @@ const TeamDrawer: React.FC<TeamDrawerProps> = ({ teamData, onClose }) => {
                         </div>
                         <div>
                             <h2 className="text-lg font-black text-text-main">{teamData.name}</h2>
-                            <p className="text-xs text-text-muted">{ranking.count} pickers</p>
+                            <p className="text-xs text-text-muted">{t('dashboard.team_leaders.picker_count', { n: ranking.count })}</p>
                         </div>
                     </div>
                 </div>
@@ -100,7 +103,7 @@ const TeamDrawer: React.FC<TeamDrawerProps> = ({ teamData, onClose }) => {
                                     : 'text-text-muted hover:text-text-sub'
                             }`}
                         >
-                            Today
+                            {t('common.today')}
                         </button>
                         <button
                             onClick={() => setActiveTab('members')}
@@ -110,7 +113,7 @@ const TeamDrawer: React.FC<TeamDrawerProps> = ({ teamData, onClose }) => {
                                     : 'text-text-muted hover:text-text-sub'
                             }`}
                         >
-                            Members
+                            {t('teams.members')}
                         </button>
                     </div>
                 </div>
@@ -135,14 +138,17 @@ interface TodayTabProps {
     ranking: TeamRanking;
 }
 
-const TodayTab: React.FC<TodayTabProps> = ({ ranking }) => (
+const TodayTab: React.FC<TodayTabProps> = ({ ranking }) => {
+    const { t } = useTranslation();
+    return (
     <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Bins Today" value={ranking.buckets.toString()} icon="inventory_2" iconBg="bg-sky-100 text-sky-600" />
-        <StatCard label="Total Hours" value={`${ranking.hours.toFixed(1)}h`} icon="schedule" iconBg="bg-amber-100 text-amber-600" />
-        <StatCard label="Labour Cost" value={`$${ranking.earnings.toFixed(0)}`} icon="payments" iconBg="bg-emerald-100 text-emerald-600" />
+        <StatCard label={t('mgr.bins_today')} value={ranking.buckets.toString()} icon="inventory_2" iconBg="bg-sky-100 text-sky-600" />
+        <StatCard label={t('mgr.total_hours')} value={`${ranking.hours.toFixed(1)}h`} icon="schedule" iconBg="bg-amber-100 text-amber-600" />
+        <StatCard label={t('mgr.labour_cost')} value={formatNZD(ranking.earnings, 0)} icon="payments" iconBg="bg-emerald-100 text-emerald-600" />
         <StatCard label="Bins/Hr" value={`${ranking.bpa.toFixed(1)} bins/hr`} icon="speed" iconBg="bg-purple-100 text-purple-600" />
     </div>
 );
+};
 
 interface StatCardProps {
     label: string;
@@ -168,14 +174,15 @@ interface MembersTabProps {
 }
 
 const MembersTab: React.FC<MembersTabProps> = ({ members }) => {
+    const { t } = useTranslation();
     if (members.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-3">
                     <span aria-hidden="true" className="material-symbols-outlined text-3xl text-slate-300">groups</span>
                 </div>
-                <p className="text-sm font-bold text-text-sub">No members assigned</p>
-                <p className="text-xs text-text-muted mt-1">Team member data unavailable</p>
+                <p className="text-sm font-bold text-text-sub">{t('mgr.no_members')}</p>
+                <p className="text-xs text-text-muted mt-1">{t('mgr.no_members_desc')}</p>
             </div>
         );
     }
@@ -201,7 +208,7 @@ const MembersTab: React.FC<MembersTabProps> = ({ members }) => {
                                     {roleLabel(member.role ?? undefined)}
                                 </span>
                             </div>
-                            <p className="text-xs text-text-muted">{member.total_buckets_today ?? 0} bins today</p>
+                            <p className="text-xs text-text-muted">{t('mgr.bins_today_n', { n: member.total_buckets_today ?? 0 })}</p>
                         </div>
 
                         {/* Status dot */}

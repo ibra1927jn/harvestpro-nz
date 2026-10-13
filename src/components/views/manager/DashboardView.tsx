@@ -194,7 +194,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
         <div>
           <h1 className="text-2xl font-black text-text-main">{t('dashboard.title')}</h1>
           <p className="text-sm text-text-muted font-medium">
-            {t('dashboard.live_monitoring')} • {orchard?.name || 'Orchard'}
+            {t('dashboard.live_monitoring')} • {orchard?.name || t('runner.orchard')}
           </p>
           <div className="flex items-center gap-3 mt-1.5">
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">

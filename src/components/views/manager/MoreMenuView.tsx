@@ -4,6 +4,7 @@
  */
 import React from 'react';
 import { Tab } from '@/types';
+import { useTranslation } from '@/i18n';
 
 interface MoreMenuItem {
     id: Tab;
@@ -14,9 +15,9 @@ interface MoreMenuItem {
 }
 
 const MENU_ITEMS: MoreMenuItem[] = [
-    { id: 'insights', label: 'Insights', icon: 'insights', description: 'Analytics & weekly reports', color: 'bg-purple-500' },
-    { id: 'messaging', label: 'Messaging', icon: 'chat', description: 'Team communications', color: 'bg-emerald-500' },
-    { id: 'settings', label: 'Settings', icon: 'settings', description: 'Orchard configuration', color: 'bg-slate-500' },
+    { id: 'insights', label: 'nav.insights', icon: 'insights', description: 'mgr.more.insights_desc', color: 'bg-purple-500' },
+    { id: 'messaging', label: 'nav.messaging', icon: 'chat', description: 'mgr.more.messaging_desc', color: 'bg-emerald-500' },
+    { id: 'settings', label: 'nav.settings', icon: 'settings', description: 'mgr.more.settings_desc', color: 'bg-slate-500' },
 ];
 
 interface MoreMenuViewProps {
@@ -24,11 +25,12 @@ interface MoreMenuViewProps {
 }
 
 const MoreMenuView: React.FC<MoreMenuViewProps> = ({ onNavigate }) => {
+    const { t } = useTranslation();
     return (
         <div className="p-4 md:p-6 space-y-4 animate-fade-in">
             <div>
-                <h2 className="text-xl font-black text-text-main">More</h2>
-                <p className="text-sm text-text-muted">Quick access to all tools</p>
+                <h2 className="text-xl font-black text-text-main">{t('nav.more')}</h2>
+                <p className="text-sm text-text-muted">{t('mgr.more.subtitle')}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -42,8 +44,8 @@ const MoreMenuView: React.FC<MoreMenuViewProps> = ({ onNavigate }) => {
                             <span aria-hidden="true" className="material-symbols-outlined text-xl">{item.icon}</span>
                         </div>
                         <div>
-                            <h3 className="font-bold text-text-main text-sm">{item.label}</h3>
-                            <p className="text-xs text-text-muted mt-0.5 leading-tight">{item.description}</p>
+                            <h3 className="font-bold text-text-main text-sm">{t(item.label)}</h3>
+                            <p className="text-xs text-text-muted mt-0.5 leading-tight">{t(item.description)}</p>
                         </div>
                     </button>
                 ))}

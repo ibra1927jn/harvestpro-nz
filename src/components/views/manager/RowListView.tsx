@@ -88,7 +88,8 @@ const RowListView: React.FC<RowListViewProps> = ({
                             <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse shadow-[0_0_5px_var(--color-primary)]"></span>
                             {t('orchardMap.live')}
                         </div>
-                        <p className="text-[8px] text-text-muted mt-1 uppercase">Lat: -41.2865 | Lon 174.7762</p>
+                        {/* i18n-ignore: coordenadas */}
+<p className="text-[8px] text-text-muted mt-1 uppercase">Lat: -41.2865 | Lon 174.7762</p>
                     </div>
                 </div>
 

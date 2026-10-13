@@ -2,6 +2,7 @@
  * SmartDismissals — Expandable section showing what the system correctly ignored
  */
 import React, { useState } from 'react';
+import { useTranslation } from '@/i18n';
 
 interface DismissedExample {
     scenario: string;
@@ -14,6 +15,7 @@ interface SmartDismissalsProps {
 }
 
 const SmartDismissals: React.FC<SmartDismissalsProps> = ({ dismissed }) => {
+    const { t } = useTranslation();
     const [showDismissed, setShowDismissed] = useState(false);
 
     return (
@@ -27,8 +29,8 @@ const SmartDismissals: React.FC<SmartDismissalsProps> = ({ dismissed }) => {
                         <span aria-hidden="true" className="material-symbols-outlined text-emerald-600">verified_user</span>
                     </div>
                     <div className="text-left">
-                        <h3 className="font-bold text-emerald-800 text-sm">Smart Dismissals</h3>
-                        <p className="text-xs text-emerald-600">{dismissed.length} scenarios correctly ignored — the system understands your orchard</p>
+                        <h3 className="font-bold text-emerald-800 text-sm">{t('fraud.smart_dismissals')}</h3>
+                        <p className="text-xs text-emerald-600">{dismissed.length} {t('fraud.scenarios_ignored')}</p>
                     </div>
                 </div>
                 <span aria-hidden="true" className={`material-symbols-outlined text-emerald-500 transition-transform ${showDismissed ? 'rotate-180' : ''}`}>
@@ -46,7 +48,7 @@ const SmartDismissals: React.FC<SmartDismissalsProps> = ({ dismissed }) => {
                                     <p className="text-sm font-bold text-slate-700 mb-1">{ex.scenario}</p>
                                     <p className="text-xs text-slate-500">{ex.reason}</p>
                                     <span className="inline-block mt-2 px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded">
-                                        Rule: {ex.rule}
+                                        {t('mgr.rule', { rule: ex.rule })}
                                     </span>
                                 </div>
                             </div>

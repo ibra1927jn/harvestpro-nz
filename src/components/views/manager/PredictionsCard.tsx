@@ -70,7 +70,7 @@ export default function PredictionsCard({ setActiveTab }: PredictionsCardProps) 
           <button
             onClick={() => setActiveTab('analytics')}
             className="w-7 h-7 rounded-full bg-orange-100 hover:bg-orange-200 flex items-center justify-center transition-colors"
-            aria-label="View Insights & Analytics"
+            aria-label={t('mgr.view_insights')}
           >
             <span aria-hidden="true" className="material-symbols-outlined text-orange-500 text-sm">arrow_forward</span>
           </button>

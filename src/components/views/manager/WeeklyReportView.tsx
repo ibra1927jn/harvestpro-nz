@@ -85,7 +85,7 @@ const WeeklyReportView: React.FC = () => {
                 <div>
                     <h2 className="text-xl font-black text-text-main">{t('insights.weekly.title')}</h2>
                     <p className="text-xs text-text-muted">
-                        {report.orchard?.name || 'Orchard'} — {formatNZDate(new Date(), 'weekday')}
+                        {report.orchard?.name || t('runner.orchard')} — {formatNZDate(new Date(), 'weekday')}
                     </p>
                 </div>
                 <button
@@ -131,7 +131,7 @@ const WeeklyReportView: React.FC = () => {
                             <span aria-hidden="true" className="material-symbols-outlined text-3xl text-slate-300">leaderboard</span>
                         </div>
                         <p className="text-sm font-bold text-text-sub">{t('insights.weekly.no_teams')}</p>
-                        <p className="text-xs text-text-muted mt-1">Rankings appear as data flows in</p>
+                        <p className="text-xs text-text-muted mt-1">{t('mgr.rankings_empty')}</p>
                     </div>
                 ) : (
                     <div className="space-y-2">
@@ -169,7 +169,7 @@ const WeeklyReportView: React.FC = () => {
                             <span aria-hidden="true" className="material-symbols-outlined text-3xl text-slate-300">person_search</span>
                         </div>
                         <p className="text-sm font-bold text-text-sub">{t('insights.weekly.no_pickers')}</p>
-                        <p className="text-xs text-text-muted mt-1">Picker stats appear as scans are submitted</p>
+                        <p className="text-xs text-text-muted mt-1">{t('mgr.picker_stats_empty')}</p>
                     </div>
                 ) : (
                     <div className="space-y-1">
