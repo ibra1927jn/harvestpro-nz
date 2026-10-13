@@ -15,6 +15,7 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from '@/i18n';
+import { statusLabel } from '@/i18n/statusLabel';
 
 interface InlineSelectProps {
     value: string;
@@ -46,7 +47,7 @@ const InlineSelect: React.FC<InlineSelectProps> = ({
         }
     }, [isEditing]);
 
-    const displayLabel = labelMap?.[value] || value.replace(/_/g, ' ');
+    const displayLabel = labelMap?.[value] || statusLabel(t, value);
     const pillColor = colorMap?.[value] || 'bg-surface-secondary text-text-primary';
 
     const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -77,7 +78,7 @@ const InlineSelect: React.FC<InlineSelectProps> = ({
             >
                 {options.map(opt => (
                     <option key={opt} value={opt}>
-                        {labelMap?.[opt] || opt.replace(/_/g, ' ')}
+                        {labelMap?.[opt] || statusLabel(t, opt)}
                     </option>
                 ))}
             </select>

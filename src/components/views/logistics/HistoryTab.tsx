@@ -4,16 +4,20 @@
  */
 import React from 'react';
 import { TransportLog } from '@/services/logistics-dept.service';
+import { useTranslation } from '@/i18n';
+import { formatNZTime } from '@/utils/nzFormat';
 
 interface HistoryTabProps {
     history: TransportLog[];
 }
 
-const HistoryTab: React.FC<HistoryTabProps> = ({ history }) => (
+const HistoryTab: React.FC<HistoryTabProps> = ({ history }) => {
+    const { t } = useTranslation();
+    return (
     <div className="space-y-4">
         <div className="bg-white rounded-xl p-5 shadow-sm border border-border-light">
-            <h3 className="font-bold text-text-primary text-sm mb-1">Today's Transport Log</h3>
-            <p className="text-xs text-text-secondary">{history.length} trips completed</p>
+            <h3 className="font-bold text-text-primary text-sm mb-1">{t('logi.transport_log')}</h3>
+            <p className="text-xs text-text-secondary">{t('logi.trips_n', { n: history.length })}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -25,7 +29,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history }) => (
                             <span className="text-xs text-text-secondary">• {log.driver_name}</span>
                         </div>
                         <span className="text-xs font-mono text-text-muted">
-                            {new Date(log.started_at).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })}
+                            {formatNZTime(log.started_at)}
                         </span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-text-secondary">
@@ -33,14 +37,15 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history }) => (
                         <span aria-hidden="true" className="material-symbols-outlined text-xs text-text-muted">arrow_forward</span>
                         <span className="font-medium">{log.to_zone}</span>
                         <span>•</span>
-                        <span>{log.bins_count} bins</span>
+                        <span>{t('dashboard.velocity.tooltip_bins', { n: log.bins_count })}</span>
                         <span>•</span>
-                        <span>{log.duration_minutes} min</span>
+                        <span>{t('logi.minutes_n', { n: log.duration_minutes })}</span>
                     </div>
                 </div>
             ))}
         </div>
     </div>
-);
+    );
+};
 
 export default HistoryTab;

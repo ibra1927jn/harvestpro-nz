@@ -37,9 +37,9 @@ describe('BinsTab', () => {
 
     it('renders summary stats labels', () => {
         render(<BinsTab bins={bins} summary={summary} />);
-        expect(screen.getByText('Empty')).toBeTruthy();
-        expect(screen.getByText('Filling')).toBeTruthy();
-        expect(screen.getByText('Full')).toBeTruthy();
+        expect(screen.getAllByText('Empty').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Filling').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Full').length).toBeGreaterThan(0);
         expect(screen.getByText('Transit')).toBeTruthy();
     });
 
@@ -72,9 +72,9 @@ describe('BinsTab', () => {
 
     it('renders bin status badges', () => {
         render(<BinsTab bins={bins} summary={summary} />);
-        expect(screen.getByText('filling')).toBeTruthy();
-        expect(screen.getByText('full')).toBeTruthy();
-        expect(screen.getByText('empty')).toBeTruthy();
+        expect(screen.getAllByText(/^filling$/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/^full$/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/^empty$/i).length).toBeGreaterThan(0);
     });
 
     it('shows empty state when no bins', () => {

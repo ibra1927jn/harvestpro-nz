@@ -16,10 +16,12 @@ import logistics from './logistics';
 import chat from './chat';
 import legal from './legal';
 import login from './login';
+import logistics2 from './logistics2';
 import pickerDetails from './pickerDetails';
 import qc from './qc';
 import runner from './runner';
 import shared from './shared';
+import status from './status';
 import sync from './sync';
 import teamLeader from './teamLeader';
 
@@ -42,10 +44,12 @@ const en: TranslationDict = {
     ...chat,
     ...legal,
     ...login,
+    ...logistics2,
     ...pickerDetails,
     ...qc,
     ...runner,
     ...shared,
+    ...status,
     ...sync,
     ...teamLeader,
 };

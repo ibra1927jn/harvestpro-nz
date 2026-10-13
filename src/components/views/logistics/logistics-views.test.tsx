@@ -58,8 +58,8 @@ describe('BinsTab', () => {
 
     it('renders bin status badges', () => {
         render(<BinsTab bins={mockBins} summary={mockSummary} />);
-        expect(screen.getByText('filling')).toBeTruthy();
-        expect(screen.getByText('full')).toBeTruthy();
-        expect(screen.getByText('in transit')).toBeTruthy();
+        expect(screen.getAllByText(/^filling$/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/^full$/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/^in transit$/i).length).toBeGreaterThan(0);
     });
 });

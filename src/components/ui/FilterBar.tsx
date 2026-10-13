@@ -20,6 +20,7 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from '@/i18n';
+import { statusLabel } from '@/i18n/statusLabel';
 
 /* ── Types ── */
 export interface FilterOption {
@@ -71,7 +72,7 @@ const FilterDropdown: React.FC<{
 
     const isActive = activeValue !== '';
     const displayLabel = isActive
-        ? activeValue.replace(/_/g, ' ')
+        ? statusLabel(t, activeValue)
         : filter.label;
 
     return (
@@ -111,7 +112,7 @@ const FilterDropdown: React.FC<{
                             className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-background-light transition-colors flex items-center gap-2 capitalize
                                 ${activeValue === opt ? 'text-indigo-700 bg-indigo-50/50' : 'text-text-secondary'}`}
                         >
-                            {opt.replace(/_/g, ' ')}
+                            {statusLabel(t, opt)}
                             {activeValue === opt && <span aria-hidden="true" className="material-symbols-outlined text-xs ml-auto">check</span>}
                         </button>
                     ))}
@@ -194,7 +195,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
                         .filter(([, v]) => v !== '')
                         .map(([k, v]) => (
                             <span key={k} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full font-medium capitalize flex items-center gap-1">
-                                {v.replace(/_/g, ' ')}
+                                {statusLabel(t, v)}
                                 <button aria-label={t('ui.remove_filter', { name: k })}
                                     onClick={() => onFilterChange(k, '')}
                                     className="hover:text-red-600 transition-colors"
