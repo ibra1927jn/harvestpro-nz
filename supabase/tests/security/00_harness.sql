@@ -58,6 +58,8 @@ DECLARE
     v_id uuid;
     v_email text;
 BEGIN
+    -- Como la Storage API: permite DELETE en storage.objects (lo decide el RLS)
+    PERFORM set_config('storage.allow_delete_query', 'true', true);
     IF p_who = 'anon' THEN
         PERFORM set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
         PERFORM set_config('role', 'anon', true);
@@ -431,6 +433,17 @@ DECLARE v_id uuid := gen_random_uuid();
 BEGIN
     INSERT INTO auth.users (id, email, aud, role) VALUES (v_id, 'sectest.invite-a@example.test', 'authenticated', 'authenticated');
     INSERT INTO sec_test.who VALUES ('A.invitee', v_id, 'sectest.invite-a@example.test');
+END $$;
+
+-- Foto de calidad subida por el inspector de A
+DO $$
+DECLARE v_id uuid;
+BEGIN
+    INSERT INTO storage.objects (bucket_id, name, owner, owner_id)
+    VALUES ('qc-photos', 'sectest/' || gen_random_uuid() || '.webp', sec_test.id_of('A.qc_inspector'),
+            sec_test.id_of('A.qc_inspector')::text)
+    RETURNING id INTO v_id;
+    INSERT INTO sec_test.ids VALUES ('A.qc_photo', v_id);
 END $$;
 
 -- Bloqueo de cuenta e intentos de acceso (de un email de prueba)

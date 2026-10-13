@@ -85,5 +85,16 @@ FROM unnest(ARRAY['anon', 'A.runner', 'A.team_leader', 'A.payroll_admin']) AS w;
 SELECT sec_test.allow('A.hr_admin', 'uploads an HR document file',
     $$INSERT INTO storage.objects (bucket_id, name, owner) VALUES ('hr-documents', 'sectest/ok.pdf', auth.uid())$$);
 
+-- Almacén qc-photos (público para leer): sube QC / manager / admin; borra quien la subió
+SELECT sec_test.allow(w, 'uploads a QC photo',
+    $$INSERT INTO storage.objects (bucket_id, name, owner, owner_id) VALUES ('qc-photos', 'sectest/new.webp', auth.uid(), auth.uid()::text)$$)
+FROM unnest(ARRAY['A.qc_inspector', 'A.manager']) AS w;
+SELECT sec_test.deny(w, 'cannot upload to the public QC bucket',
+    $$INSERT INTO storage.objects (bucket_id, name, owner, owner_id) VALUES ('qc-photos', 'sectest/spam.html', auth.uid(), auth.uid()::text)$$)
+FROM unnest(ARRAY['anon', 'A.runner', 'A.team_leader', 'A.logistics']) AS w;
+SELECT sec_test.allow('A.qc_inspector', 'deletes own QC photo', $$DELETE FROM storage.objects WHERE id = {A.qc_photo}$$);
+SELECT sec_test.deny(w, 'cannot delete someone else''s QC photo', $$DELETE FROM storage.objects WHERE id = {A.qc_photo}$$)
+FROM unnest(ARRAY['anon', 'A.runner', 'A.manager', 'B.qc_inspector']) AS w;
+
 SELECT sec_test.finish();
 ROLLBACK;
