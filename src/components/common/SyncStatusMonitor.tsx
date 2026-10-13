@@ -14,6 +14,10 @@ const SyncStatusMonitor: React.FC = () => {
     const [maxRetries, setMaxRetries] = useState(0);
     const [showSuccess, setShowSuccess] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
+    // Cambios que no se pudieron enviar (dead letter queue de este móvil).
+    // Antes no se enseñaban en ninguna pantalla (la vista DLQ no está montada).
+    const [deadLetters, setDeadLetters] = useState<Awaited<ReturnType<typeof syncService.getDeadLetters>>>([]);
+    const [showDeadLetters, setShowDeadLetters] = useState(false);
 
     const { isOnline, wasOffline, clearWasOffline } = useNetworkStatus();
 
@@ -38,6 +42,10 @@ const SyncStatusMonitor: React.FC = () => {
 
                 // Update retry count from sync queue (now async — Dexie)
                 setMaxRetries(await syncService.getMaxRetryCount());
+                const dead = await syncService.getDeadLetters();
+                setDeadLetters(prev =>
+                    prev.length === dead.length && prev.every((d, i) => d.id === dead[i].id) ? prev : dead
+                );
 
                 // Update "last synced" relative time (now async — Dexie)
                 const lastSync = await syncService.getLastSyncTime();
@@ -159,6 +167,42 @@ const SyncStatusMonitor: React.FC = () => {
                     <span className="material-symbols-outlined text-xs">refresh</span>
                     {isSyncing ? 'Retrying...' : 'Retry Now'}
                 </button>
+            </div>
+        );
+    }
+
+    // 2b. Cambios que no se enviaron (no se reintentan solos): visibles, con motivo
+    if (deadLetters.length > 0) {
+        return (
+            <div
+                className="bg-red-50 border-b border-red-200 px-4 py-2 shrink-0 z-50"
+                role="alert"
+                data-testid="dead-letter-banner"
+            >
+                <button
+                    type="button"
+                    onClick={() => setShowDeadLetters(v => !v)}
+                    className="w-full flex items-center justify-between gap-2 text-left"
+                >
+                    <span className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-red-600 text-lg" aria-hidden="true">sync_problem</span>
+                        <span className="text-red-800 text-xs font-bold">
+                            {deadLetters.length} change{deadLetters.length === 1 ? '' : 's'} could not be sent — kept on this device. Tell your manager.
+                        </span>
+                    </span>
+                    <span className="material-symbols-outlined text-red-600 text-base" aria-hidden="true">
+                        {showDeadLetters ? 'expand_less' : 'expand_more'}
+                    </span>
+                </button>
+                {showDeadLetters && (
+                    <ul className="mt-1 pl-7 text-[11px] text-red-700 list-disc space-y-0.5">
+                        {deadLetters.map(d => (
+                            <li key={d.id}>
+                                {d.type} — {d.failureReason} ({new Date(d.movedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })})
+                            </li>
+                        ))}
+                    </ul>
+                )}
             </div>
         );
     }

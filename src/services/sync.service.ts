@@ -309,6 +309,20 @@ export const syncService = {
     }
   },
 
+  /** Lo que no se pudo enviar desde este móvil (dead letter queue), lo último primero */
+  async getDeadLetters(limit = 50): Promise<Array<{ id: string; type: string; failureReason: string; movedAt: number }>> {
+    try {
+      const items = await db.dead_letter_queue.toArray();
+      return items
+        .sort((a, b) => b.movedAt - a.movedAt)
+        .slice(0, limit)
+        .map(i => ({ id: i.id, type: i.type, failureReason: i.failureReason, movedAt: i.movedAt }));
+    } catch (e) {
+      logger.warn('[SyncService] Failed to read dead letter queue:', e);
+      return [];
+    }
+  },
+
   // 4. Get Pending Count (For UI Badges)
   async getPendingCount(): Promise<number> {
     return await db.sync_queue.count();
