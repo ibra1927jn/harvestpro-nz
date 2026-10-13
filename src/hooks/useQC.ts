@@ -12,6 +12,9 @@ import { useAuth } from '@/context/AuthContext';
 import { Picker } from '@/types';
 import { logger } from '@/utils/logger';
 import { supabase } from '@/services/supabase';
+import { useTranslation } from '@/i18n';
+import { gradeLabel } from '@/components/views/qc/gradeLabel';
+import { todayNZST } from '@/utils/nzst';
 
 type QualityGrade = 'A' | 'B' | 'C' | 'reject';
 
@@ -33,6 +36,7 @@ export interface UseQCResult {
 }
 
 export function useQC(): UseQCResult {
+  const { t } = useTranslation();
   const { crew, orchard } = useHarvestStore();
   const { appUser } = useAuth();
   const orchardId = orchard?.id;
@@ -80,7 +84,7 @@ export function useQC(): UseQCResult {
 
       if (photoBlob) {
         try {
-          const dateStr = new Date().toISOString().slice(0, 10);
+          const dateStr = todayNZST();
           const fileName = `${orchardId}/${dateStr}/${crypto.randomUUID()}.webp`;
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('qc-photos')
@@ -113,20 +117,21 @@ export function useQC(): UseQCResult {
 
       if (result) {
         setLastGrade({ grade, picker: selectedPicker.name });
-        announce(`Logged Grade ${grade === 'reject' ? 'Reject' : grade} for ${selectedPicker.name}.`);
+        announce(t('qc.sr_logged', { grade: gradeLabel(t, grade), name: selectedPicker.name }));
         setNotes('');
         await loadInspections();
         setTimeout(() => setLastGrade(null), 3000);
       } else {
         // Antes no se avisaba y parecía guardado
-        setGradeError(`Inspection for ${selectedPicker.name} was NOT saved. Try again.`);
-        announce(`Inspection for ${selectedPicker.name} was not saved. Try again.`, 'assertive');
+        const msg = t('qc.not_saved', { name: selectedPicker.name });
+        setGradeError(msg);
+        announce(msg, 'assertive');
       }
 
       setIsSubmitting(false);
       return !!result;
     },
-    [selectedPicker, orchardId, appUser?.id, notes, loadInspections]
+    [selectedPicker, orchardId, appUser?.id, notes, loadInspections, t]
   );
 
   return {

@@ -3,13 +3,15 @@
  */
 import React from 'react';
 import type { Picker } from '@/types';
+import { useTranslation } from '@/i18n';
 
 export const ElsewhereBadge: React.FC<{ person: Pick<Picker, 'elsewhere'> }> = ({ person }) => {
+    const { t } = useTranslation();
     if (!person.elsewhere) return null;
     return (
         <span
             data-testid="elsewhere-badge"
-            title={`Working now at ${person.elsewhere.orchard_name}`}
+            title={t('elsewhere.working_at', { orchard: person.elsewhere.orchard_name })}
             className="inline-flex items-center gap-0.5 text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded font-bold max-w-full"
         >
             <span aria-hidden="true" className="material-symbols-outlined text-[11px]">swap_horiz</span>

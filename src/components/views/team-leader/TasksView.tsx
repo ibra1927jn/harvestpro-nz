@@ -7,10 +7,13 @@ import { useHarvestStore as useHarvest } from '@/stores/useHarvestStore';
 import RowAssignmentModal, { PickerForAssignment } from '../../modals/RowAssignmentModal';
 import { HeatMapView } from '../manager/HeatMapView';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
+import { useTranslation } from '@/i18n';
+import { formatNZD } from '@/utils/nzFormat';
 
 const TARGET_BUCKETS_PER_ROW = 60;
 
 const TasksView = () => {
+    const { t } = useTranslation();
     const { appUser } = useAuth();
     const { rowAssignments, orchard, bucketRecords, assignRow, crew, settings } = useHarvest();
     const { broadcasts } = useMessaging();
@@ -62,8 +65,8 @@ const TasksView = () => {
                 <div className="absolute top-0 left-0 w-full z-20 bg-gradient-to-b from-black/60 to-transparent p-4 pb-12 pointer-events-none">
                     <div className="flex justify-between items-center pointer-events-auto">
                         <div>
-                            <h1 className="text-lg font-black text-white shadow-sm tracking-tight">Logistics Map</h1>
-                            <p className="text-xs text-white/90 font-medium shadow-sm">{orchard?.name || 'Loading...'}</p>
+                            <h1 className="text-lg font-black text-white shadow-sm tracking-tight">{t('tl.tasks.map_title')}</h1>
+                            <p className="text-xs text-white/90 font-medium shadow-sm">{orchard?.name || t('common.loading')}</p>
                         </div>
                     </div>
                 </div>
@@ -77,20 +80,20 @@ const TasksView = () => {
                     {/* TARGET WIDGET */}
                     <div className="bg-surface-white rounded-2xl p-4 border border-border-light shadow-sm flex items-center justify-between">
                         <div>
-                            <span className="text-[10px] font-bold text-text-sub uppercase tracking-wider block mb-0.5">Min. Target</span>
+                            <span className="text-[10px] font-bold text-text-sub uppercase tracking-wider block mb-0.5">{t('tl.tasks.min_target')}</span>
                             <div className="flex items-baseline gap-1">
                                 <span className="text-2xl font-black text-primary-vibrant">{targetBucketsPerHour.toFixed(1)}</span>
-                                <span className="text-xs font-bold text-text-sub">bkts/hr</span>
+                                <span className="text-xs font-bold text-text-sub">{t('tl.tasks.bkts_hr')}</span>
                             </div>
                         </div>
                         <div className="text-right">
-                            <span className="text-[10px] font-bold text-text-sub uppercase tracking-wider block mb-0.5">Piece Rate</span>
-                            <span className="text-lg font-black text-text-main">${pieceRate.toFixed(2)}</span>
+                            <span className="text-[10px] font-bold text-text-sub uppercase tracking-wider block mb-0.5">{t('tl.piece_rate')}</span>
+                            <span className="text-lg font-black text-text-main">{formatNZD(pieceRate)}</span>
                         </div>
                     </div>
 
                     {/* Recorrido de filas de mi equipo */}
-                    {appUser?.id && <RowHistory teamLeaderId={appUser.id} title="My team's rows" />}
+                    {appUser?.id && <RowHistory teamLeaderId={appUser.id} title={t('tl.tasks.my_rows')} />}
 
                     {/* BROADCASTS */}
                     {latestAlert && (
@@ -112,13 +115,13 @@ const TasksView = () => {
                         <div className="flex justify-between items-center mb-3">
                             <h3 className="font-bold text-text-main text-lg flex items-center gap-2">
                                 <span aria-hidden="true" className="material-symbols-outlined text-primary">format_list_bulleted</span>
-                                Active Rows
+                                {t('tl.tasks.active_rows')}
                             </h3>
                             <button
                                 onClick={() => setIsModalOpen(true)}
                                 className="text-primary-vibrant text-xs font-bold uppercase flex items-center gap-1 bg-white border border-border-light px-3 py-1.5 rounded-lg shadow-sm active:scale-95 transition-transform"
                             >
-                                <span aria-hidden="true" className="material-symbols-outlined text-sm">add</span> Assign
+                                <span aria-hidden="true" className="material-symbols-outlined text-sm">add</span> {t('tl.tasks.assign')}
                             </button>
                         </div>
 
@@ -135,10 +138,10 @@ const TasksView = () => {
                                                     </span>
                                                     <div>
                                                         <span className="text-sm font-bold text-text-main capitalize block">
-                                                            {assignment.side || 'Center'} Side
+                                                            {assignment.side === 'north' ? t('assignModal.side.north') : assignment.side === 'south' ? t('assignModal.side.south') : t('tl.tasks.side_center')}
                                                         </span>
                                                         <span className="text-[10px] text-text-sub font-medium">
-                                                            {assignment.assigned_pickers?.length || 0} Pickers
+                                                            {t('tl.tasks.pickers_n', { n: assignment.assigned_pickers?.length || 0 })}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -159,8 +162,8 @@ const TasksView = () => {
                         ) : (
                             <div {...buttonLike(() => setIsModalOpen(true))} className="text-center p-8 border-2 border-dashed border-border-light rounded-2xl bg-surface-white cursor-pointer hover:bg-slate-50 transition-colors group">
                                 <span aria-hidden="true" className="material-symbols-outlined text-4xl text-text-sub mb-2 group-hover:scale-110 transition-transform">add_location_alt</span>
-                                <p className="text-text-sub text-sm font-bold">No rows assigned.</p>
-                                <p className="text-xs text-primary-vibrant font-bold uppercase mt-1">Tap directly to start</p>
+                                <p className="text-text-sub text-sm font-bold">{t('tl.tasks.no_rows')}</p>
+                                <p className="text-xs text-primary-vibrant font-bold uppercase mt-1">{t('tl.tasks.tap_to_start')}</p>
                             </div>
                         )}
                     </div>

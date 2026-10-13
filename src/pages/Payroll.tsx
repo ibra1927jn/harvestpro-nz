@@ -20,11 +20,11 @@ import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import { UnclosedShiftsAlert } from '@/components/common/UnclosedShiftsAlert';
 
 const PAYROLL_NAV: NavItem[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { id: 'timesheets', label: 'Timesheets', icon: 'schedule' },
-    { id: 'wages', label: 'Wage Calculator', icon: 'calculate' },
-    { id: 'export', label: 'Export', icon: 'download' },
-    { id: 'history', label: 'History', icon: 'history' },
+    { id: 'dashboard', label: 'Dashboard', labelKey: 'nav.dashboard', icon: 'dashboard' },
+    { id: 'timesheets', label: 'Timesheets', labelKey: 'nav.timesheets', icon: 'schedule' },
+    { id: 'wages', label: 'Wage Calculator', labelKey: 'nav.wage_calculator', icon: 'calculate' },
+    { id: 'export', label: 'Export', labelKey: 'nav.export', icon: 'download' },
+    { id: 'history', label: 'History', labelKey: 'nav.history', icon: 'history' },
 ];
 
 const Payroll: React.FC = () => {

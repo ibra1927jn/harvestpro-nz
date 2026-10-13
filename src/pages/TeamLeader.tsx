@@ -15,6 +15,7 @@ import { useHarvestStore } from '@/stores/useHarvestStore';
 import ResponsiveLayout from '@/components/common/ResponsiveLayout';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import { TEAM_LEADER_NAV_TABS, type TeamLeaderTab } from '@/config/navigation/team-leader.nav';
+import { useTranslation } from '@/i18n';
 
 // Lazy-loaded views (code-split for performance)
 const HomeView = React.lazy(() => import('@/components/views/team-leader/HomeView'));
@@ -32,6 +33,7 @@ const TabLoader = () => (
 );
 
 const TeamLeader = () => {
+    const { t } = useTranslation();
     // Los datos del huerto los carga OrchardDataBootstrap (ProtectedRoute)
     const orchard = useHarvestStore((state) => state.orchard);
 
@@ -46,8 +48,8 @@ const TeamLeader = () => {
             activeTab={activeTab}
             mobileActiveTab={mobileActiveTab}
             onTabChange={(id) => setActiveTab(id as TeamLeaderTab)}
-            title="Team Leader"
-            subtitle="Crew Management"
+            title={t('panel.role.team_leader')}
+            subtitle={t('tl.page_subtitle')}
             accentColor="blue"
             titleIcon="groups"
             onProfileClick={() => setActiveTab('profile')}

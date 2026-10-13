@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { useToast } from '@/hooks/useToast';
 import ModalOverlay from '@/components/ui/ModalOverlay';
+import { useTranslation } from '@/i18n';
 
 export interface PickerForAssignment {
   id: string;
@@ -26,6 +27,7 @@ interface RowAssignmentModalProps {
 }
 
 const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, onAssign, pickers }) => {
+  const { t } = useTranslation();
   const [rowNumber, setRowNumber] = useState('');
   const [side, setSide] = useState<'North' | 'South'>('South');
   const [selectedPickers, setSelectedPickers] = useState<string[]>([]);
@@ -45,7 +47,7 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, onAssi
       await onAssign(parseInt(rowNumber), side, selectedPickers);
       onClose();
     } catch (_error) {
-      showToast('Error assigning row', 'error');
+      showToast(t('pd.assign_row_error'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -57,8 +59,8 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, onAssi
     <ModalOverlay onClose={onClose}>
       <div className="p-6 max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-black text-text-main">Assign Row</h3>
-          <button aria-label="Close"
+          <h3 className="text-xl font-black text-text-main">{t('pd.assign_row')}</h3>
+          <button aria-label={t('common.close')}
             onClick={onClose}
             className="text-text-muted hover:text-text-main transition-colors"
           >
@@ -68,7 +70,7 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, onAssi
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div>
             <label className="text-xs font-bold text-text-muted uppercase mb-2 block">
-              Row Number *
+              {t('pd.row_number')} *
             </label>
             <input
               type="number"
@@ -79,27 +81,27 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, onAssi
             />
           </div>
           <div>
-            <label className="text-xs font-bold text-text-muted uppercase mb-2 block">Side *</label>
+            <label className="text-xs font-bold text-text-muted uppercase mb-2 block">{t('assignModal.side')} *</label>
             <select
               value={side}
               onChange={e => setSide(e.target.value as 'North' | 'South')}
-              aria-label="Side"
+              aria-label={t('assignModal.side')}
               className="w-full px-4 py-3 rounded-xl border-2 border-border-light focus:border-primary outline-none font-bold text-text-main bg-white transition-colors"
             >
-              <option value="South">South</option>
-              <option value="North">North</option>
+              <option value="South">{t('assignModal.side.south')}</option>
+              <option value="North">{t('assignModal.side.north')}</option>
             </select>
           </div>
         </div>
         <p className="text-xs font-bold text-text-muted uppercase mb-3">
-          Assign Pickers ({selectedPickers.length})
+          {t('pd.assign_pickers_n', { n: selectedPickers.length })}
         </p>
         {activePickers.length === 0 ? (
           <div className="bg-slate-50 rounded-xl p-6 text-center border border-border-light mb-6">
             <span aria-hidden="true" className="material-symbols-outlined text-text-muted text-4xl mb-2">
               group_off
             </span>
-            <p className="text-sm text-text-muted">No active pickers available</p>
+            <p className="text-sm text-text-muted">{t('pd.no_active_pickers')}</p>
           </div>
         ) : (
           <div className="space-y-2 mb-6 max-h-60 overflow-y-auto">
@@ -130,7 +132,7 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, onAssi
           disabled={!rowNumber || selectedPickers.length === 0 || isSubmitting}
           className="w-full py-4 gradient-primary glow-primary text-white rounded-xl font-bold uppercase disabled:bg-surface-tertiary disabled:shadow-none active:scale-95 transition-all"
         >
-          {isSubmitting ? 'Assigning...' : `Assign Row ${rowNumber || ''}`}
+          {isSubmitting ? t('assignModal.assigning') : t('pd.assign_row_n', { n: rowNumber || '' })}
         </button>
       </div>
     </ModalOverlay>

@@ -11,6 +11,7 @@
 import React, { useState } from 'react';
 import { Picker } from '../../types';
 import ModalOverlay from '@/components/ui/ModalOverlay';
+import { useTranslation } from '@/i18n';
 
 // Sub-components
 import PickerProfileView from './picker-details/PickerProfileView';
@@ -52,16 +53,17 @@ const PickerDetailsModal: React.FC<PickerDetailsModalProps> = ({
     onSendMessage,
     onAssignRow,
 }) => {
+    const { t } = useTranslation();
     const [subView, setSubView] = useState<SubView>('profile');
     const [isDeleting, setIsDeleting] = useState(false);
 
     const role = picker.role || 'picker';
     const accent = roleAccent(role);
-    const statusConfig = getStatusConfig(picker.status);
+    const statusConfig = getStatusConfig(picker.status, t);
 
     const handleDelete = async () => {
         if (!onDelete) return;
-        if (!confirm(`Are you sure you want to remove ${picker.name}?`)) return;
+        if (!confirm(t('tl.team.confirm_remove', { name: picker.name }))) return;
         setIsDeleting(true);
         try {
             await onDelete(picker.id);
@@ -79,7 +81,7 @@ const PickerDetailsModal: React.FC<PickerDetailsModalProps> = ({
                     <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -mr-12 -mt-12"></div>
                     <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-8 -mb-8"></div>
 
-                    <button aria-label="Close" onClick={onClose} className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors z-20">
+                    <button aria-label={t('common.close')} onClick={onClose} className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors z-20">
                         <span aria-hidden="true" className="material-symbols-outlined">close</span>
                     </button>
 
@@ -90,7 +92,7 @@ const PickerDetailsModal: React.FC<PickerDetailsModalProps> = ({
                         <div>
                             <h3 className="text-xl font-black text-white tracking-tight">{picker.name}</h3>
                             <p className="text-white/70 text-sm font-medium">
-                                {roleLabel(role)} • {picker.picker_id}
+                                {roleLabel(role, t)} • {picker.picker_id}
                             </p>
                         </div>
                     </div>
@@ -144,18 +146,18 @@ const PickerDetailsModal: React.FC<PickerDetailsModalProps> = ({
                                 <div className="grid grid-cols-2 gap-2">
                                     <button onClick={() => setSubView('message')} className={`flex items-center justify-center gap-2 rounded-xl py-3 font-bold text-sm transition-colors ${accent.light}`}>
                                         <span aria-hidden="true" className="material-symbols-outlined text-[20px]">chat</span>
-                                        Message
+                                        {t('pd.message')}
                                     </button>
                                     <button onClick={() => setSubView('history')} className="flex items-center justify-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl py-3 font-bold text-sm transition-colors">
                                         <span aria-hidden="true" className="material-symbols-outlined text-[20px]">history</span>
-                                        History
+                                        {t('panel.tabs.history')}
                                     </button>
                                 </div>
                                 {showDeleteButton && onDelete && (
                                     <button onClick={handleDelete} disabled={isDeleting}
                                         className="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
                                         <span aria-hidden="true" className="material-symbols-outlined text-[20px]">person_remove</span>
-                                        {isDeleting ? 'Removing...' : `Remove ${roleLabel(role)}`}
+                                        {isDeleting ? t('pd.removing') : t('pd.remove_role', { role: roleLabel(role, t) })}
                                     </button>
                                 )}
                             </div>

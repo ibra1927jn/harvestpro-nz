@@ -5,10 +5,13 @@
  * Design: Clean white bar, filled icons on active, subtle pill highlight.
  */
 import React from 'react';
+import { useTranslation } from '@/i18n';
 
 export interface NavTab {
     id: string;
     label: string;
+    /** Clave de traducción del nombre (si está, gana a label) */
+    labelKey?: string;
     icon: string;
     /** Optional notification badge count */
     badge?: number;
@@ -20,11 +23,14 @@ interface BottomNavProps {
     onTabChange: (tabId: string) => void;
 }
 
-const BottomNav: React.FC<BottomNavProps> = ({ tabs, activeTab, onTabChange }) => {
+const BottomNav: React.FC<BottomNavProps> = ({ tabs: rawTabs, activeTab, onTabChange }) => {
+    const { t } = useTranslation();
+    // Nombres de pestañas en el idioma de la app
+    const tabs = rawTabs.map(tab => (tab.labelKey ? { ...tab, label: t(tab.labelKey) } : tab));
     return (
         <nav
             className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 pb-safe-bottom shadow-[0_-1px_3px_rgba(0,0,0,0.04)]"
-            aria-label="Main navigation"
+            aria-label={t('shell.main_nav')}
         >
             {/* h-[60px] bar — buttons stretch full height → 60px touch target each */}
             {/* overflow-x-auto: con zoom 200% / letra grande la barra se desplaza en vez de ensanchar la página */}

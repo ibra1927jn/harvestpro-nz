@@ -171,6 +171,8 @@ const TEXT_PROPS = new Set([
 const CALL_NAMES = new Set(['showToast', 'addToast', 'setToast', 'announce', 'notify', 'alert', 'confirm', 'prompt']);
 const SETTER = /^set(Error|Success|Message|Warning|Notice|Info|Toast|StatusMessage|Feedback|Hint)\w*$/;
 const TOAST_METHODS = new Set(['success', 'error', 'info', 'warning', 'warn']);
+// Funciones cuyo texto (nombre accesible) va en otro argumento
+const LABEL_ARG = { buttonLike: 1 };
 
 /** Textos literales que un expression aporta a la UI (sin entrar en args de llamadas ni condiciones). */
 function collectText(expr, out) {
@@ -262,7 +264,8 @@ export function findHardcoded(text, file, allow) {
             const name = ts.isIdentifier(c) ? c.text : ts.isPropertyAccessExpression(c) ? c.name.text : '';
             const owner = ts.isPropertyAccessExpression(c) ? c.expression.getText(sf) : '';
             const isToastMethod = TOAST_METHODS.has(name) && /toast/i.test(owner);
-            if (CALL_NAMES.has(name) || SETTER.test(name) || isToastMethod) {
+            if (name in LABEL_ARG && n.arguments[LABEL_ARG[name]]) addExpr(n.arguments[LABEL_ARG[name]], `call:${name}`);
+            else if (CALL_NAMES.has(name) || SETTER.test(name) || isToastMethod) {
                 for (const a of n.arguments.slice(0, 2)) {
                     if (ts.isObjectLiteralExpression(a)) {
                         for (const p of a.properties) if (ts.isPropertyAssignment(p) && TEXT_PROPS.has(propName(p.name) ?? '')) addExpr(p.initializer, `call:${name}`);

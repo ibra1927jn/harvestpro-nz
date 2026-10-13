@@ -61,7 +61,7 @@ describe('HeatMapView', () => {
     it('shows loading state initially', () => {
         mockGetRowDensity.mockReturnValue(new Promise(() => { })); // never resolves
         render(<HeatMapView />);
-        expect(screen.getByText('Cargando heat map...')).toBeTruthy();
+        expect(screen.getByText('Loading heat map...')).toBeTruthy();
     });
 
     it('calls analyticsService.getRowDensity on mount', async () => {
@@ -72,17 +72,17 @@ describe('HeatMapView', () => {
 
     it('renders date range toggle buttons', async () => {
         render(<HeatMapView />);
-        expect(screen.getByText('Hoy')).toBeTruthy();
-        expect(screen.getByText('7 días')).toBeTruthy();
-        expect(screen.getByText('30 días')).toBeTruthy();
+        expect(screen.getByText('Today')).toBeTruthy();
+        expect(screen.getByText('7 days')).toBeTruthy();
+        expect(screen.getByText('30 days')).toBeTruthy();
     });
 
     it('renders summary stats after loading', async () => {
         render(<HeatMapView />);
         await waitFor(() => expect(screen.getByText('Buckets')).toBeTruthy());
-        expect(screen.getByText('Activas')).toBeTruthy();
-        expect(screen.getByText('Completas')).toBeTruthy();
-        expect(screen.getByText('Críticas')).toBeTruthy();
+        expect(screen.getByText('Active')).toBeTruthy();
+        expect(screen.getByText('Complete')).toBeTruthy();
+        expect(screen.getByText('Critical')).toBeTruthy();
     });
 
     it('renders total buckets in stats', async () => {
@@ -119,26 +119,26 @@ describe('HeatMapView', () => {
         expect(screen.getByText('≥100%')).toBeTruthy();
         expect(screen.getByText('50-99%')).toBeTruthy();
         expect(screen.getByText('<50%')).toBeTruthy();
-        expect(screen.getByText('Sin datos')).toBeTruthy();
+        expect(screen.getByText('No data')).toBeTruthy();
     });
 
     it('changes date range when toggle button is clicked', async () => {
         render(<HeatMapView />);
         await waitFor(() => expect(mockGetRowDensity).toHaveBeenCalledTimes(1));
-        fireEvent.click(screen.getByText('7 días'));
+        fireEvent.click(screen.getByText('7 days'));
         await waitFor(() => expect(mockGetRowDensity).toHaveBeenCalledTimes(2));
     });
 
     it('shows empty state when no data', async () => {
         mockGetRowDensity.mockResolvedValue({ density_by_row: [] });
         render(<HeatMapView />);
-        await waitFor(() => expect(screen.getByText('No hay datos de cosecha')).toBeTruthy());
+        await waitFor(() => expect(screen.getByText('No harvest data yet')).toBeTruthy());
     });
 
     it('handles API error gracefully', async () => {
         mockGetRowDensity.mockRejectedValue(new Error('Network error'));
         render(<HeatMapView />);
         // Should not crash; shows empty state
-        await waitFor(() => expect(screen.queryByText('Cargando heat map...')).toBeNull());
+        await waitFor(() => expect(screen.queryByText('Loading heat map...')).toBeNull());
     });
 });

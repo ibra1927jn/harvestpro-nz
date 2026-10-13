@@ -14,8 +14,11 @@ import orchardMap from './orchardMap';
 import assignModal from './assignModal';
 import logistics from './logistics';
 import legal from './legal';
+import pickerDetails from './pickerDetails';
+import qc from './qc';
 import runner from './runner';
 import shared from './shared';
+import teamLeader from './teamLeader';
 
 // Claves propias de este idioma (sin heredar de otro: el checker exige todas)
 const hi: TranslationDict = {
@@ -34,8 +37,11 @@ const hi: TranslationDict = {
     ...assignModal,
     ...logistics,
     ...legal,
+    ...pickerDetails,
+    ...qc,
     ...runner,
     ...shared,
+    ...teamLeader,
 };
 
 export default hi;

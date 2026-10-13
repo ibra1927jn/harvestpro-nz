@@ -5,6 +5,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { qcService, GradeDistribution } from '@/services/qc.service';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
+import { useTranslation } from '@/i18n';
+import { addDaysYMD, todayNZST } from '@/utils/nzst';
+import { formatNZDate } from '@/utils/nzFormat';
+import { gradeLabel } from './gradeLabel';
 
 interface TrendsTabProps {
   orchardId: string;
@@ -17,6 +21,7 @@ interface DayData {
 }
 
 const TrendsTab: React.FC<TrendsTabProps> = ({ orchardId }) => {
+  const { t } = useTranslation();
   const [days, setDays] = useState<DayData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -28,14 +33,14 @@ const TrendsTab: React.FC<TrendsTabProps> = ({ orchardId }) => {
       }
       setIsLoading(true);
       const results: DayData[] = [];
+      // Días de NZ (antes: fecha UTC → por la mañana en NZ "hoy" era ayer)
+      const today = todayNZST();
       for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = addDaysYMD(today, -i);
         const dist = await qcService.getGradeDistribution(orchardId, dateStr);
         results.push({
           date: dateStr,
-          label: d.toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric' }),
+          label: formatNZDate(dateStr, 'weekdayDay'),
           distribution: dist,
         });
       }
@@ -53,7 +58,7 @@ const TrendsTab: React.FC<TrendsTabProps> = ({ orchardId }) => {
   useEffect(() => {
     const loadPickerData = async () => {
       if (!orchardId) return;
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayNZST();
       const inspections = await qcService.getInspections(orchardId, today);
       const map = new Map<
         string,
@@ -108,7 +113,7 @@ const TrendsTab: React.FC<TrendsTabProps> = ({ orchardId }) => {
       <div className="bg-white rounded-lg border border-border-light shadow-sm p-5">
         <h3 className="text-sm font-semibold text-text-primary mb-4 flex items-center gap-2">
           <span aria-hidden="true" className="material-symbols-outlined text-indigo-500 text-base">trending_up</span>
-          7-Day Grade Distribution
+          {t('qc.trend_7d')}
         </h3>
         <div className="grid grid-cols-7 gap-2">
           {days.map(day => (
@@ -146,10 +151,10 @@ const TrendsTab: React.FC<TrendsTabProps> = ({ orchardId }) => {
         </div>
         <div className="flex gap-4 mt-3 justify-center">
           {[
-            { label: 'Grade A', color: 'bg-green-500' },
-            { label: 'Grade B', color: 'bg-blue-500' },
-            { label: 'Grade C', color: 'bg-amber-500' },
-            { label: 'Reject', color: 'bg-red-500' },
+            { label: gradeLabel(t, 'A'), color: 'bg-green-500' },
+            { label: gradeLabel(t, 'B'), color: 'bg-blue-500' },
+            { label: gradeLabel(t, 'C'), color: 'bg-amber-500' },
+            { label: gradeLabel(t, 'reject'), color: 'bg-red-500' },
           ].map(legend => (
             <div key={legend.label} className="flex items-center gap-1">
               <div className={`w-2.5 h-2.5 rounded-sm ${legend.color}`} />
@@ -161,7 +166,7 @@ const TrendsTab: React.FC<TrendsTabProps> = ({ orchardId }) => {
 
       {/* Rejection Rate Trend */}
       <div className="bg-white rounded-lg border border-border-light shadow-sm p-5">
-        <h3 className="text-sm font-semibold text-text-primary mb-4">Rejection Rate Trend</h3>
+        <h3 className="text-sm font-semibold text-text-primary mb-4">{t('qc.rejection_trend')}</h3>
         <div className="flex items-end gap-2 h-20">
           {rejectionTrend.map(point => (
             <div key={point.label} className="flex-1 flex flex-col items-center gap-1">
@@ -187,10 +192,10 @@ const TrendsTab: React.FC<TrendsTabProps> = ({ orchardId }) => {
       {/* Per-Picker Quality Scores */}
       <div className="bg-white rounded-lg border border-border-light shadow-sm p-5">
         <h3 className="text-sm font-semibold text-text-primary mb-4">
-          Picker Quality Scores (Today)
+          {t('qc.picker_scores')}
         </h3>
         {pickerScores.length === 0 ? (
-          <p className="text-center text-text-muted py-3 text-sm">No inspection data today</p>
+          <p className="text-center text-text-muted py-3 text-sm">{t('qc.no_data_today')}</p>
         ) : (
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {pickerScores.map((picker, i) => {
@@ -210,7 +215,7 @@ const TrendsTab: React.FC<TrendsTabProps> = ({ orchardId }) => {
                   {rejPct > 0 && (
                     <span className="text-xs text-red-500 font-bold">{rejPct}% ✗</span>
                   )}
-                  <span className="text-xs text-text-muted">{picker.total} inspected</span>
+                  <span className="text-xs text-text-muted">{t('qc.inspected_n', { n: picker.total })}</span>
                 </div>
               );
             })}

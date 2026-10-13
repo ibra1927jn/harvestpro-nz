@@ -14,6 +14,7 @@ import { useHarvestStore } from '@/stores/useHarvestStore';
 import { analyticsService } from '@/services/analytics.service';
 import { todayNZST, toNZST } from '@/utils/nzst';
 import { logger } from '@/utils/logger';
+import { useTranslation } from '@/i18n';
 
 type DateRange = 'today' | 'last7days' | 'last30days';
 
@@ -61,16 +62,18 @@ const getHeatFillBg = (completion: number): string => {
     return 'bg-transparent';
 };
 
+// label = clave de traducción
 const DATE_OPTIONS: { id: DateRange; label: string; icon: string }[] = [
-    { id: 'today', label: 'Hoy', icon: 'today' },
-    { id: 'last7days', label: '7 días', icon: 'date_range' },
-    { id: 'last30days', label: '30 días', icon: 'calendar_month' },
+    { id: 'today', label: 'common.today', icon: 'today' },
+    { id: 'last7days', label: 'heatmap.days_7', icon: 'date_range' },
+    { id: 'last30days', label: 'heatmap.days_30', icon: 'calendar_month' },
 ];
 
 /* ══════════════════════════════════════════════════════
    HEAT MAP VIEW COMPONENT
    ══════════════════════════════════════════════════════ */
 export const HeatMapView: React.FC = () => {
+    const { t } = useTranslation();
     /* ── Zustand (smart component reads its own data) ── */
     const orchard = useHarvestStore(s => s.orchard);
     const orchardBlocks = useHarvestStore(s => s.orchardBlocks);
@@ -96,7 +99,7 @@ export const HeatMapView: React.FC = () => {
         [orchardBlocks, selectedBlockId]
     );
 
-    const blockLabel = selectedBlock?.name || 'Todos los Bloques';
+    const blockLabel = selectedBlock?.name || t('heatmap.all_blocks');
 
     /* ── Get date range start ────────────────────────── */
     const getStartDate = useCallback((range: DateRange): string => {
@@ -199,7 +202,7 @@ export const HeatMapView: React.FC = () => {
                         <span aria-hidden="true" className="material-symbols-outlined text-white text-lg">local_fire_department</span>
                     </div>
                     <div>
-                        <h2 className="text-lg font-black text-slate-800 leading-tight">Heat Map</h2>
+                        <h2 className="text-lg font-black text-slate-800 leading-tight">{t('heatmap.title')}</h2>
                         <p className="text-[11px] text-slate-400 font-medium">{blockLabel}</p>
                     </div>
                 </div>
@@ -217,7 +220,7 @@ export const HeatMapView: React.FC = () => {
                             }`}
                     >
                         <span aria-hidden="true" className="material-symbols-outlined text-sm">{opt.icon}</span>
-                        {opt.label}
+                        {t(opt.label)}
                     </button>
                 ))}
             </div>
@@ -225,10 +228,10 @@ export const HeatMapView: React.FC = () => {
             {/* ── Summary Strip ──────────────────────── */}
             <div className="grid grid-cols-4 gap-2 mb-4">
                 {[
-                    { label: 'Buckets', value: stats.totalBuckets, color: 'text-slate-800', bg: 'bg-slate-50', border: 'border-slate-200' },
-                    { label: 'Activas', value: stats.rowsHarvested, color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' },
-                    { label: 'Completas', value: stats.completedRows, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-                    { label: 'Críticas', value: stats.pendingRows, color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' },
+                    { label: t('tl.home.buckets'), value: stats.totalBuckets, color: 'text-slate-800', bg: 'bg-slate-50', border: 'border-slate-200' },
+                    { label: t('heatmap.active'), value: stats.rowsHarvested, color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' },
+                    { label: t('heatmap.complete'), value: stats.completedRows, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+                    { label: t('heatmap.critical'), value: stats.pendingRows, color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' },
                 ].map(stat => (
                     <div key={stat.label} className={`p-2.5 rounded-xl ${stat.bg} border ${stat.border} text-center`}>
                         <p className={`text-lg font-black ${stat.color} tabular-nums`}>{stat.value}</p>
@@ -243,7 +246,7 @@ export const HeatMapView: React.FC = () => {
                     { color: 'bg-emerald-500', label: '≥100%' },
                     { color: 'bg-amber-400', label: '50-99%' },
                     { color: 'bg-red-400', label: '<50%' },
-                    { color: 'bg-slate-200', label: 'Sin datos' },
+                    { color: 'bg-slate-200', label: t('heatmap.no_data') },
                 ].map(l => (
                     <div key={l.label} className="flex items-center gap-1">
                         <div className={`w-3 h-3 rounded-sm ${l.color}`} />
@@ -256,7 +259,7 @@ export const HeatMapView: React.FC = () => {
             {loading && (
                 <div className="flex flex-col items-center justify-center py-16">
                     <div className="w-10 h-10 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mb-3" />
-                    <p className="text-sm text-slate-400 font-medium">Cargando heat map...</p>
+                    <p className="text-sm text-slate-400 font-medium">{t('heatmap.loading')}</p>
                 </div>
             )}
 
@@ -302,22 +305,22 @@ export const HeatMapView: React.FC = () => {
                                 {isActive && (
                                     <div className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full z-30 w-44 animate-scale-in">
                                         <div className="bg-slate-900 text-white rounded-xl p-3 shadow-xl shadow-black/20 text-left">
-                                            <p className="text-xs font-black mb-1.5">Row {density.row_number}</p>
+                                            <p className="text-xs font-black mb-1.5">{t('runner.row_n', { n: density.row_number })}</p>
                                             <div className="space-y-1">
                                                 <div className="flex justify-between">
-                                                    <span className="text-[10px] text-slate-400">Buckets</span>
+                                                    <span className="text-[10px] text-slate-400">{t('tl.home.buckets')}</span>
                                                     <span className="text-[10px] font-bold">{density.total_buckets}</span>
                                                 </div>
                                                 <div className="flex justify-between">
-                                                    <span className="text-[10px] text-slate-400">Pickers</span>
+                                                    <span className="text-[10px] text-slate-400">{t('pd.pickers')}</span>
                                                     <span className="text-[10px] font-bold">{density.unique_pickers}</span>
                                                 </div>
                                                 <div className="flex justify-between">
-                                                    <span className="text-[10px] text-slate-400">Avg/Picker</span>
+                                                    <span className="text-[10px] text-slate-400">{t('pd.avg_picker')}</span>
                                                     <span className="text-[10px] font-bold">{density.avg_buckets_per_picker.toFixed(1)}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center mt-1 pt-1 border-t border-slate-700">
-                                                    <span className="text-[10px] text-slate-400">Target</span>
+                                                    <span className="text-[10px] text-slate-400">{t('heatmap.target')}</span>
                                                     <span className={`text-xs font-black ${completion >= 100 ? 'text-emerald-400' : completion >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
                                                         {Math.round(completion)}%
                                                     </span>
@@ -338,8 +341,8 @@ export const HeatMapView: React.FC = () => {
             {!loading && gridData.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                     <span aria-hidden="true" className="material-symbols-outlined text-5xl text-slate-300 mb-3">grid_off</span>
-                    <p className="text-sm font-bold text-slate-500">No hay datos de cosecha</p>
-                    <p className="text-xs text-slate-400 mt-1">Los datos aparecerán cuando se escaneen cubetas</p>
+                    <p className="text-sm font-bold text-slate-500">{t('heatmap.empty')}</p>
+                    <p className="text-xs text-slate-400 mt-1">{t('heatmap.empty_desc')}</p>
                 </div>
             )}
         </div>
