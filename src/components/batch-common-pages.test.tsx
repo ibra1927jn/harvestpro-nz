@@ -89,89 +89,13 @@ vi.mock('@/services/compliance.service', () => ({
     checkWageCompliance: vi.fn(() => ({ isCompliant: true })),
 }));
 
-// ── Module export helper ──────────────────────────
-async function testModuleExport(path: string): Promise<void> {
-    try {
-        const m = await import(/* @vite-ignore */ path);
-        expect(m).toBeDefined();
-        expect(m.default || Object.keys(m).length).toBeTruthy();
-    } catch {
-        expect(true).toBe(true);
-    }
-}
-
-// ── Common Components ────────────────────────────
-describe('Common Components — module exports', () => {
-    it('BottomNav exports', () => testModuleExport('@/components/common/BottomNav'));
-    it('ConflictResolver exports', () => testModuleExport('@/components/common/ConflictResolver'));
-    it('DesktopLayout exports', () => testModuleExport('@/components/common/DesktopLayout'));
-    it('ErrorBoundary exports', () => testModuleExport('@/components/common/ErrorBoundary'));
-    it('HarvestSyncBridge exports', () => testModuleExport('@/components/common/HarvestSyncBridge'));
-    it('Header exports', () => testModuleExport('@/components/common/Header'));
-    it('NotificationPanel exports', () => testModuleExport('@/components/common/NotificationPanel'));
-    it('PickerProfileDrawer exports', () => testModuleExport('@/components/common/PickerProfileDrawer'));
-    it('PwaInstallBanner exports', () => testModuleExport('@/components/common/PwaInstallBanner'));
-    it('SetupWizard exports', () => testModuleExport('@/components/common/SetupWizard'));
-    it('SyncStatusMonitor exports', () => testModuleExport('@/components/common/SyncStatusMonitor'));
-    it('TrustBadges exports', () => testModuleExport('@/components/common/TrustBadges'));
-    it('UnifiedMessagingView exports', () => testModuleExport('@/components/common/UnifiedMessagingView'));
-});
-
-describe('Common Messaging Components — module exports', () => {
-    it('ChatWindow exports', () => testModuleExport('@/components/common/messaging/ChatWindow'));
-    it('MessagingSidebar exports', () => testModuleExport('@/components/common/messaging/MessagingSidebar'));
-    it('NewChatModal exports', () => testModuleExport('@/components/common/messaging/NewChatModal'));
-});
-
-describe('Picker Profile Components — module exports', () => {
-    it('QualityRing exports', () => testModuleExport('@/components/common/picker-profile/QualityRing'));
-    it('RiskBadge exports', () => testModuleExport('@/components/common/picker-profile/RiskBadge'));
-    it('Sparkline exports', () => testModuleExport('@/components/common/picker-profile/Sparkline'));
-    it('TabButton exports', () => testModuleExport('@/components/common/picker-profile/TabButton'));
-});
-
-describe('Setup Wizard Steps — module exports', () => {
-    it('OrchardStep exports', () => testModuleExport('@/components/common/setup-wizard/OrchardStep'));
-    it('RatesStep exports', () => testModuleExport('@/components/common/setup-wizard/RatesStep'));
-    it('SummaryStep exports', () => testModuleExport('@/components/common/setup-wizard/SummaryStep'));
-    it('TeamsStep exports', () => testModuleExport('@/components/common/setup-wizard/TeamsStep'));
-});
-
-// ── QC View Components ──────────────────────────
-describe('QC Views — module exports', () => {
-    it('DistributionBar exports', () => testModuleExport('@/components/views/qc/DistributionBar'));
-    it('HistoryTab exports', () => testModuleExport('@/components/views/qc/HistoryTab'));
-    it('InspectTab exports', () => testModuleExport('@/components/views/qc/InspectTab'));
-    it('StatsTab exports', () => testModuleExport('@/components/views/qc/StatsTab'));
-    it('TrendsTab exports', () => testModuleExport('@/components/views/qc/TrendsTab'));
-});
-
-// ── Pages — module exports ──────────────────────
-describe('Pages — module exports', () => {
-    it('Login exports', () => testModuleExport('@/pages/Login'));
-    it('Manager exports', () => testModuleExport('@/pages/Manager'));
-    it('Admin exports', () => testModuleExport('@/pages/Admin'));
-    it('HHRR exports', () => testModuleExport('@/pages/HHRR'));
-    it('Runner exports', () => testModuleExport('@/pages/Runner'));
-    it('TeamLeader exports', () => testModuleExport('@/pages/TeamLeader'));
-    it('Payroll exports', () => testModuleExport('@/pages/Payroll'));
-    it('QualityControl exports', () => testModuleExport('@/pages/QualityControl'));
-    it('LogisticsDept exports', () => testModuleExport('@/pages/LogisticsDept'));
-});
-
-describe('Admin Sub-Pages — module exports', () => {
-    it('AdminComplianceTab exports', () => testModuleExport('@/pages/admin/AdminComplianceTab'));
-    it('AdminOrchardsTab exports', () => testModuleExport('@/pages/admin/AdminOrchardsTab'));
-    it('AdminUsersTab exports', () => testModuleExport('@/pages/admin/AdminUsersTab'));
-});
-
 // ── Deep render: picker-profile sub-components ──
 describe('QualityRing deep render', () => {
     it('renders SVG ring for quality score', async () => {
         const mod = await import('@/components/common/picker-profile/QualityRing');
         const QualityRing = mod.default;
         const { container } = render(<QualityRing score={85} size={60} />);
-        expect(container.querySelector('svg') || container.firstChild).toBeDefined();
+        expect(container.querySelector('svg')).not.toBeNull();
     });
 });
 
@@ -191,7 +115,7 @@ describe('Sparkline deep render', () => {
         const mod = await import('@/components/common/picker-profile/Sparkline');
         const Sparkline = mod.default;
         const { container } = render(<Sparkline data={[1, 3, 2, 5, 4]} />);
-        expect(container.querySelector('svg') || container.firstChild).toBeDefined();
+        expect(container.querySelector('svg')).not.toBeNull();
     });
 });
 
@@ -200,7 +124,7 @@ describe('TrustBadges deep render', () => {
         const mod = await import('@/components/common/TrustBadges');
         const TrustBadges = mod.default;
         const { container } = render(<TrustBadges />);
-        expect(container).toBeDefined();
+        expect(container.firstChild).not.toBeNull();
     });
 });
 

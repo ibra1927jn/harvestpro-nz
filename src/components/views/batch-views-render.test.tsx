@@ -140,7 +140,7 @@ describe('SeasonalPlanningTab', () => {
     const mod = await import('@/components/views/hhrr/SeasonalPlanningTab');
     const SeasonalPlanningTab = mod.default;
     const { container } = render(<SeasonalPlanningTab employees={[]} />);
-    expect(container).toBeDefined();
+    expect(container.firstChild).not.toBeNull();
   });
 
   it('renders workforce planning sections with employees', async () => {
@@ -249,42 +249,5 @@ describe('RunnersView', () => {
     fireEvent.click(backBtn);
     expect(onBack).toHaveBeenCalled();
   });
-});
-
-// ── Team Leader Components (import tests) ────────
-
-async function testModuleExport(path: string): Promise<void> {
-  try {
-    const m = await import(/* @vite-ignore */ path);
-    expect(m).toBeDefined();
-    expect(m.default || Object.keys(m).length).toBeTruthy();
-  } catch {
-    expect(true).toBe(true);
-  }
-}
-
-describe('Team Leader Views — module exports', () => {
-  it('AttendanceView exports', () =>
-    testModuleExport('@/components/views/team-leader/AttendanceView'));
-  it('Header exports', () => testModuleExport('@/components/views/team-leader/Header'));
-  it('HomeView exports', () => testModuleExport('@/components/views/team-leader/HomeView'));
-  it('LogisticsView exports', () =>
-    testModuleExport('@/components/views/team-leader/LogisticsView'));
-  it('MessagingView exports', () =>
-    testModuleExport('@/components/views/team-leader/MessagingView'));
-  it('ProfileView exports', () => testModuleExport('@/components/views/team-leader/ProfileView'));
-  it('RunnersView exports', () => testModuleExport('@/components/views/team-leader/RunnersView'));
-  it('TasksView exports', () => testModuleExport('@/components/views/team-leader/TasksView'));
-  it('TeamView exports', () => testModuleExport('@/components/views/team-leader/TeamView'));
-  it('index exports', () => testModuleExport('@/components/views/team-leader/index'));
-});
-
-// ── Logistics SubViews (import tests) ────────────
-
-describe('Logistics SubViews — module exports', () => {
-  it('RequestsTab exports', () => testModuleExport('@/components/views/logistics/RequestsTab'));
-  it('FleetTab exports', () => testModuleExport('@/components/views/logistics/FleetTab'));
-  it('BinTrackingTab exports', () =>
-    testModuleExport('@/components/views/logistics/BinTrackingTab'));
 });
 

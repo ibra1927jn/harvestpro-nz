@@ -30,14 +30,8 @@ import { SimpleChat } from './SimpleChat';
 describe('SimpleChat', () => {
   it('renders the chat container', () => {
     const { container } = render(<SimpleChat userId="u1" userName="Manager" />);
-    expect(container.firstChild).toBeDefined();
+    // toBeDefined() no podia fallar (null esta definido)
+    expect(container.firstChild).not.toBeNull();
   });
 
-  it('displays loading state initially', () => {
-    render(<SimpleChat userId="u1" userName="Manager" />);
-    // It should render some loading structure or just not crash
-    const _el = document.querySelector('.animate-pulse');
-    // Not all loaders use animate-pulse, but this is a simple check
-    expect(true).toBe(true);
-  });
 });

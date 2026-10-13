@@ -5,12 +5,13 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@/test-utils';
 
+const closePickerProfile = vi.hoisted(() => vi.fn());
 vi.mock('@/stores/useHarvestStore', () => ({
     useHarvestStore: (selector?: any) => {
         const state = {
             pickerProfileId: 'p1',
             orchard: { id: 'o1' },
-            closePickerProfile: vi.fn(),
+            closePickerProfile,
             crew: [
                 { id: 'p1', name: 'Alice Picker', role: 'picker', total_buckets_today: 15 },
             ],
@@ -89,6 +90,6 @@ describe('PickerProfileDrawer', () => {
         render(<PickerProfileDrawer />);
         const closeButton = await screen.findByText('close'); // usually an icon
         fireEvent.click(closeButton);
-        // The close mock gets called, but to avoid module import issues in test, we just verify interaction happens
+        expect(closePickerProfile).toHaveBeenCalled();
     });
 });

@@ -51,6 +51,6 @@ describe('AuditLogViewer', () => {
       useAuditLogs: () => ({ logs: [], isLoading: false, refetch: vi.fn() }),
     }));
     const { container } = render(<AuditLogViewer />);
-    expect(container.firstChild).toBeDefined();
+    expect(container.firstChild).not.toBeNull();
   });
 });

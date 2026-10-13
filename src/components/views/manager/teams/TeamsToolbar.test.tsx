@@ -73,4 +73,14 @@ describe('TeamsToolbar', () => {
         render(<TeamsToolbar {...defaultProps} canImportPickers={false} />);
         expect(screen.queryByText(/Import CSV/i)).toBeNull();
     });
+
+    // Fusionado desde teams-toolbar.test.tsx (duplicado del mismo componente)
+    it('shows the orchard ID (full value in the title) and "No orchard" when absent', () => {
+        const { unmount } = render(<TeamsToolbar {...defaultProps} />);
+        expect(screen.getByTitle('test-orchard-123')).toBeInTheDocument();
+        unmount();
+        render(<TeamsToolbar {...defaultProps} orchardId={undefined} />);
+        expect(screen.getByText('No orchard')).toBeInTheDocument();
+    });
+
 });

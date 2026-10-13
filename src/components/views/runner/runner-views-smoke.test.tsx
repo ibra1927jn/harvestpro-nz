@@ -39,7 +39,7 @@ describe('runner LogisticsView', () => {
   it('renders scan button area', () => {
     const onScan = vi.fn();
     const { container } = render(<LogisticsView onScan={onScan} />);
-    expect(container.firstChild).toBeDefined();
+    expect(container.firstChild).not.toBeNull();
   });
 
   it('renders with inventory data', () => {
@@ -47,7 +47,7 @@ describe('runner LogisticsView', () => {
     const { container } = render(
       <LogisticsView onScan={onScan} inventory={{ empty_bins: 5, raw: [{ status: 'full' }] }} />
     );
-    expect(container.firstChild).toBeDefined();
+    expect(container.firstChild).not.toBeNull();
   });
 
   it('shows pending uploads badge', () => {
@@ -82,6 +82,6 @@ describe('WarehouseView', () => {
 
   it('renders empty state with defaults', () => {
     const { container } = render(<WarehouseView />);
-    expect(container.firstChild).toBeDefined();
+    expect(container.firstChild).not.toBeNull();
   });
 });

@@ -88,7 +88,7 @@ describe('MPIExportView', () => {
   it('renders without crashing', async () => {
     const { default: MPIExportView } = await import('./MPIExportView');
     const { container } = render(<MPIExportView />);
-    expect(container.firstChild).toBeDefined();
+    expect(container.firstChild).not.toBeNull();
   });
 });
 
@@ -96,7 +96,7 @@ describe('APIKeysView', () => {
   it('renders without crashing', async () => {
     const { default: APIKeysView } = await import('./APIKeysView');
     const { container } = render(<APIKeysView />);
-    expect(container.firstChild).toBeDefined();
+    expect(container.firstChild).not.toBeNull();
   });
 });
 
@@ -105,7 +105,7 @@ describe('AnomalyDetectionView', () => {
     const mod = await import('./AnomalyDetectionView');
     const AnomalyDetectionView = mod.default;
     const { container } = render(<AnomalyDetectionView />);
-    expect(container.firstChild).toBeDefined();
+    expect(container.firstChild).not.toBeNull();
   });
 });
 
