@@ -139,7 +139,7 @@ describe('PickerDrawer', () => {
     it('the close button and the backdrop close the drawer', () => {
         setData({ picker });
         const { container } = render(<PickerDrawer />);
-        fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+        fireEvent.click(screen.getByRole('button', { name: 'common.close' }));
         fireEvent.click(container.querySelector('.backdrop-blur-sm') as Element);
         expect(h.store.closePickerProfile).toHaveBeenCalledTimes(2);
     });

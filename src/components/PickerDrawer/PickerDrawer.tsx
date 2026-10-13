@@ -98,6 +98,7 @@ const DrawerBody: React.FC<DrawerBodyProps> = ({ data, pickerId, crew, activeTab
 };
 
 const PickerDrawer: React.FC = () => {
+    const { t } = useTranslation();
     const pickerId = useHarvestStore(s => s.pickerProfileId);
     const closeDrawer = useHarvestStore(s => s.closePickerProfile);
     const crew = useHarvestStore(s => s.crew);
