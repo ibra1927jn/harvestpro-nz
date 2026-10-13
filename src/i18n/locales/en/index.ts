@@ -14,6 +14,7 @@ import orchardMap from './orchardMap';
 import assignModal from './assignModal';
 import logistics from './logistics';
 import legal from './legal';
+import login from './login';
 import pickerDetails from './pickerDetails';
 import qc from './qc';
 import runner from './runner';
@@ -38,6 +39,7 @@ const en: TranslationDict = {
     ...assignModal,
     ...logistics,
     ...legal,
+    ...login,
     ...pickerDetails,
     ...qc,
     ...runner,

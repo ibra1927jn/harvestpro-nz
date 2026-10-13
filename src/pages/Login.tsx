@@ -20,6 +20,7 @@ import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import { HeroPanel } from '@/components/auth/login';
 import { useTranslation } from '@/i18n';
+import { authErrorText } from '@/i18n/authErrorText';
 
 type AuthMode = 'LOGIN' | 'REGISTER';
 
@@ -68,7 +69,7 @@ const Login: React.FC = () => {
       // Evita la race condition donde signIn devuelve profile=null mientras onAuthStateChange
       // aún está cargando el perfil en paralelo.
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? authErrorText(t, err.message) : t('login.failed'));
       triggerShake(); logger.error(err);
     } finally { setIsSubmitting(false); }
   };
@@ -77,22 +78,22 @@ const Login: React.FC = () => {
     e.preventDefault(); setError(''); setSuccess(''); setIsSubmitting(true);
     try {
       await signUp(email, password, fullName);
-      setSuccess('✅ Account created! Check your email to confirm, then sign in.');
+      setSuccess(`✅ ${t('login.account_created')}`);
       setMode('LOGIN'); setEmail(''); setPassword(''); setFullName('');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(err instanceof Error ? authErrorText(t, err.message) : t('login.register_failed'));
       triggerShake(); logger.error(err);
     } finally { setIsSubmitting(false); }
   };
 
   const handleForgotPassword = async () => {
-    if (!email) { setError('Enter your email first to reset your password.'); triggerShake(); return; }
+    if (!email) { setError(t('login.email_first')); triggerShake(); return; }
     setError(''); setIsSubmitting(true);
     try {
       await resetPassword(email);
-      setSuccess('📧 Recovery email sent. Check your inbox.');
+      setSuccess(`📧 ${t('login.recovery_sent')}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to send email');
+      setError(err instanceof Error ? authErrorText(t, err.message) : t('login.email_failed'));
       triggerShake(); logger.error(err);
     } finally { setIsSubmitting(false); }
   };
@@ -106,7 +107,7 @@ const Login: React.FC = () => {
             <div className="absolute inset-2 rounded-full border-2 border-lilac/30 animate-ping" style={{ animationDelay: '0.3s' }} />
             <div className="absolute inset-4 w-12 h-12 border-4 border-lilac/30 border-t-lilac rounded-full animate-spin login-spinner-glow" />
           </div>
-          <p className="text-lilac-glow font-medium text-sm animate-pulse">Connecting to HarvestPro...</p>
+          <p className="text-lilac-glow font-medium text-sm animate-pulse">{t('login.connecting')}</p>
         </div>
       </div>
     );
@@ -137,7 +138,7 @@ const Login: React.FC = () => {
                 </div>
               </div>
               <h1 className="text-3xl font-black text-slate-900 tracking-tight">HarvestPro<span className="text-lilac">NZ</span></h1>
-              <p className="text-slate-400 text-sm font-medium mt-1">Workforce Management Platform</p>
+              <p className="text-slate-400 text-sm font-medium mt-1">{t('login.platform')}</p>
             </div>
 
             <div className="mb-8">
@@ -186,7 +187,7 @@ const Login: React.FC = () => {
             </div>
 
             <p className="text-center text-slate-300 text-xs mt-8">
-              © {new Date().getFullYear()} HarvestPro NZ • <a href="#terms" className="hover:text-lilac transition-colors">Terms</a> • <a href="#privacy" className="hover:text-lilac transition-colors">Privacy</a>
+              © {new Date().getFullYear()} HarvestPro NZ • <a href="#terms" className="hover:text-lilac transition-colors">{t('login.terms')}</a> • <a href="#privacy" className="hover:text-lilac transition-colors">{t('login.privacy')}</a>
             </p>
           </div>
         </div>

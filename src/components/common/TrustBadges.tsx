@@ -44,7 +44,7 @@ export const TrustBadges: React.FC = () => {
 
     return (
         // Fila con scroll horizontal: enfocable para poder desplazarla con teclado
-        <div role="region" aria-label="System status" tabIndex={0} className="flex gap-2 mb-4 overflow-x-auto md:flex-wrap no-scrollbar pb-1">
+        <div role="region" aria-label={t('trust.system_status')} tabIndex={0} className="flex gap-2 mb-4 overflow-x-auto md:flex-wrap no-scrollbar pb-1">
             <Badge
                 icon={<span aria-hidden="true" className="material-symbols-outlined text-sm">shield</span>}
                 label={t('dashboard.trust.rls')}

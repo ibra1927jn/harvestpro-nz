@@ -14,6 +14,7 @@
  *   />
  */
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from '@/i18n';
 
 export type InlineEditType = 'text' | 'number' | 'date';
 
@@ -37,7 +38,7 @@ interface InlineEditProps {
 const InlineEdit: React.FC<InlineEditProps> = ({
     value,
     onSave,
-    placeholder = 'Click to edit...',
+    placeholder,
     type = 'text',
     className = '',
     minWidth = '80px',
@@ -45,6 +46,8 @@ const InlineEdit: React.FC<InlineEditProps> = ({
     prefix,
     suffix,
 }) => {
+    const { t } = useTranslation();
+    placeholder = placeholder ?? t('ui.click_to_edit_dots');
     const [isEditing, setIsEditing] = useState(false);
     const [draft, setDraft] = useState(value);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -112,7 +115,7 @@ const InlineEdit: React.FC<InlineEditProps> = ({
         <button
             onClick={() => setIsEditing(true)}
             className={`group inline-flex items-center gap-1 px-1 py-0.5 -mx-1 rounded-md hover:bg-indigo-50 transition-colors cursor-text ${className}`}
-            title="Click to edit"
+            title={t('ui.click_to_edit')}
         >
             {prefix && <span className="text-xs text-text-muted font-medium">{prefix}</span>}
             <span className={`text-sm font-medium ${value ? 'text-text-primary' : 'text-text-muted'}`}>

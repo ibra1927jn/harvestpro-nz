@@ -5,6 +5,7 @@
  * supporting search filtering, custom rendering, and keyboard nav.
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from '@/i18n';
 
 export interface DropdownOption {
     value: string;
@@ -33,13 +34,14 @@ const Dropdown: React.FC<DropdownProps> = ({
     options,
     value,
     onChange,
-    placeholder = 'Seleccionar...',
+    placeholder,
     searchable = false,
     error,
     disabled = false,
     required = false,
     className = '',
 }) => {
+    const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [highlightIndex, setHighlightIndex] = useState(-1);
@@ -155,7 +157,7 @@ const Dropdown: React.FC<DropdownProps> = ({
                             )}
                             {selected.label}
                         </span>
-                    ) : placeholder}
+                    ) : (placeholder ?? t('ui.select'))}
                 </span>
                 <span aria-hidden="true"
                     className={`material-symbols-outlined text-base text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
@@ -180,7 +182,7 @@ const Dropdown: React.FC<DropdownProps> = ({
                                 value={search}
                                 onChange={e => { setSearch(e.target.value); setHighlightIndex(0); }}
                                 onKeyDown={handleKeyDown}
-                                placeholder="Buscar..."
+                                placeholder={t('ui.search')}
                                 className="w-full px-3 py-1.5 text-sm rounded-lg bg-slate-50 dark:bg-slate-700
                                     border border-slate-200 dark:border-slate-600
                                     text-slate-900 dark:text-slate-100 placeholder-slate-400
@@ -192,7 +194,7 @@ const Dropdown: React.FC<DropdownProps> = ({
                     {/* Options */}
                     {filtered.length === 0 ? (
                         <div className="px-3 py-4 text-sm text-slate-400 text-center">
-                            Sin resultados
+                            {t('ui.no_results')}
                         </div>
                     ) : (
                         filtered.map((opt, idx) => (
