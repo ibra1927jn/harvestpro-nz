@@ -35,7 +35,10 @@ vi.mock('@/context/MessagingContext', () => ({
 }));
 
 vi.mock('@/services/offline.service', () => ({
-    offlineService: { getPendingCount: vi.fn().mockResolvedValue(0) },
+    offlineService: {
+        getPendingCount: vi.fn().mockResolvedValue(0),
+        getErrorItems: vi.fn().mockResolvedValue([]),
+    },
 }));
 
 vi.mock('@/services/feedback.service', () => ({
@@ -51,10 +54,22 @@ vi.mock('@/utils/logger', () => ({
 }));
 
 import { useRunnerData } from './useRunnerData';
+import { offlineService } from '@/services/offline.service';
 
 describe('useRunnerData', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+    });
+
+    it('lists scans the server rejected (kept on the phone) with their reason', async () => {
+        vi.mocked(offlineService.getErrorItems).mockResolvedValueOnce([
+            { id: 's1', picker_id: 'LOC-018', orchard_id: 'o1', quality_grade: 'A', timestamp: '2026-10-12T10:01:00+13:00', synced: -1, scanned_by: 'r1', failure_reason: 'PAY_WEEK_CLOSED: closed' },
+        ]);
+        const { result } = renderHook(() => useRunnerData());
+        await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+        expect(result.current.rejectedScans).toEqual([
+            { id: 's1', picker_id: 'LOC-018', timestamp: '2026-10-12T10:01:00+13:00', reason: 'PAY_WEEK_CLOSED: closed' },
+        ]);
     });
 
     it('provides orchard from store', () => {

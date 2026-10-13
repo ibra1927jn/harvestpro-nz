@@ -63,6 +63,7 @@ const Runner = () => {
                   <LogisticsView
                     onScan={runner.handleScanClick}
                     pendingUploads={runner.pendingUploads}
+                    rejectedScans={runner.rejectedScans}
                     inventory={runner.inventory}
                     onBroadcast={runner.handleBroadcast}
                     onRequestRefill={runner.handleRequestRefill}

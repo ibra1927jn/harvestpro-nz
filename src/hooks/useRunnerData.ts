@@ -26,12 +26,21 @@ export interface DisplayInventory {
   raw: Bin[];
 }
 
+export interface RejectedScan {
+  id: string;
+  picker_id: string;
+  timestamp: string;
+  reason: string;
+}
+
 export interface UseRunnerDataResult {
   inventory: DisplayInventory;
   orchard: { id: string; name?: string; total_rows?: number } | null;
   crew: Picker[];
   selectedBinId: string | undefined;
   pendingUploads: number;
+  /** Escaneos que el servidor no aceptó (semana/día cerrado, tarjeta desconocida…) */
+  rejectedScans: RejectedScan[];
   showScanner: boolean;
   scanType: 'BIN' | 'BUCKET';
   toast: { message: string; type: 'success' | 'error' | 'info' | 'warning' } | null;
@@ -77,6 +86,7 @@ export function useRunnerData(): UseRunnerDataResult {
 
   const [selectedBinId, setSelectedBinId] = useState<string | undefined>(undefined);
   const [pendingUploads, setPendingUploads] = useState<number>(0);
+  const [rejectedScans, setRejectedScans] = useState<RejectedScan[]>([]);
   const [showScanner, setShowScanner] = useState<boolean>(false);
   const [scanType, setScanType] = useState<'BIN' | 'BUCKET'>('BUCKET');
   const [toast, setToast] = useState<{
@@ -93,6 +103,19 @@ export function useRunnerData(): UseRunnerDataResult {
       if (document.visibilityState === 'visible') {
         const count = await offlineService.getPendingCount();
         setPendingUploads(count);
+        // Rechazados: siguen en el móvil (también tras reabrir la app) y se enseñan
+        const errors = await offlineService.getErrorItems().catch(() => null);
+        if (!errors) return;
+        setRejectedScans(prev =>
+          prev.length === errors.length && prev.every((p, i) => p.id === errors[i].id)
+            ? prev
+            : errors.map(e => ({
+                id: e.id,
+                picker_id: e.picker_id,
+                timestamp: e.timestamp,
+                reason: e.failure_reason || 'Rejected',
+              }))
+        );
       }
     };
     poll();
@@ -294,6 +317,7 @@ export function useRunnerData(): UseRunnerDataResult {
     crew,
     selectedBinId,
     pendingUploads,
+    rejectedScans,
     showScanner,
     scanType,
     toast,

@@ -158,7 +158,7 @@ export const offlineService = {
    * ERROR ITEMS: List all failed items for debugging
    */
   async getErrorItems(): Promise<QueuedBucket[]> {
-    return await db.bucket_queue.where('synced').equals(-1).toArray();
+    return await db.bucket_queue.where('synced').equals(-1).sortBy('timestamp');
   },
 
   /**
