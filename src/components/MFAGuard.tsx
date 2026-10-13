@@ -11,12 +11,14 @@
  */
 
 import { logger } from '@/utils/logger';
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useMFA } from '../hooks/useMFA';
 import { supabase } from '../services/supabase';
-import { MFASetup } from './MFASetup';
-import { MFAVerify } from './MFAVerify';
+
+// Solo los roles con 2FA ven estas pantallas: fuera del bundle inicial (login/runner)
+const MFASetup = lazy(() => import('./MFASetup').then(m => ({ default: m.MFASetup })));
+const MFAVerify = lazy(() => import('./MFAVerify').then(m => ({ default: m.MFAVerify })));
 
 interface MFAGuardProps {
   children: React.ReactNode;
@@ -77,24 +79,27 @@ export function MFAGuard({ children }: MFAGuardProps) {
 
   if (!required) return <>{children}</>;
 
-  if (state.kind === 'checking') {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-text-secondary">Checking security settings...</p>
-        </div>
+  // Mismo spinner mientras se comprueba y mientras llega el chunk de MFA (nunca deja ver la app)
+  const checking = (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-text-secondary">Checking security settings...</p>
       </div>
-    );
-  }
+    </div>
+  );
+
+  if (state.kind === 'checking') return checking;
 
   if (state.kind === 'verify') {
     return (
-      <MFAVerify
-        factorId={state.factorId}
-        onSuccess={() => void evaluate()}
-        onCancel={() => void signOut()}
-      />
+      <Suspense fallback={checking}>
+        <MFAVerify
+          factorId={state.factorId}
+          onSuccess={() => void evaluate()}
+          onCancel={() => void signOut()}
+        />
+      </Suspense>
     );
   }
 
@@ -109,7 +114,9 @@ export function MFAGuard({ children }: MFAGuardProps) {
               This additional security layer protects sensitive payroll and employee data.
             </p>
           </div>
-          <MFASetup onComplete={() => void evaluate()} requireSetup={true} />
+          <Suspense fallback={checking}>
+            <MFASetup onComplete={() => void evaluate()} requireSetup={true} />
+          </Suspense>
         </div>
       </div>
     );
