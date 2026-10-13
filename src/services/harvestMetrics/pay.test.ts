@@ -254,7 +254,8 @@ describe('payForRange', () => {
 });
 
 describe('rendimiento', () => {
-    it('una semana de temporada (14.000 cubetas) se calcula en menos de medio segundo', () => {
+    // Con mutation testing (STRYKER_TESTS) el codigo va instrumentado: el tiempo no significa nada
+    it.skipIf(!!process.env.STRYKER_TESTS)('una semana de temporada (14.000 cubetas) se calcula en menos de medio segundo', () => {
         const buckets = Array.from({ length: 14000 }, (_, i) => ({
             pickerId: 'p' + (i % 60),
             scannedAt: new Date(Date.UTC(2026, 9, 4, 19) + i * 40_000).toISOString(),
