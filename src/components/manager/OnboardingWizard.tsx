@@ -20,7 +20,7 @@ export function isOnboardingCompleted(): boolean {
 }
 
 /** Marca el onboarding como completado */
-export function markOnboardingCompleted(): void {
+function markOnboardingCompleted(): void {
     try {
         localStorage.setItem(ONBOARDING_STORAGE_KEY, 'true');
     } catch {

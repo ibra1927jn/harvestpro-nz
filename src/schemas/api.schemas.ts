@@ -125,13 +125,6 @@ export const CheckOutResponseSchema = z.object({
     hours_worked: z.number().nonnegative(),
 });
 
-// ── Picker Boundaries ──────────────────────────────
-// LAW-2 FIX: Use canonical PickerSchema from zod.schemas — no more divergent duplicate.
-// This schema is the single source of truth for picker shape validation.
-export { PickerSchema } from '@/schemas/zod.schemas';
-// Alias for API-boundary usage (explicit import path)
-export { PickerSchema as ApiPickerSchema } from '@/schemas/zod.schemas';
-
 // ── Compliance Boundaries ──────────────────────────
 
 const ComplianceViolationSchema = z.object({
@@ -170,7 +163,7 @@ export const ComplianceResultSchema = z.object({
 
 // ── Anomaly Detection Boundaries ───────────────────
 
-export const AnomalySchema = z.object({
+const AnomalySchema = z.object({
     id: z.string(),
     type: z.enum(['impossible_velocity', 'peer_outlier', 'off_hours', 'duplicate_proximity', 'post_collection_spike']),
     severity: z.enum(['low', 'medium', 'high']),

@@ -11,7 +11,6 @@
  */
 import { logger } from '@/utils/logger';
 import { supabase } from '@/services/supabase';
-import type { Tables } from '@/types/database.types';
 
 export interface RepositoryResult<T> {
     data: T | null;
@@ -212,16 +211,3 @@ export class SupabaseRepository<T extends Record<string, unknown>> {
         }
     }
 }
-
-// ── Pre-built Repositories ─────────────────────────────
-// Tipos tomados de database.types.ts — Tables<T> para tablas dentro del bloque Tables,
-// Todos los repositorios usan Tables<T> ahora que contracts esta dentro de Tables en el schema generado.
-
-export const userRepository = new SupabaseRepository<Tables<'users'>>('users');
-export const contractRepository = new SupabaseRepository<Tables<'contracts'>>('contracts');
-export const attendanceRepository = new SupabaseRepository<Tables<'daily_attendance'>>('daily_attendance');
-export const bucketRepository = new SupabaseRepository<Tables<'bucket_records'>>('bucket_records');
-export const orchardRepository = new SupabaseRepository<Tables<'orchards'>>('orchards');
-export const loginAttemptRepository = new SupabaseRepository<Tables<'login_attempts'>>('login_attempts');
-export const accountLockRepository = new SupabaseRepository<Tables<'account_locks'>>('account_locks');
-export const auditLogRepository = new SupabaseRepository<Tables<'audit_logs'>>('audit_logs');

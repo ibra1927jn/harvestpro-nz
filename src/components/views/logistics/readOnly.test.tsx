@@ -56,7 +56,6 @@ import FleetTab from './FleetTab';
 import RequestsTab from './RequestsTab';
 import BinsTab from './BinsTab';
 import HistoryTab from './HistoryTab';
-import RoutesTab from './RoutesTab';
 
 // --- Fixtures ---
 const makeTractor = (id: string) => ({
@@ -236,19 +235,5 @@ describe('HistoryTab — display-only (no readOnly prop)', () => {
 });
 
 // ============================================================
-// RoutesTab — botón "Plan New Route" ya viene permanentemente disabled
 // → sin controles reales de escritura, sin readOnly prop
 // ============================================================
-describe('RoutesTab — display-only (no readOnly prop)', () => {
-    it('renders without crashing', () => {
-        render(<RoutesTab />);
-        expect(screen.getByText('Route Planning')).toBeTruthy();
-    });
-
-    it('the Plan New Route button is already permanently disabled', () => {
-        render(<RoutesTab />);
-        const btn = screen.getByRole('button', { name: /plan new route/i });
-        expect(btn).toBeTruthy();
-        expect((btn as HTMLButtonElement).disabled).toBe(true);
-    });
-});

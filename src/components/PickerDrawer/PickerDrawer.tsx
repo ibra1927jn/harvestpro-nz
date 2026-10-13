@@ -15,6 +15,7 @@ import { useTranslation } from '@/i18n';
 import { usePickerDrawerData } from './usePickerDrawerData';
 import PickerDrawerToday from './PickerDrawerToday';
 import PickerDrawerHistory from './PickerDrawerHistory';
+import { drawerTheme, statusLabelKey } from './drawerTheme';
 import {
     QualityRing,
     RiskBadge as RiskBadgeComponent,
@@ -43,38 +44,16 @@ const PickerDrawer: React.FC = () => {
     const isTL = role === 'team_leader';
     const isRunner = role === 'runner';
 
-    // Color scheme según rol
-    const headerBg = isTL
-        ? 'bg-gradient-to-br from-indigo-50 to-blue-50'
-        : isRunner
-        ? 'bg-gradient-to-br from-amber-50 to-orange-50'
-        : 'bg-gradient-to-br from-indigo-50 to-purple-50';
-
-    const avatarBg = isTL
-        ? 'bg-gradient-to-br from-indigo-500 to-blue-600'
-        : isRunner
-        ? 'bg-gradient-to-br from-amber-500 to-orange-500'
-        : 'bg-gradient-to-br from-indigo-500 to-purple-500';
-
-    const roleColor = isTL ? '#4f46e5' : isRunner ? '#d97706' : '#7c3aed';
-
-    const roleLabel = isTL
-        ? t('panel.role.team_leader')
-        : isRunner
-        ? t('panel.role.runner')
-        : t('panel.role.picker');
+    // Colores y textos según rol (drawerTheme.ts)
+    const { headerBg, avatarBg, roleColor, roleLabelKey } = drawerTheme(role);
+    const roleLabel = t(roleLabelKey);
 
     // Nombre: preferir crew (en memoria) sobre history (backend)
     const displayName = picker?.name ?? history?.profile.name ?? 'Unknown';
     const displayPickerId = picker?.picker_id ?? history?.profile.picker_id ?? pickerId;
     const currentStatus = picker?.status ?? history?.profile.status ?? 'active';
 
-    const statusLabel =
-        currentStatus === 'active'
-            ? t('panel.status.active')
-            : currentStatus === 'on_break'
-            ? t('panel.status.break')
-            : t('panel.status.away');
+    const statusLabel = t(statusLabelKey(currentStatus));
 
     // Si no hay picker en crew ni en history, mostrar not_found
     const notFound = !picker && !history && !isHistoryLoading && !today.empty === false;

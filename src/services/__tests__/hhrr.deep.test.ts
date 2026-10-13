@@ -1,6 +1,6 @@
 /**
  * Deep edge-case tests for hhrr.service.ts
- * Covers: fetchHRSummary, fetchEmployees, fetchContracts, createContract, updateContract, fetchPayroll, fetchComplianceAlerts
+ * Covers: fetchHRSummary, fetchEmployees, fetchPayroll, fetchComplianceAlerts
  */
 import { describe, it, expect, vi } from 'vitest';
 
@@ -55,8 +55,6 @@ vi.mock('@/services/supabase', () => ({
 import {
   fetchHRSummary,
   fetchEmployees,
-  fetchContracts,
-  createContract,
   fetchComplianceAlerts,
 } from '../hhrr.service';
 
@@ -74,26 +72,6 @@ describe('fetchEmployees', () => {
   it('returns employee list', async () => {
     const employees = await fetchEmployees('o1');
     expect(Array.isArray(employees)).toBe(true);
-  });
-});
-
-describe('fetchContracts', () => {
-  it('returns contract list', async () => {
-    const contracts = await fetchContracts('o1');
-    expect(Array.isArray(contracts)).toBe(true);
-  });
-});
-
-describe('createContract', () => {
-  it('returns contract ID on success', async () => {
-    const id = await createContract({
-      employee_id: 'u1',
-      orchard_id: 'o1',
-      type: 'seasonal',
-      start_date: '2026-01-01',
-      hourly_rate: 25,
-    });
-    expect(typeof id).toBe('string');
   });
 });
 

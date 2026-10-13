@@ -16,12 +16,13 @@ import { todayNZST } from '@/utils/nzst';
 import { useAuth } from '@/context/AuthContext';
 import {
   AttendanceRow,
-  formatTimeForInput,
-  formatTime,
-  calculateHours,
-  nzTimeToIso,
-  isAbnormal,
+  CorrectionForm,
+  EMPTY_CORRECTION,
+  buildCorrectionUpdates,
+  correctionFormFor,
 } from './timesheet-utils';
+import TimesheetRow from './TimesheetRow';
+import DailyTimesheetSummary from './DailyTimesheetSummary';
 
 interface TimesheetEditorProps {
   orchardId: string;
@@ -36,7 +37,7 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
   const [records, setRecords] = useState<AttendanceRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState({ checkIn: '', checkOut: '', breakStart: '', reason: '' });
+  const [editValues, setEditValues] = useState<CorrectionForm>(EMPTY_CORRECTION);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const { showToast } = useToast();
@@ -68,17 +69,12 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
 
   const startEdit = (record: AttendanceRow) => {
     setEditingId(record.id);
-    setEditValues({
-      checkIn: record.check_in ? formatTimeForInput(record.check_in) : '',
-      checkOut: record.check_out ? formatTimeForInput(record.check_out) : '',
-      breakStart: record.break_start ? formatTimeForInput(record.break_start) : '',
-      reason: '',
-    });
+    setEditValues(correctionFormFor(record));
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setEditValues({ checkIn: '', checkOut: '', breakStart: '', reason: '' });
+    setEditValues(EMPTY_CORRECTION);
   };
 
   const saveCorrection = async (record: AttendanceRow) => {
@@ -92,18 +88,7 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
     setSaving(true);
     try {
       // Horas NZ de ese día → instante UTC (desfase correcto en verano e invierno)
-      const updates: { check_in?: string; check_out?: string; break_start?: string | null } = {};
-
-      if (editValues.checkIn) {
-        updates.check_in = nzTimeToIso(record.date, editValues.checkIn);
-      }
-      if (editValues.checkOut) {
-        updates.check_out = nzTimeToIso(record.date, editValues.checkOut);
-      }
-      const previousBreak = record.break_start ? formatTimeForInput(record.break_start) : '';
-      if (editValues.breakStart !== previousBreak) {
-        updates.break_start = editValues.breakStart ? nzTimeToIso(record.date, editValues.breakStart) : null;
-      }
+      const updates = buildCorrectionUpdates(record, editValues);
 
       await attendanceService.correctAttendance(
         record.id,
@@ -197,157 +182,19 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
               </tr>
             </thead>
             <tbody>
-              {records.map(record => {
-                const hours = calculateHours(record);
-                const unclosed = !!record.check_in && !record.check_out && record.date < todayNZST();
-                const abnormal = isAbnormal(hours);
-                const isEditing = editingId === record.id;
-
-                return (
-                  <tr
-                    key={record.id}
-                    className={`border-t border-border-light ${abnormal ? 'bg-red-50' : ''} ${isEditing ? 'bg-amber-50' : ''}`}
-                  >
-                    {/* Picker Name */}
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-text-main">
-                        {record.picker?.name || 'Unknown'}
-                      </div>
-                      <div className="text-xs text-text-muted">{record.picker?.picker_id}</div>
-                    </td>
-
-                    {/* Check-In */}
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input
-                          type="time"
-                          value={editValues.checkIn}
-                          onChange={e => setEditValues(v => ({ ...v, checkIn: e.target.value }))}
-                          title="Check-in time"
-                          className="px-2 py-1 border border-amber-300 rounded-lg text-sm w-24 focus:ring-2 focus:ring-amber-500 outline-none"
-                        />
-                      ) : (
-                        <span className="font-mono">{formatTime(record.check_in)}</span>
-                      )}
-                    </td>
-
-                    {/* Check-Out */}
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input
-                          type="time"
-                          value={editValues.checkOut}
-                          onChange={e => setEditValues(v => ({ ...v, checkOut: e.target.value }))}
-                          title="Check-out time"
-                          className="px-2 py-1 border border-amber-300 rounded-lg text-sm w-24 focus:ring-2 focus:ring-amber-500 outline-none"
-                        />
-                      ) : (
-                        <span
-                          className={`font-mono ${!record.check_out ? 'text-red-500' : ''}`}
-                        >
-                          {!record.check_out && (
-                            <span className="material-symbols-outlined text-sm inline mr-1 text-red-500">
-                              warning
-                            </span>
-                          )}
-                          {formatTime(record.check_out)}
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Break (descanso de 30 min no pagado, lo anota el team leader) */}
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input
-                          type="time"
-                          value={editValues.breakStart}
-                          onChange={e => setEditValues(v => ({ ...v, breakStart: e.target.value }))}
-                          title="Break start time"
-                          className="px-2 py-1 border border-amber-300 rounded-lg text-sm w-24 focus:ring-2 focus:ring-amber-500 outline-none"
-                        />
-                      ) : record.break_start ? (
-                        <span className="font-mono">{formatTime(record.break_start)}</span>
-                      ) : (
-                        <span className="text-xs text-text-muted" title="Not recorded: 30 min deducted on shifts over 4 h">auto</span>
-                      )}
-                    </td>
-
-                    {/* Hours */}
-                    <td className="px-4 py-3">
-                      <span
-                        className={`font-mono font-bold ${abnormal || unclosed ? 'text-red-600' : 'text-text-sub'}`}
-                        title={unclosed ? 'Shift not closed — add the check-out time' : undefined}
-                      >
-                        {hours !== null ? `${hours}h` : unclosed ? 'Not closed' : '—'}
-                      </span>
-                      {abnormal && (
-                        <span className="material-symbols-outlined text-sm inline ml-1 text-red-500">
-                          warning
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Status */}
-                    <td className="px-4 py-3">
-                      {record.corrected_at ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
-                          <span className="material-symbols-outlined text-xs">edit</span>
-                          Corrected
-                        </span>
-                      ) : (
-                        <span className="text-xs text-text-muted">{record.status}</span>
-                      )}
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-4 py-3 text-right">
-                      {isEditing ? (
-                        <div className="space-y-2">
-                          <input
-                            type="text"
-                            placeholder="Reason for correction *"
-                            value={editValues.reason}
-                            onChange={e => setEditValues(v => ({ ...v, reason: e.target.value }))}
-                            className="w-full px-2 py-1 border border-amber-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none"
-                          />
-                          <div className="flex gap-1 justify-end">
-                            <button
-                              onClick={cancelEdit}
-                              className="p-1.5 text-text-muted hover:text-text-sub rounded-lg"
-                              aria-label="Cancel edit"
-                              disabled={saving}
-                            >
-                              <span className="material-symbols-outlined text-base">close</span>
-                            </button>
-                            <button
-                              onClick={() => saveCorrection(record)}
-                              disabled={saving || !editValues.reason.trim()}
-                              className="p-1.5 text-green-600 hover:text-green-700 rounded-lg disabled:opacity-50"
-                              aria-label="Save correction"
-                            >
-                              {saving ? (
-                                <span className="material-symbols-outlined text-base animate-spin">
-                                  progress_activity
-                                </span>
-                              ) : (
-                                <span className="material-symbols-outlined text-base">save</span>
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => startEdit(record)}
-                          className="p-2 text-text-muted hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                          aria-label={`Edit ${record.picker?.name}'s timesheet`}
-                        >
-                          <span className="material-symbols-outlined text-base">edit</span>
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+              {records.map(record => (
+                <TimesheetRow
+                  key={record.id}
+                  record={record}
+                  isEditing={editingId === record.id}
+                  form={editValues}
+                  saving={saving}
+                  onChangeForm={patch => setEditValues(v => ({ ...v, ...patch }))}
+                  onStartEdit={startEdit}
+                  onCancel={cancelEdit}
+                  onSave={saveCorrection}
+                />
+              ))}
             </tbody>
           </table>
         </div>
@@ -383,81 +230,7 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
       )}
 
       {/* Timesheet completo con produccion y earnings */}
-      {dailyTimesheet.length > 0 && (
-        <div className="bg-white rounded-xl border border-border-light overflow-hidden">
-          <div className="bg-emerald-50 px-4 py-3 border-b border-emerald-200">
-            <h3 className="font-bold text-emerald-800 flex items-center gap-2">
-              <span className="material-symbols-outlined text-lg">receipt_long</span>
-              Daily Timesheet Summary — {selectedDate}
-            </h3>
-            <p className="text-xs text-emerald-600 mt-1">
-              Hours worked, buckets scanned, quality grades, and earnings per picker
-            </p>
-          </div>
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="text-left px-3 py-2 text-text-sub font-semibold">Picker</th>
-                <th className="text-right px-3 py-2 text-text-sub font-semibold">Hours</th>
-                <th className="text-right px-3 py-2 text-text-sub font-semibold">Buckets</th>
-                <th className="text-right px-3 py-2 text-text-sub font-semibold">Rejected</th>
-                <th className="text-right px-3 py-2 text-text-sub font-semibold">Piece $</th>
-                <th className="text-right px-3 py-2 text-text-sub font-semibold">Top-Up</th>
-                <th className="text-right px-3 py-2 text-text-sub font-semibold font-bold">Total</th>
-                <th className="text-center px-3 py-2 text-text-sub font-semibold">Type</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dailyTimesheet.map(ts => (
-                <tr key={ts.id} className={`border-t border-border-light ${ts.is_below_minimum ? 'bg-amber-50' : ''}`}>
-                  <td className="px-3 py-2 font-medium text-text-main">{ts.picker_name}</td>
-                  <td className="px-3 py-2 text-right font-mono">{ts.hours_worked}h</td>
-                  <td className="px-3 py-2 text-right font-mono font-bold">{ts.buckets_total}</td>
-                  <td className="px-3 py-2 text-right font-mono text-red-500">{ts.buckets_rejected || '—'}</td>
-                  <td className="px-3 py-2 text-right font-mono">${ts.piece_earnings}</td>
-                  <td className="px-3 py-2 text-right font-mono text-amber-600">{ts.top_up > 0 ? `$${ts.top_up}` : '—'}</td>
-                  <td className="px-3 py-2 text-right font-mono font-bold text-text-main">${ts.total_earnings}</td>
-                  <td className="px-3 py-2 text-center">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                      ts.pay_type === 'piece_rate'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-amber-100 text-amber-700'
-                    }`}>
-                      {ts.pay_type === 'piece_rate' ? 'Piece' : 'Hourly+'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot className="bg-slate-50 border-t-2 border-slate-300">
-              <tr>
-                <td className="px-3 py-2 font-bold text-text-main">Totals</td>
-                <td className="px-3 py-2 text-right font-mono font-bold">
-                  {dailyTimesheet.reduce((s, t) => s + t.hours_worked, 0).toFixed(1)}h
-                </td>
-                <td className="px-3 py-2 text-right font-mono font-bold">
-                  {dailyTimesheet.reduce((s, t) => s + t.buckets_total, 0)}
-                </td>
-                <td className="px-3 py-2 text-right font-mono text-red-500">
-                  {dailyTimesheet.reduce((s, t) => s + t.buckets_rejected, 0) || '—'}
-                </td>
-                <td className="px-3 py-2 text-right font-mono font-bold">
-                  ${dailyTimesheet.reduce((s, t) => s + t.piece_earnings, 0).toFixed(2)}
-                </td>
-                <td className="px-3 py-2 text-right font-mono text-amber-600 font-bold">
-                  ${dailyTimesheet.reduce((s, t) => s + t.top_up, 0).toFixed(2)}
-                </td>
-                <td className="px-3 py-2 text-right font-mono font-bold text-lg text-text-main">
-                  ${dailyTimesheet.reduce((s, t) => s + t.total_earnings, 0).toFixed(2)}
-                </td>
-                <td className="px-3 py-2 text-center text-xs text-text-muted">
-                  {dailyTimesheet.filter(t => t.is_below_minimum).length} below min
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      )}
+      {dailyTimesheet.length > 0 && <DailyTimesheetSummary rows={dailyTimesheet} date={selectedDate} />}
 
       {/* Info Box */}
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">

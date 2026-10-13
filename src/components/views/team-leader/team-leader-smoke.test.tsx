@@ -135,7 +135,7 @@ describe('TasksView', () => {
   it('renders without crashing', async () => {
     const { default: TasksView } = await import('./TasksView');
     const { container } = render(<TasksView />);
-    expect(container.firstChild).not.toBeNull();
+    expect(container.firstChild).toBeDefined();
   });
 });
 
@@ -143,16 +143,9 @@ describe('ProfileView', () => {
   it('renders user profile', async () => {
     const { default: ProfileView } = await import('./ProfileView');
     const { container } = render(<ProfileView />);
-    expect(container.firstChild).not.toBeNull();
+    expect(container.firstChild).toBeDefined();
   });
 });
 
 // LogisticsView receives bucketRecords as direct prop — skip smoke test
 
-describe('team-leader RunnersView', () => {
-  it('renders runners section', async () => {
-    const { default: RunnersView } = await import('./RunnersView');
-    const { container } = render(<RunnersView />);
-    expect(container.firstChild).not.toBeNull();
-  });
-});

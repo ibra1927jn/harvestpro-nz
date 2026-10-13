@@ -1,5 +1,5 @@
 /**
- * Setup Wizard Step Components — OrchardStep, TeamsStep, RatesStep, SummaryStep tests
+ * Setup Wizard Step Components — OrchardStep, RatesStep, SummaryStep tests
  */
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
@@ -10,7 +10,6 @@ vi.mock('./wizard.types', () => ({
 }));
 
 import OrchardStep from './OrchardStep';
-import TeamsStep from './TeamsStep';
 import RatesStep from './RatesStep';
 import SummaryStep from './SummaryStep';
 
@@ -51,40 +50,6 @@ describe('OrchardStep', () => {
         const input = screen.getByPlaceholderText('e.g. JP-01');
         fireEvent.change(input, { target: { value: 'HB-02' } });
         expect(onUpdate).toHaveBeenCalledWith('code', 'HB-02');
-    });
-});
-
-describe('TeamsStep', () => {
-    const onUpdateTeam = vi.fn();
-    const onAddTeam = vi.fn();
-    const onRemoveTeam = vi.fn();
-
-    it('renders team description', () => {
-        render(<TeamsStep data={wizardData} onUpdateTeam={onUpdateTeam} onAddTeam={onAddTeam} onRemoveTeam={onRemoveTeam} />);
-        expect(screen.getByText(/Define your picking teams/)).toBeTruthy();
-    });
-
-    it('renders team headers', () => {
-        render(<TeamsStep data={wizardData} onUpdateTeam={onUpdateTeam} onAddTeam={onAddTeam} onRemoveTeam={onRemoveTeam} />);
-        expect(screen.getByText('Team 1')).toBeTruthy();
-        expect(screen.getByText('Team 2')).toBeTruthy();
-    });
-
-    it('renders Add Team button', () => {
-        render(<TeamsStep data={wizardData} onUpdateTeam={onUpdateTeam} onAddTeam={onAddTeam} onRemoveTeam={onRemoveTeam} />);
-        expect(screen.getByText('Add Team')).toBeTruthy();
-    });
-
-    it('calls onAddTeam when button clicked', () => {
-        render(<TeamsStep data={wizardData} onUpdateTeam={onUpdateTeam} onAddTeam={onAddTeam} onRemoveTeam={onRemoveTeam} />);
-        fireEvent.click(screen.getByText('Add Team'));
-        expect(onAddTeam).toHaveBeenCalled();
-    });
-
-    it('shows Remove buttons when multiple teams', () => {
-        render(<TeamsStep data={wizardData} onUpdateTeam={onUpdateTeam} onAddTeam={onAddTeam} onRemoveTeam={onRemoveTeam} />);
-        const removeButtons = screen.getAllByText('Remove');
-        expect(removeButtons.length).toBe(2);
     });
 });
 

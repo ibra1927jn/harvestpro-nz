@@ -52,16 +52,4 @@ describe('auditRepository', () => {
         fromSpy.mockReturnValue(mockChain({ data: null, error: { message: 'err' } }) as never);
         await expect(auditRepository.query({})).rejects.toBeTruthy();
     });
-
-    it('getRecordHistory returns history', async () => {
-        fromSpy.mockReturnValue(mockChain({ data: [{ action: 'UPDATE' }], error: null }) as never);
-        const result = await auditRepository.getRecordHistory('pickers', 'r1');
-        expect(result).toEqual([{ action: 'UPDATE' }]);
-    });
-
-    it('getStats returns stats', async () => {
-        fromSpy.mockReturnValue(mockChain({ data: [{ action: 'INSERT', table_name: 'pickers' }], error: null }) as never);
-        const result = await auditRepository.getStats();
-        expect(result).toHaveLength(1);
-    });
 });

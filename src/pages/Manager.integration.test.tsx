@@ -118,9 +118,6 @@ vi.mock('@/components/common/Header', () => ({
     default: ({ title }: { title: string }) =>
         React.createElement('header', { 'data-testid': 'header' }, title),
 }));
-vi.mock('@/components/common/PickerProfileDrawer', () => ({
-    default: () => React.createElement('div', { 'data-testid': 'profile-drawer' }),
-}));
 vi.mock('@/components/PickerDrawer', () => ({
     PickerDrawer: () => React.createElement('div', { 'data-testid': 'profile-drawer' }),
 }));
@@ -142,16 +139,6 @@ vi.mock('@/components/views/manager/RowAssignmentModal', () => ({
 }));
 vi.mock('@/components/modals/PickerDetailsModal', () => ({
     default: () => React.createElement('div', { 'data-testid': 'picker-details-modal' }, 'Details'),
-}));
-vi.mock('./managerNav.config', () => ({
-    MOBILE_TABS: [
-        { id: 'dashboard', label: 'Dashboard', icon: 'grid_view' },
-        { id: 'teams', label: 'Teams', icon: 'group' },
-        { id: 'logistics', label: 'Logistics', icon: 'local_shipping' },
-        { id: 'map', label: 'Map', icon: 'map' },
-        { id: 'more', label: 'More', icon: 'more_horiz' },
-    ],
-    DESKTOP_NAV: [],
 }));
 
 import Manager from './Manager';

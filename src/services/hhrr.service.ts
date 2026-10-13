@@ -4,96 +4,32 @@
  *
  * Architecture:
  *   READS  → Via domain repositories (attendance, user, contract)
- *   WRITES → Via syncService.addToQueue() for offline-first
- *   Conflict Resolution: Last-write-wins (documented decision)
+ *   WRITES → directas (RRHH trabaja en oficina con conexión)
+ *   Lógica pura (ficha, nómina, alertas): hhrr/hrLogic.ts · Tipos: hhrr/hhrr.types.ts
  */
 import { settingsRepository } from '@/repositories/settings.repository';
 import { payrollService } from '@/services/payroll.service';
 import { storeSyncRepository } from '@/repositories/store-sync.repository';
-import { syncService } from '@/services/sync.service';
 import { logger } from '@/utils/logger';
 import { todayNZST, nzMidnight } from '@/utils/nzst';
 import { userRepository2 } from '@/repositories/user.repository';
 import { contractRepository2 } from '@/repositories/contract.repository';
 import { attendanceRepository } from '@/repositories/attendance.repository';
-import { NZ_MINIMUM_WAGE_2026 } from '@/constants/nz-law';
 import { payForRange, payWeekOf, nzDateOf, pieceRateFor, PAY_RULES, type PickerRangePay } from '@/services/harvestMetrics';
 import { payRatesRepository } from '@/repositories/pay-rates.repository';
 import { hrDocumentsRepository, HR_DOCUMENT_TYPE_LABELS } from '@/repositories/hr-documents.repository';
+import type { ComplianceAlert, Employee, HRSummary, PayrollEntry } from './hhrr/hhrr.types';
+import {
+  buildEmployee,
+  buildPayrollEntries,
+  contractExpiryAlerts,
+  documentExpiryAlerts,
+  expiredContractAlerts,
+  type WeekPayRow,
+} from './hhrr/hrLogic';
 
-// ── Types ──────────────────────────────────────
-export interface Employee {
-  id: string;
-  full_name: string;
-  email: string;
-  role: string;
-  status: 'active' | 'on_leave' | 'terminated' | 'pending';
-  contract_type: 'permanent' | 'seasonal' | 'casual';
-  contract_start: string;
-  contract_end?: string;
-  hourly_rate: number;
-  /** Del visado de trabajo subido en Documentos (no se inventa: sin documento = not_recorded) */
-  visa_status: 'work_visa' | 'expired' | 'not_recorded';
-  visa_expiry?: string;
-  /** Contrato vigente (si tiene) */
-  contract_id?: string;
-  contract_updated_at?: string;
-  /** staff = plantilla (pickers, TL, runners); office = cuenta de oficina */
-  source?: 'staff' | 'office';
-  phone?: string;
-  emergency_contact?: string;
-  hire_date: string;
-  orchard_id?: string;
-  team_id?: string;
-  documents_count?: number;
-}
-
-export interface Contract {
-  id: string;
-  employee_id: string;
-  employee_name: string;
-  type: 'permanent' | 'seasonal' | 'casual';
-  status: 'active' | 'expiring' | 'expired' | 'draft' | 'terminated';
-  start_date: string;
-  end_date?: string;
-  hourly_rate: number;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface PayrollEntry {
-  id: string;
-  employee_id: string;
-  employee_name: string;
-  role: string;
-  hours_worked: number;
-  buckets_picked: number;
-  hourly_earnings: number;
-  piece_earnings: number;
-  total_pay: number;
-  wage_shield_applied: boolean;
-  period_start: string;
-  period_end: string;
-}
-
-export interface ComplianceAlert {
-  id: string;
-  type: 'visa_expiry' | 'wage_violation' | 'missing_document' | 'contract_expiry';
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  employee_id: string;
-  employee_name: string;
-  message: string;
-  created_at: string;
-  resolved: boolean;
-}
-
-export interface HRSummary {
-  activeWorkers: number;
-  pendingContracts: number;
-  payrollThisWeek: number;
-  complianceAlerts: number;
-}
+// Tipos en hhrr/hhrr.types.ts; se re-exportan para no cambiar los imports
+export type { Employee, PayrollEntry, ComplianceAlert, HRSummary } from './hhrr/hhrr.types';
 
 // ── Service Functions ──────────────────────────
 
@@ -141,76 +77,12 @@ export async function fetchEmployees(_orchardId?: string): Promise<Employee[]> {
       hrDocumentsRepository.listWorkVisas().catch(() => []),
     ]);
     const today = todayNZST();
-
-    return staff.map(person => {
-      const contract = contracts.find(c => c.employee_id === person.id);
-      // Visado: el documento "Work Visa" más reciente de esa persona
-      const visa = visas
-        .filter(d => d.picker_id === person.id || d.user_id === person.id)
-        .sort((a, b) => (b.expires_at ?? '').localeCompare(a.expires_at ?? ''))[0];
-      const visa_status: Employee['visa_status'] = !visa
-        ? 'not_recorded'
-        : visa.expires_at && visa.expires_at < today ? 'expired' : 'work_visa';
-      return {
-        id: person.id,
-        full_name: person.full_name,
-        email: person.email,
-        role: person.role,
-        status: person.active ? ('active' as const) : ('terminated' as const),
-        contract_type: (contract?.type || 'seasonal') as 'permanent' | 'seasonal' | 'casual',
-        contract_start: contract?.start_date || person.created_at || new Date().toISOString(),
-        contract_end: contract?.end_date || undefined,
-        hourly_rate: contract?.hourly_rate || NZ_MINIMUM_WAGE_2026,
-        visa_status,
-        visa_expiry: visa?.expires_at ?? undefined,
-        contract_id: contract?.id,
-        contract_updated_at: contract?.updated_at ?? undefined,
-        source: person.source,
-        hire_date: person.created_at || new Date().toISOString(),
-        orchard_id: person.orchard_id,
-      };
-    });
+    const nowISO = new Date().toISOString();
+    return staff.map(person => buildEmployee(person, contracts, visas, today, nowISO));
   } catch (error) {
     logger.error('[HHRR] Error fetching employees:', error);
     return [];
   }
-}
-
-export async function fetchContracts(orchardId?: string): Promise<Contract[]> {
-  try {
-    const data = await contractRepository2.getAll(orchardId);
-    const employeeIds = [...new Set(data.map(c => c.employee_id))];
-    const names = await userRepository2.getNamesByIds(employeeIds);
-
-    return data.map(c => ({
-      id: c.id,
-      employee_id: c.employee_id,
-      employee_name: names[c.employee_id] || 'Unknown',
-      type: c.type,
-      status: c.status,
-      start_date: c.start_date,
-      end_date: c.end_date || undefined,
-      hourly_rate: c.hourly_rate,
-      notes: c.notes || undefined,
-      created_at: c.created_at,
-      updated_at: c.updated_at,
-    }));
-  } catch (error) {
-    logger.error('[HHRR] Error fetching contracts:', error);
-    return [];
-  }
-}
-
-export async function createContract(contract: {
-  employee_id: string;
-  orchard_id: string;
-  type: 'permanent' | 'seasonal' | 'casual';
-  start_date: string;
-  end_date?: string;
-  hourly_rate: number;
-  notes?: string;
-}): Promise<string> {
-  return syncService.addToQueue('CONTRACT', { action: 'create', ...contract });
 }
 
 /**
@@ -250,23 +122,6 @@ export async function changeContract(
  */
 export async function setEmployeeActive(emp: Pick<Employee, 'id' | 'source'>, active: boolean): Promise<void> {
   await userRepository2.setActive(emp.id, emp.source ?? 'staff', active);
-}
-
-export async function updateContract(
-  contractId: string,
-  updates: {
-    status?: string;
-    end_date?: string;
-    hourly_rate?: number;
-    notes?: string;
-  },
-  currentUpdatedAt?: string
-): Promise<string> {
-  return syncService.addToQueue(
-    'CONTRACT',
-    { action: 'update', contractId, ...updates },
-    currentUpdatedAt
-  );
 }
 
 /**
@@ -337,7 +192,7 @@ export async function fetchPayroll(orchardId?: string): Promise<PayrollEntry[]> 
     const employees = await fetchEmployees(orchardId);
     const week = payWeekOf(todayNZST());
 
-    let rows: { id: string; hours: number; buckets: number; piece: number; topUp: number; total: number }[];
+    let rows: WeekPayRow[];
     let minWage: number = PAY_RULES.minWageFloor;
     try {
       const result = await payrollService.calculatePayroll(undefined, week.start, week.end);
@@ -355,29 +210,7 @@ export async function fetchPayroll(orchardId?: string): Promise<PayrollEntry[]> 
         piece: p.pieceEarnings, topUp: p.topUp, total: p.total,
       }));
     }
-    const payById = new Map(rows.map(r => [r.id, r]));
-    const people = employees.filter(e => e.status === 'active' || payById.has(e.id));
-
-    return people.map(emp => {
-      const p = payById.get(emp.id);
-      const hours = p?.hours ?? 0;
-      // Mínimo garantizado: tarifa del contrato si es mayor que el mínimo general
-      const personMin = Math.max(emp.hourly_rate, minWage);
-      return {
-        id: `payroll-${emp.id}`,
-        employee_id: emp.id,
-        employee_name: emp.full_name,
-        role: emp.role,
-        hours_worked: hours,
-        buckets_picked: p?.buckets ?? 0,
-        hourly_earnings: Math.round(hours * personMin * 100) / 100,
-        piece_earnings: p?.piece ?? 0,
-        total_pay: p?.total ?? 0,
-        wage_shield_applied: (p?.topUp ?? 0) > 0,
-        period_start: week.start,
-        period_end: week.end,
-      };
-    });
+    return buildPayrollEntries(employees, rows, minWage, week);
   } catch (error) {
     logger.error('[HHRR] Error generating payroll:', error);
     return [];
@@ -391,50 +224,16 @@ export async function fetchComplianceAlerts(orchardId?: string): Promise<Complia
     const thirtyDaysFromNow = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
     const today = new Date().toISOString().split('T')[0];
 
-    const expiringContracts = await contractRepository2.getExpiringSoon(
-      orchardId,
-      today,
-      thirtyDaysFromNow
-    );
-
+    const expiringContracts = await contractRepository2.getExpiringSoon(orchardId, today, thirtyDaysFromNow);
     if (expiringContracts.length > 0) {
-      const ids = expiringContracts.map(c => c.employee_id);
-      const names = await userRepository2.getNamesByIds(ids);
-
-      expiringContracts.forEach(c => {
-        const daysUntilExpiry = Math.floor(
-          (new Date(c.end_date).getTime() - Date.now()) / 86400000
-        );
-        alerts.push({
-          id: `contract-${c.id}`,
-          type: 'contract_expiry',
-          severity: daysUntilExpiry < 7 ? 'critical' : daysUntilExpiry < 14 ? 'high' : 'medium',
-          employee_id: c.employee_id,
-          employee_name: names[c.employee_id] || 'Unknown',
-          message: `${c.type} contract expires in ${daysUntilExpiry} days (${c.end_date})`,
-          created_at: new Date().toISOString(),
-          resolved: false,
-        });
-      });
+      const names = await userRepository2.getNamesByIds(expiringContracts.map(c => c.employee_id));
+      alerts.push(...contractExpiryAlerts(expiringContracts, names, Date.now()));
     }
 
     const expired = await contractRepository2.getExpiredButActive(orchardId);
     if (expired.length > 0) {
-      const ids = expired.map(c => c.employee_id);
-      const names = await userRepository2.getNamesByIds(ids);
-
-      expired.forEach(c => {
-        alerts.push({
-          id: `expired-${c.id}`,
-          type: 'contract_expiry',
-          severity: 'critical',
-          employee_id: c.employee_id,
-          employee_name: names[c.employee_id] || 'Unknown',
-          message: 'Contract has expired but is still marked as active',
-          created_at: new Date().toISOString(),
-          resolved: false,
-        });
-      });
+      const names = await userRepository2.getNamesByIds(expired.map(c => c.employee_id));
+      alerts.push(...expiredContractAlerts(expired, names, new Date().toISOString()));
     }
   } catch (error) {
     logger.error('[HHRR] Error fetching compliance alerts:', error);
@@ -446,24 +245,7 @@ export async function fetchComplianceAlerts(orchardId?: string): Promise<Complia
     if (docs.length > 0) {
       const ids = docs.map(d => (d.picker_id || d.user_id) as string).filter(Boolean);
       const names = await userRepository2.getNamesByIds(ids);
-      const today = todayNZST();
-      for (const d of docs) {
-        if (!d.expires_at) continue;
-        const days = Math.round((Date.parse(d.expires_at) - Date.parse(today)) / 86400000);
-        const who = (d.picker_id || d.user_id) as string;
-        alerts.push({
-          id: `doc-${d.id}`,
-          type: d.document_type === 'work_visa' ? 'visa_expiry' : 'missing_document',
-          severity: days < 0 ? 'critical' : days < 7 ? 'high' : 'medium',
-          employee_id: who,
-          employee_name: names[who] || 'Unknown',
-          message: days < 0
-            ? `${HR_DOCUMENT_TYPE_LABELS[d.document_type]} expired ${Math.abs(days)} days ago (${d.expires_at})`
-            : `${HR_DOCUMENT_TYPE_LABELS[d.document_type]} expires in ${days} days (${d.expires_at})`,
-          created_at: new Date().toISOString(),
-          resolved: false,
-        });
-      }
+      alerts.push(...documentExpiryAlerts(docs, names, todayNZST(), HR_DOCUMENT_TYPE_LABELS, new Date().toISOString()));
     }
   } catch (error) {
     logger.warn('[HHRR] Could not check document expiries:', error);

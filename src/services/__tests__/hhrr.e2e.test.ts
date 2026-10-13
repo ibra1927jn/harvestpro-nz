@@ -1,7 +1,7 @@
 ﻿/**
- * E2E tests for hhrr.service.ts (311L) — exercises ALL 8 functions
- * fetchHRSummary, fetchEmployees, fetchContracts, createContract,
- * updateContract, fetchPayroll, fetchComplianceAlerts
+ * E2E tests for hhrr.service.ts
+ * fetchHRSummary, fetchEmployees,
+ * fetchPayroll, fetchComplianceAlerts
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -157,22 +157,12 @@ vi.mock('@/repositories/store-sync.repository', () => ({
   },
 }));
 
-vi.mock('@/services/sync.service', () => ({
-  syncService: {
-    addToQueue: vi.fn().mockResolvedValue('queue-id-123'),
-  },
-}));
-
 import {
   fetchHRSummary,
   fetchEmployees,
-  fetchContracts,
-  createContract,
-  updateContract,
   fetchPayroll,
   fetchComplianceAlerts,
 } from '../hhrr.service';
-import { syncService } from '@/services/sync.service';
 
 describe('hhrr.service — E2E deep tests', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -274,56 +264,8 @@ describe('hhrr.service — E2E deep tests', () => {
     });
   });
 
-  // ========== fetchContracts ==========
-  describe('fetchContracts', () => {
-    it('maps contracts with employee names', async () => {
-      const contracts = await fetchContracts('o1');
-      expect(contracts.length).toBe(1);
-      expect(contracts[0].employee_name).toBe('Alice');
-      expect(contracts[0].type).toBe('seasonal');
-    });
 
-    it('uses Unknown for missing employee names', async () => {
-      mockGetNamesByIds.mockResolvedValueOnce({});
-      const contracts = await fetchContracts('o1');
-      expect(contracts[0].employee_name).toBe('Unknown');
-    });
 
-    it('returns empty on error', async () => {
-      mockGetAllContracts.mockRejectedValueOnce(new Error('fail'));
-      expect(await fetchContracts('o1')).toEqual([]);
-    });
-  });
-
-  // ========== createContract ==========
-  describe('createContract', () => {
-    it('adds to sync queue', async () => {
-      const id = await createContract({
-        employee_id: 'u1',
-        orchard_id: 'o1',
-        type: 'seasonal',
-        start_date: '2026-01-01',
-        hourly_rate: 25,
-      });
-      expect(id).toBe('queue-id-123');
-      expect(vi.mocked(syncService.addToQueue)).toHaveBeenCalledWith(
-        'CONTRACT',
-        expect.objectContaining({ action: 'create', employee_id: 'u1' })
-      );
-    });
-  });
-
-  // ========== updateContract ==========
-  describe('updateContract', () => {
-    it('adds update to sync queue', async () => {
-      await updateContract('c1', { status: 'terminated' }, '2026-01-01');
-      expect(vi.mocked(syncService.addToQueue)).toHaveBeenCalledWith(
-        'CONTRACT',
-        expect.objectContaining({ action: 'update', contractId: 'c1' }),
-        '2026-01-01'
-      );
-    });
-  });
 
   // ========== fetchPayroll ==========
   describe('fetchPayroll', () => {

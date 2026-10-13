@@ -2,7 +2,7 @@
  * Sprint 14 extracted components — Consolidated render tests
  *
  * Covers: DashboardStatCard, DashboardEmptyState, RowTeamDisplay, RowGrid,
- * AnomalyCard, SmartDismissals, OrchardStep, TeamsStep, RatesStep, SummaryStep,
+ * AnomalyCard, SmartDismissals, OrchardStep, RatesStep, SummaryStep,
  * AdminOrchardsTab, AdminUsersTab, AdminComplianceTab
  */
 import { describe, it, expect, vi } from 'vitest';

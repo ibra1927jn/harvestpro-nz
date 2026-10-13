@@ -255,49 +255,7 @@ describe('setupRepository', () => {
 });
 
 // =========================================================
-// 8. sticker.repository
 // =========================================================
-describe('stickerRepository', () => {
-    let repo: typeof import('@/repositories/sticker.repository').stickerRepository;
-    beforeEach(async () => {
-        repo = (await import('@/repositories/sticker.repository')).stickerRepository;
-    });
-
-    it('findByCode returns data when found', async () => {
-        fromSpy.mockReturnValue(mockChain({ data: { id: 's1' }, error: null }) as never);
-        const result = await repo.findByCode('ABC-123');
-        expect(result).toEqual({ id: 's1' });
-    });
-
-    it('findByCode throws on error', async () => {
-        fromSpy.mockReturnValue(mockChain({ data: null, error: { message: 'err' } }) as never);
-        await expect(repo.findByCode('XXX')).rejects.toBeTruthy();
-    });
-
-    it('insert returns data', async () => {
-        fromSpy.mockReturnValue(mockChain({ data: { id: 'new' }, error: null }) as never);
-        const { data } = await repo.insert({ sticker_code: 'A', picker_id: 'p1', bin_id: 'b1' });
-        expect(data).toEqual({ id: 'new' });
-    });
-
-    it('countByTeamLeader returns number', async () => {
-        fromSpy.mockReturnValue(mockChain({ count: 42, error: null }) as never);
-        const result = await repo.countByTeamLeader('tl1');
-        expect(result).toBe(42);
-    });
-
-    it('countByTeamLeaderInRange returns number', async () => {
-        fromSpy.mockReturnValue(mockChain({ count: 10, error: null }) as never);
-        const result = await repo.countByTeamLeaderInRange('tl1', '2026-01-01', '2026-01-31');
-        expect(result).toBe(10);
-    });
-
-    it('countByPickerInRange returns 0 for null', async () => {
-        fromSpy.mockReturnValue(mockChain({ count: null, error: null }) as never);
-        const result = await repo.countByPickerInRange('p1', '2026-01-01', '2026-01-31');
-        expect(result).toBe(0);
-    });
-});
 
 // =========================================================
 // 9. pickerHistory.repository

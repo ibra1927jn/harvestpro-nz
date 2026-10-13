@@ -99,17 +99,6 @@ vi.mock('@/utils/logger', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock('./managerNav.config', () => ({
-  MOBILE_TABS: [
-    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { id: 'teams', label: 'Teams', icon: 'groups' },
-    { id: 'logistics', label: 'Logistics', icon: 'local_shipping' },
-    { id: 'map', label: 'Map', icon: 'map' },
-    { id: 'more', label: 'More', icon: 'more_horiz' },
-  ],
-  DESKTOP_NAV: [],
-}));
-
 // Mock all views
 vi.mock('@/components/views/manager/DashboardView', () => ({
   default: () => <div data-testid="dashboard-view">Dashboard View</div>,
@@ -152,10 +141,6 @@ vi.mock('@/components/views/manager/RowAssignmentModal', () => ({
 vi.mock('@/components/modals/PickerDetailsModal', () => ({
   default: () => <div>Picker Details</div>,
 }));
-vi.mock('@/components/common/PickerProfileDrawer', () => ({
-  default: () => <div>Picker Drawer</div>,
-}));
-
 vi.mock('@/components/ui/ComponentErrorBoundary', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));

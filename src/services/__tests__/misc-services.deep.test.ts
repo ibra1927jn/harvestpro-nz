@@ -1,5 +1,5 @@
 /**
- * Deep tests for sticker.service.ts and bin.service.ts
+ * Deep tests for bin.service.ts
  */
 import { describe, it, expect, vi } from 'vitest';
 
@@ -18,13 +18,6 @@ vi.mock('@/services/supabase', () => ({
         single: vi.fn().mockResolvedValue({ data: null, error: null }),
     },
 }));
-
-describe('stickerService', () => {
-    it('exports stickerService', async () => {
-        const mod = await import('@/services/sticker.service');
-        expect(mod.stickerService).toBeDefined();
-    });
-});
 
 describe('binService', () => {
     it('exports binService', async () => {

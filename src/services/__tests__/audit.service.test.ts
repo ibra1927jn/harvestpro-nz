@@ -14,10 +14,6 @@ vi.mock('@/utils/logger', () => ({
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-vi.mock('./config.service', () => ({
-    getConfig: vi.fn(() => ({ isDevelopment: true, SUPABASE_URL: 'https://test.supabase.co', SUPABASE_ANON_KEY: 'test' })),
-}));
-
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
 import { auditService, logAudit } from '../audit.service';
 

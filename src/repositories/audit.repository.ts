@@ -34,22 +34,4 @@ export const auditRepository = {
         if (error) throw error;
         return data || [];
     },
-
-    /** Get audit history for a specific record */
-    async getRecordHistory(tableName: string, recordId: string) {
-        const { data, error } = await supabase.from('audit_logs').select('*')
-            .eq('table_name', tableName).eq('record_id', recordId)
-            .order('created_at', { ascending: false });
-        if (error) throw error;
-        return data || [];
-    },
-
-    /** Get stats (action + table counts) */
-    async getStats(fromDate?: string) {
-        let query = supabase.from('audit_logs').select('action, table_name');
-        if (fromDate) query = query.gte('created_at', fromDate);
-        const { data, error } = await query;
-        if (error) throw error;
-        return data || [];
-    },
 };

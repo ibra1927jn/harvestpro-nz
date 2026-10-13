@@ -15,12 +15,6 @@ vi.mock('@/repositories/optimistic-lock.repository', () => ({
   },
 }));
 
-vi.mock('./conflict.service', () => ({
-  conflictService: {
-    detect: vi.fn().mockResolvedValue(null),
-  },
-}));
-
 import { withOptimisticLock, updateWithoutLock } from '../optimistic-lock.service';
 import type { OptimisticLockOptions } from '../optimistic-lock.service';
 

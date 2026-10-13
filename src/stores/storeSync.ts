@@ -1,5 +1,6 @@
 /**
- * storeSync — Sync logic extracted from useHarvestStore
+ * storeSync — Sync logic extracted from useHarvestStore (I/O: Supabase, Dexie)
+ *   La lógica pura (delta, fusiones, mapeos) está en storeSyncLogic.ts
  *   hydrateFromRecovery    — Recover crash-saved buckets from localStorage
  *   hydrateFromDexie       — Recover pending buckets from IndexedDB
  *   fetchOrchardData       — Delta/full sync with Supabase
@@ -10,55 +11,32 @@ import { offlineService } from '@/services/offline.service';
 import { logger } from '@/utils/logger';
 import { todayNZST, nzMidnight } from '@/utils/nzst';
 import { fetchAllRows } from '@/utils/fetchAllRows';
-import { BucketRecord, Picker, AttendanceShift } from '@/types';
+import type { BucketRecord } from '@/types';
 import type { HarvestStoreState, ScannedBucket } from './storeTypes';
 import { storeSyncRepository } from '@/repositories/store-sync.repository';
+import {
+  applyAttendanceRecord,
+  applyElsewhere,
+  applyRowAssignmentEvent,
+  deltaSinceISO,
+  mapPickerWithAttendance,
+  mergeBins,
+  mergeBucketDelta,
+  mergeCrewDelta,
+  resolveRowAssignments,
+  shouldUseDelta,
+  type AttendanceRecord,
+  type PickerWithAttendance,
+  type ServerRowAssignment,
+} from './storeSyncLogic';
+
+// Compatibilidad: attendanceFields vivía aquí
+export { attendanceFields } from './storeSyncLogic';
 
 export type StoreSetter = (
   partial: Partial<HarvestStoreState> | ((state: HarvestStoreState) => Partial<HarvestStoreState>)
 ) => void;
 export type StoreGetter = () => HarvestStoreState;
-
-/** Picker row extended with attendance join + soft-delete field from Supabase query */
-interface PickerWithAttendance extends Picker {
-  daily_attendance?: (AttendanceShift & { deleted_at?: string | null })[];
-  deleted_at?: string | null;
-}
-
-/** Realtime attendance payload from Supabase channel */
-interface AttendanceRecord {
-  id?: string;
-  deleted_at?: string | null;
-  picker_id: string;
-  date: string;
-  check_in: string | null;
-  check_out?: string | null;
-  break_start?: string | null;
-  break_minutes?: number | null;
-  orchard_id: string;
-}
-
-/* ── Tramos de hoy ────────────────────────── */
-
-/**
- * Campos de presencia de una persona a partir de sus tramos de hoy en este
- * huerto: el tramo actual es el abierto o, si no hay, el último.
- */
-export function attendanceFields(shifts: AttendanceShift[]): Pick<Picker,
-  'shifts' | 'checked_in_today' | 'check_in' | 'check_out' | 'break_start' | 'break_minutes'> {
-  const list = shifts
-    .filter(s => !!s.check_in)
-    .sort((a, b) => (a.check_in ?? '').localeCompare(b.check_in ?? ''));
-  const current = list.find(s => !s.check_out) ?? list[list.length - 1];
-  return {
-    shifts: list,
-    checked_in_today: list.length > 0,
-    check_in: current?.check_in || undefined,
-    check_out: current?.check_out || undefined,
-    break_start: current?.break_start || undefined,
-    break_minutes: current?.break_minutes ?? undefined,
-  };
-}
 
 /* ── Hydration ────────────────────────────── */
 
@@ -121,120 +99,30 @@ export async function fetchOrchardData(
   const state = get();
   const lastSync = state.lastSyncAt;
   const now = new Date().toISOString();
+  const today = todayNZST();
+  const useDelta = shouldUseDelta({
+    lastSyncAt: lastSync,
+    todayNZ: today,
+    crewCount: state.crew.length,
+    bucketCount: state.bucketRecords.length,
+  });
 
-  // Delta solo si la última sincronización fue HOY (fecha NZ) y las cubetas de
-  // hoy ya están en memoria. Las cubetas NO se guardan en el navegador (crew y
-  // lastSyncAt sí): tras recargar la página, el delta (filtrado por updated_at)
-  // nunca volvía a traer las cubetas de la mañana y el panel se quedaba en 0.
-  // Igual al cambiar de día: el store tendría cubetas y fichajes de ayer.
-  const sameNZDay =
-    !!lastSync &&
-    new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' }).format(new Date(lastSync)) ===
-      todayNZST();
-  const useDelta = sameNZDay && state.crew.length > 0 && state.bucketRecords.length > 0;
-
-  // Huerto pedido (el del usuario, desde OrchardDataBootstrap); si no se pasa,
-  // el que ya está cargado (refrescos tras una acción); solo en último caso el primero.
-  const targetOrchardId = orchardId ?? state.orchard?.id;
-  let activeOrchard: { id: string; name?: string; total_rows?: number } | null = null;
-  if (targetOrchardId) {
-    const { data } = await supabase.from('orchards').select('*').eq('id', targetOrchardId).single();
-    activeOrchard = data;
-  }
-  if (!activeOrchard) {
-    activeOrchard = await storeSyncRepository.getFirstOrchard();
-  }
-
+  const activeOrchard = await loadActiveOrchard(orchardId ?? state.orchard?.id);
   const settings = activeOrchard ? await storeSyncRepository.getSettings(activeOrchard.id) : null;
-
   set({ orchard: activeOrchard, settings: settings || state.settings });
 
-  // Pickers + Attendance
-  const today = todayNZST();
-  // Medianoche NZ real — independiente del timezone del dispositivo.
-  // toNZST(new Date()) devuelve el offset correcto (+12:00 NZST o +13:00 NZDT).
-  // d.setHours(0,0,0,0) usaba medianoche local → en timezone negativo (ej. UTC-3)
-  // el corte caía a las 15:00 NZ, perdiendo registros de la mañana NZ.
-  // nzMidnight usa el desfase vigente a medianoche (el dia del cambio de hora no es el de ahora)
+  // Medianoche NZ real (desfase vigente a medianoche: el día del cambio de
+  // hora no es el de ahora), independiente del timezone del dispositivo
   const startOfDayNZ = nzMidnight(today);
-
-  const mapPickerWithAttendance = (p: PickerWithAttendance): Picker =>
-    ({
-      ...p,
-      ...attendanceFields(
-        (p.daily_attendance ?? [])
-          .filter(a => !a.deleted_at)
-          .map(({ deleted_at: _deleted, ...s }) => s)
-      ),
-      daily_attendance: undefined,
-    }) as Picker;
+  const orchardKey = activeOrchard?.id ?? '';
 
   try {
-    let pickersQuery = storeSyncRepository.getPickersQuery(activeOrchard?.id ?? '', today, { onlyStaff: !useDelta });
-
-    let bucketsQuery = storeSyncRepository.getBucketRecordsQuery(
-      activeOrchard?.id ?? '',
-      startOfDayNZ
-    );
-
-    if (useDelta) {
-      const safeSyncDate = new Date(new Date(lastSync!).getTime() - 120_000).toISOString();
-      pickersQuery = pickersQuery.gte('updated_at', safeSyncDate);
-      bucketsQuery = bucketsQuery.gte('updated_at', safeSyncDate);
-      logger.info(`[Sync] Delta mode: fetching changes since ${safeSyncDate}`);
-    } else {
-      pickersQuery = pickersQuery.is('deleted_at', null);
-      bucketsQuery = bucketsQuery.is('deleted_at', null);
-      logger.info('[Sync] Full mode: downloading all active records');
-    }
-
-    // Carga completa por páginas: un día con mucha cuadrilla pasa de las 1000
-    // filas que devuelve PostgREST por petición.
-    const bucketsPromise = useDelta
-      ? bucketsQuery
-      : fetchAllRows<BucketRecord>((from, to) =>
-          storeSyncRepository
-            .getBucketRecordsQuery(activeOrchard?.id ?? '', startOfDayNZ)
-            .is('deleted_at', null)
-            .order('id')
-            .range(from, to)
-        ).then(data => ({ data, error: null }));
-    const [pickersRes, bucketsRes] = await Promise.all([pickersQuery, bucketsPromise]);
-    if (pickersRes.error) throw pickersRes.error;
-    if (bucketsRes.error) throw bucketsRes.error;
-
-    if (useDelta) {
-      const crewMap = new Map(state.crew.map((p: Picker) => [p.id, p]));
-      pickersRes.data.forEach((p: PickerWithAttendance) => {
-        // Bajas y borrados también llegan por delta: salen de la lista en todos los dispositivos
-        if (p.deleted_at || p.status === 'archived') crewMap.delete(p.id);
-        else crewMap.set(p.id, mapPickerWithAttendance(p));
-      });
-      const bucketsMap = new Map(state.bucketRecords.map((b: BucketRecord) => [b.id, b]));
-      bucketsRes.data.forEach((b: BucketRecord) => {
-        if (b.deleted_at) bucketsMap.delete(b.id);
-        else bucketsMap.set(b.id, b);
-      });
-      set({
-        crew: Array.from(crewMap.values()),
-        bucketRecords: Array.from(bucketsMap.values()),
-        lastSyncAt: now,
-      });
-      logger.info(
-        `[Sync] Delta applied: ${pickersRes.data.length} pickers, ${bucketsRes.data.length} buckets`
-      );
-    } else {
-      const crewWithAttendance = pickersRes.data?.map(mapPickerWithAttendance) || [];
-      set({ crew: crewWithAttendance, bucketRecords: bucketsRes.data || [], lastSyncAt: now });
-      logger.info(
-        `[Sync] Full load: ${crewWithAttendance.length} pickers, ${(bucketsRes.data || []).length} buckets`
-      );
-    }
+    await loadCrewAndBuckets({ state, set, orchardKey, today, startOfDayNZ, useDelta, lastSync, now });
   } catch (syncError) {
     logger.warn('[Sync] Delta/full sync failed — falling back to simple fetch:', syncError);
     const [pickersRes, bucketsRes] = await Promise.all([
-      storeSyncRepository.getPickersQuery(activeOrchard?.id ?? '', today),
-      storeSyncRepository.getBucketRecordsQuery(activeOrchard?.id ?? '', startOfDayNZ),
+      storeSyncRepository.getPickersQuery(orchardKey, today),
+      storeSyncRepository.getBucketRecordsQuery(orchardKey, startOfDayNZ),
     ]);
     const crewWithAttendance = pickersRes.data?.map(mapPickerWithAttendance) || [];
     set({ crew: crewWithAttendance, bucketRecords: bucketsRes.data || [], lastSyncAt: null });
@@ -243,108 +131,140 @@ export async function fetchOrchardData(
     );
   }
 
-  // Quién está trabajando ahora en otro huerto (la gente rota entre huertos)
   if (activeOrchard?.id) {
-    try {
-      const elsewhere = await storeSyncRepository.getOpenShiftsElsewhere(activeOrchard.id, today);
-      const byPicker = new Map(elsewhere.map(s => [s.picker_id, s]));
-      set(s => ({
-        crew: s.crew.map(p => {
-          const o = byPicker.get(p.id);
-          // Si está fichado aquí, manda este huerto
-          const next = o && !(p.check_in && !p.check_out)
-            ? { orchard_id: o.orchard_id, orchard_name: o.orchards?.name ?? 'another orchard', since: o.check_in }
-            : null;
-          return (p.elsewhere ?? null) === null && next === null ? p : { ...p, elsewhere: next };
-        }),
-      }));
-    } catch (e) {
-      logger.warn('[Sync] Could not load shifts in other orchards:', e);
-    }
-  }
-
-  // Fetch blocks
-  if (activeOrchard?.id) await get().fetchBlocks(activeOrchard.id);
-
-  // Row assignments: el servidor manda (antes solo se pedían si el móvil no
-  // tenía ninguna guardada, y el team leader no veía las nuevas)
-  const existingAssignments = get().rowAssignments;
-  if (activeOrchard?.id) {
-    const { data: serverAssignments, error: raError } = await supabase
-      .from('row_assignments')
-      .select('id, row_number, side, assigned_pickers, completion_percentage, team_leader_id')
-      .eq('orchard_id', activeOrchard.id)
-      .eq('status', 'active')
-      .is('deleted_at', null);
-
-    if (!raError && serverAssignments && serverAssignments.length > 0) {
-      // Usar datos reales del servidor, preservando el side correcto
-      const rebuiltAssignments = serverAssignments.map(ra => ({
-        id: ra.id as string,
-        row_number: ra.row_number as number,
-        side: (ra.side as 'north' | 'south') ?? 'north',
-        assigned_pickers: (ra.assigned_pickers as string[]) ?? [],
-        completion_percentage: (ra.completion_percentage as number) ?? 0,
-        team_leader_id: (ra.team_leader_id as string | null) ?? null,
-      }));
-      set({ rowAssignments: rebuiltAssignments });
-      logger.info(`[Store] Loaded ${rebuiltAssignments.length} row assignments from server`);
-    } else if (!raError && serverAssignments && existingAssignments.length > 0) {
-      // El servidor no tiene ninguna activa: las guardadas en el móvil están caducadas
-      set({ rowAssignments: [] });
-    } else if (existingAssignments.length === 0) {
-      // Fallback: reconstruir desde crew data si el servidor no tiene registros
-      const crewList = get().crew;
-      const rowMap = new Map<string, { row: number; pickers: string[] }>();
-      for (const p of crewList as Picker[]) {
-        if (p.current_row > 0) {
-          const groupKey = p.team_leader_id || p.id;
-          const mapKey = `${groupKey}-${p.current_row}`;
-          if (!rowMap.has(mapKey)) rowMap.set(mapKey, { row: p.current_row, pickers: [] });
-          rowMap.get(mapKey)!.pickers.push(p.id);
-        }
-      }
-      for (const p of crewList as Picker[]) {
-        if (p.current_row > 0 && p.role === 'team_leader') {
-          const mapKey = `${p.id}-${p.current_row}`;
-          if (!rowMap.has(mapKey)) rowMap.set(mapKey, { row: p.current_row, pickers: [] });
-          if (!rowMap.get(mapKey)!.pickers.includes(p.id)) rowMap.get(mapKey)!.pickers.push(p.id);
-        }
-      }
-      const rebuiltAssignments = Array.from(rowMap.values()).map(entry => ({
-        id: `rebuilt-${entry.row}-${entry.pickers[0]}`,
-        row_number: entry.row,
-        side: 'north' as const,
-        assigned_pickers: entry.pickers,
-        completion_percentage: 0,
-      }));
-      if (rebuiltAssignments.length > 0) {
-        set({ rowAssignments: rebuiltAssignments });
-        logger.info(`[Store] Rebuilt ${rebuiltAssignments.length} row assignments from crew data (fallback)`);
-      }
-    }
-  } else if (existingAssignments.length > 0) {
-    logger.info(`[Store] Using ${existingAssignments.length} persisted row assignments`);
-  }
-
-  // Bins del huerto (escaneo de bins del runner y panel de Logística).
-  // Se conservan los dados de alta en el móvil que aún no estén en el servidor.
-  if (activeOrchard?.id) {
-    try {
-      // Import diferido: el store no arrastra el servicio de bins al cargarse
-      const { binService } = await import('@/services/bin.service');
-      const bins = await binService.getBins(activeOrchard.id);
-      set(state => {
-        const serverIds = new Set(bins.map(b => b.id));
-        const localOnly = (state.inventory || []).filter(b => !serverIds.has(b.id) && b.bin_code);
-        return { inventory: [...bins, ...localOnly] };
-      });
-    } catch (e) {
-      logger.warn('[Store] Could not load bins:', e);
-    }
+    await loadShiftsElsewhere(set, activeOrchard.id, today);
+    await get().fetchBlocks(activeOrchard.id);
+    await loadRowAssignments(get, set, activeOrchard.id);
+    await loadBins(set, activeOrchard.id);
+  } else if (get().rowAssignments.length > 0) {
+    logger.info(`[Store] Using ${get().rowAssignments.length} persisted row assignments`);
   }
 
   return activeOrchard;
+}
+
+type ActiveOrchard = { id: string; name?: string; total_rows?: number } | null;
+
+/**
+ * Huerto pedido (el del usuario, desde OrchardDataBootstrap); si no se pasa,
+ * el que ya está cargado (refrescos tras una acción); solo en último caso el primero.
+ */
+async function loadActiveOrchard(targetOrchardId: string | undefined | null): Promise<ActiveOrchard> {
+  let activeOrchard: ActiveOrchard = null;
+  if (targetOrchardId) {
+    const { data } = await supabase.from('orchards').select('*').eq('id', targetOrchardId).single();
+    activeOrchard = data;
+  }
+  return activeOrchard ?? (await storeSyncRepository.getFirstOrchard());
+}
+
+/** Pickers con sus fichajes de hoy + cubetas de hoy, por delta o carga completa */
+async function loadCrewAndBuckets(p: {
+  /** Estado al empezar la sincronización: base del delta */
+  state: HarvestStoreState;
+  set: StoreSetter;
+  orchardKey: string;
+  today: string;
+  startOfDayNZ: string;
+  useDelta: boolean;
+  lastSync: string | null | undefined;
+  now: string;
+}): Promise<void> {
+  const { state, set, orchardKey, today, startOfDayNZ, useDelta, lastSync, now } = p;
+  let pickersQuery = storeSyncRepository.getPickersQuery(orchardKey, today, { onlyStaff: !useDelta });
+  let bucketsQuery = storeSyncRepository.getBucketRecordsQuery(orchardKey, startOfDayNZ);
+
+  if (useDelta) {
+    const safeSyncDate = deltaSinceISO(lastSync!);
+    pickersQuery = pickersQuery.gte('updated_at', safeSyncDate);
+    bucketsQuery = bucketsQuery.gte('updated_at', safeSyncDate);
+    logger.info(`[Sync] Delta mode: fetching changes since ${safeSyncDate}`);
+  } else {
+    pickersQuery = pickersQuery.is('deleted_at', null);
+    bucketsQuery = bucketsQuery.is('deleted_at', null);
+    logger.info('[Sync] Full mode: downloading all active records');
+  }
+
+  // Carga completa por páginas: un día con mucha cuadrilla pasa de las 1000
+  // filas que devuelve PostgREST por petición.
+  const bucketsPromise = useDelta
+    ? bucketsQuery
+    : fetchAllRows<BucketRecord>((from, to) =>
+        storeSyncRepository
+          .getBucketRecordsQuery(orchardKey, startOfDayNZ)
+          .is('deleted_at', null)
+          .order('id')
+          .range(from, to)
+      ).then(data => ({ data, error: null }));
+  const [pickersRes, bucketsRes] = await Promise.all([pickersQuery, bucketsPromise]);
+  if (pickersRes.error) throw pickersRes.error;
+  if (bucketsRes.error) throw bucketsRes.error;
+
+  if (useDelta) {
+    set({
+      crew: mergeCrewDelta(state.crew, pickersRes.data as PickerWithAttendance[]),
+      bucketRecords: mergeBucketDelta(state.bucketRecords, bucketsRes.data as BucketRecord[]),
+      lastSyncAt: now,
+    });
+    logger.info(
+      `[Sync] Delta applied: ${pickersRes.data.length} pickers, ${bucketsRes.data.length} buckets`
+    );
+  } else {
+    const crewWithAttendance = pickersRes.data?.map(mapPickerWithAttendance) || [];
+    set({ crew: crewWithAttendance, bucketRecords: bucketsRes.data || [], lastSyncAt: now });
+    logger.info(
+      `[Sync] Full load: ${crewWithAttendance.length} pickers, ${(bucketsRes.data || []).length} buckets`
+    );
+  }
+}
+
+/** Quién está trabajando ahora en otro huerto (la gente rota entre huertos) */
+async function loadShiftsElsewhere(set: StoreSetter, orchardId: string, today: string): Promise<void> {
+  try {
+    const elsewhere = await storeSyncRepository.getOpenShiftsElsewhere(orchardId, today);
+    set(s => ({ crew: applyElsewhere(s.crew, elsewhere) }));
+  } catch (e) {
+    logger.warn('[Sync] Could not load shifts in other orchards:', e);
+  }
+}
+
+/**
+ * Row assignments: el servidor manda (antes solo se pedían si el móvil no
+ * tenía ninguna guardada, y el team leader no veía las nuevas)
+ */
+async function loadRowAssignments(get: StoreGetter, set: StoreSetter, orchardId: string): Promise<void> {
+  const existing = get().rowAssignments;
+  const { data, error } = await supabase
+    .from('row_assignments')
+    .select('id, row_number, side, assigned_pickers, completion_percentage, team_leader_id')
+    .eq('orchard_id', orchardId)
+    .eq('status', 'active')
+    .is('deleted_at', null);
+
+  const server = (data as ServerRowAssignment[] | null) ?? null;
+  const next = resolveRowAssignments({ server, serverError: !!error, existing, crew: get().crew });
+  if (next === null) return;
+  set({ rowAssignments: next });
+  if (!error && server && server.length > 0) {
+    logger.info(`[Store] Loaded ${next.length} row assignments from server`);
+  } else if (next.length > 0) {
+    logger.info(`[Store] Rebuilt ${next.length} row assignments from crew data (fallback)`);
+  }
+}
+
+/**
+ * Bins del huerto (escaneo de bins del runner y panel de Logística).
+ * Se conservan los dados de alta en el móvil que aún no estén en el servidor.
+ */
+async function loadBins(set: StoreSetter, orchardId: string): Promise<void> {
+  try {
+    // Import diferido: el store no arrastra el servicio de bins al cargarse
+    const { binService } = await import('@/services/bin.service');
+    const bins = await binService.getBins(orchardId);
+    set(state => ({ inventory: mergeBins(bins, state.inventory) }));
+  } catch (e) {
+    logger.warn('[Store] Could not load bins:', e);
+  }
 }
 
 /* ── Realtime Subscriptions ─────────────── */
@@ -398,24 +318,9 @@ export function setupRealtimeSubscriptions(
         const attendanceRecord = payload.new as AttendanceRecord;
         if (attendanceRecord && attendanceRecord.date === todayStr) {
           set(state => ({
-            crew: state.crew.map(p => {
-              if (p.id !== attendanceRecord.picker_id) return p;
-              // Actualiza (o añade) el tramo; uno borrado sale de la lista
-              const shift: AttendanceShift = {
-                id: attendanceRecord.id,
-                orchard_id: attendanceRecord.orchard_id,
-                check_in: attendanceRecord.check_in,
-                check_out: attendanceRecord.check_out,
-                break_start: attendanceRecord.break_start,
-                break_minutes: attendanceRecord.break_minutes,
-              };
-              const others = (p.shifts ?? []).filter(s => !shift.id || s.id !== shift.id);
-              const shifts = attendanceRecord.deleted_at ? others : [...others, shift];
-              const fields = attendanceFields(shifts);
-              // Ficha aquí: ya no está en otro huerto (allí se cerró su tramo)
-              const here = !!fields.check_in && !fields.check_out;
-              return { ...p, ...fields, ...(here ? { elsewhere: null } : {}) };
-            }),
+            crew: state.crew.map(p =>
+              p.id === attendanceRecord.picker_id ? applyAttendanceRecord(p, attendanceRecord) : p
+            ),
           }));
           // Horas y pago de hoy al instante (salida o descanso corregidos)
           get().recalculateIntelligence();
@@ -453,51 +358,12 @@ export function setupRealtimeSubscriptions(
       payload => {
         // Realtime: Team Leader recibe row assignments del Manager inmediatamente
         if (document.hidden) return;
-        const record = payload.new as {
-          id: string;
-          row_number: number;
-          side: string;
-          assigned_pickers: string[];
-          completion_percentage: number;
-          status: string;
-          deleted_at: string | null;
-        };
-
+        const record = payload.new as ServerRowAssignment;
         if (!record?.id) return;
 
-        set(state => {
-          // DELETE o soft-delete: eliminar del store local
-          // Ya no activa (movida, terminada o borrada): fuera de las actuales
-          // (queda en el historial de filas)
-          if (payload.eventType === 'DELETE' || record.deleted_at || (record.status && record.status !== 'active')) {
-            return {
-              rowAssignments: state.rowAssignments.filter(ra => ra.id !== record.id),
-            };
-          }
-
-          // INSERT o UPDATE: upsert en store local
-          const exists = state.rowAssignments.some(ra => ra.id === record.id);
-          const mapped = {
-            id: record.id,
-            row_number: record.row_number,
-            side: (record.side as 'north' | 'south') ?? 'north',
-            assigned_pickers: record.assigned_pickers ?? [],
-            completion_percentage: record.completion_percentage ?? 0,
-            team_leader_id: (record as { team_leader_id?: string | null }).team_leader_id ?? null,
-          };
-
-          if (exists) {
-            return {
-              rowAssignments: state.rowAssignments.map(ra =>
-                ra.id === record.id ? mapped : ra
-              ),
-            };
-          }
-
-          return {
-            rowAssignments: [...state.rowAssignments, mapped],
-          };
-        });
+        set(state => ({
+          rowAssignments: applyRowAssignmentEvent(state.rowAssignments, record, payload.eventType),
+        }));
         logger.info(`[Store] Realtime row_assignment ${payload.eventType}: row ${record.row_number}`);
       }
     )
