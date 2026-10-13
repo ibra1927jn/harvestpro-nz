@@ -30,7 +30,10 @@ serve(async (req) => {
         checkRateLimit(user.id)
 
         const body = await req.json()
-        const { attendance_id, verified_by, current_updated_at } = TimesheetApprovalSchema.parse(body)
+        const { attendance_id, current_updated_at } = TimesheetApprovalSchema.parse(body)
+        // Quien aprueba es quien llama; el verified_by del cuerpo no cuenta
+        // (antes un manager podía anotar a otra persona como aprobadora)
+        const verified_by = user.id
 
         // ── Optimistic Locking Check ─────────────────
         if (current_updated_at) {

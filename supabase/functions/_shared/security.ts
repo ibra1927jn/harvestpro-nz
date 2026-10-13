@@ -246,7 +246,8 @@ export const AttendanceCheckInSchema = z.object({
   action: z.literal('check_in'),
   picker_id: z.string().uuid('picker_id must be a valid UUID'),
   orchard_id: z.string().uuid('orchard_id must be a valid UUID'),
-  verified_by: z.string().uuid().optional(),
+  // Se ignora: quien verifica el fichaje es siempre quien llama (clientes antiguos lo mandan)
+  verified_by: z.string().optional(),
 });
 
 export const AttendanceCheckOutSchema = z.object({
@@ -264,7 +265,8 @@ export const AttendanceCorrectionSchema = z.object({
   // Hora del descanso de 30 min (no pagado) que anota el team leader; null = quitarla
   break_start: z.string().datetime({ offset: true }).nullable().optional(),
   reason: z.string().min(5, 'Correction reason must be at least 5 characters'),
-  admin_id: z.string().uuid('admin_id must be a valid UUID'),
+  // Se ignora: quien corrige es siempre quien llama (antes se guardaba este id)
+  admin_id: z.string().optional(),
 });
 
 export const AttendanceInputSchema = z.discriminatedUnion('action', [
@@ -318,7 +320,9 @@ export const ComplianceCheckSchema = z.object({
 // Timesheet Approval
 export const TimesheetApprovalSchema = z.object({
   attendance_id: z.string().uuid('attendance_id must be a valid UUID'),
-  verified_by: z.string().uuid('verified_by must be a valid UUID'),
+  // Se ignora: quien aprueba es siempre quien llama. La pantalla de Nómina
+  // manda 'current_user' (no es un UUID) y antes toda aprobación daba 400.
+  verified_by: z.string().optional(),
   current_updated_at: z.string().optional(),
 });
 
