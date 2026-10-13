@@ -3,6 +3,8 @@
  */
 import { todayNZST } from '@/utils/nzst';
 import { AttendanceRow, CorrectionForm, formatTime, calculateHours, isAbnormal } from './timesheet-utils';
+import { statusLabel } from '@/i18n/statusLabel';
+import { useTranslation } from '@/i18n';
 
 interface TimesheetRowProps {
   record: AttendanceRow;
@@ -18,6 +20,7 @@ interface TimesheetRowProps {
 export default function TimesheetRow({
   record, isEditing, form, saving, onChangeForm, onStartEdit, onCancel, onSave,
 }: TimesheetRowProps) {
+  const { t } = useTranslation();
   const hours = calculateHours(record);
   const unclosed = !!record.check_in && !record.check_out && record.date < todayNZST();
   const abnormal = isAbnormal(hours);
@@ -29,7 +32,7 @@ export default function TimesheetRow({
       {/* Picker Name */}
       <td className="px-4 py-3">
         <div className="font-medium text-text-main">
-          {record.picker?.name || 'Unknown'}
+          {record.picker?.name || t('common.unknown')}
         </div>
         <div className="text-xs text-text-muted">{record.picker?.picker_id}</div>
       </td>
@@ -41,7 +44,7 @@ export default function TimesheetRow({
             type="time"
             value={form.checkIn}
             onChange={e => onChangeForm({ checkIn: e.target.value })}
-            title="Check-in time"
+            title={t('tse.check_in_time')}
             className="px-2 py-1 border border-amber-300 rounded-lg text-sm w-24 focus:ring-2 focus:ring-amber-500 outline-none"
           />
         ) : (
@@ -56,7 +59,7 @@ export default function TimesheetRow({
             type="time"
             value={form.checkOut}
             onChange={e => onChangeForm({ checkOut: e.target.value })}
-            title="Check-out time"
+            title={t('tse.check_out_time')}
             className="px-2 py-1 border border-amber-300 rounded-lg text-sm w-24 focus:ring-2 focus:ring-amber-500 outline-none"
           />
         ) : (
@@ -80,13 +83,13 @@ export default function TimesheetRow({
             type="time"
             value={form.breakStart}
             onChange={e => onChangeForm({ breakStart: e.target.value })}
-            title="Break start time"
+            title={t('tse.break_start')}
             className="px-2 py-1 border border-amber-300 rounded-lg text-sm w-24 focus:ring-2 focus:ring-amber-500 outline-none"
           />
         ) : record.break_start ? (
           <span className="font-mono">{formatTime(record.break_start)}</span>
         ) : (
-          <span className="text-xs text-text-muted" title="Not recorded: 30 min deducted on shifts over 4 h">auto</span>
+          <span className="text-xs text-text-muted" title={t('tse.auto_break_title')}>{t('tse.auto')}</span>
         )}
       </td>
 
@@ -94,9 +97,9 @@ export default function TimesheetRow({
       <td className="px-4 py-3">
         <span
           className={`font-mono font-bold ${abnormal || unclosed ? 'text-red-600' : 'text-text-sub'}`}
-          title={unclosed ? 'Shift not closed — add the check-out time' : undefined}
+          title={unclosed ? t('tse.unclosed_title') : undefined}
         >
-          {hours !== null ? `${hours}h` : unclosed ? 'Not closed' : '—'}
+          {hours !== null ? `${hours}h` : unclosed ? t('tse.not_closed') : '—'}
         </span>
         {abnormal && (
           <span aria-hidden="true" className="material-symbols-outlined text-sm inline ml-1 text-red-500">
@@ -110,10 +113,10 @@ export default function TimesheetRow({
         {record.corrected_at ? (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
             <span aria-hidden="true" className="material-symbols-outlined text-xs">edit</span>
-            Corrected
+            {t('tse.corrected_badge')}
           </span>
         ) : (
-          <span className="text-xs text-text-muted">{record.status}</span>
+          <span className="text-xs text-text-muted">{statusLabel(t, record.status)}</span>
         )}
       </td>
 
@@ -123,7 +126,7 @@ export default function TimesheetRow({
           <div className="space-y-2">
             <input
               type="text"
-              placeholder="Reason for correction *"
+              placeholder={t('tse.reason_placeholder')}
               value={form.reason}
               onChange={e => onChangeForm({ reason: e.target.value })}
               className="w-full px-2 py-1 border border-amber-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none"
@@ -132,7 +135,7 @@ export default function TimesheetRow({
               <button
                 onClick={onCancel}
                 className="p-1.5 text-text-muted hover:text-text-sub rounded-lg"
-                aria-label="Cancel edit"
+                aria-label={t('tse.cancel_edit')}
                 disabled={saving}
               >
                 <span aria-hidden="true" className="material-symbols-outlined text-base">close</span>
@@ -141,7 +144,7 @@ export default function TimesheetRow({
                 onClick={() => onSave(record)}
                 disabled={saving || !form.reason.trim()}
                 className="p-1.5 text-green-600 hover:text-green-700 rounded-lg disabled:opacity-50"
-                aria-label="Save correction"
+                aria-label={t('tse.save_correction')}
               >
                 {saving ? (
                   <span aria-hidden="true" className="material-symbols-outlined text-base animate-spin">
@@ -157,7 +160,7 @@ export default function TimesheetRow({
           <button
             onClick={() => onStartEdit(record)}
             className="p-2 text-text-muted hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-            aria-label={`Edit ${record.picker?.name}'s timesheet`}
+            aria-label={t('tse.edit_of', { name: record.picker?.name ?? '' })}
           >
             <span aria-hidden="true" className="material-symbols-outlined text-base">edit</span>
           </button>
