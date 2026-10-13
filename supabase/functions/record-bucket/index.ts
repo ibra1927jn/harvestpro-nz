@@ -71,6 +71,11 @@ async function insertScan(supabase: any, row: Record<string, unknown> & { scanne
             if (text.includes('picker_scan_unique') && !Number.isNaN(base)) continue
             return { status: 'duplicate' }
         }
+        // Los triggers (día/semana de pago cerrados) saltan ANTES que la clave
+        // única: un reenvío de algo ya guardado volvía "rejected" aunque la
+        // cubeta está en la tabla (y pagada). Si el id ya existe es "duplicate".
+        const { data: existing } = await supabase.from('bucket_records').select('id').eq('id', row.id).maybeSingle()
+        if (existing) return { status: 'duplicate' }
         // Errores de datos o de permisos (42501: RLS, p. ej. otro huerto o persona
         // archivada) → rechazo definitivo; el resto (BD caída…) → reintentar luego.
         return { status: isPermanent(code) ? 'rejected' : 'retry', reason: error.message }

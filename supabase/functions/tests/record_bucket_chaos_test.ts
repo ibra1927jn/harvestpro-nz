@@ -9,7 +9,9 @@
  * CHAOS_ROUNDS=<n> sube el número de rondas (por defecto 3).
  */
 import { assertEquals } from 'https://deno.land/std@0.168.0/testing/asserts.ts'
-import { call, cleanupAll, makeOrchard, makePicker, makeUser, must, service, show, testOpts } from './_helpers.ts'
+import {
+    addDays, call, cleanupAll, makeOrchard, makePicker, makeUser, must, nzTime, onCleanup, randomMonday, service, show, testOpts,
+} from './_helpers.ts'
 
 type Result = { id: string | null; status: string; reason?: string }
 
@@ -54,6 +56,32 @@ Deno.test({ name: 'record-bucket chaos', ...testOpts, fn: async t => {
             assertEquals((rb.json.results as Result[])[0].status, 'saved', show(rb))
             const { count } = await service.from('bucket_records').select('id', { count: 'exact', head: true }).in('id', [a.id, b.id])
             assertEquals(count, 2)
+        })
+
+        await t.step('resend of a scan saved before the pay week was closed is "duplicate", not "rejected"', async () => {
+            // El móvil subió el lote, el servidor guardó, la respuesta no llegó;
+            // payroll cierra la semana; el móvil reenvía. Antes: PAY_WEEK_CLOSED
+            // (el trigger va antes que la clave única) y el runner veía rechazada
+            // una cubeta que sí está pagada.
+            const monday = randomMonday(2021)
+            const scan = { id: crypto.randomUUID(), picker_id: pickers[2].badge, orchard_id: orchard, scanned_at: nzTime(addDays(monday, 2), '10:00') }
+            const first = await call('record-bucket', { token: runnerA.token, body: { scans: [scan] } })
+            assertEquals((first.json.results as Result[])[0].status, 'saved', show(first))
+            must(await service.from('pay_weeks').insert({
+                week_start: monday, week_end: addDays(monday, 6), status: 'closed',
+                closed_at: new Date().toISOString(), snapshot: { eft: true }, total_earnings: 0,
+            }), 'pay_weeks.insert')
+            onCleanup(async () => {
+                await service.from('pay_weeks').update({ status: 'open' }).eq('week_start', monday)
+                await service.from('bucket_records').delete().eq('id', scan.id)
+                await service.from('pay_weeks').delete().eq('week_start', monday)
+            })
+            const again = await call('record-bucket', { token: runnerA.token, body: { scans: [scan] } })
+            assertEquals((again.json.results as Result[])[0].status, 'duplicate', show(again))
+            // Una cubeta nueva en esa semana sí se rechaza
+            const late = { ...scan, id: crypto.randomUUID(), scanned_at: nzTime(addDays(monday, 2), '11:00') }
+            const r = await call('record-bucket', { token: runnerA.token, body: { scans: [late] } })
+            assertEquals((r.json.results as Result[])[0].status, 'rejected', show(r))
         })
 
         await t.step(`same batch sent ${ROUNDS}x4 times in parallel (retries, two tabs): one row per id`, async () => {
