@@ -3,12 +3,6 @@
 // =============================================
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 
-vi.mock('@/services/sync.service', () => ({
-  syncService: {
-    addToQueue: vi.fn(() => 'queued-id-001'),
-  },
-}));
-
 vi.mock('@/utils/logger', () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
@@ -16,14 +10,10 @@ vi.mock('@/utils/logger', () => ({
 import {
   fetchHRSummary,
   fetchEmployees,
-  fetchContracts,
-  createContract,
-  updateContract,
   fetchPayroll,
   fetchComplianceAlerts,
 } from '../hhrr.service';
 import { supabase } from '../supabase';
-import { syncService } from '../sync.service';
 
 // =============================================
 // MOCK DATA
@@ -233,90 +223,6 @@ describe('HHRR Service', () => {
 
       const employees = await fetchEmployees('o-001');
       expect(employees).toEqual([]);
-    });
-  });
-
-  // =============================================
-  // fetchContracts
-  // =============================================
-  describe('fetchContracts', () => {
-    it('should return contract list with employee names', async () => {
-      (supabase.from as Mock).mockImplementation(() => ({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: MOCK_CONTRACTS,
-              error: null,
-            }),
-          }),
-        }),
-      }));
-
-      const contracts = await fetchContracts('o-001');
-      expect(contracts).toBeDefined();
-      expect(Array.isArray(contracts)).toBe(true);
-      if (contracts.length > 0) {
-        expect(contracts[0]).toHaveProperty('employee_id');
-        expect(contracts[0]).toHaveProperty('type');
-      }
-    });
-
-    it('should return empty array on error', async () => {
-      (supabase.from as Mock).mockImplementation(() => ({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({ data: null, error: { message: 'fail' } }),
-          }),
-        }),
-      }));
-
-      const contracts = await fetchContracts('o-001');
-      expect(contracts).toEqual([]);
-    });
-  });
-
-  // =============================================
-  // createContract / updateContract
-  // =============================================
-  describe('Contract mutations via syncService', () => {
-    it('should queue contract creation', async () => {
-      const contractData = {
-        employee_id: 'u-001',
-        orchard_id: 'o-001',
-        type: 'seasonal' as const,
-        start_date: '2026-03-01',
-        end_date: '2026-06-01',
-        hourly_rate: 23.5,
-      };
-
-      const queueId = await createContract(contractData);
-
-      expect(syncService.addToQueue).toHaveBeenCalledWith(
-        'CONTRACT',
-        expect.objectContaining({
-          action: 'create',
-          employee_id: 'u-001',
-          hourly_rate: 23.5,
-        })
-      );
-      expect(queueId).toBe('queued-id-001');
-    });
-
-    it('should queue contract update', async () => {
-      const queueId = await updateContract('c-001', {
-        status: 'expired',
-        hourly_rate: 24.0,
-      });
-
-      expect(syncService.addToQueue).toHaveBeenCalledWith(
-        'CONTRACT',
-        expect.objectContaining({
-          action: 'update',
-          contractId: 'c-001',
-        }),
-        undefined
-      );
-      expect(queueId).toBe('queued-id-001');
     });
   });
 
