@@ -31,7 +31,7 @@ test('QC grades a picker from the phone', async ({ page }) => {
   await snap(page, test.info(), 'qc-grade-selected');
   await gradeA.click();
 
-  await expect(page.getByText(/Logged/)).toBeVisible();
+  await expect(page.getByText(/Logged/).and(page.locator(':not([aria-live])'))).toBeVisible();
   await expect.poll(() => qcInspectionCount(picker!.id), { timeout: 20_000 }).toBe(1);
 
   const layout = await layoutReport(page);
@@ -46,7 +46,7 @@ test('team leader sees the team and the row history', async ({ page }) => {
 
   await mainNav(page)
     .or(page.getByRole('button', { name: 'Open menu' }))
-    .filter({ visible: true })
+    .and(page.locator(':not([aria-live])'))
     .first()
     .waitFor();
   const bottom = mainNav(page).locator('button[aria-label="Map"]');
