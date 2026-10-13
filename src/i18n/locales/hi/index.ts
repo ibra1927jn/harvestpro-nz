@@ -20,6 +20,7 @@ import legal from './legal';
 import login from './login';
 import logistics2 from './logistics2';
 import manager from './manager';
+import manager2 from './manager2';
 import payroll from './payroll';
 import pickerDetails from './pickerDetails';
 import qc from './qc';
@@ -52,6 +53,7 @@ const hi: TranslationDict = {
     ...login,
     ...logistics2,
     ...manager,
+    ...manager2,
     ...payroll,
     ...pickerDetails,
     ...qc,
