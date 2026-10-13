@@ -1,4 +1,4 @@
-// deno test --allow-all supabase/functions/_shared/security.test.ts
+// deno test --allow-all supabase/functions/_shared/security_schema_test.ts
 // Esquemas de entrada de las Edge Functions (Zod 4).
 import { AuditLogBatchSchema } from './security.ts';
 
