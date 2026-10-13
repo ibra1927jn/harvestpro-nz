@@ -107,7 +107,7 @@ export async function loadUserProfile(userId: string): Promise<{
 
   // 5. Build state update
   const stateUpdate: Partial<AuthState> = {
-    user: null, // Will be set by caller with session.user
+    // `user` no se toca aquí: lo pone onAuthStateChange/signIn con session.user
     appUser: userData as AppUser,
     currentRole: roleEnum,
     userName: userData?.full_name || '',

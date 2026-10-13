@@ -37,7 +37,8 @@ export function StoragePersistBanner() {
   return (
     <div
       role="alert"
-      className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-amber-950 px-4 py-2 flex items-center justify-between text-sm font-medium shadow-md"
+      // En el flujo (no fixed): antes tapaba el header y sus botones en el móvil
+      className="relative z-40 bg-amber-500 text-amber-950 px-4 py-2 flex items-center justify-between text-sm font-medium shadow-md"
     >
       <span>
         ⚠️ {t('pwa.storage_warning')}
@@ -45,7 +46,7 @@ export function StoragePersistBanner() {
       <button
         onClick={handleDismiss}
         aria-label={t('common.close')}
-        className="ml-4 rounded p-1 hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-800"
+        className="ml-4 shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-800"
       >
         ✕
       </button>

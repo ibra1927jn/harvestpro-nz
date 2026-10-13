@@ -172,7 +172,8 @@ const UnifiedMessagingView = () => {
       />
 
       <main
-        className={`flex-1 flex flex-col ${!selectedChat && !isSidebarOpen ? 'hidden md:flex' : 'flex'}`}
+        // Móvil: lista o conversación, nunca las dos a la vez (antes se partía la pantalla en dos)
+        className={`flex-1 flex flex-col ${isSidebarOpen ? 'hidden md:flex' : 'flex'}`}
       >
         {actionError && (
           <div role="alert" className="m-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">{actionError}</div>

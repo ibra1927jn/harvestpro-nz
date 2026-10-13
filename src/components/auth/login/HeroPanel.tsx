@@ -17,6 +17,9 @@ const HeroPanel: React.FC = () => {
             <img
                 src="/orchard-hero.png"
                 alt="New Zealand Orchard"
+                // lazy: el panel está oculto en el móvil y así no se descarga (123 KB en 3G)
+                loading="lazy"
+                decoding="async"
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out"
                 style={{ transform: `scale(1.05) translate(${offset.x * -8}px, ${offset.y * -8}px)` }}
             />

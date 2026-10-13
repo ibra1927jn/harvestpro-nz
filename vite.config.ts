@@ -27,6 +27,11 @@ export default defineConfig(() => {
           description: 'Harvest workforce management platform for New Zealand orchards',
           theme_color: '#16a34a',
           background_color: '#1a1a2e',
+          // Antes en public/manifest.json (había dos manifests y solo valía el primero)
+          start_url: '/',
+          display: 'standalone',
+          orientation: 'portrait-primary',
+          categories: ['business', 'productivity'],
           icons: [
             {
               src: '/icons/icon.svg',
@@ -58,6 +63,17 @@ export default defineConfig(() => {
                 cacheName: 'supabase-api-cache',
                 networkTimeoutSeconds: 5,
                 cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              // Ficheros de fuentes (iconos incluidos): sin esto, sin red los iconos
+              // salen como texto ("local_shipping") cuando caduca la caché HTTP
+              urlPattern: ({ url }) => url.origin === 'https://fonts.gstatic.com',
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts-webfonts',
+                cacheableResponse: { statuses: [0, 200] },
+                expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
               },
             },
             {

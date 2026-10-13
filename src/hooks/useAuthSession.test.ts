@@ -81,6 +81,17 @@ describe('loadUserProfile', () => {
     expect(result.result.orchardId).toBe('o1');
   });
 
+  it('does not wipe the session user already stored by onAuthStateChange', async () => {
+    // Bug: devolvía user: null y al aplicarlo machacaba el usuario de la sesión
+    // (MFAGuard no veía user.id y la confianza del dispositivo nunca funcionaba)
+    mockGetUserProfile.mockResolvedValue({
+      data: { id: 'u1', full_name: 'Alice', email: 'a@test.com', role: 'manager', orchard_id: 'o1' },
+      error: null,
+    });
+    const result = await loadUserProfile('u1');
+    expect('user' in result.stateUpdate).toBe(false);
+  });
+
   it('auto-assigns orchard when user has none', async () => {
     mockGetUserProfile.mockResolvedValue({
       data: {

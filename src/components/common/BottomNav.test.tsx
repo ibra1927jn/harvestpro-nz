@@ -57,6 +57,19 @@ describe('BottomNav', () => {
         expect(badgeDots.length).toBeGreaterThanOrEqual(1);
     });
 
+    it('does not print a stray "0" when the badge count is zero', () => {
+        // Bug: {badge && ...} pintaba "0" junto al icono (visto en HR > Employees)
+        render(
+            <BottomNav
+                tabs={[{ id: 'employees', label: 'Employees', icon: 'group', badge: 0 }]}
+                activeTab="employees"
+                onTabChange={vi.fn()}
+            />
+        );
+        const button = screen.getByRole('button', { name: 'Employees' });
+        expect(button.textContent).not.toContain('0');
+    });
+
     it('renders icon text for each tab', () => {
         const { container } = render(<BottomNav tabs={mockTabs} activeTab="dashboard" onTabChange={vi.fn()} />);
         const icons = container.querySelectorAll('.material-symbols-outlined');
