@@ -4,7 +4,8 @@
  * Used by: Admin, HR Admin, Payroll Admin, Manager (desktop breakpoint)
  * Features: Collapsible sidebar, header with user info, content area
  */
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { useAuth } from '@/context/AuthContext';
 import { useMessaging } from '@/context/MessagingContext';
 import { useNavigate } from 'react-router-dom';
@@ -54,6 +55,9 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
         try { return localStorage.getItem('sidebar-collapsed') === 'true'; } catch { return false; }
     });
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const drawerRef = useRef<HTMLElement>(null);
+    // Menú móvil como diálogo modal: foco dentro, Escape cierra, foco de vuelta al botón
+    useDialogA11y(drawerRef, { onClose: () => setMobileMenuOpen(false), enabled: mobileMenuOpen });
     const [showNotifications, setShowNotifications] = useState(false);
 
     const handleSignOut = async () => {
@@ -81,17 +85,14 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
 
     return (
         <div className="desktop-layout h-screen flex bg-slate-50 font-display overflow-hidden">
-            {/* Skip-to-content link for keyboard users */}
-            <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:rounded-lg focus:shadow-lg">
-                Skip to content
-            </a>
+            {/* Skip link: lo pone index.html (antes había dos) */}
             {/* ── Sidebar ── */}
             <aside className={`desktop-sidebar bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out ${collapsed ? 'w-[68px]' : 'w-[260px]'} hidden lg:flex`}>
                 {/* Logo / Brand */}
                 <div className="h-16 flex items-center px-4 border-b border-slate-100">
                     <div className="flex items-center gap-3 overflow-hidden">
                         <div className={`w-9 h-9 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0`}>
-                            <span className="material-symbols-outlined text-white text-[20px]">{titleIcon}</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-white text-[20px]">{titleIcon}</span>
                         </div>
                         {!collapsed && (
                             <div className="min-w-0">
@@ -120,7 +121,7 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                                 title={collapsed ? item.label : undefined}
                                 aria-label={item.label}
                             >
-                                <span className={`material-symbols-outlined text-[20px] flex-shrink-0 ${isActive ? 'font-variation-fill' : ''}`}>
+                                <span aria-hidden="true" className={`material-symbols-outlined text-[20px] flex-shrink-0 ${isActive ? 'font-variation-fill' : ''}`}>
                                     {item.icon}
                                 </span>
                                 {!collapsed && (
@@ -147,7 +148,7 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                         className="w-full flex items-center justify-center p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
                         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                     >
-                        <span className="material-symbols-outlined text-[18px]">
+                        <span aria-hidden="true" className="material-symbols-outlined text-[18px]">
                             {collapsed ? 'chevron_right' : 'chevron_left'}
                         </span>
                     </button>
@@ -177,15 +178,16 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                         className="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100"
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                         aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                        aria-expanded={mobileMenuOpen}
                     >
-                        <span className="material-symbols-outlined text-[22px]">
+                        <span aria-hidden="true" className="material-symbols-outlined text-[22px]">
                             {mobileMenuOpen ? 'close' : 'menu'}
                         </span>
                     </button>
 
                     {/* Breadcrumb */}
                     <div className="flex items-center gap-2">
-                        <span className={`material-symbols-outlined text-[20px] ${accent.text}`}>{titleIcon}</span>
+                        <span aria-hidden="true" className={`material-symbols-outlined text-[20px] ${accent.text}`}>{titleIcon}</span>
                         <h2 className="text-base font-semibold text-slate-800">{title}</h2>
                         <span className="text-slate-300">•</span>
                         <span className="text-sm text-slate-500 capitalize">
@@ -202,7 +204,7 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                                 className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 relative"
                                 aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
                             >
-                                <span className="material-symbols-outlined text-[20px]">notifications</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-[20px]">notifications</span>
                                 {unreadCount > 0 && (
                                     <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
                                         {unreadCount > 99 ? '99+' : unreadCount}
@@ -222,13 +224,14 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                             title="Sign Out"
                             aria-label="Sign out"
                         >
-                            <span className="material-symbols-outlined text-[20px]">logout</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-[20px]">logout</span>
                         </button>
                     </div>
                 </header>
 
                 {/* Content */}
-                <main id="main-content" className="flex-1 overflow-y-auto p-4 lg:p-6">
+                {/* tabIndex 0: es el contenedor con scroll, debe poder enfocarse para scroll con teclado */}
+                <main id="main-content" tabIndex={0} className="flex-1 overflow-y-auto p-4 lg:p-6">
                     {children}
                 </main>
             </div>
@@ -237,11 +240,17 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
             {mobileMenuOpen && (
                 <div className="fixed inset-0 z-50 lg:hidden">
                     <div className="absolute inset-0 bg-black/30" onClick={() => setMobileMenuOpen(false)} />
-                    <aside className="absolute left-0 top-0 h-full w-[280px] bg-white shadow-xl flex flex-col">
+                    <aside
+                        ref={drawerRef}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Menu"
+                        className="absolute left-0 top-0 h-full w-[280px] bg-white shadow-xl flex flex-col"
+                    >
                         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100">
                             <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-white text-[20px]">{titleIcon}</span>
+                                    <span aria-hidden="true" className="material-symbols-outlined text-white text-[20px]">{titleIcon}</span>
                                 </div>
                                 <div>
                                     <h1 className="text-sm font-bold text-slate-800">HarvestPro</h1>
@@ -249,7 +258,7 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                                 </div>
                             </div>
                             <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-slate-400" aria-label="Close menu">
-                                <span className="material-symbols-outlined">close</span>
+                                <span aria-hidden="true" className="material-symbols-outlined">close</span>
                             </button>
                         </div>
 
@@ -265,7 +274,7 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                                             ${isActive ? `${accent.bg} ${accent.text}` : `text-slate-600 ${accent.hover}`}
                                         `}
                                     >
-                                        <span className={`material-symbols-outlined text-[20px] ${isActive ? 'font-variation-fill' : ''}`}>
+                                        <span aria-hidden="true" className={`material-symbols-outlined text-[20px] ${isActive ? 'font-variation-fill' : ''}`}>
                                             {item.icon}
                                         </span>
                                         <span>{item.label}</span>
@@ -296,7 +305,7 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                                 className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
                                 aria-label="Sign out"
                             >
-                                <span className="material-symbols-outlined text-[18px]">logout</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-[18px]">logout</span>
                                 Sign Out
                             </button>
                         </div>

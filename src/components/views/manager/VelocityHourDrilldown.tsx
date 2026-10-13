@@ -6,7 +6,8 @@
  * - Cierre con ESC o click en backdrop.
  * - Slide-up en mobile, centrado en desktop.
  */
-import React, { useEffect } from 'react';
+import React, { useRef } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { useTranslation } from '@/i18n';
 import type { DrilldownData, DrilldownPickerRow } from '@/services/harvestMetrics/drilldown';
 
@@ -20,7 +21,7 @@ function TrendBadge({ trend }: { trend: number }) {
     if (trend > 0) {
         return (
             <span className="inline-flex items-center gap-0.5 text-green-700 font-semibold">
-                <span className="material-symbols-outlined text-[14px]">trending_up</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-[14px]">trending_up</span>
                 +{trend}
             </span>
         );
@@ -28,7 +29,7 @@ function TrendBadge({ trend }: { trend: number }) {
     if (trend < 0) {
         return (
             <span className="inline-flex items-center gap-0.5 text-red-500 font-semibold">
-                <span className="material-symbols-outlined text-[14px]">trending_down</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-[14px]">trending_down</span>
                 {trend}
             </span>
         );
@@ -39,15 +40,9 @@ function TrendBadge({ trend }: { trend: number }) {
 const VelocityHourDrilldown: React.FC<VelocityHourDrilldownProps> = ({ isOpen, data, onClose }) => {
     const { t } = useTranslation();
 
-    // Cierre con tecla ESC
-    useEffect(() => {
-        if (!isOpen) return;
-        const handler = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-        };
-        document.addEventListener('keydown', handler);
-        return () => document.removeEventListener('keydown', handler);
-    }, [isOpen, onClose]);
+    // Escape cierra, Tab atrapado y foco de vuelta al abrir/cerrar
+    const panelRef = useRef<HTMLDivElement>(null);
+    useDialogA11y(panelRef, { onClose, enabled: isOpen });
 
     if (!isOpen) return null;
 
@@ -62,6 +57,7 @@ const VelocityHourDrilldown: React.FC<VelocityHourDrilldownProps> = ({ isOpen, d
             <div
                 className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[80vh] overflow-hidden flex flex-col"
                 style={{ animation: 'slideUpFade 200ms ease-out' }}
+                ref={panelRef}
                 onClick={e => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
@@ -83,7 +79,7 @@ const VelocityHourDrilldown: React.FC<VelocityHourDrilldownProps> = ({ isOpen, d
                         className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors"
                         aria-label="Close"
                     >
-                        <span className="material-symbols-outlined text-slate-500 text-[18px]">close</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-slate-500 text-[18px]">close</span>
                     </button>
                 </div>
 
@@ -91,7 +87,7 @@ const VelocityHourDrilldown: React.FC<VelocityHourDrilldownProps> = ({ isOpen, d
                 <div className="overflow-y-auto flex-1">
                     {!data || data.pickers.length === 0 ? (
                         <div className="p-8 text-center">
-                            <span className="material-symbols-outlined text-3xl text-slate-300 block mb-2">
+                            <span aria-hidden="true" className="material-symbols-outlined text-3xl text-slate-300 block mb-2">
                                 hourglass_empty
                             </span>
                             <p className="text-sm text-slate-400">

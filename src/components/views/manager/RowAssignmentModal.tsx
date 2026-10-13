@@ -3,7 +3,8 @@
  *
  * Sub-components: RowTeamDisplay, RowGrid
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { useHarvestStore as useHarvest } from '@/stores/useHarvestStore';
 import { Picker } from '@/types';
 import RowTeamDisplay from './RowTeamDisplay';
@@ -23,6 +24,9 @@ interface TeamOnRow {
 }
 
 const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, initialRow = 1, onViewPicker }) => {
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useDialogA11y(dialogRef, { onClose });
+
     const { assignRows, crew, orchard, rowAssignments } = useHarvest();
     const orchardBlocks = useHarvest(s => s.orchardBlocks);
     const selectedBlockId = useHarvest(s => s.selectedBlockId);
@@ -110,7 +114,7 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, initia
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
-            <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl relative overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Assign rows" className="bg-white w-full max-w-sm rounded-2xl shadow-2xl relative overflow-hidden" onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
                 <div className="px-5 pt-5 pb-3 border-b border-slate-100">
                     <div className="flex items-center justify-between">
@@ -121,8 +125,8 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, initia
                                 {' · '}{t('assignModal.subtitle').replace('{occupiedCount}', String(occupiedCount)).replace('{totalRows}', String(blockRows.length))}
                             </p>
                         </div>
-                        <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors">
-                            <span className="material-symbols-outlined text-slate-500 text-lg">close</span>
+                        <button aria-label="Close" onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors">
+                            <span aria-hidden="true" className="material-symbols-outlined text-slate-500 text-lg">close</span>
                         </button>
                     </div>
                 </div>

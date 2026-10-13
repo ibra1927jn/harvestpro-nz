@@ -9,7 +9,8 @@
  * Triggered globalmente via Zustand UISlice (openPickerProfile).
  * Datos provistos por usePickerDrawerData — misma fuente que Dashboard.
  */
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { useTranslation } from '@/i18n';
 import { usePickerDrawerData } from './usePickerDrawerData';
@@ -36,6 +37,8 @@ const PickerDrawer: React.FC = () => {
     const [activeTab, setActiveTab] = useState<DrawerTab>('today');
 
     const data = usePickerDrawerData(pickerId);
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useDialogA11y(dialogRef, { onClose: closeDrawer, enabled: !!pickerId });
 
     if (!pickerId) return null;
 
@@ -67,13 +70,13 @@ const PickerDrawer: React.FC = () => {
             />
 
             {/* Drawer */}
-            <div className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-50 overflow-y-auto animate-slide-in-right">
+            <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={displayName} className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-50 overflow-y-auto animate-slide-in-right">
                 {/* Botón de cierre */}
-                <button
+                <button aria-label="Close"
                     onClick={closeDrawer}
                     className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors z-10"
                 >
-                    <span className="material-symbols-outlined text-lg">close</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-lg">close</span>
                 </button>
 
                 {isHistoryLoading && !picker ? (
@@ -87,7 +90,7 @@ const PickerDrawer: React.FC = () => {
                 ) : notFound ? (
                     <div className="flex items-center justify-center h-full">
                         <div className="text-center">
-                            <span className="material-symbols-outlined text-5xl text-slate-300 mb-2 block">
+                            <span aria-hidden="true" className="material-symbols-outlined text-5xl text-slate-300 mb-2 block">
                                 person_off
                             </span>
                             <p className="text-sm text-text-muted">{t('panel.not_found')}</p>

@@ -6,7 +6,8 @@
  *
  * Step content is split into dedicated components under setup-wizard/.
  */
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { logger } from '@/utils/logger';
 import { createOrchardSetup, type OrchardSetupData } from '@/services/setup.service';
 import { STEPS, INITIAL_DATA, type WizardData } from './setup-wizard/wizard.types';
@@ -20,6 +21,8 @@ interface SetupWizardProps {
 }
 
 export default function SetupWizard({ onComplete, onCancel }: SetupWizardProps) {
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useDialogA11y(dialogRef, { onClose: onCancel });
     const [step, setStep] = useState(0);
     const [data, setData] = useState<WizardData>({ ...INITIAL_DATA });
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,21 +93,21 @@ export default function SetupWizard({ onComplete, onCancel }: SetupWizardProps) 
 
     return (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95">
+            <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="setup-wizard-title" className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95">
 
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-border-light flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center">
-                            <span className="material-symbols-outlined text-xl text-emerald-600">rocket_launch</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-xl text-emerald-600">rocket_launch</span>
                         </div>
                         <div>
-                            <h2 className="text-lg font-semibold text-text-primary">New Orchard Setup</h2>
+                            <h2 id="setup-wizard-title" className="text-lg font-semibold text-text-primary">New Orchard Setup</h2>
                             <p className="text-xs text-text-secondary">Step {step + 1} of {STEPS.length}</p>
                         </div>
                     </div>
                     <button onClick={onCancel} className="text-text-muted hover:text-text-secondary" aria-label="Close wizard">
-                        <span className="material-symbols-outlined">close</span>
+                        <span aria-hidden="true" className="material-symbols-outlined">close</span>
                     </button>
                 </div>
 
@@ -117,7 +120,7 @@ export default function SetupWizard({ onComplete, onCancel }: SetupWizardProps) 
                                     i < step ? 'bg-emerald-50 text-emerald-600' :
                                         'bg-background-light text-text-muted'
                                     }`}>
-                                    <span className="material-symbols-outlined text-sm">
+                                    <span aria-hidden="true" className="material-symbols-outlined text-sm">
                                         {i < step ? 'check_circle' : s.icon}
                                     </span>
                                     <span className="hidden sm:inline">{s.label}</span>
@@ -143,7 +146,7 @@ export default function SetupWizard({ onComplete, onCancel }: SetupWizardProps) 
                                 onClick={() => setStep(s => s - 1)}
                                 className="flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary"
                             >
-                                <span className="material-symbols-outlined text-base">arrow_back</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-base">arrow_back</span>
                                 Back
                             </button>
                         )}
@@ -164,7 +167,7 @@ export default function SetupWizard({ onComplete, onCancel }: SetupWizardProps) 
                                 className="flex items-center gap-1 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 Next
-                                <span className="material-symbols-outlined text-base">arrow_forward</span>
+                                <span aria-hidden="true" className="material-symbols-outlined text-base">arrow_forward</span>
                             </button>
                         ) : (
                             <button
@@ -174,12 +177,12 @@ export default function SetupWizard({ onComplete, onCancel }: SetupWizardProps) 
                             >
                                 {isSubmitting ? (
                                     <>
-                                        <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-base animate-spin">progress_activity</span>
                                         Creating...
                                     </>
                                 ) : (
                                     <>
-                                        <span className="material-symbols-outlined text-base">check_circle</span>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-base">check_circle</span>
                                         Create Orchard
                                     </>
                                 )}

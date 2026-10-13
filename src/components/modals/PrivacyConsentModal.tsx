@@ -13,7 +13,8 @@
  * @module components/modals/PrivacyConsentModal
  * @see https://www.legislation.govt.nz/act/public/2020/0031/latest/LMS23223.html
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { supabase } from '@/services/supabase';
 import { logger } from '@/utils/logger';
 import { i18n } from '@/services/i18n.service';
@@ -106,11 +107,16 @@ const PrivacyConsentModal: React.FC<PrivacyConsentModalProps> = ({
     }
   }, [userId, userRole, onConsentGiven, t]);
 
+  // Consentimiento obligatorio: sin Escape, pero el foco no se escapa del diálogo
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogA11y(dialogRef, { closeOnEscape: false });
+
   const sections = getConsentSections();
   const buttonDisabled = isSubmitting || !hasScrolledToBottom;
 
   return (
     <div
+      ref={dialogRef}
       data-testid="privacy-consent-modal"
       role="dialog"
       aria-modal="true"
