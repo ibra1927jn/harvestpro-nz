@@ -10,7 +10,7 @@
  *   runnerNav.config.ts     — Navigation tabs
  *   runner/                 — View components (lazy-loaded)
  */
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import ResponsiveLayout from '@/components/common/ResponsiveLayout';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import Toast from '@/components/ui/Toast';
@@ -19,13 +19,34 @@ import { useRunnerData } from '@/hooks/useRunnerData';
 import { RUNNER_NAV_TABS, type RunnerTab } from '@/config/navigation/runner.nav';
 
 // Lazy-loaded views (code-split for performance)
-const LogisticsView = React.lazy(() => import('@/components/views/runner/LogisticsView'));
-const RunnersView = React.lazy(() => import('@/components/views/runner/RunnersView'));
-const WarehouseView = React.lazy(() => import('@/components/views/runner/WarehouseView'));
-const MessagingView = React.lazy(() => import('@/components/views/runner/MessagingView'));
-const TimesheetEditor = React.lazy(() => import('@/components/views/manager/TimesheetEditor'));
-const ScannerModal = React.lazy(() => import('@/components/modals/ScannerModal'));
-const QualityRatingModal = React.lazy(() => import('@/components/modals/QualityRatingModal'));
+const loadLogistics = () => import('@/components/views/runner/LogisticsView');
+const loadRunners = () => import('@/components/views/runner/RunnersView');
+const loadWarehouse = () => import('@/components/views/runner/WarehouseView');
+const loadMessaging = () => import('@/components/views/runner/MessagingView');
+const loadTimesheet = () => import('@/components/views/manager/TimesheetEditor');
+const loadScanner = () => import('@/components/modals/ScannerModal');
+const loadQuality = () => import('@/components/modals/QualityRatingModal');
+const LogisticsView = React.lazy(loadLogistics);
+const RunnersView = React.lazy(loadRunners);
+const WarehouseView = React.lazy(loadWarehouse);
+const MessagingView = React.lazy(loadMessaging);
+const TimesheetEditor = React.lazy(loadTimesheet);
+const ScannerModal = React.lazy(loadScanner);
+const QualityRatingModal = React.lazy(loadQuality);
+
+/**
+ * Precarga lo que el runner usa en el campo. Sin esto, si se quedaba sin
+ * cobertura antes de abrir el escáner por primera vez (y el service worker aún
+ * no lo había guardado), "Scan Sticker" tumbaba la app entera con
+ * "Failed to fetch dynamically imported module".
+ */
+export function preloadRunnerModules(): Promise<unknown> {
+  return Promise.all(
+    [loadScanner, loadQuality, loadLogistics, loadRunners, loadWarehouse, loadMessaging, loadTimesheet].map(load =>
+      load().catch(() => undefined)
+    )
+  );
+}
 
 const TabLoader = () => (
   <div className="flex items-center justify-center py-12">
@@ -36,6 +57,10 @@ const TabLoader = () => (
 const Runner = () => {
   const [activeTab, setActiveTab] = useState<RunnerTab>('logistics');
   const runner = useRunnerData();
+
+  useEffect(() => {
+    preloadRunnerModules();
+  }, []);
 
   return (
     <>

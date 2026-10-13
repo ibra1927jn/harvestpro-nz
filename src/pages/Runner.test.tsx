@@ -5,7 +5,7 @@
  */
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 
 // ── Mocks ────────────────────────────────────────────
 vi.mock('@/stores/useHarvestStore', () => {
@@ -75,12 +75,15 @@ vi.mock('../components/views/runner/MessagingView', () => ({
 vi.mock('../components/views/runner/RunnersView', () => ({
   default: () => <div>Runners View</div>,
 }));
-vi.mock('../components/modals/QualityRatingModal', () => ({
-  default: () => <div>Quality Modal</div>,
-}));
-vi.mock('../components/modals/ScannerModal', () => ({
-  default: () => <div>Scanner Modal</div>,
-}));
+const loaded = vi.hoisted(() => new Set<string>());
+vi.mock('../components/modals/QualityRatingModal', () => {
+  loaded.add('quality');
+  return { default: () => <div>Quality Modal</div> };
+});
+vi.mock('../components/modals/ScannerModal', () => {
+  loaded.add('scanner');
+  return { default: () => <div>Scanner Modal</div> };
+});
 vi.mock('@/components/ui/Toast', () => ({
   default: () => <div>Toast</div>,
 }));
@@ -111,6 +114,12 @@ describe('Runner Page', () => {
   it('shows Logistics view by default', async () => {
     render(<Runner />);
     expect(await screen.findByTestId('logistics-view')).toBeTruthy();
+  });
+
+  it('loads the scanner up front, so it opens without signal later', async () => {
+    render(<Runner />);
+    await waitFor(() => expect([...loaded].sort()).toEqual(['quality', 'scanner']));
+    expect(screen.queryByText('Scanner Modal')).toBeNull();
   });
 
   it('renders bottom navigation tabs', () => {
