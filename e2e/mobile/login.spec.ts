@@ -11,7 +11,7 @@ test('login screen is usable on the phone and light on data', async ({ page }) =
   page.on('request', r => requested.push(r.url()));
   const fontBytes: number[] = [];
   page.on('response', async r => {
-    if (r.url().startsWith('https://fonts.gstatic.com/') && r.url().includes('materialsymbols')) {
+    if (/material-symbols-subset-[\w-]+\.woff2$/.test(new URL(r.url()).pathname)) {
       const body = await r.body().catch(() => null);
       if (body) fontBytes.push(body.length);
     }
@@ -37,7 +37,10 @@ test('login screen is usable on the phone and light on data', async ({ page }) =
   if (vw < 1024) {
     expect(requested.filter(u => u.includes('orchard-hero'))).toEqual([]);
   }
-  // Fuente de iconos: solo los ejes usados (la variable completa pesaba 1.1 MB)
-  for (const b of fontBytes) expect(b).toBeLessThan(600 * 1024);
+  // Fuente de iconos autoalojada con solo los iconos usados (la de Google pesaba 450 KB-1.1 MB)
+  expect(fontBytes.length).toBeGreaterThan(0);
+  for (const b of fontBytes) expect(b).toBeLessThan(80 * 1024);
+  // Ninguna petición a Google Fonts (sin red en el campo y CSS bloqueante)
+  expect(requested.filter(u => /fonts\.(googleapis|gstatic)\.com/.test(u))).toEqual([]);
   expect(errs.errors, errs.errors.join('\n')).toEqual([]);
 });

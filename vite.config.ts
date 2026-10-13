@@ -1,9 +1,25 @@
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
 import { VitePWA } from 'vite-plugin-pwa';
 import { visualizer } from 'rollup-plugin-visualizer';
+import { checkIconSubset } from './scripts/icons/check-icons.mjs';
+
+/** Falla el build si el código usa un icono que no está en la fuente subconjunto. */
+function iconSubsetGuard(): Plugin {
+  return {
+    name: 'icon-subset-guard',
+    // Solo en build (~4 s analizando src/); en dev no retrasa el arranque
+    apply: 'build',
+    buildStart() {
+      const r = checkIconSubset();
+      if (!r.ok) {
+        this.error(`Fuente de iconos desactualizada (npm run icons:build):\n  - ${r.problems.join('\n  - ')}`);
+      }
+    },
+  };
+}
 
 export default defineConfig(() => {
   return {
@@ -12,6 +28,7 @@ export default defineConfig(() => {
       host: '0.0.0.0',
     },
     plugins: [
+      iconSubsetGuard(),
       react(),
       VitePWA({
         registerType: 'autoUpdate',
@@ -54,7 +71,20 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+          // woff2: fuentes autoalojadas (Inter + iconos) precacheadas → arranque offline con iconos
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          globIgnores: [
+            // informe del bundle (rollup-plugin-visualizer), ~700 KB: no es parte de la app
+            'stats.html',
+            // MSW solo existe en modo mock
+            'mockServiceWorker.js',
+            // imagen del hero de login de escritorio (oculta en móvil): caché en tiempo de ejecución
+            'orchard-hero.png',
+            // Sentry/PostHog se cargan tras la primera interacción y solo si están
+            // configurados: no gastar ~200 KB de datos en la instalación del SW
+            'assets/vendor-sentry-*.js',
+            'assets/vendor-analytics-*.js',
+          ],
           runtimeCaching: [
             {
               urlPattern: ({ url }) => url.origin.includes('supabase.co'),
@@ -66,22 +96,23 @@ export default defineConfig(() => {
               },
             },
             {
-              // Ficheros de fuentes (iconos incluidos): sin esto, sin red los iconos
-              // salen como texto ("local_shipping") cuando caduca la caché HTTP
-              urlPattern: ({ url }) => url.origin === 'https://fonts.gstatic.com',
+              // Chunks con hash excluidos del precache: inmutables → CacheFirst
+              urlPattern: ({ url, sameOrigin }) =>
+                sameOrigin && /^\/assets\/vendor-(sentry|analytics)-[\w-]+\.js$/.test(url.pathname),
               handler: 'CacheFirst',
               options: {
-                cacheName: 'google-fonts-webfonts',
-                cacheableResponse: { statuses: [0, 200] },
-                expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                cacheName: 'deferred-vendor-chunks',
+                cacheableResponse: { statuses: [200] },
+                expiration: { maxEntries: 6, maxAgeSeconds: 60 * 60 * 24 * 90 },
               },
             },
             {
-              urlPattern: ({ url }) => url.origin.includes('googleapis.com'),
-              handler: 'StaleWhileRevalidate',
+              urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname === '/orchard-hero.png',
+              handler: 'CacheFirst',
               options: {
-                cacheName: 'google-fonts-stylesheets',
-                cacheableResponse: { statuses: [0, 200] },
+                cacheName: 'images',
+                cacheableResponse: { statuses: [200] },
+                expiration: { maxEntries: 4 },
               },
             },
           ],
@@ -100,7 +131,8 @@ export default defineConfig(() => {
         external: ['@capacitor-community/barcode-scanner'],
         output: {
           manualChunks: {
-            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            // react-dom/client y scheduler iban en el chunk index (cambia en cada deploy)
+            'vendor-react': ['react', 'react-dom', 'react-dom/client', 'react-router-dom', 'scheduler'],
             'vendor-supabase': ['@supabase/supabase-js'],
             'vendor-state': ['zustand', 'dexie', '@tanstack/react-query'],
             // Split Sentry and PostHog into separate chunks — each lazy-loaded independently

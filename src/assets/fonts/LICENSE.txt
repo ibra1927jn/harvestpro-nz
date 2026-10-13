@@ -1,0 +1,10 @@
+Fuentes autoalojadas (antes servidas por Google Fonts):
+
+- inter-latin-wght.woff2, inter-latin-ext-wght.woff2
+  Inter (Rasmus Andersson), SIL Open Font License 1.1 — https://github.com/rsms/inter
+  Ficheros tal cual los sirve fonts.gstatic.com (Inter v20, wght 400-900).
+
+- material-symbols-subset.woff2
+  Material Symbols Outlined (Google), Apache License 2.0 —
+  https://github.com/google/material-design-icons
+  Subconjunto generado con scripts/icons/build-icon-font.mjs (npm run icons:build).

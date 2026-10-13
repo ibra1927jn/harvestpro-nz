@@ -8,7 +8,11 @@ import { I18nProvider } from './i18n';
 import { addSentryBreadcrumb, installEarlyErrorCapture } from './config/sentry';
 import { analytics } from './config/analytics';
 import { runAfterInteractionOrIdle } from './utils/runAfterInteractionOrIdle';
+import { markWhenIconFontReady } from './utils/iconFontReady';
 import './index.css';
+
+// Descarga la fuente de iconos ya (en paralelo con los chunks de la ruta)
+void markWhenIconFontReady();
 
 // Errores del arranque: se encolan hasta que Sentry cargue (solo si hay DSN)
 installEarlyErrorCapture();
