@@ -229,6 +229,7 @@ describe('sync queue chaos', () => {
         await reset();
         online = false;
         await run([{ kind: 'transport', n: 1 }, { kind: 'online' }, { kind: 'process', faults: ['lostResponse'] }]);
+        expect([...backend.applied.entries()].filter(([k]) => k.startsWith('transport:')).map(([, n]) => n)).toEqual([1]);
     });
 
     it('an item that keeps failing with a "fetch" message does not block the queue forever', async () => {
