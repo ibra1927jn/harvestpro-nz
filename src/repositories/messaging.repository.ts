@@ -28,6 +28,17 @@ export const messagingRepository = {
         return data;
     },
 
+    /** ¿Está ya en el servidor el mensaje con este id? (visible para quien lo envió) */
+    async messageExists(id: string): Promise<boolean> {
+        const { data, error } = await supabase
+            .from('chat_messages')
+            .select('id')
+            .eq('id', id)
+            .maybeSingle();
+        if (error) throw error;
+        return data !== null;
+    },
+
     /** Get messages with sender join */
     async getMessages(conversationId: string) {
         const { data, error } = await supabase

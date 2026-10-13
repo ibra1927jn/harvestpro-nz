@@ -17,6 +17,20 @@ const isNetworkError = (e: unknown) => {
 
 let flushing = false;
 
+/**
+ * Rechazado al reenviar: si un intento anterior llegó al servidor y se perdió la
+ * respuesta, el mensaje ya está entregado (p. ej. RLS rechaza el reenvío antes de
+ * ver que el id existe). Si no se puede comprobar, se trata como no entregado.
+ */
+async function alreadyDelivered(id: string): Promise<boolean> {
+    try {
+        return await messagingRepository.messageExists(id);
+    } catch (e) {
+        logger.warn('[Outbox] Could not check whether a rejected message was already delivered:', e);
+        return false;
+    }
+}
+
 /** Mensaje propio que aún no llegó: 'pending' (se reintenta solo) o 'failed' (rechazado) */
 export type OutboxStatus = 'pending' | 'failed';
 export interface OutboxMessage extends QueuedMessage {
@@ -99,12 +113,13 @@ export const messageOutbox = {
                     sent++;
                 } catch (e) {
                     const code = (e as { code?: string })?.code;
-                    if (code === '23505') {
+                    if (code !== '23505' && isNetworkError(e)) {
+                        break; // sin red: se reintenta al volver la conexión
+                    }
+                    if (code === '23505' || (await alreadyDelivered(m.id))) {
                         // Ya había llegado en un intento anterior
                         await db.message_queue.delete(m.id);
                         sent++;
-                    } else if (isNetworkError(e)) {
-                        break; // sin red: se reintenta al volver la conexión
                     } else {
                         logger.error('[Outbox] Message rejected:', e);
                         await db.message_queue.update(m.id, {

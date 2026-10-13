@@ -29,6 +29,7 @@ const chat = new FakeChat();
 vi.mock('@/repositories/messaging.repository', () => ({
     messagingRepository: {
         sendMessage: (_conv: string, _sender: string, content: string, opts: { id: string }) => chat.send(opts.id, content),
+        messageExists: async (id: string) => chat.delivered.has(id),
     },
 }));
 vi.mock('@/utils/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
