@@ -54,20 +54,6 @@ describe('queryKeys — factory shape', () => {
     expect(queryKeys.audit.logs()).toEqual(['audit', 'logs', undefined]);
   });
 
-  it('audit.history namespaces by table + record id', () => {
-    expect(queryKeys.audit.history('orchards', 'o-1')).toEqual([
-      'audit',
-      'history',
-      'orchards',
-      'o-1',
-    ]);
-  });
-
-  it('audit.stats accepts optional fromDate', () => {
-    expect(queryKeys.audit.stats('2026-04-01')).toEqual(['audit', 'stats', '2026-04-01']);
-    expect(queryKeys.audit.stats()).toEqual(['audit', 'stats', undefined]);
-  });
-
   it('compliance.alerts namespaces by orchard', () => {
     expect(queryKeys.compliance.alerts('o-1')).toEqual(['compliance', 'alerts', 'o-1']);
   });

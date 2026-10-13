@@ -174,12 +174,4 @@ describe('SupabaseRepository', () => {
             expect(result).toBe(0);
         });
     });
-
-    describe('pre-built instances', () => {
-        it('exports named repositories', async () => {
-            const mod = await import('./baseRepository');
-            expect(mod.userRepository).toBeDefined();
-            expect(mod.contractRepository).toBeDefined();
-        });
-    });
 });

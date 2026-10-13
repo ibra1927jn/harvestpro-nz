@@ -201,5 +201,3 @@ export const analytics = {
   },
 };
 
-// Export lazy posthog instance for advanced usage
-export const getPosthog = () => posthogInstance;
