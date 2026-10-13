@@ -23,6 +23,7 @@ interface Sample {
   jsKB: number;
   totalKB: number;
   requests: number;
+  largest: string[];
 }
 
 async function throttle(page: Page): Promise<CDPSession> {
@@ -36,16 +37,30 @@ async function throttle(page: Page): Promise<CDPSession> {
 /** Cuenta bytes transferidos (comprimidos) por tipo durante la carga. */
 function trackBytes(cdp: CDPSession) {
   const types = new Map<string, string>();
+  const urls = new Map<string, string>();
+  const sizes: { url: string; kb: number }[] = [];
   let js = 0;
   let total = 0;
   let requests = 0;
-  cdp.on('Network.responseReceived', e => types.set(e.requestId, e.type));
+  cdp.on('Network.responseReceived', e => {
+    types.set(e.requestId, e.type);
+    urls.set(e.requestId, e.response.url);
+  });
   cdp.on('Network.loadingFinished', e => {
     requests++;
     total += e.encodedDataLength;
+    sizes.push({ url: urls.get(e.requestId) ?? '?', kb: Math.round(e.encodedDataLength / 1024) });
     if (types.get(e.requestId) === 'Script') js += e.encodedDataLength;
   });
-  return () => ({ jsKB: Math.round(js / 1024), totalKB: Math.round(total / 1024), requests });
+  return () => ({
+    jsKB: Math.round(js / 1024),
+    totalKB: Math.round(total / 1024),
+    requests,
+    largest: [...sizes]
+      .sort((a, b) => b.kb - a.kb)
+      .slice(0, 6)
+      .map(x => `${x.kb}KB ${x.url.replace(/^https?:\/\/[^/]+/, '').split('?')[0]}`),
+  });
 }
 
 async function lcp(page: Page): Promise<number | null> {
