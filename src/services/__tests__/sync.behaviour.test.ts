@@ -208,6 +208,11 @@ describe('categorizeError', () => {
         expect(syncService.categorizeError(new Error('row 23 is closed'))).toBe('unknown');
     });
 
+    it('a foreign key error (23503) is validation, not an HTTP 503', () => {
+        expect(syncService.categorizeError(new Error('insert or update violates foreign key constraint (23503)'))).toBe('validation');
+        expect(syncService.categorizeError(new Error('Edge Function returned a non-2xx status code (503)'))).toBe('server');
+    });
+
     it('real PostgREST codes (PGRST116, PGRST301…) are server errors', () => {
         // Antes se comparaba con 'PGRST' exacto: ningún código real coincidía
         expect(syncService.categorizeError({ code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' })).toBe('server');

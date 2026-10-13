@@ -387,12 +387,8 @@ export const syncService = {
       ) {
         return 'network';
       }
-      if (
-        msg.includes('500') ||
-        msg.includes('502') ||
-        msg.includes('503') ||
-        msg.includes('429')
-      ) {
+      // Códigos HTTP como palabra: "23503" (clave foránea) contiene "503"
+      if (/\b(500|502|503|429)\b/.test(msg)) {
         return 'server';
       }
       if (
