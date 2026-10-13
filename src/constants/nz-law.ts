@@ -11,7 +11,6 @@
 
 /**
  * Legal NZ minimum wage from 1 April 2026 (Minimum Wage Order 2026)
- * Para tasas fiscales versionadas ver: config/nz-tax-rates.ts
  */
 export const NZ_MINIMUM_WAGE_2026 = 23.95; // $/hr
 

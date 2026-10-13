@@ -103,11 +103,6 @@ describe('Repository Modules — Import & Structure', () => {
         expect(mod).toBeDefined();
     });
 
-    it('sticker.repository exports expected structure', async () => {
-        const mod = await import('../repositories/sticker.repository');
-        expect(mod).toBeDefined();
-    });
-
     it('analyticsTrends.repository exports expected structure', async () => {
         const mod = await import('../repositories/analytics-trends.repository');
         expect(mod).toBeDefined();

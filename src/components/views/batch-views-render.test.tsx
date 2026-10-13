@@ -59,10 +59,6 @@ vi.mock('@/services/i18n.service', () => ({
   i18n: { t: (key: string) => key, getLanguage: () => 'en', subscribe: () => () => {} },
 }));
 
-vi.mock('@/hooks/useTranslation', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}));
-
 vi.mock('@/hooks/useToast', () => ({
   useToast: () => ({ show: vi.fn(), showSuccess: vi.fn(), showError: vi.fn() }),
 }));

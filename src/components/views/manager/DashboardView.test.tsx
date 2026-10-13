@@ -41,10 +41,6 @@ vi.mock('@/hooks/useHarvestMetrics', () => ({
   }),
 }));
 
-vi.mock('@/hooks/useCropProfile', () => ({
-  useCropProfile: () => ({ units: 'buckets', cropName: 'Apple' }),
-}));
-
 vi.mock('@/hooks/useAnimatedCounter', () => ({
   useAnimatedCounter: (value: number) => value, // Return value immediately
 }));

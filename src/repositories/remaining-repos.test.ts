@@ -94,11 +94,6 @@ describe('Repository modules', () => {
     expect(mod.setupRepository).toBeDefined();
   });
 
-  it('imports sticker repository', async () => {
-    const mod = await import('./sticker.repository');
-    expect(mod.stickerRepository).toBeDefined();
-  });
-
   it('imports user service repository', async () => {
     const mod = await import('@/repositories/user-service.repository');
     expect(mod.userServiceRepository).toBeDefined();

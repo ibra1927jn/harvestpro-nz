@@ -47,10 +47,6 @@ vi.mock('@/services/i18n.service', () => ({
     i18n: { t: (key: string) => key, getLanguage: () => 'en', subscribe: () => () => { } },
 }));
 
-vi.mock('@/hooks/useTranslation', () => ({
-    useTranslation: () => ({ t: (key: string) => key }),
-}));
-
 vi.mock('@/services/gateway.service', () => ({
     gatewayService: {
         withResilience: vi.fn((_n: string, fn: () => Promise<unknown>) => fn()),
