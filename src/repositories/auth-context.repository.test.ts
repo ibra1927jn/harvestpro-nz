@@ -126,10 +126,10 @@ describe('authContextRepository.assignOrchard', () => {
 
 describe('authContextRepository.checkWhitelist', () => {
     it('lowercase + trim email antes de lookup', async () => {
-        const chain = mockChain({ data: null, error: null });
-        vi.spyOn(supabase, 'from').mockReturnValue(chain as never);
-        await authContextRepository.checkWhitelist('  USER@EXAMPLE.COM  ');
-        expect((chain.eq as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith('email', 'user@example.com');
+        const rpc = vi.spyOn(supabase, 'rpc').mockResolvedValue({ data: [], error: null } as never);
+        const result = await authContextRepository.checkWhitelist('  USER@EXAMPLE.COM  ');
+        expect(rpc).toHaveBeenCalledWith('check_registration', { p_email: 'user@example.com' });
+        expect(result.data).toBeNull();
     });
 });
 

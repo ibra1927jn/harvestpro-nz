@@ -154,12 +154,13 @@ describe('authContextRepository', () => {
     describe('checkWhitelist', () => {
         it('returns whitelist entry', async () => {
             const entry = { id: 'reg-1', role: 'picker', orchard_id: 'o1', used_at: null };
-            fromSpy.mockReturnValue(mockChain({ data: entry, error: null }) as never);
+            vi.spyOn(supabase, 'rpc').mockResolvedValue({ data: [entry], error: null } as never);
             const result = await authContextRepository.checkWhitelist('Test@Email.com');
             expect(result.data).toEqual(entry);
         });
 
         it('returns null when not whitelisted', async () => {
+            vi.spyOn(supabase, 'rpc').mockResolvedValue({ data: [], error: null } as never);
             const result = await authContextRepository.checkWhitelist('unknown@test.com');
             expect(result.data).toBeNull();
         });
