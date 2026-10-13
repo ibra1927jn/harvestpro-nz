@@ -196,9 +196,17 @@ export const syncService = {
             await processUnlink(schemas.UnlinkPayloadSchema.parse(item.payload));
             break;
 
-          default:
-            logger.warn(`[SyncService] Unknown item type: ${item.type}`);
-            break;
+          default: {
+            // Tipo que esta versión no sabe procesar (cola de otra versión de la
+            // app, dato corrupto): antes se borraba sin dejar rastro. Ahora va a
+            // la dead letter queue con el motivo (reintentarlo no lo arregla).
+            const unknownType = String((item as { type: unknown }).type);
+            logger.warn(`[SyncService] Unknown item type: ${unknownType} → dead letter`);
+            if (await this.moveToDeadLetter(item, `unknown_type: ${unknownType}`, 'UNKNOWN_TYPE', 0)) {
+              processedIds.push(item.id);
+            }
+            continue;
+          }
         }
 
         // If we reach here, sync was successful — mark for removal
@@ -243,27 +251,17 @@ export const syncService = {
             { error: 'max_retries_exceeded', category: errorCategory, retryCount: newRetryCount }
           );
           // Persist to DLQ in IndexedDB for admin review
-          try {
-            await db.dead_letter_queue.put({
-              id: item.id,
-              type: item.type,
-              payload: item.payload,
-              timestamp: item.timestamp,
-              retryCount: newRetryCount,
-              failureReason: `${errorCategory}: max retries exceeded`,
-              errorCode: e instanceof Error ? e.message : String(e),
-              movedAt: Date.now(),
-            });
+          const moved = await this.moveToDeadLetter(
+            item,
+            `${errorCategory}: max retries exceeded`,
+            e instanceof Error ? e.message : String(e),
+            newRetryCount
+          );
+          if (moved) {
             // 🔧 V28: Only delete from sync_queue if DLQ insert succeeded
             processedIds.push(item.id);
             // 📊 PostHog: Track DLQ error for monitoring
             analytics.trackDLQError(errorCategory, newRetryCount > 30 ? 'critical' : 'high');
-          } catch (dlqError) {
-            // 🔧 V28: Keep item in sync_queue — better stuck than lost
-            logger.error(
-              '[SyncService] CRITICAL: DLQ insert failed. Item preserved in sync_queue:',
-              dlqError
-            );
           }
         }
       }
@@ -280,6 +278,34 @@ export const syncService = {
       // 📊 PostHog: Track sync batch completion
       const syncDuration = Date.now() - syncStartTime; // M-3: actual sync duration
       analytics.trackSync(processedIds.length, syncDuration, true);
+    }
+  },
+
+  /**
+   * Mueve un elemento a la dead letter queue (IndexedDB). Devuelve false si no
+   * se pudo guardar: entonces se queda en la cola (mejor atascado que perdido).
+   */
+  async moveToDeadLetter(
+    item: QueuedSyncItem,
+    failureReason: string,
+    errorCode: string,
+    retryCount: number
+  ): Promise<boolean> {
+    try {
+      await db.dead_letter_queue.put({
+        id: item.id,
+        type: item.type,
+        payload: item.payload,
+        timestamp: item.timestamp,
+        retryCount,
+        failureReason,
+        errorCode,
+        movedAt: Date.now(),
+      });
+      return true;
+    } catch (dlqError) {
+      logger.error('[SyncService] CRITICAL: DLQ insert failed. Item preserved in sync_queue:', dlqError);
+      return false;
     }
   },
 
@@ -387,7 +413,8 @@ export const syncService = {
     if (typeof error === 'object' && error !== null && 'code' in error) {
       const code = String((error as Record<string, unknown>).code);
       if (code.startsWith('23')) return 'validation';
-      if (code === 'PGRST') return 'server';
+      // Códigos de PostgREST: PGRST116, PGRST301… (nunca son exactamente 'PGRST')
+      if (code.startsWith('PGRST')) return 'server';
     }
 
     return 'unknown';

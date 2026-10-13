@@ -208,6 +208,13 @@ describe('categorizeError', () => {
         expect(syncService.categorizeError(new Error('row 23 is closed'))).toBe('unknown');
     });
 
+    it('real PostgREST codes (PGRST116, PGRST301…) are server errors', () => {
+        // Antes se comparaba con 'PGRST' exacto: ningún código real coincidía
+        expect(syncService.categorizeError({ code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' })).toBe('server');
+        expect(syncService.categorizeError({ code: 'PGRST301', message: 'JWT expired' })).toBe('server');
+        expect(syncService.categorizeError({ code: '42501', message: 'permission denied' })).toBe('unknown');
+    });
+
     it('being offline always counts as network', () => {
         online = false;
         expect(syncService.categorizeError(new Error('duplicate key'))).toBe('network');
