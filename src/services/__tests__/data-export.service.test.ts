@@ -28,13 +28,13 @@ const mockUser = {
     id: 'u1',
     email: 'alice@test.com',
     role: 'picker',
-    name: 'Alice',
+    full_name: 'Alice',
     created_at: '2025-01-01T00:00:00Z',
     privacy_consent_at: '2025-01-01T10:00:00Z',
 };
 
 const mockAttendance = [
-    { id: 'a1', check_in: '2026-04-01T06:00:00Z', check_out: '2026-04-01T14:00:00Z', orchard_id: 'o1' },
+    { id: 'a1', check_in: '2026-04-01T06:00:00Z', check_out: '2026-04-01T14:00:00Z', orchard_id: 'o1', orchards: { name: 'Te Puke Gold' } },
     { id: 'a2', check_in: '2026-04-02T06:00:00Z', check_out: null, orchard_id: 'o1' },
 ];
 
@@ -56,15 +56,16 @@ vi.mock('@/services/supabase', () => ({
 import { dataExportService } from '../data-export.service';
 
 // ── Helper: configure per-table mock responses ──────
-type TableName = 'users' | 'daily_attendance' | 'bucket_scans' | 'privacy_consent_log' | 'messages' | 'audit_logs';
+type TableName = 'users' | 'daily_attendance' | 'bucket_records' | 'privacy_consent_log' | 'messages' | 'chat_messages' | 'audit_logs';
 
 function setupTableMocks(overrides: Partial<Record<TableName, { data: unknown; error: unknown }>> = {}) {
     const defaults: Record<TableName, { data: unknown; error: unknown }> = {
         users:               { data: mockUser, error: null },
         daily_attendance:    { data: mockAttendance, error: null },
-        bucket_scans:        { data: mockScans, error: null },
+        bucket_records:        { data: mockScans, error: null },
         privacy_consent_log: { data: mockConsents, error: null },
         messages:            { data: null, error: null },
+        chat_messages:       { data: null, error: null },
         audit_logs:          { data: null, error: null },
     };
 
@@ -73,8 +74,8 @@ function setupTableMocks(overrides: Partial<Record<TableName, { data: unknown; e
         const chain = makeChain(response.data, response.error);
 
         // messages table uses head:true — override count directly
-        if (table === 'messages') {
-            const msgResolved = Promise.resolve({ data: null, error: null, count: 5 });
+        if (table === 'messages' || table === 'chat_messages') {
+            const msgResolved = Promise.resolve({ data: null, error: null, count: table === 'messages' ? 5 : 2 });
             const msgChain: Record<string, unknown> = {
                 then: msgResolved.then.bind(msgResolved),
                 catch: msgResolved.catch.bind(msgResolved),
@@ -142,10 +143,15 @@ describe('dataExportService.exportUserData', () => {
         expect(result.consentHistory[0].policy_version).toBe('1.2');
     });
 
-    it('includes message count', async () => {
+    it('message count adds chat messages and legacy direct messages', async () => {
         const result = await dataExportService.exportUserData('u1');
-        expect(typeof result.messageCount).toBe('number');
-        expect(result.messageCount).toBeGreaterThanOrEqual(0);
+        expect(result.messageCount).toBe(7);
+    });
+
+    it('attendance shows the orchard name, or the id when the name could not be read', async () => {
+        const result = await dataExportService.exportUserData('u1');
+        expect(result.attendance[0].orchard_name).toBe('Te Puke Gold');
+        expect(result.attendance[1].orchard_name).toBe('o1');
     });
 
     it('writes an audit log entry on successful export', async () => {
@@ -164,7 +170,7 @@ describe('dataExportService.exportUserData', () => {
     });
 
     it('handles empty bucket scans gracefully', async () => {
-        setupTableMocks({ bucket_scans: { data: [], error: null } });
+        setupTableMocks({ bucket_records: { data: [], error: null } });
         const result = await dataExportService.exportUserData('u1');
         expect(result.bucketScans).toHaveLength(0);
     });
@@ -179,7 +185,7 @@ describe('dataExportService.exportUserData', () => {
 
     it('handles null scans (DB error) gracefully — returns empty array', async () => {
         setupTableMocks({
-            bucket_scans: { data: null, error: { message: 'Scans query failed' } },
+            bucket_records: { data: null, error: { message: 'Scans query failed' } },
         });
         const result = await dataExportService.exportUserData('u1');
         expect(result.bucketScans).toHaveLength(0);
