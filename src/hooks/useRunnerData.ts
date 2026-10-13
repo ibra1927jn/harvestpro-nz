@@ -4,6 +4,7 @@
  * Extracts store access, polling, scan logic, and quality submission
  * from Runner.tsx following the usePayroll pattern.
  */
+import { bucketSavedAnnouncement, isOnlineNow } from './runnerAnnouncements';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { useMessaging } from '@/context/MessagingContext';
@@ -43,12 +44,12 @@ export interface UseRunnerDataResult {
   rejectedScans: RejectedScan[];
   showScanner: boolean;
   scanType: 'BIN' | 'BUCKET';
-  toast: { message: string; type: 'success' | 'error' | 'info' | 'warning' } | null;
+  toast: { message: string; type: 'success' | 'error' | 'info' | 'warning'; announcement?: string } | null;
   qualityScan: { code: string; step: 'SCAN' | 'QUALITY' } | null;
   setSelectedBinId: (id: string | undefined) => void;
   setShowScanner: (show: boolean) => void;
   setToast: (
-    toast: { message: string; type: 'success' | 'error' | 'info' | 'warning' } | null
+    toast: { message: string; type: 'success' | 'error' | 'info' | 'warning'; announcement?: string } | null
   ) => void;
   handleScanClick: (type?: 'BIN' | 'BUCKET') => void;
   handleBroadcast: (message: string) => Promise<void>;
@@ -92,6 +93,8 @@ export function useRunnerData(): UseRunnerDataResult {
   const [toast, setToast] = useState<{
     message: string;
     type: 'success' | 'error' | 'info' | 'warning';
+    /** Texto completo para lector de pantalla (nombre del picker, sin cobertura) */
+    announcement?: string;
   } | null>(null);
   const [qualityScan, setQualityScan] = useState<{ code: string; step: 'SCAN' | 'QUALITY' } | null>(
     null
@@ -224,6 +227,7 @@ export function useRunnerData(): UseRunnerDataResult {
 
       // BATCH MODO O MODO ESTÁNDAR: Procesar todos los tickets en memoria (Buckets)
       let validCodes = 0;
+      const savedFor: string[] = [];
       codes.forEach(code => {
         const picker = crew.find(p => p.id === code || p.picker_id === code);
         if (!picker) {
@@ -242,11 +246,16 @@ export function useRunnerData(): UseRunnerDataResult {
           bin_id: selectedBinId || null,
         });
         validCodes++;
+        savedFor.push(picker.name || picker.picker_id || code);
       });
 
       if (validCodes > 0) {
         feedbackService.triggerSuccess();
-        setToast({ message: `Saved ${validCodes} Bucket(s) (Offline Ready)`, type: 'success' });
+        setToast({
+          message: `Saved ${validCodes} Bucket(s) (Offline Ready)`,
+          type: 'success',
+          announcement: bucketSavedAnnouncement(savedFor, isOnlineNow()),
+        });
       } else if (codes.length > 0) {
         setToast({
           message: '⚠️ Pickers not checked in. Ask Team Leader to check them in first.',
@@ -275,7 +284,11 @@ export function useRunnerData(): UseRunnerDataResult {
       });
 
       feedbackService.triggerSuccess();
-      setToast({ message: 'Bucket Saved (Offline Ready)', type: 'success' });
+      setToast({
+        message: 'Bucket Saved (Offline Ready)',
+        type: 'success',
+        announcement: bucketSavedAnnouncement([picker?.name || code], isOnlineNow()),
+      });
     },
     [qualityScan, selectedBinId, addBucket, orchard?.id, crew, rowOf]
   );

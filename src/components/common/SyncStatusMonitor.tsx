@@ -4,6 +4,7 @@ import { useHarvestStore } from '../../stores/useHarvestStore';
 import { offlineService } from '../../services/offline.service';
 import { syncService } from '../../services/sync.service';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
+import { announce } from '../../services/announcer';
 
 const SyncStatusMonitor: React.FC = () => {
     const buckets = useHarvestStore((state) => state.buckets);
@@ -105,14 +106,33 @@ const SyncStatusMonitor: React.FC = () => {
     const isStaleSync = lastSyncMs !== null && (Date.now() - lastSyncMs) > 30 * 60 * 1000;
     const hasSyncError = maxRetries >= 10;
 
+    // Lector de pantalla: avisar de los cambios de estado por las regiones persistentes
+    const prevOnline = React.useRef(isOnline);
+    useEffect(() => {
+        if (prevOnline.current === isOnline) return;
+        prevOnline.current = isOnline;
+        announce(
+            isOnline
+                ? 'Back online. Saved scans will sync now.'
+                : 'No signal. Scans are saved on this phone and will sync when you are back online.',
+            isOnline ? 'polite' : 'assertive'
+        );
+    }, [isOnline]);
+    const syncErrorShown = hasSyncError && displayCount > 0;
+    useEffect(() => {
+        if (syncErrorShown) announce(`Sync error. ${displayCount} items could not be sent.`, 'assertive');
+        // Solo al entrar en error, no en cada cambio del contador
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [syncErrorShown]);
+    useEffect(() => {
+        if (showSuccess) announce('All scans synced.');
+    }, [showSuccess]);
+
     // 1. Offline Warning (High Priority)
     if (!isOnline) {
         return (
             <div
                 className="bg-red-50 border-b border-red-100 px-4 py-2 flex items-center justify-between shrink-0 z-50 animate-in slide-in-from-top"
-                role="status"
-                aria-live="assertive"
-                aria-label="You are offline. Changes will be queued."
             >
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-red-600 text-lg" aria-hidden="true">wifi_off</span>
@@ -139,9 +159,6 @@ const SyncStatusMonitor: React.FC = () => {
         return (
             <div
                 className="bg-red-50 border-b border-red-200 px-4 py-2 flex items-center justify-between shrink-0 z-50 animate-in slide-in-from-top"
-                role="alert"
-                aria-live="assertive"
-                aria-label={`Sync error. ${displayCount} items failed after ${maxRetries} retries.`}
             >
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-red-600 text-lg" aria-hidden="true">sync_problem</span>
@@ -156,7 +173,7 @@ const SyncStatusMonitor: React.FC = () => {
                     className="text-[10px] font-bold bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
                     aria-label="Retry sync"
                 >
-                    <span className="material-symbols-outlined text-xs">refresh</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-xs">refresh</span>
                     {isSyncing ? 'Retrying...' : 'Retry Now'}
                 </button>
             </div>
@@ -168,9 +185,6 @@ const SyncStatusMonitor: React.FC = () => {
         return (
             <div
                 className="bg-green-50 border-b border-green-100 px-4 py-2 flex items-center justify-between shrink-0 z-50 animate-in slide-in-from-top"
-                role="status"
-                aria-live="polite"
-                aria-label="All data synced successfully."
             >
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-green-600 text-lg" aria-hidden="true">check_circle</span>
@@ -190,9 +204,6 @@ const SyncStatusMonitor: React.FC = () => {
         return (
             <div
                 className="bg-amber-50 border-b border-amber-100 px-4 py-2 flex items-center justify-between shrink-0 z-50 animate-in slide-in-from-top"
-                role="status"
-                aria-live="polite"
-                aria-label="Last sync was more than 30 minutes ago."
             >
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-amber-600 text-lg" aria-hidden="true">schedule</span>
@@ -207,7 +218,7 @@ const SyncStatusMonitor: React.FC = () => {
                     className="text-[10px] font-bold bg-amber-200 hover:bg-amber-300 px-3 py-1 rounded text-amber-800 transition-colors disabled:opacity-50 flex items-center gap-1"
                     aria-label="Sync now"
                 >
-                    <span className="material-symbols-outlined text-xs">sync</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-xs">sync</span>
                     {isSyncing ? 'Syncing...' : 'Sync Now'}
                 </button>
             </div>
@@ -219,9 +230,6 @@ const SyncStatusMonitor: React.FC = () => {
         return (
             <div
                 className="bg-orange-50 border-b border-orange-100 px-4 py-2 flex items-center justify-between shrink-0 z-50 animate-in slide-in-from-top"
-                role="status"
-                aria-live="polite"
-                aria-label={`Syncing ${displayCount} pending items.`}
             >
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-orange-600 text-lg" aria-hidden="true">cloud_sync</span>

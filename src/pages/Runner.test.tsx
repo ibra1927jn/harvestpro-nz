@@ -48,7 +48,7 @@ vi.mock('react-router-dom', () => ({
 }));
 
 vi.mock('@/services/offline.service', () => ({
-  offlineService: { getPendingCount: vi.fn().mockResolvedValue(0) },
+  offlineService: { getPendingCount: vi.fn().mockResolvedValue(0), getErrorItems: vi.fn().mockResolvedValue([]) },
 }));
 
 vi.mock('@/utils/nzst', () => ({
