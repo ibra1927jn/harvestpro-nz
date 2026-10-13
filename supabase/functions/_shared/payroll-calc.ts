@@ -4,7 +4,7 @@
  * close-pay-week (foto de lo que se paga al cerrar la semana), así ambos dan
  * exactamente las mismas cifras.
  */
-import { payForRange, pieceRateFor, isNZPublicHoliday, PAY_RULES, type PayDay } from './pay-rules.ts'
+import { payForRange, pieceRateFor, isNZPublicHoliday, PAY_RULES, type PayDay, type PickerRangePay } from './pay-rules.ts'
 import { fetchAllRows } from './fetch-all-rows.ts'
 
 // deno-lint-ignore no-explicit-any
@@ -25,6 +25,43 @@ function getNZOffset(dateStr: string): string {
 
 function toNZBoundary(dateStr: string, time: string): string {
     return `${dateStr}T${time}${getNZOffset(dateStr)}`;
+}
+
+function addDays(dateYMD: string, n: number): string {
+    const d = new Date(`${dateYMD}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+}
+
+const cents = (n: number) => Math.round(n * 100)
+
+/**
+ * Deja solo los días del rango y rehace los totales de cada persona. Se leen
+ * un día más por cada lado para los turnos que cruzan la medianoche (las
+ * cubetas de después de las 00:00 son del día del turno): el domingo por la
+ * noche sigue en su semana y el lunes de madrugada de la semana anterior no.
+ */
+function restrictToRange(rows: PickerRangePay[], start: string, end: string): PickerRangePay[] {
+    const out: PickerRangePay[] = []
+    for (const r of rows) {
+        const days = r.dayDetails.filter(d => d.date >= start && d.date <= end)
+        if (days.length === 0) continue
+        const sum = (f: (d: PayDay) => number) => days.reduce((s, d) => s + cents(f(d)), 0) / 100
+        out.push({
+            ...r,
+            dayDetails: days,
+            buckets: days.reduce((s, d) => s + d.buckets, 0),
+            hours: sum(d => d.hours),
+            pieceEarnings: sum(d => d.pieceEarnings),
+            holidayPremium: sum(d => d.holidayPremium),
+            topUp: sum(d => d.topUp),
+            total: sum(d => d.total),
+            days: days.length,
+            daysBelowMinimum: days.filter(d => d.belowMinimum).length,
+            estimatedDays: days.filter(d => d.estimated).length,
+        })
+    }
+    return out
 }
 
 // Festivos NZ (Holidays Act 2003 s.50): lista y fechas NZ del módulo compartido
@@ -130,7 +167,8 @@ export async function computePayroll(
             .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
             .is('deleted_at', null)
             .gte('scanned_at', toNZBoundary(start_date, '00:00:00'))
-            .lte('scanned_at', toNZBoundary(end_date, '23:59:59'))
+            // Hasta el final del día siguiente al rango (turno que cruza la medianoche)
+            .lt('scanned_at', toNZBoundary(addDays(end_date, 2), '00:00:00'))
         if (orchard_id) q = q.eq('orchard_id', orchard_id)
         return q.order('id').range(from, to)
     })
@@ -139,7 +177,8 @@ export async function computePayroll(
             .from('daily_attendance')
             .select('picker_id, orchard_id, date, check_in, check_out, break_start, break_minutes')
             .is('deleted_at', null)
-            .gte('date', start_date)
+            // Desde el día anterior: sus cubetas de después de medianoche son suyas
+            .gte('date', addDays(start_date, -1))
             .lte('date', end_date)
         if (orchard_id) q = q.eq('orchard_id', orchard_id)
         return q.order('id').range(from, to)
@@ -174,6 +213,8 @@ export async function computePayroll(
     const { data: contractRows } = await supabase
         .from('contracts')
         .select('employee_id, hourly_rate, start_date, end_date, status')
+        // Un contrato borrado no sube el mínimo de nadie
+        .is('deleted_at', null)
         .in('status', ['active', 'expiring'])
     const minWageById = new Map<string, number>()
     for (const k of (contractRows ?? []) as { employee_id: string; hourly_rate: number | null; start_date: string | null; end_date: string | null }[]) {
@@ -191,13 +232,13 @@ export async function computePayroll(
         set.add(id)
         groups.set(w, set)
     }
-    const rows = [...groups.entries()].flatMap(([minWage, ids]) => payForRange({
+    const rows = restrictToRange([...groups.entries()].flatMap(([minWage, ids]) => payForRange({
         attendance: attRows.filter(a => ids.has(a.pickerId)),
         buckets: bucketRows.filter(b => ids.has(b.pickerId)),
         pieceRate: bucket_rate,
         minWage,
         isPublicHoliday,
-    })).sort((a, b) => b.buckets - a.buckets)
+    })), start_date, end_date).sort((a, b) => b.buckets - a.buckets)
     const pickerIds = rows.map(r => r.pickerId)
 
     const { data: names } = pickerIds.length
