@@ -3,7 +3,8 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
-import { edgeFunctionWarmupService } from './edgeFunctionWarmup.service';
+import { edgeFunctionWarmupService, warmupFunctionsFor } from './edgeFunctionWarmup.service';
+import { Role } from '@/types/app.types';
 
 beforeEach(() => {
     vi.useFakeTimers();
@@ -23,14 +24,14 @@ describe('edgeFunctionWarmupService', () => {
             error: null,
         });
 
-        edgeFunctionWarmupService.start();
+        edgeFunctionWarmupService.start(Role.MANAGER);
         // Dejar microtasks drenar
         await vi.advanceTimersByTimeAsync(0);
 
-        expect(invokeSpy).toHaveBeenCalledWith('manage-attendance', { _warmup: true });
-        expect(invokeSpy).toHaveBeenCalledWith('record-bucket', { _warmup: true });
-        expect(invokeSpy).toHaveBeenCalledWith('calculate-payroll', { _warmup: true });
-        expect(invokeSpy).toHaveBeenCalledWith('check-compliance', { _warmup: true });
+        expect(invokeSpy).toHaveBeenCalledWith('manage-attendance', { _warmup: true }, { maxRetries: 0 });
+        expect(invokeSpy).toHaveBeenCalledWith('record-bucket', { _warmup: true }, { maxRetries: 0 });
+        expect(invokeSpy).toHaveBeenCalledWith('calculate-payroll', { _warmup: true }, { maxRetries: 0 });
+        expect(invokeSpy).toHaveBeenCalledWith('check-compliance', { _warmup: true }, { maxRetries: 0 });
         expect(invokeSpy).toHaveBeenCalledTimes(4);
     });
 
@@ -40,7 +41,7 @@ describe('edgeFunctionWarmupService', () => {
             error: null,
         });
 
-        edgeFunctionWarmupService.start();
+        edgeFunctionWarmupService.start(Role.MANAGER);
         await vi.advanceTimersByTimeAsync(0);
         expect(invokeSpy).toHaveBeenCalledTimes(4);
 
@@ -59,9 +60,9 @@ describe('edgeFunctionWarmupService', () => {
             error: null,
         });
 
-        edgeFunctionWarmupService.start();
-        edgeFunctionWarmupService.start();
-        edgeFunctionWarmupService.start();
+        edgeFunctionWarmupService.start(Role.MANAGER);
+        edgeFunctionWarmupService.start(Role.MANAGER);
+        edgeFunctionWarmupService.start(Role.MANAGER);
         await vi.advanceTimersByTimeAsync(0);
 
         // Sólo el primer start hizo pingAll inmediato
@@ -74,7 +75,7 @@ describe('edgeFunctionWarmupService', () => {
             error: null,
         });
 
-        edgeFunctionWarmupService.start();
+        edgeFunctionWarmupService.start(Role.MANAGER);
         await vi.advanceTimersByTimeAsync(0);
         edgeFunctionWarmupService.stop();
 
@@ -90,7 +91,7 @@ describe('edgeFunctionWarmupService', () => {
             error: null,
         });
 
-        edgeFunctionWarmupService.start();
+        edgeFunctionWarmupService.start(Role.MANAGER);
         await vi.advanceTimersByTimeAsync(0);
 
         expect(invokeSpy).not.toHaveBeenCalled();
@@ -99,9 +100,46 @@ describe('edgeFunctionWarmupService', () => {
     it('swallowea errores del repo — siguiente ping sigue funcionando', async () => {
         const invokeSpy = vi.spyOn(edgeFunctionsRepository, 'invoke').mockRejectedValue(new Error('down'));
 
-        edgeFunctionWarmupService.start();
+        edgeFunctionWarmupService.start(Role.MANAGER);
         await vi.advanceTimersByTimeAsync(0);
         expect(invokeSpy).toHaveBeenCalledTimes(4);
         // No throws al caller
+    });
+
+    it('runner solo calienta record-bucket (el resto le devolvería 403)', async () => {
+        const invokeSpy = vi.spyOn(edgeFunctionsRepository, 'invoke').mockResolvedValue({
+            data: null,
+            error: null,
+        });
+
+        edgeFunctionWarmupService.start(Role.RUNNER);
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(invokeSpy.mock.calls.map(c => c[0])).toEqual(['record-bucket']);
+    });
+
+    it('roles sin funciones críticas (QC, logística) no hacen ninguna llamada', async () => {
+        const invokeSpy = vi.spyOn(edgeFunctionsRepository, 'invoke').mockResolvedValue({
+            data: null,
+            error: null,
+        });
+
+        edgeFunctionWarmupService.start(Role.QC_INSPECTOR);
+        await vi.advanceTimersByTimeAsync(4 * 60 * 1000);
+        edgeFunctionWarmupService.start(Role.LOGISTICS);
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(invokeSpy).not.toHaveBeenCalled();
+    });
+
+    it('warmupFunctionsFor sigue los requireRole de cada función', () => {
+        expect(warmupFunctionsFor(Role.TEAM_LEADER)).toEqual([
+            'manage-attendance',
+            'record-bucket',
+            'check-compliance',
+        ]);
+        expect(warmupFunctionsFor(Role.PAYROLL_ADMIN)).toEqual(['calculate-payroll']);
+        expect(warmupFunctionsFor(Role.HR_ADMIN)).toEqual(['calculate-payroll']);
+        expect(warmupFunctionsFor(null)).toEqual([]);
     });
 });
