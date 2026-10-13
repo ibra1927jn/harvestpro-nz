@@ -12,6 +12,14 @@ export interface QueueStats {
   oldestPending: string | null;
 }
 
+/**
+ * Escrituras de escaneos aún en curso (cifrar + guardar). Marcar un escaneo como
+ * subido/rechazado espera a que su escritura termine: si no, la marca llegaba
+ * antes que el registro, no cambiaba nada, y el registro quedaba "pendiente"
+ * para siempre (contador de pendientes atascado hasta reabrir la app).
+ */
+const inflightWrites = new Map<string, Promise<void>>();
+
 export const offlineService = {
   /**
    * BUCKETS: Main Persistence
@@ -21,6 +29,21 @@ export const offlineService = {
    * NEW: encryptRecord() is called here, before db.put() — zero plaintext window.
    */
   async queueBucket(bucket: Omit<QueuedBucket, 'synced'>) {
+    const write = this._writeBucket(bucket);
+    inflightWrites.set(bucket.id, write);
+    try {
+      await write;
+    } finally {
+      if (inflightWrites.get(bucket.id) === write) inflightWrites.delete(bucket.id);
+    }
+  },
+
+  /** Espera a que termine la escritura en curso de un escaneo (si la hay) */
+  async whenWritten(id: string): Promise<void> {
+    await inflightWrites.get(id);
+  },
+
+  async _writeBucket(bucket: Omit<QueuedBucket, 'synced'>): Promise<void> {
     const record = { ...bucket, synced: 0 };
     try {
       const encryptedBucket = await encryptRecord('bucket_queue', record);
@@ -44,6 +67,7 @@ export const offlineService = {
 
   async markAsSynced(id: string) {
     try {
+      await this.whenWritten(id);
       await db.bucket_queue.update(id, { synced: 1 });
     } catch (error) {
       logger.error('❌ [Offline] Failed to mark as synced:', error);
@@ -53,6 +77,7 @@ export const offlineService = {
   /** Rechazado por el servidor (semana cerrada, tarjeta desconocida…): no se reintenta */
   async markAsFailed(id: string, reason: string) {
     try {
+      await this.whenWritten(id);
       await db.bucket_queue.update(id, { synced: -1, failure_reason: reason.slice(0, 500) });
     } catch (error) {
       logger.error('❌ [Offline] Failed to mark as failed:', error);
@@ -133,7 +158,7 @@ export const offlineService = {
    * ERROR ITEMS: List all failed items for debugging
    */
   async getErrorItems(): Promise<QueuedBucket[]> {
-    return await db.bucket_queue.where('synced').equals(-1).toArray();
+    return await db.bucket_queue.where('synced').equals(-1).sortBy('timestamp');
   },
 
   /**

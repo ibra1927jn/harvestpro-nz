@@ -141,6 +141,11 @@ Deno.test({ name: 'calculate-payroll matches hand-computed NZ pay', ...testOpts,
             assertEquals(ids, [p3.id])
             assertEquals(r.json.picker_breakdown[0].buckets, 10)
             assertEquals(r.json.picker_breakdown[0].piece_rate_earnings, 70)
+            // Su parte del día en B (horas con media hora de viaje, parte del complemento):
+            // lo mismo que el coste por huerto de la nómina de empresa (70 + 26.09)
+            assertEquals(r.json.picker_breakdown[0].hours_worked, 3.28)
+            assertEquals(r.json.picker_breakdown[0].top_up_required, 26.09)
+            assertEquals(r.json.picker_breakdown[0].total_earnings, 96.09)
 
             const a = await call<PayrollResult>('calculate-payroll', {
                 token: payroll.token, body: { orchard_id: orchardA, start_date: monday, end_date: addDays(monday, 6) },

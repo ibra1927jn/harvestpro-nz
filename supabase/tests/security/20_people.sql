@@ -13,6 +13,11 @@ SELECT sec_test.allow('A.runner', 'updates own name', $$UPDATE users SET full_na
 SELECT sec_test.deny(w, 'cannot make self admin', $$UPDATE users SET role = 'admin' WHERE id = auth.uid()$$)
 FROM unnest(ARRAY['A.runner', 'A.team_leader', 'A.manager', 'A.hr_admin', 'A.payroll_admin']) AS w;
 SELECT sec_test.deny('A.inactive_manager', 'cannot reactivate self', $$UPDATE users SET is_active = true WHERE id = auth.uid()$$);
+-- Cuenta de RRHH / admin dada de baja: tampoco se reactiva ni cambia su rol
+SELECT sec_test.deny(w, 'cannot reactivate self', $$UPDATE users SET is_active = true WHERE id = auth.uid()$$)
+FROM unnest(ARRAY['A.inactive_hr_admin', 'A.inactive_admin']) AS w;
+SELECT sec_test.deny('A.inactive_admin', 'cannot change own role', $$UPDATE users SET role = 'manager' WHERE id = auth.uid()$$);
+SELECT sec_test.deny('A.inactive_hr_admin', 'cannot deactivate others', $$UPDATE users SET is_active = false WHERE id = {A.runner}$$);
 SELECT sec_test.deny('A.runner', 'cannot edit another user', $$UPDATE users SET full_name = 'Hacked' WHERE id = {A.runner2}$$);
 SELECT sec_test.deny('A.manager', 'cannot change someone''s role', $$UPDATE users SET role = 'admin' WHERE id = {A.runner}$$);
 SELECT sec_test.deny('A.manager', 'cannot deactivate a runner (team leader / HR do it)', $$UPDATE users SET is_active = false WHERE id = {A.runner}$$);
@@ -39,6 +44,9 @@ SELECT sec_test.allow('A.team_leader', 'archives a picker', $$UPDATE pickers SET
 SELECT sec_test.deny('A.manager', 'cannot archive a picker', $$UPDATE pickers SET status = 'archived', archived_at = now() WHERE id = {A.picker}$$);
 SELECT sec_test.deny('A.manager', 'cannot move a picker to another team', $$UPDATE pickers SET team_leader_id = {A.team_leader2} WHERE id = {A.picker}$$);
 SELECT sec_test.deny('A.manager', 'cannot delete a picker', $$DELETE FROM pickers WHERE id = {A.picker}$$);
+-- Rodeo en dos pasos: cambiar el rol (picker → runner), mover/archivar y volver
+SELECT sec_test.deny('A.manager', 'cannot turn a picker into another role', $$UPDATE pickers SET role = 'runner' WHERE id = {A.picker}$$);
+SELECT sec_test.deny('A.manager', 'cannot turn a runner row into a picker', $$UPDATE pickers SET role = 'picker' WHERE id = {A.runner}$$);
 SELECT sec_test.deny(w, 'cannot edit pickers', $$UPDATE pickers SET name = 'Hacked' WHERE id = {A.picker}$$)
 FROM unnest(ARRAY['anon', 'A.runner', 'A.qc_inspector', 'A.logistics', 'A.payroll_admin']) AS w;
 SELECT sec_test.allow('A.manager', 'assigns a picker to a row', $$UPDATE pickers SET current_row = 3 WHERE id = {A.picker}$$);
@@ -73,6 +81,11 @@ SELECT sec_test.sees(w, 'reads HR documents', $$SELECT 1 FROM hr_documents WHERE
 FROM unnest(ARRAY['A.hr_admin', 'A.admin']) AS w;
 SELECT sec_test.deny(w, 'cannot change HR document records', $$UPDATE hr_documents SET title = 'x' WHERE id = {A.hrdoc}$$)
 FROM unnest(ARRAY['anon', 'A.runner', 'A.team_leader', 'A.payroll_admin']) AS w;
+-- Cuentas dadas de baja: nada de documentos de RRHH (antes la política miraba el rol sin is_active)
+SELECT sec_test.sees(w, 'cannot read HR documents once deactivated', $$SELECT 1 FROM hr_documents WHERE id = {A.hrdoc}$$, 0)
+FROM unnest(ARRAY['A.inactive_manager', 'A.inactive_hr_admin', 'A.inactive_admin']) AS w;
+SELECT sec_test.deny(w, 'cannot change HR documents once deactivated', $$UPDATE hr_documents SET title = 'x' WHERE id = {A.hrdoc}$$)
+FROM unnest(ARRAY['A.inactive_manager', 'A.inactive_hr_admin']) AS w;
 SELECT sec_test.deny('A.runner', 'cannot upload HR document records',
     $$INSERT INTO hr_documents (orchard_id, user_id, document_type, title, storage_path) VALUES ({A}, auth.uid(), 'other', 'x', 'x')$$);
 

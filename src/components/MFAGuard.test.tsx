@@ -159,4 +159,24 @@ describe('MFAGuard', () => {
     expect(screen.getByText('Checking security settings...')).toBeTruthy();
     expect(screen.queryByTestId('protected-content')).toBeNull();
   });
+
+  it('never mounts the app for a privileged role before the check (login after a signed-out render)', async () => {
+    // Antes: el estado "ok" del render sin sesión seguía valiendo un render más
+    // cuando entraba el manager, y la app (y sus efectos) llegaba a montarse
+    vi.spyOn(supabase.auth.mfa, 'getAuthenticatorAssuranceLevel').mockImplementation(
+      () => new Promise(() => {})
+    );
+    const mounted = vi.fn();
+    const App = () => {
+      React.useEffect(() => { mounted(); }, []);
+      return <div data-testid="protected-content">ok</div>;
+    };
+    setup(undefined, false);
+    const { rerender } = render(<MFAGuard><div data-testid="login">login</div></MFAGuard>);
+    await screen.findByTestId('login');
+    setup('manager');
+    rerender(<MFAGuard><App /></MFAGuard>);
+    expect(screen.getByText('Checking security settings...')).toBeTruthy();
+    expect(mounted).not.toHaveBeenCalled();
+  });
 });

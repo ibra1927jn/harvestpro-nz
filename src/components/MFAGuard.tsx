@@ -43,8 +43,11 @@ export function MFAGuard({ children }: MFAGuardProps) {
   const { checkMFAStatus } = useMFA();
   const [state, setState] = useState<GuardState>({ kind: 'checking' });
   const required = isAuthenticated && MFA_REQUIRED_ROLES.has(currentRole ?? '');
+  // Con qué valor de `required` se calculó `state` (el efecto llega un render tarde)
+  const [evaluatedForRequired, setEvaluatedForRequired] = useState(false);
 
   const evaluate = useCallback(async () => {
+    setEvaluatedForRequired(required);
     if (!required) {
       setState({ kind: 'ok' });
       return;
@@ -78,6 +81,9 @@ export function MFAGuard({ children }: MFAGuardProps) {
   }, [evaluate]);
 
   if (!required) return <>{children}</>;
+  // Un "ok" calculado cuando no hacía falta 2FA (p. ej. antes de entrar) no
+  // vale para el rol privilegiado: hasta que corra la comprobación, spinner
+  const pending = !evaluatedForRequired;
 
   // Mismo spinner mientras se comprueba y mientras llega el chunk de MFA (nunca deja ver la app)
   const checking = (
@@ -89,7 +95,7 @@ export function MFAGuard({ children }: MFAGuardProps) {
     </div>
   );
 
-  if (state.kind === 'checking') return checking;
+  if (pending || state.kind === 'checking') return checking;
 
   if (state.kind === 'verify') {
     return (

@@ -45,6 +45,8 @@ export type ContractPayload = {
 
 export type TransportPayload = {
     action: 'create' | 'assign' | 'complete' | 'cancel';
+    /** id generado en el móvil al encolar un create */
+    id?: string;
     requestId?: string;
     vehicleId?: string;
     assignedBy?: string;

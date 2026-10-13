@@ -31,7 +31,13 @@ export const useAttendance = (appUser: AppUser | undefined) => {
   const loading = rosterQuery.isLoading || attendanceQuery.isLoading;
 
   // Processing state for individual actions
+  // networkMode 'always': sin red la mutación se quedaba EN PAUSA
+  // (spinner sin fin) y se ejecutaba sola al volver la cobertura, con la hora de
+  // ese momento, y se perdía si se cerraba la app. Ahora falla al momento y el
+  // team leader ve que no se guardó.
   const checkInMutation = useMutation({
+    networkMode: 'always',
+    retry: false,
     mutationFn: async (pickerId: string) => {
       if (!appUser?.orchard_id) throw new Error('No orchard assigned.');
       await attendanceService.checkInPicker(pickerId, appUser.orchard_id, appUser.id);
@@ -44,6 +50,8 @@ export const useAttendance = (appUser: AppUser | undefined) => {
   });
 
   const checkOutMutation = useMutation({
+    networkMode: 'always',
+    retry: false,
     mutationFn: async (attendanceId: string) => {
       await attendanceService.checkOutPicker(attendanceId);
     },

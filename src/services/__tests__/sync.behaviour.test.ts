@@ -106,10 +106,10 @@ describe('processQueue — failures', () => {
         expect(await db.dead_letter_queue.count()).toBe(0);
     });
 
-    it('a network error stops the run: later items are not touched', async () => {
+    it('losing the connection stops the run: later items are not touched', async () => {
         const first = await queue('SCAN', SCAN);
         const second = await queue('MESSAGE', MSG);
-        recordBucket.mockRejectedValueOnce(new Error('Failed to fetch'));
+        recordBucket.mockImplementationOnce(async () => { online = false; throw new Error('Failed to fetch'); });
 
         await syncService.processQueue();
 
@@ -117,6 +117,29 @@ describe('processQueue — failures', () => {
         expect(await db.sync_queue.get(first.id)).toMatchObject({ retryCount: 1 });
         expect(await db.sync_queue.get(second.id)).toMatchObject({ retryCount: 0 });
         expect(await syncService.getLastSyncTime()).toBeNull();
+    });
+
+    it('a network failure while online does not block the items behind it; three in a row stop the run', async () => {
+        const first = await queue('SCAN', SCAN);
+        const second = await queue('MESSAGE', MSG);
+        recordBucket.mockRejectedValueOnce(new Error('Failed to fetch'));
+
+        await syncService.processQueue();
+        expect(sendMessage).toHaveBeenCalledTimes(1);
+        expect(await db.sync_queue.get(first.id)).toMatchObject({ retryCount: 1 });
+        expect(await db.sync_queue.get(second.id)).toBeUndefined();
+
+        const a = await queue('SCAN', SCAN);
+        const b = await queue('SCAN', SCAN);
+        const c = await queue('MESSAGE', MSG);
+        recordBucket.mockRejectedValue(new Error('Failed to fetch'));
+        sendMessage.mockClear();
+        await syncService.processQueue();
+        // first, a y b fallan seguidos: c no se toca
+        expect(sendMessage).not.toHaveBeenCalled();
+        expect(await db.sync_queue.get(a.id)).toMatchObject({ retryCount: 1 });
+        expect(await db.sync_queue.get(b.id)).toMatchObject({ retryCount: 1 });
+        expect(await db.sync_queue.get(c.id)).toMatchObject({ retryCount: 0 });
     });
 
     it('validation errors go to the dead letter queue on the 5th attempt (not before)', async () => {

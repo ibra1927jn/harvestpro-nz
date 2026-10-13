@@ -7,6 +7,7 @@
  *   WRITES → Via syncService.addToQueue() for offline-first
  *   Conflict Resolution: Last-write-wins (documented decision)
  */
+import { safeUUID } from '@/utils/uuid';
 import { syncService } from '@/services/sync.service';
 import { logger } from '@/utils/logger';
 import { logisticsRepository } from '@/repositories/logistics.repository';
@@ -204,7 +205,9 @@ export async function fetchTransportHistory(orchardId?: string): Promise<Transpo
 export async function createTransportRequest(
     request: Omit<TransportRequest, 'id' | 'status' | 'created_at'> & { orchard_id: string }
 ): Promise<string> {
-    return syncService.addToQueue('TRANSPORT', { action: 'create', ...request });
+    // Id del móvil desde el principio: si la respuesta se pierde y la cola lo
+    // reintenta, el servidor ya la tiene y no se crea una segunda petición
+    return syncService.addToQueue('TRANSPORT', { action: 'create', ...request, id: safeUUID() });
 }
 
 export async function assignVehicleToRequest(

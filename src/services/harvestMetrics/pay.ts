@@ -188,6 +188,11 @@ export interface DayPay {
     belowMinimum: boolean;
 }
 
+/** Plus de festivo (la media parte extra) de lo ganado por cubetas, al céntimo */
+function holidayPremiumOf(pieceEarnings: number, multiplier: number): number {
+    return Math.round(Math.round(pieceEarnings * 100) * (multiplier - 1)) / 100;
+}
+
 /**
  * Pago de UN día. El complemento se calcula por día (regla de negocio).
  * Para una semana: sumar los dayPay de cada día, nunca agregar antes.
@@ -200,17 +205,20 @@ export function dayPay(input: DayPayInput): DayPay {
     const pieceEarnings = input.pieceEarnings !== undefined
         ? Math.max(0, input.pieceEarnings)
         : Math.max(0, input.buckets) * Math.max(0, input.pieceRate);
-    // Festivo: lo ganado por cubetas también va a tiempo y medio
-    const holidayPremium = pieceEarnings * (multiplier - 1);
     const minimumEarnings = hours * minWageApplied;
-    const topUp = Math.max(0, minimumEarnings - pieceEarnings - holidayPremium);
     const pieceHourlyRate = hours > 0 ? pieceEarnings / hours : 0;
 
-    // El total es la suma de las partes YA redondeadas: así las líneas que se
-    // exportan a nómina (cubetas + plus de festivo + complemento) suman el total.
+    // Todo en céntimos ya redondeados, para que las líneas que se exportan a
+    // nómina (cubetas + plus de festivo + complemento) sumen exactamente el total.
     const pieceRounded = round2(pieceEarnings);
-    const premiumRounded = round2(holidayPremium);
-    const topUpRounded = round2(topUp);
+    // Festivo: lo ganado por cubetas también va a tiempo y medio. El plus se
+    // calcula sobre los céntimos (medio céntimo hacia arriba: 833.925 → 833.93)
+    const premiumRounded = holidayPremiumOf(pieceRounded, multiplier);
+    // El complemento cubre lo que falte hasta el mínimo y se redondea HACIA
+    // ARRIBA al céntimo: al más cercano podía quedar medio céntimo por debajo
+    // (5.5 h × 23.95 = 131.725 pagaba 131.72). −1e-6: ruido de coma flotante.
+    const missing = minimumEarnings - pieceRounded - premiumRounded;
+    const topUpRounded = missing > 0 ? Math.max(0, Math.ceil(missing * 100 - 1e-6) / 100) : 0;
     return {
         pieceEarnings: pieceRounded,
         holidayPremium: premiumRounded,
@@ -425,9 +433,14 @@ function dayHours(
     }
 
     let estimated = false;
-    const ranges: { start: number; end: number; row: AttendanceRow }[] = [];
+    const ranges: { start: number; end: number; row: AttendanceRow; contained: boolean }[] = [];
+    // Fin más tardío hasta ahora: un tramo que se solapa con el anterior (error
+    // al corregir la hoja) empieza donde acabó aquel; si no, el rato solapado
+    // se pagaba dos veces
+    let coveredUntil = -Infinity;
     sorted.forEach((r, i) => {
-        const start = toMs(r.checkIn) as number;
+        const rawStart = toMs(r.checkIn) as number;
+        const start = Math.max(rawStart, coveredUntil);
         const out = toMs(r.checkOut);
         const nextStart = i + 1 < sorted.length ? (toMs(sorted[i + 1].checkIn) as number) : Infinity;
         let end: number;
@@ -447,18 +460,27 @@ function dayHours(
             end = last;
             estimated = true;
         }
-        ranges.push({ start, end, row: r });
+        // Tramo entero dentro de otro: no cuenta (tampoco para trayectos)
+        const contained = coveredUntil > rawStart && end <= coveredUntil;
+        end = Math.max(start, end);
+        coveredUntil = Math.max(coveredUntil, end);
+        ranges.push({ start, end, row: r, contained });
     });
 
     // Trayectos entre huertos distintos: mitad para cada tramo
     const travelMs = ranges.map(() => 0);
     let totalTravelMs = 0;
-    for (let i = 1; i < ranges.length; i++) {
-        const prev = ranges[i - 1], cur = ranges[i];
+    let prevIdx = -1;
+    for (let i = 0; i < ranges.length; i++) {
+        if (ranges[i].contained) continue;
+        const p = prevIdx;
+        prevIdx = i;
+        if (p < 0) continue;
+        const prev = ranges[p], cur = ranges[i];
         const a = prev.row.orchardId, b = cur.row.orchardId;
         if (!a || !b || a === b) continue;
         const gap = Math.max(0, cur.start - prev.end);
-        travelMs[i - 1] += gap / 2;
+        travelMs[p] += gap / 2;
         travelMs[i] += gap / 2;
         totalTravelMs += gap;
     }
@@ -524,6 +546,7 @@ function splitByOrchard(
     scans: ReadonlyArray<ScanForPay>,
     topUp: number,
     holidayMultiplier = 1,
+    holidayPremium = 0,
 ): OrchardShare[] {
     const key = (o: string | null | undefined) => o ?? '';
     const weight = new Map<string, number>();
@@ -549,12 +572,12 @@ function splitByOrchard(
         hours: round2(h.hours * share(k)),
         buckets: piece.get(k)?.buckets ?? 0,
         pieceEarnings: round2(piece.get(k)?.earnings ?? 0),
-        holidayPremium: round2((piece.get(k)?.earnings ?? 0) * (holidayMultiplier - 1)),
+        holidayPremium: holidayPremiumOf(round2(piece.get(k)?.earnings ?? 0), holidayMultiplier),
         topUp: round2(topUp * share(k)),
         total: 0,
     }));
     // Cuadrar céntimos con el total del día
-    const fix = (field: 'hours' | 'topUp', target: number) => {
+    const fix = (field: 'hours' | 'topUp' | 'holidayPremium', target: number) => {
         const diff = round2(target - out.reduce((s, o) => s + o[field], 0));
         if (diff !== 0) {
             const big = out.reduce((m, o) => (share(key(o.orchardId)) > share(key(m.orchardId)) ? o : m), out[0]);
@@ -563,6 +586,7 @@ function splitByOrchard(
     };
     fix('hours', h.hours);
     fix('topUp', topUp);
+    fix('holidayPremium', holidayPremium);
     for (const o of out) o.total = round2(o.pieceEarnings + o.holidayPremium + o.topUp);
     return out.sort((a, b) => key(a.orchardId).localeCompare(key(b.orchardId)));
 }
@@ -597,12 +621,28 @@ export function payForRange(params: {
         shifts.set(k, list);
     }
 
+    // Tramos cerrados de cada persona: una cubeta escaneada dentro de un tramo
+    // que cruza la medianoche es del día de ese tramo (horas y cubetas juntas;
+    // antes se iba al día siguiente y allí se estimaban horas otra vez)
+    const closedByPicker = new Map<string, { start: number; end: number; date: string }[]>();
+    for (const a of attendance) {
+        const start = toMs(a.checkIn), end = toMs(a.checkOut);
+        if (start === null || end === null || end <= start) continue;
+        const list = closedByPicker.get(a.pickerId) ?? [];
+        list.push({ start, end, date: a.date });
+        closedByPicker.set(a.pickerId, list);
+    }
+
     const scans = new Map<string, ScanForPay[]>();
     for (const b of buckets) {
         if (b.qualityGrade === 'reject') continue;
         const ms = toMs(b.scannedAt);
         if (ms === null) continue;
-        const k = key(b.pickerId, nzDateOf(b.scannedAt));
+        const scanDate = nzDateOf(b.scannedAt);
+        const covering = (closedByPicker.get(b.pickerId) ?? []).filter(x => ms >= x.start && ms <= x.end);
+        // Si un tramo de su propio día la cubre, se queda en su día
+        const shift = covering.some(x => x.date === scanDate) ? undefined : [...covering].sort((x, y) => x.date.localeCompare(y.date))[0];
+        const k = key(b.pickerId, shift ? shift.date : scanDate);
         const list = scans.get(k) ?? [];
         list.push({
             ms,
@@ -642,7 +682,7 @@ export function payForRange(params: {
         }
         const estimated = h.estimated || hasStaleOpen;
         const pieceLines = buildPieceLines(dayScans);
-        const byOrchard = splitByOrchard(h, dayScans, p.topUp, holiday ? PAY_RULES.publicHolidayMultiplier : 1);
+        const byOrchard = splitByOrchard(h, dayScans, p.topUp, holiday ? PAY_RULES.publicHolidayMultiplier : 1, p.holidayPremium);
 
         const acc = byPicker.get(pickerId) ?? {
             pickerId, buckets: 0, hours: 0, pieceEarnings: 0, holidayPremium: 0, topUp: 0, total: 0,
