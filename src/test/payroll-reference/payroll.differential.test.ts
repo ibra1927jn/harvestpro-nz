@@ -182,6 +182,30 @@ describe('payroll differential: calculate-payroll (Edge Function) ↔ reference'
     });
 });
 
+describe('payroll differential: calculate-payroll per orchard ↔ company split', () => {
+    it('the payroll of one orchard is exactly that orchard\'s share of the company payroll (and the orchards add up)', async () => {
+        await fc.assert(fc.asyncProperty(weekArb, async w => {
+            const company = await edgePayroll(w);
+            const sumByPicker = new Map<string, number>();
+            for (const orchard of ['orch-a', 'orch-b']) {
+                const r = await edgePayroll(w, {}, orchard);
+                for (const p of company.picker_breakdown) {
+                    const share = p.days.flatMap(d => d.byOrchard).filter(o => o.orchardId === orchard);
+                    const own = r.picker_breakdown.find(x => x.picker_id === p.picker_id);
+                    expect([orchard, p.picker_id, cents(own?.total_earnings ?? 0), cents(own?.top_up_required ?? 0)])
+                        .toEqual([orchard, p.picker_id, share.reduce((s, o) => s + cents(o.total), 0), share.reduce((s, o) => s + cents(o.topUp), 0)]);
+                    sumByPicker.set(p.picker_id, (sumByPicker.get(p.picker_id) ?? 0) + cents(own?.total_earnings ?? 0));
+                }
+            }
+            // orch-c no tiene harvest_settings (la función lo rechaza): su parte se suma aparte
+            for (const p of company.picker_breakdown) {
+                const c = p.days.flatMap(d => d.byOrchard).filter(o => o.orchardId === 'orch-c').reduce((s, o) => s + cents(o.total), 0);
+                expect((sumByPicker.get(p.picker_id) ?? 0) + c).toBe(cents(p.total_earnings));
+            }
+        }), { numRuns: Math.max(20, Math.round(RUNS / 3)) });
+    });
+});
+
 // ─── Exportaciones: se generan y se vuelven a leer ──────────────────────────
 
 /** CSV simple (con comillas) → filas */
