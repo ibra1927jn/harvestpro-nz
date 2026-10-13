@@ -41,12 +41,14 @@ const SALT_LS_LEGACY_KEY = 'harvestpro_crypto_salt_v2'; // Old localStorage key 
  * Uses a dynamic import to avoid circular dep (db.ts re-exports initCrypto from here).
  */
 async function getOrCreateSalt(): Promise<Uint8Array> {
-  try {
-    // Dynamic import avoids circular dep: db.ts → (no longer) → dbCrypto.ts
-    // db.ts does `export { initCrypto } from './dbCrypto'` but doesn't import dbCrypto at evaluation time.
-    const { db } = await import('./db');
+  // Dynamic import avoids circular dep: db.ts → (no longer) → dbCrypto.ts
+  // db.ts does `export { initCrypto } from './dbCrypto'` but doesn't import dbCrypto at evaluation time.
+  const { db } = await import('./db');
 
-    // Try to read existing salt from IndexedDB
+  // Leer-o-crear dentro de UNA transacción: con varias cifras a la vez (modo
+  // lote, dos pestañas en el primer arranque) cada una creaba su propia sal y
+  // lo cifrado con la que no quedó guardada ya no se podía descifrar.
+  return db.transaction('rw', db.sync_meta, async () => {
     const existing = await db.sync_meta.get(SALT_IDB_KEY);
     if (existing && typeof existing.value === 'string' && existing.value.length > 0) {
       return new Uint8Array(existing.value.split(',').map(Number));
@@ -59,7 +61,6 @@ async function getOrCreateSalt(): Promise<Uint8Array> {
 
     if (lsLegacy) {
       const salt = new Uint8Array(lsLegacy.split(',').map(Number));
-      // Migrate: store in IndexedDB and delete from localStorage
       await db.sync_meta.put({ id: SALT_IDB_KEY, value: Array.from(salt).join(',') });
       try { localStorage.removeItem(SALT_LS_LEGACY_KEY); } catch { /* non-blocking */ }
       logger.info('[dbCrypto] Migrated crypto salt from localStorage → IndexedDB');
@@ -70,19 +71,21 @@ async function getOrCreateSalt(): Promise<Uint8Array> {
     const salt = crypto.getRandomValues(new Uint8Array(32));
     await db.sync_meta.put({ id: SALT_IDB_KEY, value: Array.from(salt).join(',') });
     return salt;
-  } catch (e) {
-    // IndexedDB not ready (very early boot) — fall back to a session-scoped buffer
-    // The key will be re-derived on next call once DB is available.
-    logger.warn('[dbCrypto] IndexedDB not ready for salt, using ephemeral fallback:', e);
-    return crypto.getRandomValues(new Uint8Array(32));
-  }
+  });
+  // Sin IndexedDB lanza: antes se usaba una sal aleatoria de un solo uso y la
+  // clave se quedaba en caché toda la sesión, así que todo lo cifrado en esa
+  // sesión era ilegible tras recargar. Ahora el cifrado falla y quien llama
+  // decide (offlineService guarda sin cifrar antes que perder el escaneo).
 }
 
 /**
- * Derive a stable device fingerprint for key material.
- * Not security-critical alone — combined with random salt via PBKDF2.
+ * Huella del dispositivo que usaban las versiones anteriores para derivar la
+ * clave. NO era estable: incluye userAgent (cambia con cada actualización de
+ * Chrome) y el tamaño de pantalla (cambia al girar el móvil en Android). Al
+ * cambiar, todo lo cifrado en cola dejaba de descifrarse. Solo se usa para
+ * leer datos antiguos.
  */
-function getDeviceFingerprint(): string {
+function getLegacyDeviceFingerprint(): string {
   const nav = typeof navigator !== 'undefined' ? navigator : undefined;
   const scr = typeof screen !== 'undefined' ? screen : undefined;
   const parts = [
@@ -96,26 +99,15 @@ function getDeviceFingerprint(): string {
   return parts.join('|');
 }
 
-// ── CryptoKey Cache ─────────────────────────────
-let _cachedKey: CryptoKey | null = null;
-
-async function getEncryptionKey(): Promise<CryptoKey> {
-  if (_cachedKey) return _cachedKey;
-
-  const fingerprint = getDeviceFingerprint();
-  const salt = await getOrCreateSalt();
-
-  // Import fingerprint as raw key material
+async function deriveKey(material: string, salt: Uint8Array): Promise<CryptoKey> {
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(fingerprint),
+    new TextEncoder().encode(material),
     'PBKDF2',
     false,
     ['deriveKey']
   );
-
-  // Derive AES-GCM key via PBKDF2
-  _cachedKey = await crypto.subtle.deriveKey(
+  return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
       salt: salt.buffer as ArrayBuffer,
@@ -127,8 +119,34 @@ async function getEncryptionKey(): Promise<CryptoKey> {
     false,
     ['encrypt', 'decrypt']
   );
+}
 
-  return _cachedKey;
+// ── CryptoKey Cache ─────────────────────────────
+// Se guarda la PROMESA: varias cifras a la vez comparten una sola derivación.
+let _keyPromise: Promise<CryptoKey> | null = null;
+let _legacyKeyPromise: Promise<CryptoKey> | null = null;
+
+function getEncryptionKey(): Promise<CryptoKey> {
+  if (!_keyPromise) {
+    // La clave depende solo de la sal aleatoria guardada en IndexedDB
+    _keyPromise = getOrCreateSalt().then(salt => deriveKey(APP_SALT, salt));
+    _keyPromise.catch(() => { _keyPromise = null; });
+  }
+  return _keyPromise;
+}
+
+function getLegacyKey(): Promise<CryptoKey> {
+  if (!_legacyKeyPromise) {
+    _legacyKeyPromise = getOrCreateSalt().then(salt => deriveKey(getLegacyDeviceFingerprint(), salt));
+    _legacyKeyPromise.catch(() => { _legacyKeyPromise = null; });
+  }
+  return _legacyKeyPromise;
+}
+
+/** Olvida la clave en memoria (como al recargar la app). La siguiente operación la vuelve a derivar. */
+export function resetKeyCache(): void {
+  _keyPromise = null;
+  _legacyKeyPromise = null;
 }
 
 // ── Encrypt / Decrypt ──────────────────────────
@@ -176,9 +194,15 @@ export async function decryptValue(ciphertext: string): Promise<string> {
       const iv = combined.slice(0, IV_LENGTH);
       const data = combined.slice(IV_LENGTH);
 
-      const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
-
-      return new TextDecoder().decode(decrypted);
+      try {
+        const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+        return new TextDecoder().decode(decrypted);
+      } catch {
+        // Cifrado por una versión anterior (clave de la huella del dispositivo)
+        const legacy = await getLegacyKey();
+        const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, legacy, data);
+        return new TextDecoder().decode(decrypted);
+      }
     }
 
     // 🔧 M-4 Fix: Legacy v1 (crypto-js, starts with "U2F") — return as-is.
