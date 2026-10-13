@@ -4,6 +4,7 @@ import 'fake-indexeddb/auto';
 // ── DOM matchers (toBeInTheDocument, toBeDisabled, etc.) ──
 import '@testing-library/jest-dom';
 import { afterEach, vi } from 'vitest';
+import type { StateCreator, StoreApi } from 'zustand';
 
 // ── Global safeStorage mock ──────────────────────────
 // Prevents Zustand persist middleware from writing to localStorage
@@ -62,30 +63,42 @@ if (typeof window !== 'undefined') {
 // ── Timezone lock ────────────────────────────────────
 // Force NZ timezone so payroll/nzst calculations match
 // production behavior, even when CI runs in UTC.
+// Ojo: con pool 'threads' esto no basta (no cambia la zona de Date en el worker);
+// la zona real se fija en vitest.config*.ts antes de crear los workers.
 process.env.TZ = 'Pacific/Auckland';
 
 // ── Zustand store cleanup ────────────────────────────
-// Zustand persists state between tests in the same file.
-// This helper resets all stores to their initial state.
-import { useHarvestStore } from './stores/useHarvestStore';
+// Zustand persists state between tests in the same file, so every store is
+// reset to its initial data in afterEach.
+// IMPORTANTE: este setup NO debe importar módulos de la app (src/). Todo lo que
+// cargue aquí ya está evaluado cuando el test registra sus vi.mock(), y esos mocks
+// se ignorarían en silencio (lo vigila `npm run test:mock-guard`).
+// Por eso no se importa useHarvestStore: se envuelve `create` de zustand y cada
+// store se registra al crearse, cuando el test (y sus mocks) ya lo importa.
+const { storeResets } = vi.hoisted(() => ({ storeResets: new Set<() => void>() }));
 
-// Capture data-only initial state as string to avoid reference leaks
-const getInitialDataString = () => {
-    const state = useHarvestStore.getState();
-    const data: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(state)) {
-        if (typeof v !== 'function') {
-            data[k] = v;
+vi.mock('zustand', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('zustand')>();
+    const track = <S extends StoreApi<unknown>>(store: S): S => {
+        // Solo datos (sin funciones), serializado para no compartir referencias
+        const data: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(store.getState() as object)) {
+            if (typeof v !== 'function') data[k] = v;
         }
-    }
-    return JSON.stringify(data);
-};
-const initialDataStr = getInitialDataString();
+        const initialDataStr = JSON.stringify(data);
+        storeResets.add(() => store.setState(JSON.parse(initialDataStr) as unknown, false));
+        return store;
+    };
+    const create = ((initializer?: StateCreator<unknown>) =>
+        initializer
+            ? track(actual.create(initializer))
+            : (init: StateCreator<unknown>) => track(actual.create(init))) as unknown as typeof actual.create;
+    return { ...actual, create };
+});
 
 afterEach(() => {
-    // Reset Zustand store to clean initial state
-    const cleanData = JSON.parse(initialDataStr);
-    useHarvestStore.setState(cleanData, false);
+    // Reset Zustand stores to clean initial state
+    for (const reset of storeResets) reset();
     // Clear localStorage to prevent cross-test pollution
     // Defensive: some tests stub localStorage without clear()
     if (typeof window !== 'undefined' && typeof localStorage?.clear === 'function') {

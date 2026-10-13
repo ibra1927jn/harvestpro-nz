@@ -55,9 +55,10 @@ vi.mock('@/services/supabase', () => ({
 
 // Redundant mock removed
 
-import { hydrateFromRecovery, hydrateFromDexie } from './storeSync';
+import { hydrateFromRecovery, hydrateFromDexie, setupRealtimeSubscriptions } from './storeSync';
 import { offlineService } from '@/services/offline.service';
-import type { StoreSetter } from './storeSync';
+import { supabase } from '@/services/supabase';
+import type { StoreGetter, StoreSetter } from './storeSync';
 
 describe('storeSync — E2E deep tests', () => {
     beforeEach(() => {
@@ -162,18 +163,26 @@ describe('storeSync — E2E deep tests', () => {
 
     // ========== setupRealtimeSubscriptions ==========
     describe('setupRealtimeSubscriptions', () => {
-        it('sets up supabase channel', async () => {
+        it('sets up one channel per orchard and only replaces its own previous channel', () => {
             const mockGet = vi.fn().mockReturnValue({
                 recalculateIntelligence: vi.fn(),
             });
             const mockSet = vi.fn();
-            // test-setup.ts ya cargo storeSync con el supabase real: se recarga con el mock
-            vi.resetModules();
-            const { setupRealtimeSubscriptions: setup } = await import('./storeSync');
-            const { supabase: sb } = await import('@/services/supabase');
-            setup('o1', mockGet as any, mockSet as unknown as StoreSetter);
-            // Un solo canal por huerto
-            expect(vi.mocked(sb.channel)).toHaveBeenCalledWith('harvest-live-o1');
+            const chain = { on: vi.fn(), subscribe: vi.fn() };
+            chain.on.mockReturnValue(chain);
+            vi.mocked(supabase.channel).mockReturnValue(chain as unknown as ReturnType<typeof supabase.channel>);
+            const stale = { topic: 'realtime:harvest-live-o1' };
+            const messaging = { topic: 'realtime:public:broadcasts' };
+            vi.mocked(supabase.getChannels).mockReturnValue([stale, messaging] as unknown as ReturnType<typeof supabase.getChannels>);
+
+            setupRealtimeSubscriptions('o1', mockGet as unknown as StoreGetter, mockSet as unknown as StoreSetter);
+
+            // Un solo canal por huerto; el canal de mensajería no se toca
+            expect(vi.mocked(supabase.channel)).toHaveBeenCalledWith('harvest-live-o1');
+            expect(vi.mocked(supabase.removeChannel)).toHaveBeenCalledTimes(1);
+            expect(vi.mocked(supabase.removeChannel)).toHaveBeenCalledWith(stale);
+            expect(vi.mocked(supabase.removeAllChannels)).not.toHaveBeenCalled();
+            expect(chain.subscribe).toHaveBeenCalledTimes(1);
         });
     });
 });
