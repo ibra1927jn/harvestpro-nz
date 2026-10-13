@@ -13,6 +13,7 @@ import misc from './misc';
 import orchardMap from './orchardMap';
 import assignModal from './assignModal';
 import logistics from './logistics';
+import admin from './admin';
 import chat from './chat';
 import hr from './hr';
 import legal from './legal';
@@ -44,6 +45,7 @@ const es: TranslationDict = {
     ...orchardMap,
     ...assignModal,
     ...logistics,
+    ...admin,
     ...chat,
     ...hr,
     ...legal,

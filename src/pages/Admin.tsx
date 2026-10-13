@@ -17,6 +17,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import SetupWizard from '@/components/common/SetupWizard';
 import { useAdmin } from '@/hooks/useAdmin';
 import { ADMIN_NAV_ITEMS, ADMIN_SUMMARY_CARDS, type AdminTab } from '@/config/navigation/admin.nav';
+import { useTranslation } from '@/i18n';
 
 // Lazy-loaded tab content (code-split for performance)
 const AdminOrchardsTab = React.lazy(() => import('./admin/AdminOrchardsTab'));
@@ -31,6 +32,7 @@ const TabLoader = () => (
 );
 
 export default function Admin() {
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState<AdminTab>('orchards');
     const [showWizard, setShowWizard] = useState(false);
     const admin = useAdmin();
@@ -77,7 +79,7 @@ export default function Admin() {
             case 'audit':
                 return <ComponentErrorBoundary componentName="Audit Log"><AuditLogViewer /></ComponentErrorBoundary>;
             default:
-                return <ComponentErrorBoundary componentName="Orchards"><EmptyState icon="apartment" title="Select a tab" compact /></ComponentErrorBoundary>;
+                return <ComponentErrorBoundary componentName="Orchards"><EmptyState icon="apartment" title={t('admin.select_tab')} compact /></ComponentErrorBoundary>;
         }
     };
 
@@ -87,7 +89,7 @@ export default function Admin() {
                 navItems={navItems}
                 activeTab={activeTab}
                 onTabChange={(id) => setActiveTab(id as AdminTab)}
-                title="HarvestPro Admin"
+                title={t('admin.page_title')}
                 accentColor="red"
                 titleIcon="shield"
             >

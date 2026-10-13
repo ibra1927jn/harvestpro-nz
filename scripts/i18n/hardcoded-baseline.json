@@ -22,9 +22,5 @@
   "src/components/views/manager/TimesheetEditor.tsx": 22,
   "src/components/views/manager/TimesheetRow.tsx": 13,
   "src/components/views/manager/weekly-report/ExportModal.tsx": 20,
-  "src/pages/Admin.tsx": 2,
-  "src/pages/admin/AdminComplianceTab.tsx": 5,
-  "src/pages/admin/AdminOrchardsTab.tsx": 8,
-  "src/pages/admin/AdminUsersTab.tsx": 32,
   "src/pages/OnboardingPage.tsx": 41
 }
