@@ -96,3 +96,21 @@ describe('dayPay — el complemento nunca deja el día bajo el mínimo', () => {
         expect(dayPay({ buckets: 0, hours: 4, pieceRate: 6.5, minWage: MIN, isPublicHoliday: true }).topUp).toBe(143.7);
     });
 });
+
+describe('dayPay — festivo: el plus y el complemento cuadran al céntimo', () => {
+    it('plus de festivo con medio céntimo se redondea hacia arriba: 15 × 11.35 = 170.25 → 85.13 (antes 85.12)', async () => {
+        const { dayPay } = await import('./pay');
+        // Suma de cubetas tal como la hace payForRange (170.24999999999994 en coma flotante)
+        const piece = Array.from({ length: 15 }, () => 11.35).reduce((a, b) => a + b, 0);
+        const p = dayPay({ buckets: 15, pieceEarnings: piece, hours: 4, pieceRate: 11.35, minWage: MIN, isPublicHoliday: true });
+        expect([p.pieceEarnings, p.holidayPremium, p.total]).toEqual([170.25, 85.13, 255.38]);
+    });
+
+    it('el complemento se calcula sobre las partes ya redondeadas: no paga un céntimo de más', async () => {
+        const { dayPay } = await import('./pay');
+        // 2.15 h en festivo: mínimo 2.15 × 23.95 × 1.5 = 77.23875 → 77.24.
+        // Cubetas 25.85 + plus 12.93 = 38.78 → complemento 38.46 (antes 38.47, total 77.25)
+        const p = dayPay({ buckets: 3, pieceEarnings: 25.85, hours: 2.15, pieceRate: 6.5, minWage: MIN, isPublicHoliday: true });
+        expect([p.pieceEarnings, p.holidayPremium, p.topUp, p.total]).toEqual([25.85, 12.93, 38.46, 77.24]);
+    });
+});
