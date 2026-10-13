@@ -104,18 +104,14 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
 
     const initScanner = async () => {
       try {
-        scanner = new QrScanner(
-          videoRef.current!,
-          result => rateLimitedScan(result.data),
-          {
-            preferredCamera: 'environment',
-            highlightScanRegion: true,
-            highlightCodeOutline: true,
-            maxScansPerSecond: 10,
-            // Desactivar overlay de debug para mantener UI limpia
-            returnDetailedScanResult: true,
-          }
-        );
+        scanner = new QrScanner(videoRef.current!, result => rateLimitedScan(result.data), {
+          preferredCamera: 'environment',
+          highlightScanRegion: true,
+          highlightCodeOutline: true,
+          maxScansPerSecond: 10,
+          // Desactivar overlay de debug para mantener UI limpia
+          returnDetailedScanResult: true,
+        });
         await scanner.start();
       } catch (e) {
         // FIX H2: Camera init failure — auto-switch to manual
@@ -163,10 +159,11 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label={`Scan ${scanType}`}
-      className="fixed inset-0 z-[100] bg-black flex flex-col justify-center animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] bg-black flex flex-col animate-in fade-in duration-200"
     >
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/80 to-transparent">
+      {/* En el flujo (antes absolute): con poca altura — landscape o teclado abierto — se pisaba con el formulario */}
+      <div className="shrink-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/80 to-transparent">
         <div className="text-white">
           <h2 className="text-lg font-bold flex items-center gap-2">
             Scan {scanType}
@@ -211,94 +208,96 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
         </div>
       )}
 
-      {/* Batch List UI */}
-      {batchMode && scannedCodes.length > 0 && (
-        <div className="absolute top-36 left-4 right-4 z-20 max-h-48 overflow-y-auto bg-black/60 backdrop-blur-md rounded-xl border border-white/20 p-3 pointer-events-none custom-scrollbar">
-          <h3 className="text-white text-xs font-bold mb-2 px-1 uppercase tracking-wider">
-            {scannedCodes.length} Scanned in batch
-          </h3>
-          <div className="flex flex-col gap-1.5">
-            {scannedCodes.map(code => (
-              <div
-                key={code}
-                className="flex items-center justify-between bg-emerald-500/20 px-3 py-2 rounded-lg border border-emerald-500/30"
+      {/* Contenido con scroll propio: lista del lote + cámara / entrada manual */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="min-h-full flex flex-col justify-center gap-3 py-2">
+          {/* Scanner Area */}
+          <div className="w-full max-w-lg mx-auto relative px-4">
+            {showManual ? (
+              <form
+                onSubmit={handleManualSubmit}
+                className="bg-black/80 backdrop-blur-md p-6 rounded-2xl border border-white/10"
               >
-                <span className="text-white font-mono font-bold text-sm tracking-widest">
-                  {code}
-                </span>
-                <span className="material-symbols-outlined text-emerald-400 text-sm">
-                  check_circle
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Scanner Area */}
-      <div className="w-full max-w-lg mx-auto relative px-4">
-        {showManual ? (
-          <form
-            onSubmit={handleManualSubmit}
-            className="bg-black/80 backdrop-blur-md p-6 rounded-2xl border border-white/10"
-          >
-            <label className="block text-sm font-medium text-text-muted mb-2">
-              Enter {scanType} Code
-            </label>
-            <input
-              type="text"
-              value={manualCode}
-              onChange={e => setManualCode(e.target.value.toUpperCase())}
-              className="w-full bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-white font-mono text-lg focus:border-primary outline-none mb-4"
-              placeholder="e.g. BKT-1024"
-              autoFocus
-            />
-            <button
-              type="submit"
-              className="w-full bg-primary text-white font-bold py-3 rounded-xl active:scale-95 transition-transform"
-            >
-              Submit Code
-            </button>
-          </form>
-        ) : isNative ? (
-          /* Native scanner — Capacitor handles the camera feed */
-          <div className="bg-black/80 backdrop-blur-md p-8 rounded-2xl border border-white/10 text-center">
-            {nativeScanning ? (
-              <>
-                <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-white font-semibold">Native scanner active…</p>
-                <p className="text-sm text-white/60 mt-1">Point camera at QR code</p>
-              </>
-            ) : (
-              <>
-                <span className="material-symbols-outlined text-5xl text-emerald-400 mb-4 block">
-                  qr_code_scanner
-                </span>
+                <label className="block text-sm font-medium text-text-muted mb-2">
+                  Enter {scanType} Code
+                </label>
+                <input
+                  type="text"
+                  value={manualCode}
+                  onChange={e => setManualCode(e.target.value.toUpperCase())}
+                  className="w-full bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-white font-mono text-lg focus:border-primary outline-none mb-4"
+                  placeholder="e.g. BKT-1024"
+                  autoFocus
+                />
                 <button
-                  onClick={startNativeScan}
-                  className="bg-emerald-500 text-white font-bold py-3 px-8 rounded-xl active:scale-95 transition-transform"
+                  type="submit"
+                  className="w-full bg-primary text-white font-bold py-3 rounded-xl active:scale-95 transition-transform"
                 >
-                  Scan Again
+                  Submit Code
                 </button>
-              </>
+              </form>
+            ) : isNative ? (
+              /* Native scanner — Capacitor handles the camera feed */
+              <div className="bg-black/80 backdrop-blur-md p-8 rounded-2xl border border-white/10 text-center">
+                {nativeScanning ? (
+                  <>
+                    <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-white font-semibold">Native scanner active…</p>
+                    <p className="text-sm text-white/60 mt-1">Point camera at QR code</p>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-5xl text-emerald-400 mb-4 block">
+                      qr_code_scanner
+                    </span>
+                    <button
+                      onClick={startNativeScan}
+                      className="bg-emerald-500 text-white font-bold py-3 px-8 rounded-xl active:scale-95 transition-transform"
+                    >
+                      Scan Again
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : (
+              /* Web scanner — qr-scanner (CSP-compatible, sin eval) */
+              <div className="rounded-2xl overflow-hidden bg-black border border-white/20 shadow-2xl relative">
+                <video
+                  ref={videoRef}
+                  className="w-full h-full object-cover rounded-2xl"
+                  style={{ minHeight: 280 }}
+                />
+              </div>
             )}
           </div>
-        ) : (
-          /* Web scanner — qr-scanner (CSP-compatible, sin eval) */
-          <div className="rounded-2xl overflow-hidden bg-black border border-white/20 shadow-2xl relative">
-            <video
-              ref={videoRef}
-              className="w-full h-full object-cover rounded-2xl"
-              style={{ minHeight: 280 }}
-            />
-          </div>
-        )}
+          {/* Batch List UI: debajo del campo, para que el campo quede a la vista */}
+          {batchMode && scannedCodes.length > 0 && (
+            <div className="mx-4 max-h-48 overflow-y-auto bg-black/60 backdrop-blur-md rounded-xl border border-white/20 p-3 custom-scrollbar">
+              <h3 className="text-white text-xs font-bold mb-2 px-1 uppercase tracking-wider">
+                {scannedCodes.length} Scanned in batch
+              </h3>
+              <div className="flex flex-col gap-1.5">
+                {scannedCodes.map(code => (
+                  <div
+                    key={code}
+                    className="flex items-center justify-between bg-emerald-500/20 px-3 py-2 rounded-lg border border-emerald-500/30"
+                  >
+                    <span className="text-white font-mono font-bold text-sm tracking-widest">
+                      {code}
+                    </span>
+                    <span className="material-symbols-outlined text-emerald-400 text-sm">
+                      check_circle
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Footer Actions */}
-      <div
-        className={`absolute left-0 right-0 px-6 text-center z-30 ${batchMode && scannedCodes.length > 0 ? 'bottom-28' : 'bottom-10'}`}
-      >
+      {/* Footer Actions: en el flujo, siempre debajo del contenido */}
+      <div className="shrink-0 px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] flex flex-col items-center gap-3 z-30">
         <button
           onClick={() => {
             setShowManual(!showManual);
@@ -308,23 +307,22 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
         >
           {showManual ? 'Switch to Camera' : 'Problem scanning? Enter code manually'}
         </button>
+        {/* Batch Done Button */}
+        {batchMode && scannedCodes.length > 0 && (
+          <div className="w-full">
+            <button
+              onClick={() => {
+                if (onBatchScan) onBatchScan(scannedCodes);
+                onClose();
+              }}
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black text-lg py-4 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined">done_all</span>
+              Complete Batch ({scannedCodes.length})
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* Batch Done Button */}
-      {batchMode && scannedCodes.length > 0 && (
-        <div className="absolute bottom-10 left-4 right-4 z-40">
-          <button
-            onClick={() => {
-              if (onBatchScan) onBatchScan(scannedCodes);
-              onClose();
-            }}
-            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black text-lg py-4 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95 transition-all flex items-center justify-center gap-2"
-          >
-            <span className="material-symbols-outlined">done_all</span>
-            Complete Batch ({scannedCodes.length})
-          </button>
-        </div>
-      )}
 
       <style>{`
                 /* Native scanner: transparent body for camera preview */
