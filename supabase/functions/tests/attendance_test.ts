@@ -105,7 +105,7 @@ Deno.test({ name: 'manage-attendance and approve-timesheet', ...testOpts, fn: as
             assertEquals(r.status, 200, show(r))
             const { data } = must(await service.from('daily_attendance').select('corrected_by, hours_worked, correction_reason').eq('id', shiftT).single(), 'corr')
             assertEquals(data!.corrected_by, leaderT.id)
-            assertEquals(Number(data!.hours_worked), 8) // 8.5 h − 30 min sin pagar
+            assertEquals(Number(data!.hours_worked), 8.5) // 8.5 h; sin descanso anotado no se descuenta nada
             const { data: audit } = must(await service.from('audit_logs').select('user_id')
                 .eq('record_id', shiftT).eq('new_values->>event', 'timesheet_correction'), 'audit')
             assertEquals(audit!.map(a => a.user_id), [leaderT.id])

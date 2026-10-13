@@ -29,7 +29,7 @@ Deno.test({ name: 'check-compliance and detect-anomalies', ...testOpts, fn: asyn
         const sharerA = await makePicker(orchard)
         const sharerB = await makePicker(orchard)
 
-        // worker: 06:00–11:30 sin descanso anotado (5.5 h → 5 h pagadas), 2 cubetas
+        // worker: 06:00–11:30 sin descanso anotado (5.5 h pagadas: no se descuenta), 2 cubetas
         must(await service.from('daily_attendance').insert({
             picker_id: worker.id, orchard_id: orchard, date: today,
             check_in: nzTime(today, '06:00'), check_out: nzTime(today, '11:30'), status: 'present',
@@ -56,12 +56,12 @@ Deno.test({ name: 'check-compliance and detect-anomalies', ...testOpts, fn: asyn
             })
             assertEquals(r.status, 200, show(r))
             const p = r.json.pickers[0]
-            assertEquals(p.metrics.hours_worked, 5)
+            assertEquals(p.metrics.hours_worked, 5.5)
             assertEquals(p.metrics.buckets_today, 2)
-            assertEquals(p.metrics.effective_hourly_rate, 2.6)
+            assertEquals(p.metrics.effective_hourly_rate, 2.36)
             assert([23.95, 35.93].includes(p.metrics.minimum_wage), `min wage ${p.metrics.minimum_wage}`)
             assertEquals(p.metrics.is_below_minimum, true)
-            assertAlmostEquals(p.metrics.top_up_required, 5 * p.metrics.minimum_wage - 13, 0.011)
+            assertAlmostEquals(p.metrics.top_up_required, 5.5 * p.metrics.minimum_wage - 13, 0.011)
             const kinds = p.violations.map(v => `${v.type}/${v.severity}`).sort()
             assertEquals(kinds, ['break_overdue/high', 'break_overdue/medium', 'wage_below_minimum/high'])
         })
