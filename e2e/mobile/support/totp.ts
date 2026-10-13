@@ -49,6 +49,14 @@ async function api(path: string, init: RequestInit & { token?: string; service?:
   return text ? JSON.parse(text) : null;
 }
 
+/** Solo un Supabase local (127.0.0.1 / localhost): ensureTotp borra factores 2FA reales. */
+export function assertLocalSupabase(url: string): void {
+  const host = new URL(url).hostname;
+  if (!['127.0.0.1', 'localhost', '::1', '[::1]'].includes(host)) {
+    throw new Error(`Refusing to reset 2FA factors on a non-local Supabase (${host})`);
+  }
+}
+
 const secrets = new Map<string, string>();
 const lastStep = new Map<string, number>();
 
@@ -57,6 +65,8 @@ export async function ensureTotp(email: string, password: string): Promise<strin
   const cached = secrets.get(email);
   if (cached) return cached;
   if (!SERVICE) throw new Error('SUPABASE_SERVICE_ROLE_KEY needed in .env.local for MFA roles');
+  // Borra los factores 2FA del usuario: nunca contra un Supabase que no sea local
+  assertLocalSupabase(URL_);
   const session = await api('/token?grant_type=password', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
