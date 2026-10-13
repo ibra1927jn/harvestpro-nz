@@ -102,3 +102,58 @@ export function calculateHours(
 export function isAbnormal(hours: number | null): boolean {
     return hours !== null && (hours > 12 || hours < 0);
 }
+
+/** Valores del formulario de corrección (HH:MM hora NZ) */
+export interface CorrectionForm {
+    checkIn: string;
+    checkOut: string;
+    breakStart: string;
+    reason: string;
+}
+
+export const EMPTY_CORRECTION: CorrectionForm = { checkIn: '', checkOut: '', breakStart: '', reason: '' };
+
+/** Formulario precargado con las horas actuales de la fila */
+export function correctionFormFor(record: Pick<AttendanceRow, 'check_in' | 'check_out' | 'break_start'>): CorrectionForm {
+    return {
+        checkIn: record.check_in ? formatTimeForInput(record.check_in) : '',
+        checkOut: record.check_out ? formatTimeForInput(record.check_out) : '',
+        breakStart: record.break_start ? formatTimeForInput(record.break_start) : '',
+        reason: '',
+    };
+}
+
+/**
+ * Cambios a guardar: horas NZ de ese día → instante UTC. Entrada y salida se
+ * envían si tienen valor; el descanso solo si cambió (vacío = quitarlo).
+ */
+export function buildCorrectionUpdates(
+    record: Pick<AttendanceRow, 'date' | 'break_start'>,
+    form: Pick<CorrectionForm, 'checkIn' | 'checkOut' | 'breakStart'>,
+): { check_in?: string; check_out?: string; break_start?: string | null } {
+    const updates: { check_in?: string; check_out?: string; break_start?: string | null } = {};
+    if (form.checkIn) updates.check_in = nzTimeToIso(record.date, form.checkIn);
+    if (form.checkOut) updates.check_out = nzTimeToIso(record.date, form.checkOut);
+    const previousBreak = record.break_start ? formatTimeForInput(record.break_start) : '';
+    if (form.breakStart !== previousBreak) {
+        updates.break_start = form.breakStart ? nzTimeToIso(record.date, form.breakStart) : null;
+    }
+    return updates;
+}
+
+/** Totales de la hoja diaria (pie de tabla) */
+export function dailyTimesheetTotals(rows: Array<{
+    hours_worked: number; buckets_total: number; buckets_rejected: number;
+    piece_earnings: number; top_up: number; total_earnings: number; is_below_minimum: boolean;
+}>): { hours: number; buckets: number; rejected: number; piece: number; topUp: number; total: number; belowMinimum: number } {
+    const sum = (f: (r: (typeof rows)[number]) => number) => rows.reduce((s, r) => s + f(r), 0);
+    return {
+        hours: sum(r => r.hours_worked),
+        buckets: sum(r => r.buckets_total),
+        rejected: sum(r => r.buckets_rejected),
+        piece: sum(r => r.piece_earnings),
+        topUp: sum(r => r.top_up),
+        total: sum(r => r.total_earnings),
+        belowMinimum: rows.filter(r => r.is_below_minimum).length,
+    };
+}

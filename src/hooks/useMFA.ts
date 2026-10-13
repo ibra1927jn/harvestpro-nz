@@ -24,6 +24,21 @@ export interface MFAStatus {
     hasVerifiedFactor: boolean;
 }
 
+/** Reto TOTP + verificación del código (alta de MFA y login usan lo mismo) */
+async function challengeAndVerify(factorId: string, code: string) {
+    const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+    if (challengeError) throw challengeError;
+    if (!challengeData) throw new Error('Failed to create MFA challenge');
+
+    const { data: verifyData, error: verifyError } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId: challengeData.id,
+        code,
+    });
+    if (verifyError) throw verifyError;
+    return verifyData;
+}
+
 export function useMFA() {
     const [qrCode, setQrCode] = useState<string | null>(null);
     const [secret, setSecret] = useState<string | null>(null);
@@ -83,31 +98,7 @@ export function useMFA() {
                 throw new Error('No factor ID available. Please setup MFA first.');
             }
 
-            // Create a challenge
-            const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
-                factorId: fId,
-            });
-
-            if (challengeError) {
-                throw challengeError;
-            }
-
-            if (!challengeData) {
-                throw new Error('Failed to create MFA challenge');
-            }
-
-            // Verify the code
-            const { data: verifyData, error: verifyError } = await supabase.auth.mfa.verify({
-                factorId: fId,
-                challengeId: challengeData.id,
-                code,
-            });
-
-            if (verifyError) {
-                throw verifyError;
-            }
-
-            return verifyData;
+            return await challengeAndVerify(fId, code);
         } catch (err) {
             const error = err as Error;
             setError(error);
@@ -125,31 +116,7 @@ export function useMFA() {
         setError(null);
 
         try {
-            // Create challenge
-            const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
-                factorId: targetFactorId,
-            });
-
-            if (challengeError) {
-                throw challengeError;
-            }
-
-            if (!challengeData) {
-                throw new Error('Failed to create MFA challenge');
-            }
-
-            // Verify code
-            const { data: verifyData, error: verifyError } = await supabase.auth.mfa.verify({
-                factorId: targetFactorId,
-                challengeId: challengeData.id,
-                code,
-            });
-
-            if (verifyError) {
-                throw verifyError;
-            }
-
-            return verifyData;
+            return await challengeAndVerify(targetFactorId, code);
         } catch (err) {
             const error = err as Error;
             setError(error);

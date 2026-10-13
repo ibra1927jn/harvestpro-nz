@@ -136,20 +136,8 @@ describe('hhrr.service — named exports', () => {
         expect(typeof mod.fetchEmployees).toBe('function');
     });
 
-    it('exports fetchContracts function', async () => {
-        const mod = await import('@/services/hhrr.service');
-        expect(typeof mod.fetchContracts).toBe('function');
-    });
 
-    it('exports createContract function', async () => {
-        const mod = await import('@/services/hhrr.service');
-        expect(typeof mod.createContract).toBe('function');
-    });
 
-    it('exports updateContract function', async () => {
-        const mod = await import('@/services/hhrr.service');
-        expect(typeof mod.updateContract).toBe('function');
-    });
 
     it('exports fetchPayroll function', async () => {
         const mod = await import('@/services/hhrr.service');

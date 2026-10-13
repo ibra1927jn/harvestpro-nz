@@ -80,17 +80,3 @@ export async function checkAttendanceGap(
     attendanceWithoutScans: hasAttendance && scanCount === 0 && hoursWorked > HOURS_WITHOUT_SCANS_THRESHOLD,
   };
 }
-
-/**
- * Descripcion legible del gap para mostrar en UI (en ingles como el codigo).
- * El llamador puede traducir usando i18n si lo necesita.
- */
-export function formatAttendanceGapMessage(result: AttendanceGapResult): string | null {
-  if (result.scansWithoutAttendance) {
-    return `Picker ${result.pickerId}: buckets recorded without check-in on ${result.date} — not payable without attendance record. Fix timesheet before day close.`;
-  }
-  if (result.attendanceWithoutScans) {
-    return `Picker ${result.pickerId}: ${result.hoursWorked}h attendance recorded with no harvest activity on ${result.date} — review with supervisor.`;
-  }
-  return null;
-}

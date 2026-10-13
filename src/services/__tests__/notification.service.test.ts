@@ -125,9 +125,10 @@ describe('Notification Service', () => {
     });
 
     it('should handle multiple stop calls gracefully', () => {
-      notificationService.stopChecking();
-      notificationService.stopChecking();
-      // No error thrown
+      expect(() => {
+        notificationService.stopChecking();
+        notificationService.stopChecking();
+      }).not.toThrow();
     });
   });
 

@@ -32,7 +32,7 @@ describe('TeamLeaderSelectionModal', () => {
     const { container } = render(
       <TeamLeaderSelectionModal isOpen={true} onClose={vi.fn()} onAdd={vi.fn()} />
     );
-    expect(container.firstChild).toBeDefined();
+    expect(container.firstChild).not.toBeNull();
   });
 
   // second test removed because the modal component might not return null but rather use CSS to hide

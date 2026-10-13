@@ -4,17 +4,6 @@
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 
 // Mock supabase BEFORE importing the service
-vi.mock('./supabase', () => ({
-    supabase: {
-        auth: {
-            getSession: vi.fn(),
-        },
-        functions: {
-            invoke: vi.fn(),
-        },
-        from: vi.fn(),
-    },
-}));
 
 vi.mock('@/services/config.service', () => ({
     getConfig: () => ({
@@ -22,7 +11,9 @@ vi.mock('@/services/config.service', () => ({
     }),
 }));
 
-vi.mock('@/utils/nzst', () => ({
+// Parcial: el resto de utilidades NZ son las reales
+vi.mock('@/utils/nzst', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@/utils/nzst')>()),
     todayNZST: () => '2026-02-13',
 }));
 

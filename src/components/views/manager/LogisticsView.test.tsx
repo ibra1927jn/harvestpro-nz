@@ -71,7 +71,7 @@ beforeEach(() => {
 describe('LogisticsView — §16 refactor', () => {
   it('renders without crashing', () => {
     const { container } = render(<LogisticsView />, { wrapper });
-    expect(container.firstChild).toBeDefined();
+    expect(container.firstChild).not.toBeNull();
   });
 
   it('renders LogisticsHealthBanner with green headline text', () => {

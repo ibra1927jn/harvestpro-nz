@@ -1,8 +1,9 @@
 // =============================================
 // NZST TIMEZONE UTILITY TESTS
 // =============================================
-import { describe, it, expect, afterAll } from 'vitest';
-import { nowNZST, todayNZST, toNZST, yesterdayNZST, startOfWeekNZ } from './nzst';
+import { describe, it, expect, afterAll, afterEach, vi } from 'vitest';
+import fc from 'fast-check';
+import { nowNZST, todayNZST, toNZST, yesterdayNZST, startOfWeekNZ, dateInNZST, nzOffsetOn, nzMidnight, nzEndOfDay } from './nzst';
 
 describe('NZST Timezone Utility', () => {
     // =============================================
@@ -177,4 +178,138 @@ describe('toNZST — same instant whatever the phone timezone', () => {
             expect(new Date(toNZST(summer)).getTime()).toBe(Date.parse('2026-10-12T04:32:42Z'));
         });
     }
+});
+
+// =============================================
+// Comportamiento real: fechas fijas, DST y propiedades
+// =============================================
+describe('NZ calendar helpers with a fixed clock', () => {
+    afterEach(() => { vi.useRealTimers(); });
+
+    it('todayNZST/yesterdayNZST use the NZ calendar, not UTC (04:30 NZ is still "today")', () => {
+        vi.useFakeTimers();
+        // 2026-03-09 16:30Z = 2026-03-10 05:30 NZDT
+        vi.setSystemTime(new Date('2026-03-09T16:30:00Z'));
+        expect(todayNZST()).toBe('2026-03-10');
+        expect(yesterdayNZST()).toBe('2026-03-09');
+        expect(nowNZST()).toBe('2026-03-10T05:30:00+13:00');
+    });
+
+    it('yesterdayNZST crosses month and year boundaries', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2025-12-31T12:00:00Z')); // 2026-01-01 01:00 NZDT
+        expect(todayNZST()).toBe('2026-01-01');
+        expect(yesterdayNZST()).toBe('2025-12-31');
+    });
+
+    it('yesterdayNZST on the day after DST starts is the DST day itself', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-09-27T11:30:00Z')); // 2026-09-28 00:30 NZDT
+        expect(yesterdayNZST()).toBe('2026-09-27');
+    });
+
+    it('startOfWeekNZ returns the NZ Monday for every weekday, including Sunday', () => {
+        // Semana del lunes 2026-10-05 al domingo 2026-10-11 (NZDT, +13)
+        const cases: Array<[string, string]> = [
+            ['2026-10-04T11:00:00Z', '2026-10-05'], // lunes 00:00 NZ
+            ['2026-10-06T22:00:00Z', '2026-10-05'], // miercoles
+            ['2026-10-11T10:59:59Z', '2026-10-05'], // domingo 23:59:59 NZ
+            ['2026-10-11T11:00:00Z', '2026-10-12'], // lunes siguiente 00:00 NZ
+        ];
+        for (const [utc, monday] of cases) {
+            expect(startOfWeekNZ(new Date(utc))).toBe(monday);
+        }
+    });
+
+    it('startOfWeekNZ without argument uses "now" in NZ', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-10-10T20:00:00Z')); // domingo 11 oct 09:00 NZ
+        expect(startOfWeekNZ()).toBe('2026-10-05');
+    });
+
+    it('dateInNZST maps early-morning NZ scans to the NZ day and empty input to ""', () => {
+        expect(dateInNZST('2026-03-09T15:30:00Z')).toBe('2026-03-10'); // 04:30 NZDT
+        expect(dateInNZST('2026-06-30T11:59:59Z')).toBe('2026-06-30'); // 23:59:59 NZST
+        expect(dateInNZST('2026-06-30T12:00:00Z')).toBe('2026-07-01');
+        expect(dateInNZST('')).toBe('');
+    });
+});
+
+describe('nzOffsetOn / nzMidnight / nzEndOfDay', () => {
+    it('reports +13 in summer and +12 in winter', () => {
+        expect(nzOffsetOn('2026-01-15')).toBe('+13:00');
+        expect(nzOffsetOn('2026-07-15')).toBe('+12:00');
+    });
+
+    it('builds midnight and end of day for ordinary days', () => {
+        expect(nzMidnight('2026-07-15')).toBe('2026-07-15T00:00:00+12:00');
+        expect(nzEndOfDay('2026-07-15')).toBe('2026-07-15T23:59:59+12:00');
+        expect(nzMidnight('2026-01-15')).toBe('2026-01-15T00:00:00+13:00');
+        expect(nzEndOfDay('2026-01-15')).toBe('2026-01-15T23:59:59+13:00');
+    });
+
+    it('DST start day (2026-09-27): midnight is still NZST (+12), end of day is NZDT (+13)', () => {
+        // Bug previo: usaba el desfase del mediodia (+13) y la medianoche caia a las 23:00 del dia anterior
+        expect(nzMidnight('2026-09-27')).toBe('2026-09-27T00:00:00+12:00');
+        expect(nzEndOfDay('2026-09-27')).toBe('2026-09-27T23:59:59+13:00');
+        expect(dateInNZST(new Date(nzMidnight('2026-09-27')).toISOString())).toBe('2026-09-27');
+    });
+
+    it('DST end day (2026-04-05): midnight is still NZDT (+13), end of day is NZST (+12)', () => {
+        // Bug previo: +12 a medianoche dejaba fuera la primera hora del dia
+        expect(nzMidnight('2026-04-05')).toBe('2026-04-05T00:00:00+13:00');
+        expect(nzEndOfDay('2026-04-05')).toBe('2026-04-05T23:59:59+12:00');
+        expect(dateInNZST(new Date(new Date(nzMidnight('2026-04-05')).getTime() - 1).toISOString())).toBe('2026-04-04');
+    });
+
+    it('property: nzMidnight/nzEndOfDay bound exactly the NZ calendar day for any date', () => {
+        const day = fc.date({ min: new Date('2020-01-01T00:00:00Z'), max: new Date('2035-12-31T00:00:00Z'), noInvalidDate: true })
+            .map(d => d.toISOString().slice(0, 10));
+        fc.assert(fc.property(day, (ymd) => {
+            const start = new Date(nzMidnight(ymd)).getTime();
+            const end = new Date(nzEndOfDay(ymd)).getTime();
+            expect(dateInNZST(new Date(start).toISOString())).toBe(ymd);
+            expect(dateInNZST(new Date(start - 1000).toISOString())).not.toBe(ymd);
+            expect(dateInNZST(new Date(end).toISOString())).toBe(ymd);
+            expect(dateInNZST(new Date(end + 1000).toISOString())).not.toBe(ymd);
+        }), { numRuns: 300 });
+    });
+});
+
+describe('toNZST properties', () => {
+    const instant = fc.date({ min: new Date('2020-01-01T00:00:00Z'), max: new Date('2035-12-31T00:00:00Z'), noInvalidDate: true });
+
+    it('round-trips to the same instant (to the second) and keeps a +12/+13 offset', () => {
+        fc.assert(fc.property(instant, (d) => {
+            const s = toNZST(d);
+            expect(s).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+1[23]:00$/);
+            expect(new Date(s).getTime()).toBe(Math.floor(d.getTime() / 1000) * 1000);
+            expect(s.slice(0, 10)).toBe(dateInNZST(d.toISOString()));
+        }), { numRuns: 500 });
+    });
+
+    it('handles the repeated hour when DST ends (02:30 happens twice)', () => {
+        expect(toNZST(new Date('2026-04-04T13:30:00Z'))).toBe('2026-04-05T02:30:00+13:00');
+        expect(toNZST(new Date('2026-04-04T14:30:00Z'))).toBe('2026-04-05T02:30:00+12:00');
+    });
+
+    it('jumps from 01:59 NZST to 03:00 NZDT when DST starts', () => {
+        expect(toNZST(new Date('2026-09-26T13:59:00Z'))).toBe('2026-09-27T01:59:00+12:00');
+        expect(toNZST(new Date('2026-09-26T14:00:00Z'))).toBe('2026-09-27T03:00:00+13:00');
+    });
+
+    it('keeps the seconds of the instant', () => {
+        expect(toNZST(new Date('2026-06-01T00:00:07Z'))).toBe('2026-06-01T12:00:07+12:00');
+    });
+
+    it('startOfWeekNZ is always a Monday no more than 6 days before the NZ date', () => {
+        fc.assert(fc.property(instant, (d) => {
+            const monday = startOfWeekNZ(d);
+            const today = dateInNZST(d.toISOString());
+            const diff = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${monday}T00:00:00Z`)) / 86_400_000;
+            expect(new Date(`${monday}T00:00:00Z`).getUTCDay()).toBe(1);
+            expect(diff).toBeGreaterThanOrEqual(0);
+            expect(diff).toBeLessThanOrEqual(6);
+        }), { numRuns: 300 });
+    });
 });

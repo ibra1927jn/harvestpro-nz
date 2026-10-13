@@ -8,7 +8,9 @@ vi.mock('@/utils/logger', () => ({
     logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
 
-vi.mock('@/utils/nzst', () => ({
+// Parcial: el resto de utilidades NZ son las reales
+vi.mock('@/utils/nzst', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@/utils/nzst')>()),
     todayNZST: () => '2026-03-10',
     toNZST: (d: Date) => d.toISOString(),
 }));
@@ -42,6 +44,8 @@ vi.mock('@/repositories/store-sync.repository', () => ({
 vi.mock('@/services/supabase', () => ({
     supabase: {
         removeAllChannels: vi.fn(),
+        getChannels: vi.fn(() => []),
+        removeChannel: vi.fn(),
         channel: vi.fn().mockReturnValue({
             on: vi.fn().mockReturnThis(),
             subscribe: vi.fn(),
@@ -51,7 +55,7 @@ vi.mock('@/services/supabase', () => ({
 
 // Redundant mock removed
 
-import { hydrateFromRecovery, hydrateFromDexie, setupRealtimeSubscriptions } from './storeSync';
+import { hydrateFromRecovery, hydrateFromDexie } from './storeSync';
 import { offlineService } from '@/services/offline.service';
 import type { StoreSetter } from './storeSync';
 
@@ -109,9 +113,11 @@ describe('storeSync — E2E deep tests', () => {
         it('handles corrupted recovery data', () => {
             const mockSet = vi.fn();
             vi.spyOn(Storage.prototype, 'getItem').mockReturnValue('not valid json{{{');
-            vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {});
+            const removeItem = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {});
             hydrateFromRecovery(mockSet as unknown as StoreSetter);
-            // Should not crash, should clean up
+            // No toca el store y borra la copia corrupta
+            expect(mockSet).not.toHaveBeenCalled();
+            expect(removeItem).toHaveBeenCalledWith('harvest-pro-recovery');
         });
 
         it('handles empty buckets in recovery', () => {
@@ -149,20 +155,25 @@ describe('storeSync — E2E deep tests', () => {
         it('handles Dexie error', async () => {
             const mockSet = vi.fn();
             vi.spyOn(offlineService, 'getPendingBuckets').mockRejectedValueOnce(new Error('DB error'));
-            await hydrateFromDexie(mockSet as unknown as StoreSetter);
-            // Should not crash
+            await expect(hydrateFromDexie(mockSet as unknown as StoreSetter)).resolves.toBeUndefined();
+            expect(mockSet).not.toHaveBeenCalled();
         });
     });
 
     // ========== setupRealtimeSubscriptions ==========
     describe('setupRealtimeSubscriptions', () => {
-        it('sets up supabase channel', () => {
+        it('sets up supabase channel', async () => {
             const mockGet = vi.fn().mockReturnValue({
                 recalculateIntelligence: vi.fn(),
             });
             const mockSet = vi.fn();
-            setupRealtimeSubscriptions('o1', mockGet as any, mockSet as unknown as StoreSetter);
-            // Should not crash
+            // test-setup.ts ya cargo storeSync con el supabase real: se recarga con el mock
+            vi.resetModules();
+            const { setupRealtimeSubscriptions: setup } = await import('./storeSync');
+            const { supabase: sb } = await import('@/services/supabase');
+            setup('o1', mockGet as any, mockSet as unknown as StoreSetter);
+            // Un solo canal por huerto
+            expect(vi.mocked(sb.channel)).toHaveBeenCalledWith('harvest-live-o1');
         });
     });
 });

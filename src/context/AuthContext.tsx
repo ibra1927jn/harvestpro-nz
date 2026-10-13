@@ -108,7 +108,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         orchardName: currentOrchard?.name || '',
       });
       // Iniciar warmup de Edge Functions críticas en cuanto el usuario está autenticado
-      edgeFunctionWarmupService.start();
+      edgeFunctionWarmupService.start(stateUpdate.currentRole);
       return result;
     } catch (error) {
       logger.error('[AuthContext] Critical Error loading user data:', error);

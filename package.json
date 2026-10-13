@@ -18,8 +18,11 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test:e2e": "npx playwright test",
+    "test:e2e:mobile": "playwright test -c playwright.mobile.config.ts",
     "docs": "typedoc --entryPoints src/services/*.ts src/hooks/*.ts src/schemas/*.ts --out docs --exclude **/*.test.* --skipErrorChecking",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:mutation": "cross-env NODE_OPTIONS=--max-old-space-size=3072 stryker run",
+    "test:assertions": "node scripts/check-test-assertions.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.2.0",
@@ -45,9 +48,12 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
     "@playwright/test": "^1.58.2",
     "@storybook/addon-docs": "^10.2.16",
     "@storybook/react-vite": "^10.2.16",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
     "@tailwindcss/forms": "^0.5.11",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -62,11 +68,11 @@
     "autoprefixer": "^10.4.16",
     "cross-env": "^10.1.0",
     "eslint": "^8.57.0",
-    "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "eslint-plugin-storybook": "^10.2.19",
     "fake-indexeddb": "^6.2.5",
+    "fast-check": "^4.10.2",
     "husky": "^9.1.7",
     "jsdom": "^24.0.0",
     "msw": "^2.13.2",

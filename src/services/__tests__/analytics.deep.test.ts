@@ -4,7 +4,9 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('@/utils/nzst', () => ({
+// Parcial: el resto de utilidades NZ son las reales
+vi.mock('@/utils/nzst', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@/utils/nzst')>()),
     nowNZST: () => '2026-03-10T14:00:00.000+13:00',
     todayNZST: () => '2026-03-10',
 }));

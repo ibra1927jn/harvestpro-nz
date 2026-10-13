@@ -17,21 +17,43 @@
  */
 import { logger } from '@/utils/logger';
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
+import { Role } from '@/types/app.types';
 
 /** 4 minutos — Supabase cold-starts tras ~5 min de inactividad */
 const WARMUP_INTERVAL_MS = 4 * 60 * 1000;
 
 /** Funciones críticas: campo (scan, attendance) + oficina (payroll, compliance) */
 const CRITICAL_FUNCTIONS = ['manage-attendance', 'record-bucket', 'calculate-payroll', 'check-compliance'] as const;
+type CriticalFunction = (typeof CRITICAL_FUNCTIONS)[number];
+
+/**
+ * Roles que cada función acepta (mismo requireRole que en supabase/functions).
+ * Pingar una función que el rol no puede usar solo gasta datos móviles y
+ * devuelve 403 (y error en consola) en cada ronda.
+ */
+const ALLOWED_ROLES: Record<CriticalFunction, readonly Role[]> = {
+  'manage-attendance': [Role.ADMIN, Role.MANAGER, Role.TEAM_LEADER],
+  'record-bucket': [Role.ADMIN, Role.MANAGER, Role.TEAM_LEADER, Role.RUNNER],
+  'calculate-payroll': [Role.ADMIN, Role.MANAGER, Role.PAYROLL_ADMIN, Role.HR_ADMIN],
+  'check-compliance': [Role.ADMIN, Role.MANAGER, Role.TEAM_LEADER],
+};
+
+/** Funciones que tiene sentido calentar para un rol (sin rol: ninguna). */
+export function warmupFunctionsFor(role: Role | null | undefined): CriticalFunction[] {
+  if (!role) return [];
+  return CRITICAL_FUNCTIONS.filter(fn => ALLOWED_ROLES[fn].includes(role));
+}
 
 let intervalId: ReturnType<typeof setInterval> | null = null;
+let activeFunctions: CriticalFunction[] = [];
 
 async function pingAll(): Promise<void> {
   if (!navigator.onLine) return;
 
-  for (const fn of CRITICAL_FUNCTIONS) {
+  for (const fn of activeFunctions) {
     try {
-      await edgeFunctionsRepository.invoke(fn, { _warmup: true });
+      // Sin reintentos: un warmup fallido no merece más tráfico
+      await edgeFunctionsRepository.invoke(fn, { _warmup: true }, { maxRetries: 0 });
       logger.info(`[Warmup] ✅ ${fn} warm`);
     } catch {
       // Silencioso — si falla el warmup, la siguiente llamada real tendrá cold start
@@ -45,9 +67,12 @@ export const edgeFunctionWarmupService = {
   /**
    * Inicia el warmup periódico.
    * Llamar tras login exitoso — AuthContext.signIn / onAuthStateChange SIGNED_IN.
+   * Solo calienta las funciones que el rol puede invocar.
    */
-  start(): void {
+  start(role: Role | null | undefined): void {
     if (intervalId !== null) return; // Ya está corriendo
+    activeFunctions = warmupFunctionsFor(role);
+    if (activeFunctions.length === 0) return;
 
     // Primer ping inmediato — calienta las funciones al arrancar sesión
     pingAll();

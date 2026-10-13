@@ -7,37 +7,12 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('@/utils/logger', () => ({
     logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
-vi.mock('./bucket-ledger.service', () => ({
-    bucketLedgerService: { recordBucket: vi.fn() },
-}));
-vi.mock('./simple-messaging.service', () => ({
-    simpleMessagingService: { sendMessage: vi.fn() },
-}));
-vi.mock('./user.service', () => ({
-    userService: { assignUserToOrchard: vi.fn() },
-}));
-vi.mock('./conflict.service', () => ({
-    conflictService: { detect: vi.fn() },
-}));
-vi.mock('./db', () => ({
-    db: {
-        sync_queue: { toArray: vi.fn().mockResolvedValue([]), count: vi.fn().mockResolvedValue(0), put: vi.fn(), bulkDelete: vi.fn(), update: vi.fn() },
-        sync_meta: { get: vi.fn().mockResolvedValue(undefined), put: vi.fn() },
-        dead_letter_queue: { put: vi.fn() },
-    },
-}));
 vi.mock('@/utils/nzst', () => ({
     toNZST: (d: Date) => d.toISOString(),
     nowNZST: () => '2026-03-10T12:00:00+13:00',
 }));
 vi.mock('@/utils/uuid', () => ({
     safeUUID: () => 'test-uuid',
-}));
-vi.mock('./sync-processors', () => ({
-    processContract: vi.fn(),
-    processTransport: vi.fn(),
-    processTimesheet: vi.fn(),
-    processAttendance: vi.fn(),
 }));
 
 import { syncService } from '../sync.service';

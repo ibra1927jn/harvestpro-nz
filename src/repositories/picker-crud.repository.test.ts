@@ -154,3 +154,23 @@ describe('pickerCrudRepository.insertBatch', () => {
         await expect(pickerCrudRepository.insertBatch([{}])).rejects.toBeTruthy();
     });
 });
+
+describe('pickerCrudRepository — merged from pickerCrud.repository.test.ts', () => {
+    it('deleteById throws on error', async () => {
+        vi.spyOn(supabase, 'from').mockReturnValue(mockChain({ data: null, error: { message: 'fk' } }) as never);
+        await expect(pickerCrudRepository.deleteById('p1')).rejects.toBeTruthy();
+    });
+
+    it('insertSingle returns the insert error instead of throwing', async () => {
+        const chain = mockChain({ data: null, error: { message: 'dup key' } });
+        vi.spyOn(supabase, 'from').mockReturnValue(chain as never);
+        const res = await pickerCrudRepository.insertSingle({ name: 'Test' });
+        expect(res).toEqual({ error: { message: 'dup key' } });
+        expect((chain.insert as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith({ name: 'Test' });
+    });
+
+    it('insertSingle resolves with error null on success', async () => {
+        vi.spyOn(supabase, 'from').mockReturnValue(mockChain({ data: [{ id: 'p1' }], error: null }) as never);
+        expect(await pickerCrudRepository.insertSingle({ name: 'Test' })).toEqual({ error: null });
+    });
+});

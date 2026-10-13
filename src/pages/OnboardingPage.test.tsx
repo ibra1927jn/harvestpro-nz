@@ -27,7 +27,7 @@ describe('OnboardingPage', () => {
 
   it('renders without crashing', () => {
     const { container } = render(<OnboardingPage />);
-    expect(container.firstChild).toBeDefined();
+    expect(container.firstChild).not.toBeNull();
   });
 
   it('has a next/submit button', () => {

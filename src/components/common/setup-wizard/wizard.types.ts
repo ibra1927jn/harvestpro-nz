@@ -2,11 +2,10 @@
  * wizard.types.ts — Shared types and constants for SetupWizard
  */
 
-export interface WizardData {
-    orchard: { code: string; name: string; location: string; total_rows: number; };
-    teams: { name: string; leader_name: string; max_pickers: number; }[];
-    rates: { variety: string; piece_rate: number; start_time: string; };
-}
+import type { OrchardSetupData } from '@/services/setup.service';
+
+/** Datos del asistente = lo que recibe setup.service (una sola definición) */
+export type WizardData = OrchardSetupData;
 
 export interface StepProps {
     data: WizardData;
@@ -14,12 +13,6 @@ export interface StepProps {
 
 export interface OrchardStepProps extends StepProps {
     onUpdate: (field: keyof WizardData['orchard'], value: string | number) => void;
-}
-
-export interface TeamsStepProps extends StepProps {
-    onUpdateTeam: (idx: number, field: keyof WizardData['teams'][0], value: string | number) => void;
-    onAddTeam: () => void;
-    onRemoveTeam: (idx: number) => void;
 }
 
 export interface RatesStepProps extends StepProps {

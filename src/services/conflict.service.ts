@@ -217,12 +217,13 @@ export const conflictService = {
   async cleanup(maxAgeDays: number = 7): Promise<number> {
     try {
       const cutoff = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
-      const cutoffDate = new Date(cutoff).toISOString();
 
+      // detected_at va en hora NZ con desfase (+13:00): comparar instantes, no textos
+      // (comparado como texto contra un ISO en UTC se quedaban 12-13 h de mas)
       const oldResolved = await db.sync_conflicts
         .where('resolution')
         .notEqual('pending')
-        .filter(c => c.detected_at < cutoffDate)
+        .filter(c => Date.parse(c.detected_at) < cutoff)
         .toArray();
 
       if (oldResolved.length > 0) {

@@ -6,20 +6,30 @@
  * **Features**: Offline queueing, real-time notifications, broadcast system
  * **See**: `docs/architecture/state-management.md` for decision rationale
  *
+ * Lógica pura: messagingLogic.ts · Realtime y bandeja de salida: useMessagingRealtime.ts
+ *
  * @module context/MessagingContext
- * @see {@link file:///c:/Users/ibrab/Downloads/app/harvestpro-nz%20%281%29/docs/architecture/state-management.md}
  */
-import React, { createContext, useContext, useState, useRef, useEffect, useCallback, ReactNode } from 'react';
-import { supabase } from '../services/supabase';
+import React, { createContext, useContext, useState, useRef, useCallback, ReactNode } from 'react';
 import { messageOutbox } from '@/services/message-outbox.service';
-import { showSystemNotification } from '@/utils/systemNotification';
-import { Broadcast, Role, MessagePriority } from '../types';
+import { Role, MessagePriority } from '../types';
 import { nowNZST } from '@/utils/nzst';
 import { logger } from '@/utils/logger';
 import { messagingRepository } from '@/repositories/messaging.repository';
 import { userRepository2 } from '@/repositories/user.repository';
 import { analytics } from '@/config/analytics';
 import { buildOptimisticMessage, buildBroadcast } from '@/hooks/useMessagingActions';
+import {
+  buildChatGroups,
+  buildLastMessageMap,
+  collectParticipantIds,
+  sumUnread,
+  withBroadcastAcknowledged,
+  withConversationRead,
+  withMessageRead,
+  type ConversationRow,
+} from './messagingLogic';
+import { useMessagingRealtime } from './useMessagingRealtime';
 
 // Types extracted to messaging.types.ts for reuse
 import type { DBMessage, ChatGroup, MessagingState, MessagingContextType } from './messaging.types';
@@ -55,20 +65,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
   // =============================================
   // MESSAGE ACTIONS
   // =============================================
-  // Mensajes que no salieron: se envían al abrir la app y al volver la conexión
-  useEffect(() => {
-    const flush = () => {
-      messageOutbox.flush()
-        .then(n => { if (n > 0) logger.info(`[MessagingContext] Sent ${n} queued message(s)`); })
-        .catch(e => logger.warn('[MessagingContext] Outbox flush failed:', e));
-    };
-    const t = setTimeout(flush, 3000);
-    window.addEventListener('online', flush);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener('online', flush);
-    };
-  }, []);
+  useMessagingRealtime({ setState, userIdRef, orchardIdRef });
 
   const sendMessage = async (
     conversationId: string,
@@ -199,28 +196,14 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
   const markMessageRead = async (messageId: string) => {
     if (!userIdRef.current) return;
 
-    setState(prev => ({
-      ...prev,
-      messages: prev.messages.map(m =>
-        m.id === messageId && !m.read_by.includes(userIdRef.current!)
-          ? { ...m, read_by: [...m.read_by, userIdRef.current!] }
-          : m
-      ),
-      unreadCount: Math.max(0, prev.unreadCount - 1),
-    }));
+    const me = userIdRef.current;
+    setState(prev => withMessageRead(prev, messageId, me));
   };
 
   const markConversationRead = async (conversationId: string) => {
     if (!userIdRef.current) return;
     // En pantalla al momento; en el servidor para que no vuelva a salir
-    setState(prev => {
-      const was = prev.chatGroups.find(g => g.id === conversationId)?.unreadCount ?? 0;
-      return {
-        ...prev,
-        chatGroups: prev.chatGroups.map(g => (g.id === conversationId ? { ...g, unreadCount: 0 } : g)),
-        unreadCount: Math.max(0, prev.unreadCount - was),
-      };
-    });
+    setState(prev => withConversationRead(prev, conversationId));
     try {
       await messagingRepository.markConversationRead(conversationId);
     } catch (e) {
@@ -238,14 +221,8 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
       return;
     }
 
-    setState(prev => ({
-      ...prev,
-      broadcasts: prev.broadcasts.map(b =>
-        b.id === broadcastId && !b.acknowledged_by.includes(userIdRef.current!)
-          ? { ...b, acknowledged_by: [...b.acknowledged_by, userIdRef.current!] }
-          : b
-      ),
-    }));
+    const me = userIdRef.current;
+    setState(prev => withBroadcastAcknowledged(prev, broadcastId, me));
   };
 
   // =============================================
@@ -315,160 +292,39 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
         messagingRepository.getUnreadCounts().catch(() => ({} as Record<string, number>)),
       ]);
 
-      // Collect unique participant IDs to resolve names
-      const participantIds = new Set<string>();
-      (convData || []).forEach(c => {
-        (c.participant_ids || []).forEach((pid: string) => {
-          if (pid !== currentUserId) participantIds.add(pid);
-        });
-      });
-
-      const convIds = (convData || []).map(c => c.id);
+      const conversations = (convData || []) as ConversationRow[];
+      const participantIds = collectParticipantIds(conversations, currentUserId);
+      const convIds = conversations.map(c => c.id);
 
       // Batch 2: profiles y lastMessages en paralelo — ambos dependen de convData pero no entre sí
       logger.info('[CONN-TRACE] refreshMessages batch 2 — profiles + lastMsgs (paralelo)');
       const [profileMap, lastMsgs] = await Promise.all([
-        participantIds.size > 0
-          ? userRepository2.getNamesByIds(Array.from(participantIds))
+        participantIds.length > 0
+          ? userRepository2.getNamesByIds(participantIds)
           : Promise.resolve({} as Record<string, string>),
         convIds.length > 0
           ? messagingRepository.getLastMessages(convIds)
           : Promise.resolve([] as Array<{ conversation_id: string; content: string; created_at: string }>),
       ]);
 
-      // Build lastMsgMap
-      const lastMsgMap: Record<string, { content: string; created_at: string }> = {};
-      if (lastMsgs) {
-        lastMsgs.forEach(
-          (m: { conversation_id: string; content: string; created_at: string }) => {
-            if (!lastMsgMap[m.conversation_id]) {
-              lastMsgMap[m.conversation_id] = { content: m.content, created_at: m.created_at };
-            }
-          }
-        );
-      }
-
-      // 6. Build chat groups with resolved names
-      const chatGroups: ChatGroup[] = (convData || []).map(c => {
-        let displayName = c.name;
-        const isDirect = c.type !== 'group';
-
-        if (isDirect || !displayName) {
-          // For DMs: show the other participant's name
-          const otherIds = (c.participant_ids || []).filter((pid: string) => pid !== currentUserId);
-          const otherNames = otherIds.map((pid: string) => profileMap[pid] || 'Unknown');
-          displayName = otherNames.length > 0 ? otherNames.join(', ') : 'Direct Chat';
-        }
-
-        const lastMsg = lastMsgMap[c.id];
-        const timeStr = lastMsg
-          ? new Date(lastMsg.created_at).toLocaleTimeString([], { timeZone: 'Pacific/Auckland',
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : c.updated_at
-            ? new Date(c.updated_at).toLocaleTimeString([], { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })
-            : '';
-
-        return {
-          id: c.id,
-          name: displayName,
-          members: c.participant_ids,
-          isGroup: c.type === 'group',
-          lastMsg: lastMsg
-            ? lastMsg.content.length > 40
-              ? lastMsg.content.substring(0, 40) + '…'
-              : lastMsg.content
-            : '',
-          time: timeStr,
-          unreadCount: unreadMap[c.id] ?? 0,
-        };
+      const chatGroups = buildChatGroups({
+        conversations,
+        me: currentUserId,
+        profileMap,
+        lastMsgMap: buildLastMessageMap(lastMsgs),
+        unreadMap,
       });
 
       setState(prev => ({
         ...prev,
         broadcasts: broadcastsData || [],
         chatGroups,
-        unreadCount: Object.values(unreadMap).reduce((a, b) => a + b, 0),
+        unreadCount: sumUnread(unreadMap),
       }));
     } catch (error) {
       logger.error('[MessagingContext] Error refreshing messages:', error);
     }
   // refs son estables — no necesita deps
-  }, []);
-
-  // =============================================
-  // REALTIME UPDATES
-  // =============================================
-  useEffect(() => {
-    if (!orchardIdRef.current) return;
-
-    const channel = supabase
-      .channel('public:broadcasts')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'broadcasts',
-          filter: `orchard_id=eq.${orchardIdRef.current}`, // Filter by orchard
-        },
-        payload => {
-          const newBroadcast = payload.new as Broadcast;
-
-          // 1. Update State
-          setState(prev => {
-            // Avoid duplicates
-            if (prev.broadcasts.some(b => b.id === newBroadcast.id)) return prev;
-            return {
-              ...prev,
-              broadcasts: [newBroadcast, ...prev.broadcasts],
-            };
-          });
-
-          try {
-            if (navigator.vibrate) {
-              navigator.vibrate([200, 100, 200, 100, 500]);
-            }
-
-            void showSystemNotification(`📢 ${newBroadcast.title}`, newBroadcast.content, `broadcast-${newBroadcast.id}`);
-          } catch (e) {
-            logger.warn('[MessagingContext] Feedback trigger failed', e);
-          }
-        }
-      )
-      .subscribe(status => {
-        if (status === 'SUBSCRIBED') {
-          logger.debug('[MessagingContext] Broadcast subscription active');
-        }
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orchardIdRef.current]); // Re-subscribe if orchard changes
-
-  // Mensajes nuevos (RLS: solo de mis conversaciones) → contadores al día
-  useEffect(() => {
-    const channel = supabase
-      .channel('my-chat-messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, payload => {
-        const msg = payload.new as { sender_id?: string; content?: string; conversation_id?: string };
-        if (!userIdRef.current || msg.sender_id === userIdRef.current) return;
-        messagingRepository.getUnreadCounts().then(map => {
-          setState(prev => ({
-            ...prev,
-            chatGroups: prev.chatGroups.map(g => ({ ...g, unreadCount: map[g.id] ?? 0 })),
-            unreadCount: Object.values(map).reduce((a, b) => a + b, 0),
-          }));
-        }).catch(() => undefined);
-        if (document.hidden && msg.content) {
-          void showSystemNotification('New message', msg.content.slice(0, 120), `chat-${msg.conversation_id}`);
-        }
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
   }, []);
 
   // =============================================

@@ -1,33 +1,27 @@
 /**
  * MFAGuard Component
  *
- * Wrapper que fuerza configuración de MFA para roles con acceso a datos sensibles:
- * manager, admin, payroll_admin, hr_admin.
- * Muestra el modal MFASetup si el usuario no tiene MFA habilitado.
- *
- * Device Trust: si el dispositivo ya fue verificado en las últimas N horas
- * (configurable via HarvestSettings.mfa_device_trust_ttl_hours, default 72h),
- * se omite la verificación de MFA sin llamar a Supabase.
+ * Roles con acceso a datos sensibles (manager, admin, payroll_admin, hr_admin)
+ * necesitan una sesión verificada con 2FA (nivel "aal2" de Supabase):
+ * - Sin factor configurado → pantalla de configuración obligatoria.
+ * - Con factor pero sesión sin verificar (solo contraseña) → pide el código.
+ * - Sesión ya verificada → entra. El nivel aal2 va dentro del token de sesión,
+ *   así que se mantiene al recargar o reabrir la app (también sin conexión).
+ * Si la comprobación falla, NO se deja pasar (antes se dejaba entrar).
  */
 
 import { logger } from '@/utils/logger';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useMFA } from '../hooks/useMFA';
+import { supabase } from '../services/supabase';
 import { MFASetup } from './MFASetup';
-import {
-  isDeviceTrusted,
-  saveDeviceTrust,
-  DEFAULT_TTL_HOURS,
-} from '../services/deviceTrust.service';
+import { MFAVerify } from './MFAVerify';
 
 interface MFAGuardProps {
   children: React.ReactNode;
-  /** TTL en horas para el token de confianza (default: DEFAULT_TTL_HOURS = 72) */
-  deviceTrustTtlHours?: number;
 }
 
-// Roles que acceden a nómina, contratos, o configuración global — MFA obligatorio
 // Desactivable SOLO en desarrollo con VITE_MFA_ENFORCE=false en .env.local.
 // En build de produccion (import.meta.env.PROD) se ignora y el MFA siempre se exige.
 const MFA_ENFORCED = import.meta.env.PROD || import.meta.env.VITE_MFA_ENFORCE !== 'false';
@@ -35,70 +29,55 @@ const MFA_REQUIRED_ROLES = new Set(
   MFA_ENFORCED ? ['manager', 'admin', 'payroll_admin', 'hr_admin'] : []
 );
 
-export function MFAGuard({ children, deviceTrustTtlHours = DEFAULT_TTL_HOURS }: MFAGuardProps) {
-  const { currentRole, isAuthenticated, user } = useAuth();
-  const { checkMFAStatus } = useMFA();
-  const [mfaStatus, setMfaStatus] = useState<{ checked: boolean; hasVerifiedFactor: boolean }>({
-    checked: false,
-    hasVerifiedFactor: false,
-  });
-  const [showSetup, setShowSetup] = useState(false);
+type GuardState =
+  | { kind: 'checking' }
+  | { kind: 'ok' }
+  | { kind: 'setup' }
+  | { kind: 'verify'; factorId: string }
+  | { kind: 'error' };
 
-  useEffect(() => {
-    const checkStatus = async () => {
-      if (!isAuthenticated || !MFA_REQUIRED_ROLES.has(currentRole ?? '')) {
-        setMfaStatus({ checked: true, hasVerifiedFactor: true });
+export function MFAGuard({ children }: MFAGuardProps) {
+  const { currentRole, isAuthenticated, signOut } = useAuth();
+  const { checkMFAStatus } = useMFA();
+  const [state, setState] = useState<GuardState>({ kind: 'checking' });
+  const required = isAuthenticated && MFA_REQUIRED_ROLES.has(currentRole ?? '');
+
+  const evaluate = useCallback(async () => {
+    if (!required) {
+      setState({ kind: 'ok' });
+      return;
+    }
+    setState({ kind: 'checking' });
+    try {
+      // Se lee del token de sesión local: funciona sin conexión
+      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (error) throw error;
+      if (data?.currentLevel === 'aal2') {
+        setState({ kind: 'ok' });
         return;
       }
-
-      // Verificar confianza de dispositivo antes de llamar a Supabase
-      const userId = user?.id;
-      if (userId) {
-        const trusted = await isDeviceTrusted(userId);
-        if (trusted) {
-          setMfaStatus({ checked: true, hasVerifiedFactor: true });
-          return;
-        }
-      }
-
-      try {
+      if (data?.nextLevel === 'aal2') {
+        // Tiene 2FA pero esta sesión solo usó la contraseña: pedir el código
         const status = await checkMFAStatus();
-        setMfaStatus({
-          checked: true,
-          hasVerifiedFactor: status.hasVerifiedFactor,
-        });
-
-        // Si el manager ya tiene MFA configurado, guardar confianza del dispositivo
-        if (status.hasVerifiedFactor && userId) {
-          await saveDeviceTrust(userId, deviceTrustTtlHours);
-        }
-
-        // Si el rol requiere MFA y no lo tiene configurado, forzar setup
-        if (!status.hasVerifiedFactor) {
-          setShowSetup(true);
-        }
-      } catch (error) {
-        logger.error('[MFAGuard] Error checking MFA status:', error);
-        // En error, permitir acceso (fail open)
-        setMfaStatus({ checked: true, hasVerifiedFactor: true });
+        const factor = status.factors.find(f => f.status === 'verified');
+        if (!factor) throw new Error('Verified MFA factor not found');
+        setState({ kind: 'verify', factorId: factor.id });
+        return;
       }
-    };
-
-    checkStatus();
-  }, [isAuthenticated, currentRole, checkMFAStatus, user?.id, deviceTrustTtlHours]);
-
-  const handleMFAComplete = async () => {
-    // Guardar confianza del dispositivo después de configurar MFA exitosamente
-    const userId = user?.id;
-    if (userId) {
-      await saveDeviceTrust(userId, deviceTrustTtlHours);
+      setState({ kind: 'setup' });
+    } catch (error) {
+      logger.error('[MFAGuard] Error checking MFA status:', error);
+      setState({ kind: 'error' });
     }
-    setShowSetup(false);
-    setMfaStatus({ checked: true, hasVerifiedFactor: true });
-  };
+  }, [required, checkMFAStatus]);
 
-  // Verificando
-  if (!mfaStatus.checked) {
+  useEffect(() => {
+    void evaluate();
+  }, [evaluate]);
+
+  if (!required) return <>{children}</>;
+
+  if (state.kind === 'checking') {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -109,8 +88,17 @@ export function MFAGuard({ children, deviceTrustTtlHours = DEFAULT_TTL_HOURS }: 
     );
   }
 
-  // Rol privilegiado necesita configurar MFA
-  if (showSetup && MFA_REQUIRED_ROLES.has(currentRole ?? '')) {
+  if (state.kind === 'verify') {
+    return (
+      <MFAVerify
+        factorId={state.factorId}
+        onSuccess={() => void evaluate()}
+        onCancel={() => void signOut()}
+      />
+    );
+  }
+
+  if (state.kind === 'setup') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background-light">
         <div className="max-w-2xl w-full px-4">
@@ -121,15 +109,38 @@ export function MFAGuard({ children, deviceTrustTtlHours = DEFAULT_TTL_HOURS }: 
               This additional security layer protects sensitive payroll and employee data.
             </p>
           </div>
-          <MFASetup
-            onComplete={handleMFAComplete}
-            requireSetup={true}
-          />
+          <MFASetup onComplete={() => void evaluate()} requireSetup={true} />
         </div>
       </div>
     );
   }
 
-  // MFA verificado o no requerido
+  if (state.kind === 'error') {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <div className="max-w-sm w-full text-center" role="alert">
+          <h2 className="font-bold text-text-main mb-2">Could not check two-factor authentication</h2>
+          <p className="text-sm text-text-secondary mb-4">
+            Check your connection and try again.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => void evaluate()}
+              className="min-h-[44px] px-4 rounded-lg bg-blue-600 text-white font-semibold"
+            >
+              Try again
+            </button>
+            <button
+              onClick={() => void signOut()}
+              className="min-h-[44px] px-4 rounded-lg border border-border-light font-semibold"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return <>{children}</>;
 }

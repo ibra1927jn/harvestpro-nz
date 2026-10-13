@@ -67,8 +67,9 @@ serve(async (req) => {
             action: ['INSERT', 'UPDATE', 'DELETE'].includes(entry.action) ? entry.action : 'CUSTOM',
             table_name: entry.entity_type || entry.event_type || 'app',
             record_id: entry.entity_id && UUID_RE.test(entry.entity_id) ? entry.entity_id : null,
-            user_id: entry.user_id || user.id,
-            user_email: entry.user_email || user.email,
+            // Siempre quien envía: la BD rechaza entradas en nombre de otro
+            user_id: user.id,
+            user_email: user.email,
             new_values: {
                 event: entry.action,
                 event_type: entry.event_type,

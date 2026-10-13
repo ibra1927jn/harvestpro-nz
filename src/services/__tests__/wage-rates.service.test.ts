@@ -9,13 +9,6 @@ vi.mock('@/utils/logger', () => ({
 }));
 
 // Mock getCurrentTaxYear to always return 2026-2027 rates
-vi.mock('@/config/nz-tax-rates', () => ({
-    getCurrentTaxYear: vi.fn().mockReturnValue({
-        year: '2026-2027',
-        minimumWageHourly: 23.95,
-        startingOutWageHourly: 19.16,
-    }),
-}));
 
 // ── Supabase query chain factory ──────────────────────
 function makeChain(data: unknown, error: unknown = null) {

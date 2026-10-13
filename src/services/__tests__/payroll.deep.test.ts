@@ -18,7 +18,9 @@ vi.mock('@/repositories/edge-functions.repository', () => ({
     },
 }));
 
-vi.mock('@/utils/nzst', () => ({
+// Parcial: el resto de utilidades NZ son las reales
+vi.mock('@/utils/nzst', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@/utils/nzst')>()),
     todayNZST: () => '2026-03-10',
 }));
 
@@ -51,8 +53,9 @@ describe('payrollService.calculatePayroll', () => {
 describe('payrollService.calculateToday', () => {
     it('uses today date', async () => {
         (payrollRepository.invokeCalculatePayroll as any).mockResolvedValue(mockPayrollResult);
-        const result = await payrollService.calculateToday('o1');
-        expect(result.date_range.start).toBe('2026-03-10');
+        await payrollService.calculateToday('o1');
+        // Antes comprobaba un campo del propio mock (no podia fallar)
+        expect(payrollRepository.invokeCalculatePayroll).toHaveBeenCalledWith('o1', '2026-03-10', '2026-03-10');
     });
 });
 

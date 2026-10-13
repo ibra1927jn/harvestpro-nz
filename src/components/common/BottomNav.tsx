@@ -59,7 +59,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ tabs, activeTab, onTabChange }) =
                                     {tab.icon}
                                 </span>
                                 {/* Badge dot */}
-                                {tab.badge && tab.badge > 0 && (
+                                {tab.badge !== undefined && tab.badge > 0 && (
                                     <span
                                         className="absolute -top-1 -right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"
                                         aria-label={`${tab.badge} pending`}

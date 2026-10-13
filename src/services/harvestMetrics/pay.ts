@@ -429,16 +429,18 @@ function dayHours(
     sorted.forEach((r, i) => {
         const start = toMs(r.checkIn) as number;
         const out = toMs(r.checkOut);
+        const nextStart = i + 1 < sorted.length ? (toMs(sorted[i + 1].checkIn) as number) : Infinity;
         let end: number;
         if (out !== null) {
             end = Math.max(start, out);
         } else if (isToday) {
-            end = Math.max(start, nowMs);
+            // Abierto hoy: hasta ahora, pero nunca más allá de la entrada del tramo
+            // siguiente (si no, las horas se contaban dos veces)
+            end = Math.max(start, Math.min(nowMs, nextStart));
             estimated = true;
         } else {
             // Abierto en un día pasado: hasta el último escaneo de este tramo
             // (mismo huerto, antes del siguiente tramo)
-            const nextStart = i + 1 < sorted.length ? (toMs(sorted[i + 1].checkIn) as number) : Infinity;
             const last = scans
                 .filter(s => s.ms >= start && s.ms < nextStart && (!r.orchardId || !s.orchardId || s.orchardId === r.orchardId))
                 .reduce((m, s) => Math.max(m, s.ms), start);

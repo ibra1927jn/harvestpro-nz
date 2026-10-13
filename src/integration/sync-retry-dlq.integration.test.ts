@@ -92,6 +92,9 @@ describe('Sync Retry & DLQ — Integration', () => {
   // ── Queue Summary ──────────────────────────
 
   it('getQueueSummary provides accurate type breakdown', async () => {
+    // Sin conexión: addToQueue no lanza processQueue en segundo plano (si no,
+    // un reintento puede sumar retryCount antes de leer el resumen)
+    const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     await syncService.addToQueue('SCAN', SCAN_PAYLOAD);
     await syncService.addToQueue('SCAN', { ...SCAN_PAYLOAD, picker_id: 'pk-002' });
     await syncService.addToQueue('MESSAGE', {
@@ -107,6 +110,7 @@ describe('Sync Retry & DLQ — Integration', () => {
     expect(summary.byType['SCAN']).toBe(2);
     expect(summary.byType['MESSAGE']).toBe(1);
     expect(summary.maxRetry).toBe(0);
+    online.mockRestore();
   });
 
   it('getQueueSummary tracks oldest timestamp', async () => {

@@ -140,6 +140,7 @@ import {
   NZ_PUBLIC_HOLIDAY_RATE,
   NZ_PUBLIC_HOLIDAYS,
   NZ_PUBLIC_HOLIDAYS_2026,
+  NZ_PUBLIC_HOLIDAYS_2027,
   isPublicHoliday,
   getHolidayMultiplier,
 } from '@/constants/nz-law';
@@ -209,5 +210,37 @@ describe('NZ Public Holidays — Holidays Act 2003', () => {
   it('getHolidayMultiplier accepts Date object', () => {
     expect(getHolidayMultiplier(new Date('2026-12-25T00:00:00Z'))).toBe(1.5);
     expect(getHolidayMultiplier(new Date('2026-05-15T00:00:00Z'))).toBe(1);
+  });
+});
+
+describe('isPublicHoliday / getHolidayMultiplier — NZ calendar day', () => {
+  it('a Date on Christmas morning in NZ (still 24 Dec in UTC) is a holiday', () => {
+    // 2026-12-25 09:00 NZDT = 2026-12-24T20:00Z
+    expect(isPublicHoliday(new Date('2026-12-24T20:00:00Z'))).toBe(true);
+    expect(getHolidayMultiplier(new Date('2026-12-24T20:00:00Z'))).toBe(1.5);
+    // 2026-12-24 09:00 NZDT no lo es
+    expect(isPublicHoliday(new Date('2026-12-23T20:00:00Z'))).toBe(false);
+    // 2026-12-26 00:30 NZDT = 2026-12-25T11:30Z: ya no es festivo (Boxing Day se pasa al lunes 28)
+    expect(isPublicHoliday(new Date('2026-12-25T11:30:00Z'))).toBe(false);
+  });
+
+  it('strings are read as NZ dates (time part ignored)', () => {
+    expect(isPublicHoliday('2026-10-26')).toBe(true);
+    expect(isPublicHoliday('2026-10-26T23:59:59+13:00')).toBe(true);
+    expect(isPublicHoliday('2026-10-27')).toBe(false);
+    expect(getHolidayMultiplier('2026-10-27')).toBe(1);
+  });
+
+  it('every listed holiday is a valid date and 2026/2027 lists have 11 days each', () => {
+    expect(NZ_PUBLIC_HOLIDAYS_2026).toHaveLength(11);
+    expect(NZ_PUBLIC_HOLIDAYS_2027).toHaveLength(11);
+    for (const d of NZ_PUBLIC_HOLIDAYS) {
+      expect(new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10)).toBe(d);
+    }
+  });
+
+  it('starting-out wage is 80% of the adult minimum (rounded to cents)', () => {
+    expect(NZ_STARTING_OUT_WAGE_2026).toBe(Math.round(NZ_MINIMUM_WAGE_2026 * 0.8 * 100) / 100);
+    expect(NZ_STARTING_OUT_WAGE_2025).toBe(Math.round(NZ_MINIMUM_WAGE_2025 * 0.8 * 100) / 100);
   });
 });

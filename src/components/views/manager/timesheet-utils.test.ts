@@ -7,7 +7,10 @@ vi.mock('@/utils/logger', () => ({
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-import { formatTimeForInput, formatTime, calculateHours, isAbnormal, nzTimeToIso } from './timesheet-utils';
+import {
+    formatTimeForInput, formatTime, calculateHours, isAbnormal, nzTimeToIso,
+    buildCorrectionUpdates, correctionFormFor, dailyTimesheetTotals,
+} from './timesheet-utils';
 
 describe('timesheet-utils', () => {
     describe('formatTimeForInput', () => {
@@ -98,5 +101,39 @@ describe('timesheet-utils', () => {
         it('returns true for negative hours', () => {
             expect(isAbnormal(-1)).toBe(true);
         });
+    });
+});
+
+// ── Corrección y totales (extraídos de TimesheetEditor) ──
+
+describe('correction form', () => {
+    // 2026-10-13 es horario de verano NZ (+13:00); 2026-06-01 invierno (+12:00)
+    it('prefills NZ HH:MM from the stored instants', () => {
+        expect(correctionFormFor({ check_in: '2026-10-12T19:30:00Z', check_out: null, break_start: '2026-10-12T23:00:00Z' }))
+            .toEqual({ checkIn: '08:30', checkOut: '', breakStart: '12:00', reason: '' });
+    });
+
+    it('converts NZ times of that day to UTC with the right offset', () => {
+        const u = buildCorrectionUpdates({ date: '2026-06-01', break_start: null }, { checkIn: '07:00', checkOut: '15:30', breakStart: '' });
+        expect(u).toEqual({ check_in: '2026-05-31T19:00:00.000Z', check_out: '2026-06-01T03:30:00.000Z' });
+    });
+
+    it('sends the break only when it changed, and null to clear it', () => {
+        const rec = { date: '2026-10-13', break_start: '2026-10-12T23:00:00Z' };
+        expect(buildCorrectionUpdates(rec, { checkIn: '', checkOut: '', breakStart: '12:00' })).toEqual({});
+        expect(buildCorrectionUpdates(rec, { checkIn: '', checkOut: '', breakStart: '' })).toEqual({ break_start: null });
+        expect(buildCorrectionUpdates(rec, { checkIn: '', checkOut: '', breakStart: '12:30' })).toEqual({ break_start: '2026-10-12T23:30:00.000Z' });
+    });
+});
+
+describe('dailyTimesheetTotals', () => {
+    it('sums every column and counts people below minimum', () => {
+        const row = (h: number, b: number, r: number, p: number, t: number, below: boolean) => ({
+            hours_worked: h, buckets_total: b, buckets_rejected: r, piece_earnings: p, top_up: t, total_earnings: p + t, is_below_minimum: below,
+        });
+        expect(dailyTimesheetTotals([row(8, 40, 1, 260, 0, false), row(7.5, 10, 0, 65, 114.63, true)])).toEqual({
+            hours: 15.5, buckets: 50, rejected: 1, piece: 325, topUp: 114.63, total: 439.63, belowMinimum: 1,
+        });
+        expect(dailyTimesheetTotals([]).total).toBe(0);
     });
 });

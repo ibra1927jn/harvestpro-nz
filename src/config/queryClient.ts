@@ -37,8 +37,6 @@ export const queryKeys = {
     audit: {
         all: ['audit'] as const,
         logs: (filters?: unknown) => ['audit', 'logs', filters] as const,
-        history: (table: string, recordId: string) => ['audit', 'history', table, recordId] as const,
-        stats: (fromDate?: string) => ['audit', 'stats', fromDate] as const,
     },
 
     // Compliance

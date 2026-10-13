@@ -34,8 +34,8 @@ import * as Sentry from '@sentry/react';
 describe('initSentry', () => {
   it('returns early in development mode', async () => {
     await initSentry();
-    // In test/dev mode should early-return without calling S.init
-    // (no VITE_SENTRY_DSN configured in test env)
+    // Sin VITE_SENTRY_DSN (tests/dev) no se inicializa
+    expect(Sentry.init).not.toHaveBeenCalled();
   });
 });
 

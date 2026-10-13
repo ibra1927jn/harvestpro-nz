@@ -1,251 +1,162 @@
 /**
- * MFAGuard.test.tsx — Tests para el componente MFAGuard
- *
- * MFA obligatorio para: manager, admin, payroll_admin, hr_admin
- * MFA no requerido para: runner, team_leader, qc_inspector, logistics
- *
- * Escenarios:
- * 1. Usuario no autenticado → renderiza children (sin bloqueo)
- * 2. Rol sin MFA requerido → renderiza children
- * 3. Rol con MFA, factor verificado → renderiza children
- * 4. Rol con MFA, sin factor → muestra pantalla de setup obligatorio
- * 5. Error en checkMFAStatus → fail open (renderiza children)
- * 6. Mientras verifica → spinner "Checking security settings..."
+ * MFAGuard — roles privilegiados necesitan una sesión verificada con 2FA (aal2).
+ * Antes bastaba con tener el factor configurado: la contraseña sola daba acceso.
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
-// ─── Mocks ──────────────────────────────────────────────────────────────────
-
-vi.mock('../context/AuthContext', () => ({
-    useAuth: vi.fn(),
-}));
-
-vi.mock('../hooks/useMFA', () => ({
-    useMFA: vi.fn(),
-}));
-
+vi.mock('../context/AuthContext', () => ({ useAuth: vi.fn() }));
+vi.mock('../hooks/useMFA', () => ({ useMFA: vi.fn() }));
 vi.mock('./MFASetup', () => ({
-    MFASetup: ({ onComplete }: { onComplete: () => void; requireSetup: boolean }) => (
-        <div data-testid="mfa-setup-modal">
-            <button onClick={onComplete}>Complete MFA</button>
-        </div>
-    ),
+  MFASetup: ({ onComplete }: { onComplete: () => void }) => (
+    <div data-testid="mfa-setup-modal">
+      <button onClick={onComplete}>Complete MFA</button>
+    </div>
+  ),
+}));
+vi.mock('./MFAVerify', () => ({
+  MFAVerify: ({ factorId, onSuccess, onCancel }: { factorId: string; onSuccess: () => void; onCancel: () => void }) => (
+    <div data-testid="mfa-verify" data-factor={factorId}>
+      <button onClick={onSuccess}>Code ok</button>
+      <button onClick={onCancel}>Back</button>
+    </div>
+  ),
 }));
 
 import { useAuth } from '../context/AuthContext';
 import { useMFA } from '../hooks/useMFA';
+import { supabase } from '../services/supabase';
 import { MFAGuard } from './MFAGuard';
 
 const mockUseAuth = useAuth as ReturnType<typeof vi.fn>;
 const mockUseMFA = useMFA as ReturnType<typeof vi.fn>;
+const signOut = vi.fn();
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function setupAuth(overrides: Partial<{ isAuthenticated: boolean; currentRole: string }> = {}) {
-    mockUseAuth.mockReturnValue({
-        isAuthenticated: true,
-        currentRole: 'manager',
-        ...overrides,
-    });
+type Level = 'aal1' | 'aal2' | null;
+function setAal(currentLevel: Level, nextLevel: Level) {
+  return vi.spyOn(supabase.auth.mfa, 'getAuthenticatorAssuranceLevel').mockResolvedValue({
+    data: { currentLevel, nextLevel, currentAuthenticationMethods: [] },
+    error: null,
+  } as never);
 }
-
-function setupMFA(hasVerifiedFactor: boolean, shouldThrow = false) {
-    const checkMFAStatus = shouldThrow
-        ? vi.fn().mockRejectedValue(new Error('MFA service unavailable'))
-        : vi.fn().mockResolvedValue({ hasVerifiedFactor });
-    mockUseMFA.mockReturnValue({ checkMFAStatus });
-    return checkMFAStatus;
+function setup(role: string | undefined, isAuthenticated = true) {
+  mockUseAuth.mockReturnValue({ isAuthenticated, currentRole: role, signOut });
+  const checkMFAStatus = vi.fn().mockResolvedValue({
+    hasVerifiedFactor: true,
+    factors: [
+      { id: 'f-unverified', status: 'unverified' },
+      { id: 'f-verified', status: 'verified' },
+    ],
+  });
+  mockUseMFA.mockReturnValue({ checkMFAStatus });
+  return checkMFAStatus;
 }
-
-const ChildContent = () => <div data-testid="protected-content">Contenido protegido</div>;
-
-// ─── Tests ──────────────────────────────────────────────────────────────────
+const renderGuard = () =>
+  render(
+    <MFAGuard>
+      <div data-testid="protected-content">ok</div>
+    </MFAGuard>
+  );
 
 describe('MFAGuard', () => {
-    beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    signOut.mockReset();
+  });
 
-    it('renderiza children directamente si el usuario no está autenticado', async () => {
-        setupAuth({ isAuthenticated: false, currentRole: undefined as unknown as string });
-        setupMFA(false);
+  it.each(['team_leader', 'runner', 'qc_inspector', 'logistics'])(
+    'field role %s enters without 2FA and without checking',
+    async role => {
+      const aal = setAal('aal1', 'aal1');
+      setup(role);
+      renderGuard();
+      expect(await screen.findByTestId('protected-content')).toBeTruthy();
+      expect(aal).not.toHaveBeenCalled();
+    }
+  );
 
-        render(
-            <MFAGuard>
-                <ChildContent />
-            </MFAGuard>
-        );
+  it('signed-out user is not blocked', async () => {
+    setAal(null, null);
+    setup(undefined, false);
+    renderGuard();
+    expect(await screen.findByTestId('protected-content')).toBeTruthy();
+  });
 
-        await waitFor(() => {
-            expect(screen.getByTestId('protected-content')).toBeDefined();
-        });
-        expect(screen.queryByTestId('mfa-setup-modal')).toBeNull();
-    });
+  it.each(['manager', 'admin', 'payroll_admin', 'hr_admin'])(
+    '%s with 2FA set up but only a password session must enter the code',
+    async role => {
+      setAal('aal1', 'aal2');
+      setup(role);
+      renderGuard();
+      const verify = await screen.findByTestId('mfa-verify');
+      expect(verify.getAttribute('data-factor')).toBe('f-verified');
+      expect(screen.queryByTestId('protected-content')).toBeNull();
+    }
+  );
 
-    it('renderiza children si el rol no requiere MFA (team_leader)', async () => {
-        setupAuth({ isAuthenticated: true, currentRole: 'team_leader' });
-        setupMFA(false); // no importa el valor — no se llama para roles sin MFA requerido
+  it('enters after the code is verified (session becomes aal2)', async () => {
+    const aal = setAal('aal1', 'aal2');
+    setup('manager');
+    renderGuard();
+    await screen.findByTestId('mfa-verify');
+    aal.mockResolvedValue({
+      data: { currentLevel: 'aal2', nextLevel: 'aal2', currentAuthenticationMethods: [] },
+      error: null,
+    } as never);
+    fireEvent.click(screen.getByText('Code ok'));
+    expect(await screen.findByTestId('protected-content')).toBeTruthy();
+  });
 
-        render(
-            <MFAGuard>
-                <ChildContent />
-            </MFAGuard>
-        );
+  it('going back from the code screen signs out', async () => {
+    setAal('aal1', 'aal2');
+    setup('admin');
+    renderGuard();
+    fireEvent.click(await screen.findByText('Back'));
+    expect(signOut).toHaveBeenCalledTimes(1);
+  });
 
-        await waitFor(() => {
-            expect(screen.getByTestId('protected-content')).toBeDefined();
-        });
-        expect(screen.queryByTestId('mfa-setup-modal')).toBeNull();
-    });
+  it('already verified session (aal2) enters without asking again', async () => {
+    setAal('aal2', 'aal2');
+    const checkMFAStatus = setup('payroll_admin');
+    renderGuard();
+    expect(await screen.findByTestId('protected-content')).toBeTruthy();
+    expect(checkMFAStatus).not.toHaveBeenCalled();
+  });
 
-    it.each(['runner', 'qc_inspector', 'logistics'])(
-        'renderiza children para rol %s sin requerir MFA',
-        async (role) => {
-            setupAuth({ isAuthenticated: true, currentRole: role });
-            setupMFA(false);
+  it('privileged role without any factor must set up 2FA', async () => {
+    setAal('aal1', 'aal1');
+    setup('hr_admin');
+    renderGuard();
+    expect(await screen.findByTestId('mfa-setup-modal')).toBeTruthy();
+    expect(screen.getByText(/Two-Factor Authentication Required/)).toBeTruthy();
+    expect(screen.queryByTestId('protected-content')).toBeNull();
+  });
 
-            render(
-                <MFAGuard>
-                    <ChildContent />
-                </MFAGuard>
-            );
+  it('fails closed when the check errors, and can retry', async () => {
+    const aal = vi
+      .spyOn(supabase.auth.mfa, 'getAuthenticatorAssuranceLevel')
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValue({
+        data: { currentLevel: 'aal2', nextLevel: 'aal2', currentAuthenticationMethods: [] },
+        error: null,
+      } as never);
+    setup('manager');
+    renderGuard();
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.queryByTestId('protected-content')).toBeNull();
+    fireEvent.click(screen.getByText('Try again'));
+    await waitFor(() => expect(screen.getByTestId('protected-content')).toBeTruthy());
+    expect(aal).toHaveBeenCalledTimes(2);
+  });
 
-            await waitFor(() => {
-                expect(screen.getByTestId('protected-content')).toBeDefined();
-            });
-        }
+  it('shows the spinner while checking', () => {
+    vi.spyOn(supabase.auth.mfa, 'getAuthenticatorAssuranceLevel').mockImplementation(
+      () => new Promise(() => {})
     );
-
-    it.each(['admin', 'payroll_admin', 'hr_admin'])(
-        'muestra setup MFA para rol privilegiado %s sin MFA configurado',
-        async (role) => {
-            setupAuth({ isAuthenticated: true, currentRole: role });
-            setupMFA(false); // hasVerifiedFactor = false
-
-            render(
-                <MFAGuard>
-                    <ChildContent />
-                </MFAGuard>
-            );
-
-            await waitFor(() => {
-                expect(screen.getByTestId('mfa-setup-modal')).toBeDefined();
-            });
-            expect(screen.queryByTestId('protected-content')).toBeNull();
-        }
-    );
-
-    it.each(['admin', 'payroll_admin', 'hr_admin'])(
-        'renderiza children para rol privilegiado %s que ya tiene MFA',
-        async (role) => {
-            setupAuth({ isAuthenticated: true, currentRole: role });
-            setupMFA(true); // hasVerifiedFactor = true
-
-            render(
-                <MFAGuard>
-                    <ChildContent />
-                </MFAGuard>
-            );
-
-            await waitFor(() => {
-                expect(screen.getByTestId('protected-content')).toBeDefined();
-            });
-            expect(screen.queryByTestId('mfa-setup-modal')).toBeNull();
-        }
-    );
-
-    it('muestra el spinner mientras verifica el estado MFA', () => {
-        setupAuth({ isAuthenticated: true, currentRole: 'manager' });
-        // checkMFAStatus que nunca resuelve durante el test
-        mockUseMFA.mockReturnValue({
-            checkMFAStatus: vi.fn().mockImplementation(() => new Promise(() => {})),
-        });
-
-        render(
-            <MFAGuard>
-                <ChildContent />
-            </MFAGuard>
-        );
-
-        expect(screen.getByText('Checking security settings...')).toBeDefined();
-        expect(screen.queryByTestId('protected-content')).toBeNull();
-        expect(screen.queryByTestId('mfa-setup-modal')).toBeNull();
-    });
-
-    it('renderiza children si el manager ya tiene MFA configurado', async () => {
-        setupAuth({ isAuthenticated: true, currentRole: 'manager' });
-        setupMFA(true); // hasVerifiedFactor = true
-
-        render(
-            <MFAGuard>
-                <ChildContent />
-            </MFAGuard>
-        );
-
-        await waitFor(() => {
-            expect(screen.getByTestId('protected-content')).toBeDefined();
-        });
-        expect(screen.queryByTestId('mfa-setup-modal')).toBeNull();
-    });
-
-    it('muestra el modal de setup si el manager NO tiene MFA', async () => {
-        setupAuth({ isAuthenticated: true, currentRole: 'manager' });
-        setupMFA(false); // hasVerifiedFactor = false
-
-        render(
-            <MFAGuard>
-                <ChildContent />
-            </MFAGuard>
-        );
-
-        await waitFor(() => {
-            expect(screen.getByTestId('mfa-setup-modal')).toBeDefined();
-        });
-        expect(screen.queryByTestId('protected-content')).toBeNull();
-        expect(screen.getByText(/Two-Factor Authentication Required/)).toBeDefined();
-    });
-
-    it('fail open: renderiza children si checkMFAStatus lanza un error', async () => {
-        setupAuth({ isAuthenticated: true, currentRole: 'manager' });
-        setupMFA(false, true); // shouldThrow = true
-
-        render(
-            <MFAGuard>
-                <ChildContent />
-            </MFAGuard>
-        );
-
-        await waitFor(() => {
-            expect(screen.getByTestId('protected-content')).toBeDefined();
-        });
-        expect(screen.queryByTestId('mfa-setup-modal')).toBeNull();
-    });
-
-    it('llama a checkMFAStatus solo para managers autenticados', async () => {
-        setupAuth({ isAuthenticated: true, currentRole: 'manager' });
-        const checkMFAStatus = setupMFA(true);
-
-        render(
-            <MFAGuard>
-                <ChildContent />
-            </MFAGuard>
-        );
-
-        await waitFor(() => screen.getByTestId('protected-content'));
-        expect(checkMFAStatus).toHaveBeenCalledTimes(1);
-    });
-
-    it('NO llama a checkMFAStatus para roles que no requieren MFA (runner)', async () => {
-        setupAuth({ isAuthenticated: true, currentRole: 'runner' });
-        const checkMFAStatus = setupMFA(false);
-
-        render(
-            <MFAGuard>
-                <ChildContent />
-            </MFAGuard>
-        );
-
-        await waitFor(() => screen.getByTestId('protected-content'));
-        expect(checkMFAStatus).not.toHaveBeenCalled();
-    });
+    setup('manager');
+    renderGuard();
+    expect(screen.getByText('Checking security settings...')).toBeTruthy();
+    expect(screen.queryByTestId('protected-content')).toBeNull();
+  });
 });

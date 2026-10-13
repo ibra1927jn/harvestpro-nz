@@ -95,8 +95,22 @@ function getClientInfo(): { ip_address?: string; user_agent?: string } {
 /**
  * Flush queued logs to database
  */
+let waitingForOnline = false;
+
 async function flushLogs(): Promise<void> {
     if (logQueue.length === 0) return;
+
+    // Sin cobertura (lo normal en el huerto): no intentar; subir al volver la red
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        if (!waitingForOnline && typeof window !== 'undefined') {
+            waitingForOnline = true;
+            window.addEventListener('online', () => {
+                waitingForOnline = false;
+                flushLogs();
+            }, { once: true });
+        }
+        return;
+    }
 
     const logsToFlush = [...logQueue];
     logQueue.length = 0; // Clear queue
@@ -190,7 +204,9 @@ export async function logAudit(
     }
 
     // Critical and error events should be logged immediately
-    if (immediate || severity === 'critical' || severity === 'error') {
+    // Sin cobertura van a la cola (antes se perdían): se suben al volver la red
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    if ((immediate || severity === 'critical' || severity === 'error') && !offline) {
         try {
             const { error: invokeErr } = await edgeFunctionsRepository.invoke('submit-audit-log', {
                 entries: [{
@@ -209,6 +225,9 @@ export async function logAudit(
             if (invokeErr) throw invokeErr;
         } catch (err) {
             logger.error('[Audit] Failed to log critical event:', err);
+            // No perder el evento: reintento con la cola normal
+            logQueue.push(entry);
+            scheduleFlush();
         }
         return;
     }
@@ -216,8 +235,8 @@ export async function logAudit(
     // Add to queue for batch logging
     logQueue.push(entry);
 
-    // Force flush if queue is full
-    if (logQueue.length >= MAX_QUEUE_SIZE) {
+    // Force flush if queue is full (o evento urgente sin cobertura)
+    if (logQueue.length >= MAX_QUEUE_SIZE || offline) {
         await flushLogs();
     } else {
         scheduleFlush();

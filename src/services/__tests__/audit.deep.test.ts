@@ -11,10 +11,6 @@ vi.mock('@/utils/logger', () => ({
     logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
 
-vi.mock('./config.service', () => ({
-    getConfig: vi.fn().mockReturnValue({ audit: { enabled: true } }),
-}));
-
 vi.mock('@/repositories/edge-functions.repository', () => ({
     edgeFunctionsRepository: {
         invoke: vi.fn().mockResolvedValue({ data: null, error: null }),

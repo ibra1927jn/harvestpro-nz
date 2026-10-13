@@ -47,6 +47,8 @@ coverage/
 .cache/
 playwright-report/
 test-results/
+playwright-report-mobile/
+test-results-mobile/
 
 # Generated analysis / temp outputs
 temp_lint.json
@@ -100,3 +102,7 @@ supabase/migrations/fix_*.cjs
 supabase/migrations/make_*.cjs
 supabase_debug.log
 docker_status.txt
+
+# Mutation testing
+.stryker-tmp/
+reports/mutation/
