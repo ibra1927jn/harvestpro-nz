@@ -320,7 +320,7 @@ export const AuditLogEntrySchema = z.object({
   orchard_id: z.string().uuid().optional(),
   entity_type: z.string().optional(),
   entity_id: z.string().optional(),
-  details: z.record(z.unknown()).optional(),
+  details: z.record(z.string(), z.unknown()).optional(),
   created_at: z.string().optional(),
 });
 
