@@ -7,6 +7,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import 'fake-indexeddb/auto';
 import fc from 'fast-check';
 
+// Los temporizadores de sync.service (pasada de arranque a los 5 s, reintento a
+// los 15 s) son falsos desde antes de importar el módulo: en una máquina lenta se
+// disparaban en mitad de un test, robaban el cerrojo y el test fallaba al azar.
+// IndexedDB (fake-indexeddb) usa setImmediate, que sigue siendo real.
+vi.hoisted(() => { vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }); });
+
 const recordBucket = vi.fn();
 const sendMessage = vi.fn();
 const assignUserToOrchard = vi.fn();
@@ -63,6 +69,17 @@ beforeEach(async () => {
     vi.mocked(analytics.trackDLQError).mockClear();
 });
 afterEach(() => { vi.restoreAllMocks(); });
+
+describe('background timers (fake, under test control)', () => {
+    it('the startup pass sends what was queued before the app opened, and only when its time comes', async () => {
+        const item = await queue('SCAN', SCAN);
+        await vi.advanceTimersByTimeAsync(4_000);
+        expect(recordBucket).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1_000);
+        await vi.waitFor(async () => expect(await db.sync_queue.get(item.id)).toBeUndefined());
+        expect(recordBucket).toHaveBeenCalledTimes(1);
+    });
+});
 
 describe('processQueue — success', () => {
     it('sends each item to its processor with the validated payload and empties the queue', async () => {
