@@ -110,6 +110,9 @@ export function checkRateLimit(key: string, options: RateLimitOptions = DEFAULT_
 /** Allowed roles that can invoke management Edge Functions */
 type AllowedRole = 'admin' | 'manager' | 'team_leader' | 'runner' | 'qc_inspector' | 'payroll_admin' | 'hr_admin' | 'logistics';
 
+/** Roles que necesitan 2FA (aal2); misma lista que MFAGuard y public.mfa_satisfied() */
+const MFA_ROLES: ReadonlySet<string> = new Set(['admin', 'manager', 'payroll_admin', 'hr_admin']);
+
 interface AuthResult {
   user: { id: string; email: string };
   supabase: SupabaseClient;
@@ -165,6 +168,19 @@ export async function requireRole(
       `Insufficient permissions. Required: ${roles.join('|')}. Got: ${userRole || 'none'}`,
       403
     );
+  }
+
+  // 2FA en el servidor: un rol privilegiado necesita sesión aal2 (salvo que
+  // security_settings.enforce_mfa esté apagado, solo en el PC de desarrollo).
+  // Lo decide la BD con el mismo token (mfa_satisfied), igual que el RLS.
+  if (MFA_ROLES.has(userRole)) {
+    const { data: satisfied, error: mfaError } = await supabase.rpc('mfa_satisfied');
+    if (mfaError) {
+      throw new Error(`2FA check failed: ${mfaError.message}`);
+    }
+    if (satisfied !== true) {
+      throw new AuthError('Two-factor authentication required: verify your 2FA code and try again', 403);
+    }
   }
 
   return {

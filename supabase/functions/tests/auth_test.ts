@@ -4,17 +4,19 @@
  *
  * - Matriz de roles con los usuarios del seed: permitido → pasa a validación
  *   (400), no permitido → 403. Sin tocar datos.
+ * - Rol privilegiado con sesión sin 2FA (aal1) → 403 (2FA en el servidor).
  * - Sin token / token anon / basura → 401; usuario desactivado → 403; rol
  *   escrito por el usuario en su user_metadata → no cuenta (403).
  * - JSON roto, tipos equivocados, payload enorme → 400/413 sin filtrar trazas
  *   ni secretos.
  * - CORS: origen permitido reflejado, origen ajeno sin Allow-Origin.
  */
-import { assertEquals } from 'https://deno.land/std@0.168.0/testing/asserts.ts'
+import { assert, assertEquals } from 'https://deno.land/std@0.168.0/testing/asserts.ts'
 import {
-    ANON_KEY, type Role, call, checkCors, checkInputValidation, checkRoleMatrix, cleanupAll,
-    makeUser, seededToken, show, spoofMetadataRole, testOpts, assertNoLeak, assertCleanRejection,
+    ANON_KEY, type Role, SEEDED, call, checkCors, checkInputValidation, checkRoleMatrix, cleanupAll,
+    loginAal1, makeUser, seededToken, show, spoofMetadataRole, testOpts, assertNoLeak, assertCleanRejection,
 } from './_helpers.ts'
+import { MFA_ROLES, aalOf } from './_totp.ts'
 
 const UUID = '00000000-0000-4000-8000-000000000000'
 
@@ -89,6 +91,22 @@ Deno.test({ name: 'edge functions: auth, roles, validation and CORS', ...testOpt
                     const r = await call(fn, { token, body: { _invalid: true } })
                     assertEquals(r.status, 401, `token=${token ? token.slice(0, 8) : 'none'} → ${show(r)}`)
                     assertNoLeak(r)
+                }
+            })
+
+            await t.step(`${fn}: privileged role without 2FA (password-only session) → 403`, async () => {
+                for (const role of allowed.filter(r => MFA_ROLES.has(r))) {
+                    const aal1 = await loginAal1(SEEDED[role])
+                    assertEquals(aalOf(aal1), 'aal1')
+                    const r = await call(fn, { token: aal1, body: { _invalid: true } })
+                    assertEquals(r.status, 403, `${role} aal1: ${show(r)}`)
+                    assert(r.text.includes('Two-factor'), `${role} aal1: ${show(r)}`)
+                    assertNoLeak(r)
+                }
+                // Roles de campo: sin 2FA, como siempre (pasan a validación)
+                for (const role of allowed.filter(r => !MFA_ROLES.has(r))) {
+                    const r = await call(fn, { token: await loginAal1(SEEDED[role]), body: { _invalid: true } })
+                    assertEquals(r.status, 400, `${role} aal1: ${show(r)}`)
                 }
             })
 

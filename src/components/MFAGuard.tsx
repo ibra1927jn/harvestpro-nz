@@ -27,6 +27,8 @@ interface MFAGuardProps {
 
 // Desactivable SOLO en desarrollo con VITE_MFA_ENFORCE=false en .env.local.
 // En build de produccion (import.meta.env.PROD) se ignora y el MFA siempre se exige.
+// La BD también lo exige (mfa_satisfied(), migración 20261014000000): en el PC
+// de desarrollo hay que apagarlo además con scripts/dev-disable-mfa.sql.
 const MFA_ENFORCED = import.meta.env.PROD || import.meta.env.VITE_MFA_ENFORCE !== 'false';
 const MFA_REQUIRED_ROLES = new Set(
   MFA_ENFORCED ? ['manager', 'admin', 'payroll_admin', 'hr_admin'] : []

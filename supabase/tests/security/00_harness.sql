@@ -15,7 +15,8 @@
 --      guarda PASS/FAIL en sec_test.results.
 --
 -- Usuarios: 'A.<rol>' = huerto A (el sembrado), 'B.<rol>' = huerto B (creado
--- aquí), 'anon' = sin sesión. Ver sec_test.who.
+-- aquí), 'anon' = sin sesión. Ver sec_test.who. Sufijo '@aal1' = sesión sin
+-- 2FA (por defecto las sesiones son aal2).
 -- =============================================================================
 
 SET client_min_messages = warning;
@@ -57,6 +58,7 @@ LANGUAGE plpgsql AS $$
 DECLARE
     v_id uuid;
     v_email text;
+    v_aal text;
 BEGIN
     -- Como la Storage API: permite DELETE en storage.objects (lo decide el RLS)
     PERFORM set_config('storage.allow_delete_query', 'true', true);
@@ -65,12 +67,15 @@ BEGIN
         PERFORM set_config('role', 'anon', true);
         RETURN;
     END IF;
-    SELECT id, email INTO v_id, v_email FROM sec_test.who WHERE key = p_who;
+    -- 'A.manager' = sesión con 2FA (aal2, como la app tras el código);
+    -- 'A.manager@aal1' = la misma cuenta con solo contraseña
+    v_aal := COALESCE(NULLIF(split_part(p_who, '@', 2), ''), 'aal2');
+    SELECT id, email INTO v_id, v_email FROM sec_test.who WHERE key = split_part(p_who, '@', 1);
     IF v_id IS NULL THEN
         RAISE EXCEPTION 'sec_test: unknown user %', p_who;
     END IF;
     PERFORM set_config('request.jwt.claims',
-        json_build_object('sub', v_id, 'role', 'authenticated', 'email', v_email)::text, true);
+        json_build_object('sub', v_id, 'role', 'authenticated', 'email', v_email, 'aal', v_aal)::text, true);
     PERFORM set_config('role', 'authenticated', true);
 END $$;
 

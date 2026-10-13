@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => ({
   removeAllChannels: vi.fn(),
   dbDelete: vi.fn().mockResolvedValue(undefined),
   clearDeviceTrust: vi.fn().mockResolvedValue(undefined),
+  realtimeSetAuth: vi.fn(),
 }));
 
 vi.mock('@/services/supabase', () => ({
@@ -54,6 +55,7 @@ vi.mock('@/services/supabase', () => ({
       single: vi.fn().mockResolvedValue({ data: null, error: null }),
     }),
     removeAllChannels: mocks.removeAllChannels,
+    realtime: { setAuth: mocks.realtimeSetAuth },
   },
 }));
 vi.mock('@/services/db', () => ({
@@ -488,6 +490,36 @@ describe('AuthContext', () => {
     it('checks session on mount', async () => {
       await renderAuthHook();
       expect(mocks.getSession).toHaveBeenCalled();
+    });
+
+    // 2FA en el servidor: tras el código, el realtime y los datos van con el token aal2
+    it('after the 2FA code is accepted, hands the aal2 token to realtime and marks the session verified', async () => {
+      const { result } = await renderAuthHook();
+      const listener = mocks.onAuthStateChange.mock.calls[0][0] as (
+        event: string,
+        session: { access_token: string; user: { id: string } } | null
+      ) => Promise<void>;
+      expect(result.current.mfaVerifiedAt).toBeUndefined();
+
+      await act(async () => {
+        await listener('MFA_CHALLENGE_VERIFIED', { access_token: 'aal2-token', user: { id: 'u1' } });
+      });
+
+      expect(mocks.realtimeSetAuth).toHaveBeenCalledWith('aal2-token');
+      expect(typeof result.current.mfaVerifiedAt).toBe('number');
+    });
+
+    it('a silent token refresh does not mark the session as 2FA-verified', async () => {
+      const { result } = await renderAuthHook();
+      const listener = mocks.onAuthStateChange.mock.calls[0][0] as (
+        event: string,
+        session: { access_token: string; user: { id: string } } | null
+      ) => Promise<void>;
+      await act(async () => {
+        await listener('TOKEN_REFRESHED', { access_token: 't2', user: { id: 'u1' } });
+      });
+      expect(mocks.realtimeSetAuth).not.toHaveBeenCalled();
+      expect(result.current.mfaVerifiedAt).toBeUndefined();
     });
   });
 });

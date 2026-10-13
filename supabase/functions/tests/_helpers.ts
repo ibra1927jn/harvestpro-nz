@@ -12,6 +12,7 @@
  */
 import { assert, assertEquals } from 'https://deno.land/std@0.168.0/testing/asserts.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { MFA_ROLES, elevateToAal2 } from './_totp.ts'
 
 function env(...names: string[]): string {
     for (const n of names) {
@@ -58,10 +59,8 @@ const SEED_PASSWORD = '111111'
 
 const tokenCache = new Map<string, string>()
 
-/** JWT de un usuario (una sola vez por ejecución: GoTrue limita los logins) */
-export async function login(email: string, password = SEED_PASSWORD): Promise<string> {
-    const cached = tokenCache.get(email)
-    if (cached) return cached
+/** Sesión de solo contraseña (aal1): token e id de la cuenta */
+async function passwordLogin(email: string, password: string): Promise<{ token: string; userId: string }> {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
         method: 'POST',
         headers: { apikey: ANON_KEY, 'Content-Type': 'application/json' },
@@ -69,8 +68,37 @@ export async function login(email: string, password = SEED_PASSWORD): Promise<st
     })
     const body = await res.json()
     if (!res.ok || !body.access_token) throw new Error(`login ${email}: ${res.status} ${JSON.stringify(body)}`)
-    tokenCache.set(email, body.access_token)
-    return body.access_token
+    return { token: body.access_token, userId: body.user.id }
+}
+
+/**
+ * JWT de un usuario (una sola vez por ejecución: GoTrue limita los logins).
+ * Los roles privilegiados (admin, manager, payroll, RRHH) entran como en la
+ * app: contraseña + código 2FA real (sesión aal2), porque el servidor exige
+ * 2FA para ellos (migración 20261014000000_server_side_mfa).
+ */
+export async function login(email: string, password = SEED_PASSWORD): Promise<string> {
+    const cached = tokenCache.get(email)
+    if (cached) return cached
+    const { token, userId } = await passwordLogin(email, password)
+    const { data: profile } = await service.from('users').select('role').eq('id', userId).maybeSingle()
+    const role = (profile as { role?: string } | null)?.role
+    const finalToken = role && MFA_ROLES.has(role)
+        ? await elevateToAal2({ url: SUPABASE_URL, anonKey: ANON_KEY, serviceKey: SERVICE_KEY }, userId, token)
+        : token
+    tokenCache.set(email, finalToken)
+    return finalToken
+}
+
+const aal1Cache = new Map<string, string>()
+
+/** Sesión SIN 2FA (solo contraseña), para comprobar que el servidor la rechaza */
+export async function loginAal1(email: string, password = SEED_PASSWORD): Promise<string> {
+    const cached = aal1Cache.get(email)
+    if (cached) return cached
+    const { token } = await passwordLogin(email, password)
+    aal1Cache.set(email, token)
+    return token
 }
 
 export function seededToken(role: Role): Promise<string> {

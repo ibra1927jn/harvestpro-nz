@@ -12,6 +12,7 @@
 import { assertEquals, assertRejects } from 'https://deno.land/std@0.168.0/testing/asserts.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { AuthError, requireRole } from './security.ts'
+import { aalOf, elevateToAal2 } from '../tests/_totp.ts'
 
 const URL = Deno.env.get('SUPABASE_URL') ?? ''
 const ANON = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -80,13 +81,58 @@ Deno.test('requireRole rejects a deactivated account', async () => {
     }
 })
 
-Deno.test('requireRole accepts the role stored in public.users', async () => {
+/** Sesión con 2FA (aal2), como la app tras la pantalla de código */
+async function signInAal2(user: { id: string; email: string }): Promise<string> {
+    return elevateToAal2({ url: URL, anonKey: ANON, serviceKey: SERVICE }, user.id, await signIn(user.email))
+}
+
+Deno.test('requireRole accepts the role stored in public.users (with 2FA)', async () => {
     const user = await makeUser('payroll_admin')
     try {
-        const token = await signIn(user.email)
+        const token = await signInAal2(user)
+        assertEquals(aalOf(token), 'aal2')
         const ok = await requireRole(requestWith(token), ['admin', 'payroll_admin'])
         assertEquals(ok.user.id, user.id)
     } finally {
+        await admin.auth.admin.deleteUser(user.id)
+    }
+})
+
+Deno.test('requireRole rejects a privileged role with a password-only (aal1) session', async () => {
+    for (const role of ['admin', 'manager', 'payroll_admin', 'hr_admin']) {
+        const user = await makeUser(role)
+        try {
+            const token = await signIn(user.email)
+            assertEquals(aalOf(token), 'aal1')
+            const err = await assertRejects(() => requireRole(requestWith(token), [role as 'admin']), AuthError)
+            assertEquals((err as AuthError).status, 403, role)
+            assertEquals((err as AuthError).message.startsWith('Two-factor'), true, role)
+        } finally {
+            await admin.auth.admin.deleteUser(user.id)
+        }
+    }
+})
+
+Deno.test('requireRole lets field roles in without 2FA', async () => {
+    const user = await makeUser('team_leader')
+    try {
+        const ok = await requireRole(requestWith(await signIn(user.email)), ['team_leader'])
+        assertEquals(ok.user.id, user.id)
+    } finally {
+        await admin.auth.admin.deleteUser(user.id)
+    }
+})
+
+Deno.test('requireRole accepts aal1 when enforcement is off (dev PC switch)', async () => {
+    const user = await makeUser('manager')
+    const { data: before } = await admin.from('security_settings').select('enforce_mfa').eq('id', true).single()
+    try {
+        const { error } = await admin.from('security_settings').update({ enforce_mfa: false }).eq('id', true)
+        if (error) throw new Error(`security_settings: ${error.message}`)
+        const ok = await requireRole(requestWith(await signIn(user.email)), ['manager'])
+        assertEquals(ok.user.id, user.id)
+    } finally {
+        await admin.from('security_settings').update({ enforce_mfa: before?.enforce_mfa ?? true }).eq('id', true)
         await admin.auth.admin.deleteUser(user.id)
     }
 })
