@@ -19,6 +19,7 @@ import legal from './legal';
 import login from './login';
 import logistics2 from './logistics2';
 import manager from './manager';
+import payroll from './payroll';
 import pickerDetails from './pickerDetails';
 import qc from './qc';
 import runner from './runner';
@@ -49,6 +50,7 @@ const tl: TranslationDict = {
     ...login,
     ...logistics2,
     ...manager,
+    ...payroll,
     ...pickerDetails,
     ...qc,
     ...runner,

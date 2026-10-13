@@ -281,8 +281,10 @@ export function findHardcoded(text, file, allow) {
                 }
             }
         } else if (isTsx && ts.isPropertyAssignment(n) && TEXT_PROPS.has(propName(n.name) ?? '')) {
-            // { label: 'Texto' } en configs de UI (solo .tsx)
-            addExpr(n.initializer, `prop:${propName(n.name)}`);
+            // { label: 'Texto' } en configs de UI (solo .tsx). Con labelKey al lado, label es solo el respaldo.
+            const hasKey = propName(n.name) === 'label' && ts.isObjectLiteralExpression(n.parent)
+                && n.parent.properties.some(p => p.name && propName(p.name) === 'labelKey');
+            if (!hasKey) addExpr(n.initializer, `prop:${propName(n.name)}`);
         }
         ts.forEachChild(n, visit);
     };

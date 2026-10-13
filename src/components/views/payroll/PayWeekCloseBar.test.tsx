@@ -33,7 +33,7 @@ describe('PayWeekCloseBar', () => {
             week: { start: '2026-10-05', end: '2026-10-11' }, closed: false, reason: 'ESTIMATED_HOURS',
             pending: [{ picker_id: 'p1', picker_name: 'Ana', dates: ['2026-10-07'] }],
         }} />);
-        expect(screen.getByText('Ana: 2026-10-07')).toBeInTheDocument();
+        expect(screen.getByText('Ana: Wed, 7 Oct')).toBeInTheDocument();
     });
 
     it('reabrir exige motivo', () => {

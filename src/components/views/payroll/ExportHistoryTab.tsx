@@ -5,6 +5,8 @@
  */
 import { logger } from '@/utils/logger';
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '@/i18n';
+import { formatNZD, formatNZDate, formatNZTime } from '@/utils/nzFormat';
 
 export interface ExportRecord {
     id: string;
@@ -40,6 +42,7 @@ export function getExportHistory(): ExportRecord[] {
 
 const ExportHistoryTab: React.FC = () => {
     const [history, setHistory] = useState<ExportRecord[]>([]);
+    const { t } = useTranslation();
 
     useEffect(() => {
         setHistory(getExportHistory());
@@ -52,7 +55,7 @@ const ExportHistoryTab: React.FC = () => {
     };
 
     const handleClearAll = () => {
-        if (!confirm('Clear all export history?')) return;
+        if (!confirm(t('pay.hist.confirm_clear'))) return;
         localStorage.removeItem(STORAGE_KEY);
         setHistory([]);
     };
@@ -82,15 +85,15 @@ const ExportHistoryTab: React.FC = () => {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h3 className="text-lg font-bold text-text-main">Export History</h3>
-                    <p className="text-xs text-text-muted">{history.length} exports logged</p>
+                    <h3 className="text-lg font-bold text-text-main">{t('pay.hist.title')}</h3>
+                    <p className="text-xs text-text-muted">{t('pay.hist.count', { n: history.length })}</p>
                 </div>
                 {history.length > 0 && (
                     <button
                         onClick={handleClearAll}
                         className="text-xs text-red-500 hover:text-red-700 font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
                     >
-                        Clear All
+                        {t('pay.hist.clear_all')}
                     </button>
                 )}
             </div>
@@ -99,8 +102,8 @@ const ExportHistoryTab: React.FC = () => {
             {history.length === 0 ? (
                 <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-8 text-center">
                     <span aria-hidden="true" className="material-symbols-outlined text-slate-300 text-4xl mb-2 block">history</span>
-                    <p className="text-sm text-text-muted">No exports yet</p>
-                    <p className="text-xs text-text-muted mt-1">Export history will appear here after your first payroll export</p>
+                    <p className="text-sm text-text-muted">{t('pay.hist.empty')}</p>
+                    <p className="text-xs text-text-muted mt-1">{t('pay.hist.empty_hint')}</p>
                 </div>
             ) : (
                 <div className="space-y-2">
@@ -112,21 +115,21 @@ const ExportHistoryTab: React.FC = () => {
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold text-text-main truncate">{record.filename}</p>
                                 <p className="text-xs text-text-muted">
-                                    {record.format.toUpperCase()} • {record.recordCount} workers • ${record.totalEarnings.toFixed(0)} total
+                                    {record.format.toUpperCase()} • {t('pay.hist.line', { n: record.recordCount, total: formatNZD(record.totalEarnings, 0) })}
                                 </p>
                             </div>
                             <div className="text-right">
                                 <p className="text-xs text-text-muted">
-                                    {new Date(record.timestamp).toLocaleDateString('en-NZ', { timeZone: 'Pacific/Auckland', month: 'short', day: 'numeric' })}
+                                    {formatNZDate(record.timestamp, 'dayMonth')}
                                 </p>
                                 <p className="text-[10px] text-text-muted">
-                                    {new Date(record.timestamp).toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' })}
+                                    {formatNZTime(record.timestamp)}
                                 </p>
                             </div>
-                            <button aria-label="Delete"
+                            <button aria-label={t('hr.docs.delete')}
                                 onClick={() => handleDelete(record.id)}
                                 className="text-slate-300 hover:text-red-500 transition-colors"
-                                title="Delete"
+                                title={t('hr.docs.delete')}
                             >
                                 <span aria-hidden="true" className="material-symbols-outlined text-lg">delete</span>
                             </button>

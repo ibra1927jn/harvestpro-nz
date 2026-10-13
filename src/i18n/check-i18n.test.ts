@@ -79,6 +79,14 @@ describe('hard-coded user-visible strings', () => {
             </div>;`)).toEqual([]);
     });
 
+    it('skips a label that only backs up its labelKey, but not a bare label', () => {
+        expect(find(`
+            const NAV = [
+                { id: 'a', label: 'Dashboard', labelKey: 'nav.dashboard' },
+                { id: 'b', label: 'History' },
+            ];`)).toEqual(['prop:label:History']);
+    });
+
     it('treats words, not punctuation or numbers, as user text', () => {
         expect(isUserText('  12:30 · 4 / 5 ', allow)).toBe(false);
         expect(isUserText('row_assignments', allow)).toBe(false);

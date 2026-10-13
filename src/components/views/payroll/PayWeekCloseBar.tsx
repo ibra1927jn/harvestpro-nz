@@ -4,9 +4,11 @@
  */
 import React, { useState } from 'react';
 import type { PayWeekActionResult } from '@/repositories/payroll.repository';
+import { useTranslation } from '@/i18n';
+import { formatNZDate, formatNZTime } from '@/utils/nzFormat';
 
 const nzDateTime = (iso: string | null | undefined) =>
-    iso ? new Intl.DateTimeFormat('en-NZ', { timeZone: 'Pacific/Auckland', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(iso)) : '';
+    iso ? `${formatNZDate(iso, 'weekdayShort')} ${formatNZTime(iso)}` : '';
 
 export interface PayWeekCloseBarProps {
     weekEnd: string;
@@ -25,6 +27,7 @@ export const PayWeekCloseBar: React.FC<PayWeekCloseBarProps> = ({
     const [confirming, setConfirming] = useState(false);
     const [reopening, setReopening] = useState(false);
     const [reason, setReason] = useState('');
+    const { t } = useTranslation();
 
     if (closedInfo) {
         return (
@@ -32,11 +35,11 @@ export const PayWeekCloseBar: React.FC<PayWeekCloseBarProps> = ({
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="text-sm font-bold text-emerald-900 flex items-center gap-2">
                         <span aria-hidden="true" className="material-symbols-outlined text-[20px]">lock</span>
-                        Week closed {nzDateTime(closedInfo.closed_at)} — these are the figures that were paid. Timesheets and buckets of this week can't be changed.
+                        {t('pay.close.closed', { date: nzDateTime(closedInfo.closed_at) })}
                     </p>
                     {canManageWeek && !reopening && (
                         <button type="button" onClick={() => setReopening(true)} className="text-xs font-bold px-3 py-1.5 rounded-lg border border-emerald-300 text-emerald-800 hover:bg-emerald-100">
-                            Reopen week
+                            {t('pay.close.reopen')}
                         </button>
                     )}
                 </div>
@@ -45,8 +48,8 @@ export const PayWeekCloseBar: React.FC<PayWeekCloseBarProps> = ({
                         <input
                             value={reason}
                             onChange={e => setReason(e.target.value)}
-                            placeholder="Why reopen? (required, saved in the audit log)"
-                            aria-label="Reason to reopen the week"
+                            placeholder={t('pay.close.reason_placeholder')}
+                            aria-label={t('pay.close.reason_label')}
                             className="flex-1 min-w-[220px] text-sm border border-emerald-300 rounded-lg px-3 py-1.5 bg-white text-slate-800"
                         />
                         <button
@@ -55,10 +58,10 @@ export const PayWeekCloseBar: React.FC<PayWeekCloseBarProps> = ({
                             onClick={() => onReopen(reason.trim())}
                             className="text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-600 text-white disabled:opacity-40"
                         >
-                            {closing ? '…' : 'Confirm reopen'}
+                            {closing ? '…' : t('pay.close.confirm_reopen')}
                         </button>
                         <button type="button" onClick={() => { setReopening(false); setReason(''); }} className="text-xs font-bold px-3 py-1.5 rounded-lg text-slate-600">
-                            Cancel
+                            {t('common.cancel')}
                         </button>
                     </div>
                 )}
@@ -70,7 +73,7 @@ export const PayWeekCloseBar: React.FC<PayWeekCloseBarProps> = ({
         return (
             <p data-testid="pay-week-open" className="text-xs font-bold text-slate-500 mb-4 flex items-center gap-1.5">
                 <span aria-hidden="true" className="material-symbols-outlined text-[16px]">schedule</span>
-                Week in progress — it can be closed once it ends (Monday).
+                {t('pay.close.in_progress')}
             </p>
         );
     }
@@ -80,30 +83,30 @@ export const PayWeekCloseBar: React.FC<PayWeekCloseBarProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm font-bold text-orange-900 flex items-center gap-2">
                     <span aria-hidden="true" className="material-symbols-outlined text-[20px]">lock_open</span>
-                    Week finished, not closed yet. Closing saves what is paid and locks this week's timesheets and buckets.
+                    {t('pay.close.ready')}
                 </p>
                 {canManageWeek && !confirming && (
                     <button type="button" onClick={() => setConfirming(true)} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-orange-600 text-white">
-                        Close pay week
+                        {t('pay.close.close')}
                     </button>
                 )}
                 {canManageWeek && confirming && (
                     <div className="flex items-center gap-2">
                         <button type="button" disabled={closing} onClick={() => { setConfirming(false); onClose(); }} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-orange-600 text-white disabled:opacity-40">
-                            {closing ? '…' : 'Yes, close it'}
+                            {closing ? '…' : t('pay.close.yes')}
                         </button>
                         <button type="button" onClick={() => setConfirming(false)} className="text-xs font-bold px-3 py-1.5 rounded-lg text-slate-600">
-                            Cancel
+                            {t('common.cancel')}
                         </button>
                     </div>
                 )}
             </div>
             {closeResult?.reason === 'ESTIMATED_HOURS' && (
                 <div role="alert" data-testid="pay-week-pending" className="mt-3 text-sm text-red-800">
-                    <p className="font-bold">Can't close yet: these shifts have no check-out. Fix them in the timesheets first.</p>
+                    <p className="font-bold">{t('pay.close.pending')}</p>
                     <ul className="mt-1 list-disc pl-5">
                         {(closeResult.pending ?? []).map(p => (
-                            <li key={p.picker_id}>{p.picker_name}: {p.dates.join(', ')}</li>
+                            <li key={p.picker_id}>{p.picker_name}: {p.dates.map(d => formatNZDate(d, 'weekdayShort')).join(', ')}</li>
                         ))}
                     </ul>
                 </div>
