@@ -243,11 +243,15 @@ describe('Store Persistence — Integration', () => {
             simulationMode: true,
         });
 
-        const state = useHarvestStore.getState();
-        expect(state.settings).toBeDefined();
-        expect(state.orchard).toBeDefined();
-        expect(state.crew).toBeDefined();
-        expect(state.simulationMode).toBe(true);
+        // Usa el partialize real del persist (antes solo leía el estado recién puesto)
+        const partialize = useHarvestStore.persist.getOptions().partialize!;
+        const persisted = partialize(useHarvestStore.getState()) as Record<string, unknown>;
+        expect(persisted.settings).toEqual({ piece_rate: 5.00, min_wage_rate: 23.95 });
+        expect(persisted.orchard).toEqual({ id: 'o1', name: 'My Orchard' });
+        expect(persisted.crew).toEqual([{ id: 'p1', name: 'A', status: 'active' }]);
+        expect(persisted.simulationMode).toBe(true);
+        // Los datos de escaneo viven en Dexie, nunca en localStorage
+        expect(persisted).not.toHaveProperty('buckets');
     });
 
     it('clockSkew persisted and affects bucket validation', () => {

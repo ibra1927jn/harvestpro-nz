@@ -6,14 +6,14 @@
  *  - try { ... } catch { expect(true)... } (pasa pase lo que pase)
  *
  * Barato (solo lee el AST con TypeScript, no ejecuta tests). Uso: npm run test:assertions
- * Excluye e2e/, tests/ y src/integration (necesitan BD real y van aparte).
+ * Cubre todo src/ (src/integration incluido). e2e/ y tests/ van aparte.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import ts from 'typescript';
 
 const ROOT = new URL('..', import.meta.url).pathname;
-const SKIP_DIRS = new Set(['node_modules', 'dist', 'coverage', '.stryker-tmp', 'integration']);
+const SKIP_DIRS = new Set(['node_modules', 'dist', 'coverage', '.stryker-tmp']);
 
 function walk(dir, out = []) {
     for (const name of readdirSync(dir)) {
