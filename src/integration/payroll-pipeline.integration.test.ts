@@ -135,7 +135,7 @@ describe('Payroll Pipeline — Integration', () => {
         const entries = await payrollService.fetchTimesheets('o1', '2026-03-10');
         expect(entries.length).toBe(3);
         // p1: server reports 8h
-        expect(entries[0].hours_worked).toBe(7.5); // 8 h − 30 min de descanso no pagado
+        expect(entries[0].hours_worked).toBe(8); // 8 h, sin descanso anotado (no se descuenta)
         expect(entries[0].is_verified).toBe(true);
     });
 
@@ -149,7 +149,7 @@ describe('Payroll Pipeline — Integration', () => {
     it('fetchTimesheets flags >14h for review (NZ law compliance)', async () => {
         const entries = await payrollService.fetchTimesheets('o1', '2026-03-10');
         const p3 = entries.find(e => e.picker_id === 'p3');
-        expect(p3!.hours_worked).toBe(16.5); // 17 h − 30 min, sin tope
+        expect(p3!.hours_worked).toBe(17); // sin descanso anotado y sin tope
         expect(p3!.requires_review).toBe(true); // > 14h flag
     });
 
