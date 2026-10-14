@@ -1,15 +1,14 @@
 import { logger } from '@/utils/logger';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import QrScanner from 'qr-scanner';
-import qrScannerWorkerPath from 'qr-scanner/qr-scanner-worker.min.js?url';
 import { useScanRateLimit } from '@/hooks/useScanRateLimit';
 import { nativeScannerService } from '@/services/native-scanner.service';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { announce } from '@/services/announcer';
 import { useTranslation } from '@/i18n';
 
-// Configura la ruta del worker para que Vite pueda servirlo sin eval()
-QrScanner.WORKER_PATH = qrScannerWorkerPath;
+// qr-scanner 1.4 carga su worker con import() (Vite lo emite como chunk): no hace
+// falta WORKER_PATH (es un setter vacío que solo avisa) ni una copia ?url del worker
 
 interface ScannerModalProps {
   onClose: () => void;
