@@ -11,6 +11,10 @@
  *  2. Ningún test hace vi.mock()/vi.doMock() de un módulo que ya cargó el setup.
  *  3. Ningún vitest.config*.ts desactiva `isolate` (los módulos se compartirían entre archivos).
  *
+ * Excepción: los textos de idiomas (src/i18n/locales/**: solo datos y el registro) pueden
+ * cargarse en el setup para que t() funcione en todos los tests. Un test que quiera
+ * mockearlos debe usar vi.resetModules() + vi.doMock() (así el mock sí se aplica).
+ *
  * Uso: npm run test:mock-guard   (sale con 1 si hay problemas)
  */
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
@@ -20,6 +24,8 @@ import ts from 'typescript';
 const ROOT = resolve(new URL('..', import.meta.url).pathname);
 const SRC = join(ROOT, 'src');
 const SETUP_FILES = ['src/test-setup.ts'].map((f) => join(ROOT, f));
+const PRELOAD_ALLOWED_DIR = join(SRC, 'i18n', 'locales') + '/';
+const isAllowedPreload = (f) => f.startsWith(PRELOAD_ALLOWED_DIR);
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'coverage', '.stryker-tmp', 'e2e', '.git']);
 const EXTS = ['', '.ts', '.tsx', '.js', '/index.ts', '/index.tsx'];
 
@@ -65,7 +71,7 @@ function mockTargets(sf) {
             && ts.isIdentifier(n.expression.expression) && n.expression.expression.text === 'vi'
             && ['mock', 'doMock'].includes(n.expression.name.text)) {
             const a = n.arguments[0];
-            if (a && ts.isStringLiteralLike(a)) out.push({ spec: a.text, line: sf.getLineAndCharacterOfPosition(n.getStart()).line + 1 });
+            if (a && ts.isStringLiteralLike(a)) out.push({ spec: a.text, kind: n.expression.name.text, line: sf.getLineAndCharacterOfPosition(n.getStart()).line + 1 });
         }
         ts.forEachChild(n, visit);
     };
@@ -103,7 +109,13 @@ function walk(dir, out = []) {
 const offenders = [];
 for (const file of [...walk(SRC), ...(existsSync(join(ROOT, 'tests')) ? walk(join(ROOT, 'tests')) : [])]) {
     const sf = parse(file);
-    const hits = mockTargets(sf).filter((m) => preloaded.has(resolveSpec(m.spec, file)));
+    const resets = sf.text.includes('vi.resetModules(');
+    const hits = mockTargets(sf).filter((m) => {
+        const target = resolveSpec(m.spec, file);
+        if (!preloaded.has(target)) return false;
+        // Idiomas precargados: vale con doMock tras resetModules (módulos nuevos)
+        return !(isAllowedPreload(target) && m.kind === 'doMock' && resets);
+    });
     if (hits.length) offenders.push(`${relative(ROOT, file)}: ${hits.map((h) => `${h.spec} (l.${h.line})`).join(', ')}`);
 }
 
@@ -112,10 +124,11 @@ const noIsolate = readdirSync(ROOT).filter((f) => /^vitest\.config.*\.[cm]?[jt]s
     .filter((f) => /\bisolate\s*:\s*false\b/.test(readFileSync(join(ROOT, f), 'utf8').replace(/\/\/.*$/gm, '')));
 
 const rel = (f) => relative(ROOT, f);
-process.stdout.write(`check-test-mocks: setup preloads ${preloaded.size} app module(s); ${offenders.length} test file(s) mock a preloaded module\n`);
-if (preloaded.size > 0 || offenders.length > 0 || noIsolate.length > 0) {
+const forbidden = [...preloaded].filter((f) => !isAllowedPreload(f));
+process.stdout.write(`check-test-mocks: setup preloads ${forbidden.length} app module(s) (+${preloaded.size - forbidden.length} locale data); ${offenders.length} test file(s) mock a preloaded module\n`);
+if (forbidden.length > 0 || offenders.length > 0 || noIsolate.length > 0) {
     if (noIsolate.length) console.error(`\nVitest configs with isolate: false (mocks leak between files): ${noIsolate.join(', ')}`);
-    if (preloaded.size) console.error(`\nApp modules loaded by the setup files (move them out of the global setup):\n  ${[...preloaded].map(rel).sort().join('\n  ')}`);
+    if (forbidden.length) console.error(`\nApp modules loaded by the setup files (move them out of the global setup):\n  ${forbidden.map(rel).sort().join('\n  ')}`);
     if (offenders.length) console.error(`\nTest files whose vi.mock() cannot apply:\n  ${offenders.join('\n  ')}`);
     process.exit(1);
 }
