@@ -4,7 +4,8 @@
  * (vite preview); con el dev server no hay service worker y se omite.
  */
 import { test, expect } from './fixtures';
-import { loginAs, navOrMenu } from './helpers';
+import { loginAs, navOrMenu, collectErrors } from './helpers';
+import { translations } from '../../src/i18n/locales/all';
 
 const DEV = process.env.MOBILE_SERVER === 'dev';
 
@@ -61,5 +62,53 @@ test.describe('PWA', () => {
     await expect(navOrMenu(page)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(/You are Offline/i).first()).toBeVisible();
     await context.setOffline(false);
+  });
+
+  // Los idiomas son chunks aparte (carga bajo demanda): el SW los precachea todos,
+  // así que offline se puede arrancar en un idioma que este móvil nunca había usado
+  test('offline: starts in a language never used before on this phone (precached chunk)', async ({ page, context }) => {
+    await loginAs(page, 'runner');
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.reload();
+    await expect
+      .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller), { timeout: 30_000 })
+      .toBe(true);
+    // Espera a que el precache termine de verdad (el chunk de tongano está en la caché del SW)
+    await expect
+      .poll(
+        () =>
+          page.evaluate(async () => {
+            for (const name of await caches.keys()) {
+              const keys = await (await caches.open(name)).keys();
+              if (keys.some(r => /\/assets\/locale-to-[\w-]+\.js/.test(r.url))) return true;
+            }
+            return false;
+          }),
+        { timeout: 60_000 }
+      )
+      .toBe(true);
+
+    await context.setOffline(true);
+    try {
+      await page.evaluate(() => localStorage.setItem('harvestpro_locale', 'to'));
+      await page.reload();
+      await expect(page.locator('html')).toHaveAttribute('lang', 'to', { timeout: 30_000 });
+      await expect(page.getByText(translations.to['sync.offline']).first()).toBeVisible();
+      await expect(page.getByText(translations.en['sync.offline'], { exact: true })).toHaveCount(0);
+    } finally {
+      await page.evaluate(() => localStorage.removeItem('harvestpro_locale')).catch(() => undefined);
+      await context.setOffline(false);
+    }
+  });
+
+  test('language chunk that cannot be downloaded: the app starts in English, no crash', async ({ page, context }) => {
+    const errs = collectErrors(page);
+    await context.addInitScript(() => localStorage.setItem('harvestpro_locale', 'to'));
+    // Primera visita (sin SW todavía) y el chunk de tongano no llega
+    await page.route(/\/assets\/locale-to-[\w-]+\.js$/, r => r.abort('internetdisconnected'));
+    await page.goto('/login');
+    await expect(page.locator('input[type="email"]')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    expect(errs.errors.filter(e => e.startsWith('pageerror')), errs.errors.join('\n')).toEqual([]);
   });
 });
