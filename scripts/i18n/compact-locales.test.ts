@@ -6,10 +6,12 @@
  */
 import { describe, it, expect } from 'vitest';
 import { join } from 'path';
-import { compactLocaleSource, evaluateLocale, LOCALES } from './compact-locales.mjs';
+import { normalizePath } from 'vite';
+import { compactLocalesPlugin, compactLocaleSource, evaluateLocale, LOCALES } from './compact-locales.mjs';
 import { allTranslations } from '../../src/i18n/locales/all';
 
-const LOCALES_DIR = join(__dirname, '..', '..', 'src', 'i18n', 'locales');
+const ROOT = join(__dirname, '..', '..');
+const LOCALES_DIR = join(ROOT, 'src', 'i18n', 'locales');
 
 /** Ejecuta el módulo ESM generado (import de EN_KEYS → el módulo inglés generado). */
 function runModule(code: string, enKeys: string[]): Record<string, string> {
@@ -25,6 +27,26 @@ function runModule(code: string, enKeys: string[]): Record<string, string> {
 describe('compact-locales', () => {
   const en = evaluateLocale(LOCALES_DIR, 'en');
   const enKeys = Object.keys(en);
+  const plugin = compactLocalesPlugin();
+  plugin.configResolved({ root: ROOT });
+
+  it.each(LOCALES)('plugin loads the normalized Vite ID for %s', l => {
+    const id = normalizePath(join(LOCALES_DIR, l, 'index.ts'));
+    const result = plugin.load(id);
+    expect(result).not.toBeNull();
+    if (!result) throw new Error(`Locale module was not compacted: ${id}`);
+    expect(runModule(result.code, enKeys)).toEqual(allTranslations[l as keyof typeof allTranslations]);
+    if (l !== 'en') {
+      const enModuleId = normalizePath(join(LOCALES_DIR, 'en', 'index.ts'));
+      expect(result.code).toContain(`import{EN_KEYS as k}from${JSON.stringify(enModuleId)};`);
+    }
+  });
+
+  it('leaves unrelated modules untouched', () => {
+    expect(plugin.load(normalizePath(join(ROOT, 'src', 'other', 'es', 'index.ts')))).toBeNull();
+    expect(plugin.load(normalizePath(join(LOCALES_DIR, 'es', 'common.ts')))).toBeNull();
+    expect(plugin.load(normalizePath(join(LOCALES_DIR, 'zz', 'index.ts')))).toBeNull();
+  });
 
   it('evaluates the TS locale sources exactly like the app imports them', () => {
     for (const l of LOCALES) {
