@@ -18,13 +18,14 @@
  * Uso: npm run test:mock-guard   (sale con 1 si hay problemas)
  */
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
-const ROOT = resolve(new URL('..', import.meta.url).pathname);
+const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const SRC = join(ROOT, 'src');
 const SETUP_FILES = ['src/test-setup.ts'].map((f) => join(ROOT, f));
-const PRELOAD_ALLOWED_DIR = join(SRC, 'i18n', 'locales') + '/';
+const PRELOAD_ALLOWED_DIR = join(SRC, 'i18n', 'locales') + sep;
 const isAllowedPreload = (f) => f.startsWith(PRELOAD_ALLOWED_DIR);
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'coverage', '.stryker-tmp', 'e2e', '.git']);
 const EXTS = ['', '.ts', '.tsx', '.js', '/index.ts', '/index.tsx'];
@@ -36,7 +37,7 @@ function resolveSpec(spec, fromFile) {
     else return null; // paquete de node_modules: no es código de la app
     for (const ext of EXTS) {
         const p = base + ext;
-        if (existsSync(p) && statSync(p).isFile()) return p;
+        if (existsSync(p) && statSync(p).isFile()) return resolve(p);
     }
     return null;
 }
