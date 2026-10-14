@@ -12,7 +12,7 @@
  * Los tests son 100% síncronos y no requieren jsdom.
  */
 import { describe, it, expect } from 'vitest';
-import { translations } from '@/i18n';
+import { translations } from '@/i18n/locales/all';
 import { CANONICAL_TRANSLATIONS, EXEMPT_FROM_DIFF_CHECK } from './english-smell';
 
 // Función t() replicada (idéntica a la del hook, sin React)

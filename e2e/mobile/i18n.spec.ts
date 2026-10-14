@@ -8,7 +8,7 @@
 import type { Page, TestInfo } from '@playwright/test';
 import { test, expect } from './fixtures';
 import { loginAs, collectErrors, snap, layoutReport, waitForAppIdle, recordFinding } from './helpers';
-import { translations } from '../../src/i18n/locales';
+import { translations } from '../../src/i18n/locales/all';
 import type { Locale } from '../../src/i18n/types';
 
 const LOCALES = (process.env.I18N_LOCALES ?? 'es').split(',').map(s => s.trim()) as Locale[];

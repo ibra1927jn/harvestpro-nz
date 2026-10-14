@@ -194,7 +194,7 @@ const SettingsView: React.FC = () => {
                     {SUPPORTED_LOCALES.map((loc) => (
                         <button
                             key={loc.code}
-                            onClick={() => setLocale(loc.code as Locale)}
+                            onClick={() => { void setLocale(loc.code as Locale); }}
                             className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all active:scale-[0.96] ${locale === loc.code ? 'border-violet-500 bg-violet-50 shadow-sm shadow-violet-100' : 'border-slate-100 hover:border-violet-200 hover:bg-slate-50'}`}
                         >
                             <span className="text-2xl">{loc.flag}</span>

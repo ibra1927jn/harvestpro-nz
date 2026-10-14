@@ -5,6 +5,15 @@ import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom';
 import { afterEach, vi } from 'vitest';
 import type { StateCreator, StoreApi } from 'zustand';
+import { registerLocale } from '@/i18n/locales';
+import { allTranslations } from '@/i18n/locales/all';
+
+// ── i18n: en la app los idiomas no ingleses se cargan bajo demanda (chunk aparte);
+// en los tests se registran todos para poder cambiar de idioma de forma síncrona.
+// Los tests del cargador (locales/loader.test.ts) usan un módulo nuevo sin esto.
+for (const [locale, dict] of Object.entries(allTranslations) as [keyof typeof allTranslations, Record<string, string>][]) {
+    registerLocale(locale, dict);
+}
 
 // ── Global safeStorage mock ──────────────────────────
 // Prevents Zustand persist middleware from writing to localStorage

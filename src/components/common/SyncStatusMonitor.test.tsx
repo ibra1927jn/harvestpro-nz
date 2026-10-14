@@ -121,7 +121,8 @@ describe('SyncStatusMonitor', () => {
     });
 
     it('speaks the connection change in the app language (Tongan user hears Tongan)', async () => {
-        const { setCurrentLocale, translations } = await import('@/i18n');
+        const { setCurrentLocale } = await import('@/i18n');
+        const { translations } = await import('@/i18n/locales/all');
         resetAnnouncerForTests();
         setCurrentLocale('to');
         const heard: string[] = [];
