@@ -13,6 +13,8 @@ const teamLeader: TranslationDict = {
     'tl.attendance.present': 'Presentes',
     'tl.attendance.absent': 'Ausentes',
     'tl.attendance.in_at': 'Entrada: {time}',
+    'tl.attendance.break_missing': 'Descanso de comida sin anotar',
+    'tl.attendance.break_missing_hint': 'Más de 4 h de turno. Anota la hora del descanso en Planillas antes de cerrar el día.',
     'tl.attendance.not_checked_in': 'Sin fichar',
     'tl.attendance.check_in': 'Fichar entrada',
     'tl.attendance.check_out': 'Fichar salida',

@@ -73,6 +73,9 @@ export interface TimesheetEntry {
   hours_worked: number;
   verified_by: string | null;
   is_verified: boolean;
+  /** Rechazada (no aprobada): la corrige el jefe de equipo / manager */
+  is_rejected?: boolean;
+  rejection_reason?: string | null;
   orchard_id: string;
   updated_at?: string; // For optimistic locking on approval
   requires_review?: boolean; // Turno abierto de un día pasado o > 14 h

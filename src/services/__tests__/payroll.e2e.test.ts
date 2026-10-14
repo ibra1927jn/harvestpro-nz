@@ -92,7 +92,7 @@ describe('payrollService — E2E deep tests', () => {
             const entries = await payrollService.fetchTimesheets('o1');
             expect(entries.length).toBe(2);
             expect(entries[0].picker_name).toBe('Alice');
-            expect(entries[0].hours_worked).toBe(7.5); // 8 h − 30 min de descanso no pagado
+            expect(entries[0].hours_worked).toBe(8); // 8 h, sin descanso anotado (no se descuenta)
             expect(entries[0].is_verified).toBe(true);
             expect(entries[0].requires_review).toBe(false);
         });
@@ -118,7 +118,7 @@ describe('payrollService — E2E deep tests', () => {
                 error: null,
             });
             const entries = await payrollService.fetchTimesheets('o1');
-            expect(entries[0].hours_worked).toBe(5.5); // 6 h − 30 min de descanso no pagado
+            expect(entries[0].hours_worked).toBe(6); // 6 h, sin descanso anotado (no se descuenta)
         });
 
         it('flags >14h for review', async () => {

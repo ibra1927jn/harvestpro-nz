@@ -162,7 +162,8 @@ export const payrollService = {
   },
 
   /**
-   * Approve timesheet — via Edge Function (server-side, with optimistic locking)
+   * Approve timesheet — via Edge Function (server-side, with optimistic locking).
+   * Aprueba quien llama (admin, payroll_admin o manager de ese huerto).
    */
   async approveTimesheet(
     attendanceId: string,
@@ -188,6 +189,33 @@ export const payrollService = {
     if (error) throw new Error(error.message);
     // 📊 PostHog: Track timesheet approval
     analytics.trackTimesheetAction('approve', attendanceId);
+    return data!;
+  },
+
+  /**
+   * Rechazar una hoja de horas — misma Edge Function (decision 'reject').
+   * Vuelve al jefe de equipo / manager para corregirla; al corregirla queda
+   * otra vez pendiente. Semana de pago cerrada → error PAY_WEEK_CLOSED.
+   */
+  async rejectTimesheet(
+    attendanceId: string,
+    currentUpdatedAt?: string,
+    reason?: string
+  ): Promise<{ success: boolean; attendance_id: string; updated_at: string }> {
+    const { data, error } = await edgeFunctionsRepository.invoke<{
+      success: boolean;
+      attendance_id: string;
+      rejected_by: string;
+      updated_at: string;
+    }>('approve-timesheet', {
+      attendance_id: attendanceId,
+      decision: 'reject',
+      current_updated_at: currentUpdatedAt,
+      ...(reason ? { reason } : {}),
+    });
+
+    if (error) throw new Error(error.message);
+    analytics.trackTimesheetAction('reject', attendanceId);
     return data!;
   },
 

@@ -17,7 +17,6 @@ vi.mock('qr-scanner', () => {
   }
   return { default: FakeScanner };
 });
-vi.mock('qr-scanner/qr-scanner-worker.min.js?url', () => ({ default: '' }));
 vi.mock('@/services/native-scanner.service', () => ({
   nativeScannerService: {
     isNativePlatform: () => false,

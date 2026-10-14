@@ -43,7 +43,7 @@ SELECT sec_test.record(
             -- usadas dentro de políticas RLS (devuelven NULL/false sin sesión)
             'is_role', 'is_manager', 'is_admin', 'is_manager_or_leader', 'is_logistics_or_manager',
             'is_hr_manager_or_admin', 'can_read_company_payroll', 'is_active_member',
-            'get_my_orchard_id', 'get_auth_orchard_id', 'get_auth_role', 'is_pay_day_closed']),
+            'get_my_orchard_id', 'get_auth_orchard_id', 'get_auth_role', 'is_pay_day_closed', 'mfa_satisfied']),
     'catalog: anon cannot execute SECURITY DEFINER ' || p.proname || '()',
     'anon has EXECUTE')
 FROM pg_proc p
@@ -81,6 +81,20 @@ WHERE schemaname = 'public'
   AND (COALESCE(with_check, qual) = 'true' OR qual = 'true')
   -- intentos de acceso: se registran antes de tener sesión
   AND NOT (tablename = 'login_attempts' AND cmd = 'INSERT');
+
+-- 8) 2FA en el servidor: toda tabla de public lleva la política RESTRICTIVE
+--    "Require 2FA for privileged roles" (también las que se creen después;
+--    si no, una cuenta privilegiada sin código la leería)
+SELECT sec_test.record(
+    EXISTS (SELECT 1 FROM pg_policies p
+            WHERE p.schemaname = 'public' AND p.tablename = c.relname
+              AND p.permissive = 'RESTRICTIVE' AND p.policyname LIKE 'Require 2FA for privileged roles%'
+              AND (p.qual LIKE '%mfa_satisfied()%' OR p.with_check LIKE '%mfa_satisfied()%')),
+    'catalog: public.' || c.relname || ' requires 2FA for privileged roles',
+    'no RESTRICTIVE mfa_satisfied() policy: run the loop of 20261014000000_server_side_mfa.sql for it')
+FROM pg_class c
+WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r', 'p')
+ORDER BY c.relname;
 
 SELECT sec_test.record(true, 'catalog: scan finished', NULL);
 

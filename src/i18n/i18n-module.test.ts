@@ -72,7 +72,8 @@ describe('interpolate / translate', () => {
   });
 
   it('translate() outside React follows the current app language, falling back to English', async () => {
-    const { translate, setCurrentLocale, translations } = await import('./index');
+    const { translate, setCurrentLocale } = await import('./index');
+    const { translations } = await import('./locales/all');
     setCurrentLocale('es');
     try {
       expect(translate('common.retry')).toBe(translations.es['common.retry']);

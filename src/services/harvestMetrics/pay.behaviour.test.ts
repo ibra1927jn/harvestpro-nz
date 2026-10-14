@@ -28,11 +28,12 @@ describe('PAY_RULES (NZ law constants)', () => {
 describe('shiftHours — boundaries', () => {
     const d = '2026-10-05';
 
-    it('exactly 4 h without a recorded break: no deduction; 4 h 01 min: 30 min deducted', () => {
+    // Owner decision 2026-10-14: only a break the team leader recorded is deducted
+    it('without a recorded break nothing is deducted, at 4 h or at 4 h 01 min', () => {
         expect(shiftHours({ checkIn: t(d, '07:00'), checkOut: t(d, '11:00') }))
             .toEqual({ hours: 4, grossHours: 4, breakMinutes: 0, source: 'timesheet' });
         expect(shiftHours({ checkIn: t(d, '07:00'), checkOut: t(d, '11:01') }))
-            .toEqual({ hours: 3.52, grossHours: 4.02, breakMinutes: 30, source: 'timesheet' });
+            .toEqual({ hours: 4.02, grossHours: 4.02, breakMinutes: 0, source: 'timesheet' });
     });
 
     it('break recorded exactly at check-in counts; recorded exactly at check-out does not', () => {
@@ -40,8 +41,8 @@ describe('shiftHours — boundaries', () => {
         expect(shiftHours({ checkIn: t(d, '07:00'), checkOut: t(d, '09:00'), breakStart: t(d, '07:00') }).breakMinutes).toBe(30);
         // A la salida: fuera del turno; turno corto -> no se descuenta
         expect(shiftHours({ checkIn: t(d, '07:00'), checkOut: t(d, '09:00'), breakStart: t(d, '09:00') }).breakMinutes).toBe(0);
-        // Turno largo con la hora anotada justo a la salida: fuera del turno -> regla por defecto (30)
-        expect(shiftHours({ checkIn: t(d, '07:00'), checkOut: t(d, '12:00'), breakStart: t(d, '12:00') }).breakMinutes).toBe(30);
+        // Turno largo con la hora anotada justo a la salida: fuera del turno -> no se descuenta
+        expect(shiftHours({ checkIn: t(d, '07:00'), checkOut: t(d, '12:00'), breakStart: t(d, '12:00') }).breakMinutes).toBe(0);
     });
 
     it('break recorded 10 min before check-out deducts only 10 min', () => {
@@ -76,9 +77,9 @@ describe('shiftHours — boundaries', () => {
         expect(r).toEqual({ hours: 2, grossHours: 2, breakMinutes: 0, source: 'scan_estimate' });
     });
 
-    it('scan estimate over 4 h also deducts the meal break', () => {
+    it('scan estimate over 4 h deducts nothing (no break was recorded)', () => {
         const r = shiftHours({ scanTimes: [t(d, '15:00'), t(d, '07:00'), t(d, '11:00')] });
-        expect(r).toEqual({ hours: 7.5, grossHours: 8, breakMinutes: 30, source: 'scan_estimate' });
+        expect(r).toEqual({ hours: 8, grossHours: 8, breakMinutes: 0, source: 'scan_estimate' });
     });
 
     it('property: paid hours = gross hours − deducted break, never negative, never above gross', () => {
@@ -207,13 +208,13 @@ describe('payForRange — travel between orchards is split half/half', () => {
 
     it('A → B → A: each trip split equally between the two orchards it joins', () => {
         const attendance: AttendanceRow[] = [
-            { pickerId: 'p1', date: d, orchardId: 'A', checkIn: t(d, '07:00'), checkOut: t(d, '10:00') },
+            { pickerId: 'p1', date: d, orchardId: 'A', checkIn: t(d, '07:00'), checkOut: t(d, '10:00'), breakStart: t(d, '09:00') },
             { pickerId: 'p1', date: d, orchardId: 'B', checkIn: t(d, '10:40'), checkOut: t(d, '14:00') },
             { pickerId: 'p1', date: d, orchardId: 'A', checkIn: t(d, '14:20'), checkOut: t(d, '16:00') },
         ];
         const [r] = payForRange({ attendance, buckets: [], pieceRate: 6.5, minWage: MIN, now });
         const day = r.dayDetails[0];
-        // 3 h + 40 min + 3 h 20 + 20 min + 1 h 40 = 9 h; menos 30 min = 8.5 h
+        // 3 h + 40 min + 3 h 20 + 20 min + 1 h 40 = 9 h; menos 30 min anotados = 8.5 h
         expect(day.travelMinutes).toBe(60);
         expect(day.segments.map(s => s.travelHours)).toEqual([0.33, 0.5, 0.17]);
         expect(r.hours).toBe(8.5);
@@ -228,7 +229,7 @@ describe('payForRange — travel between orchards is split half/half', () => {
     it('rows out of order are sorted by check-in before computing travel', () => {
         const attendance: AttendanceRow[] = [
             { pickerId: 'p1', date: d, orchardId: 'B', checkIn: t(d, '12:00'), checkOut: t(d, '14:00') },
-            { pickerId: 'p1', date: d, orchardId: 'A', checkIn: t(d, '08:00'), checkOut: t(d, '11:00') },
+            { pickerId: 'p1', date: d, orchardId: 'A', checkIn: t(d, '08:00'), checkOut: t(d, '11:00'), breakStart: t(d, '10:00') },
         ];
         const [r] = payForRange({ attendance, buckets: [], pieceRate: 6.5, minWage: MIN, now });
         expect(r.dayDetails[0].segments.map(s => s.orchardId)).toEqual(['A', 'B']);
@@ -261,7 +262,7 @@ describe('payForRange — travel between orchards is split half/half', () => {
         // Entró en A a las 08:00 sin salida y a las 12:00 entró en B; ahora son las 16:00.
         const today = '2026-10-07';
         const attendance: AttendanceRow[] = [
-            { pickerId: 'p1', date: today, orchardId: 'A', checkIn: t(today, '08:00') },
+            { pickerId: 'p1', date: today, orchardId: 'A', checkIn: t(today, '08:00'), breakStart: t(today, '10:00') },
             { pickerId: 'p1', date: today, orchardId: 'B', checkIn: t(today, '12:00') },
         ];
         const [r] = payForRange({ attendance, buckets: [], pieceRate: 6.5, minWage: MIN, now: new Date(t(today, '16:00')) });
@@ -326,7 +327,7 @@ describe('payForRange — aggregation', () => {
     });
 
     it('weekly totals equal the sum of the day details', () => {
-        const attendance: AttendanceRow[] = [d1, d2].map(date => ({ pickerId: 'p1', date, checkIn: t(date, '07:00'), checkOut: t(date, '15:30') }));
+        const attendance: AttendanceRow[] = [d1, d2].map(date => ({ pickerId: 'p1', date, checkIn: t(date, '07:00'), checkOut: t(date, '15:30'), breakStart: t(date, '12:00') }));
         const buckets: BucketRow[] = [
             ...Array.from({ length: 33 }, () => ({ pickerId: 'p1', scannedAt: t(d1, '10:00'), variety: 'Gala', pieceRate: 6.1 })),
             ...Array.from({ length: 12 }, () => ({ pickerId: 'p1', scannedAt: t(d2, '10:00'), variety: 'Envy', pieceRate: 7.35 })),
@@ -457,13 +458,20 @@ describe('payForRange — segments, breaks and orchard split details', () => {
         expect(r.hours).toBe(5.33); // 3 + 2.5 - 10/60
         const [q] = run([
             { pickerId: 'p1', date: d, orchardId: 'A', checkIn: t(d, '07:00'), checkOut: t(d, '10:00'), breakMinutes: 45 },
-            { pickerId: 'p1', date: d, orchardId: 'A', checkIn: t(d, '10:30'), checkOut: t(d, '13:00') },
+            { pickerId: 'p1', date: d, orchardId: 'A', checkIn: t(d, '10:30'), checkOut: t(d, '13:00'), breakStart: t(d, '11:00') },
         ]);
         expect(q.dayDetails[0].breakMinutes).toBe(45);
         expect(q.hours).toBe(4.75);
+        // Una duración sin hora anotada no descuenta nada
+        const [n] = run([
+            { pickerId: 'p1', date: d, orchardId: 'A', checkIn: t(d, '07:00'), checkOut: t(d, '10:00'), breakMinutes: 45 },
+            { pickerId: 'p1', date: d, orchardId: 'A', checkIn: t(d, '10:30'), checkOut: t(d, '13:00') },
+        ]);
+        expect(n.dayDetails[0].breakMinutes).toBe(0);
+        expect(n.hours).toBe(5.5);
     });
 
-    it('a break recorded exactly at the end of a segment does not count there (default rule applies)', () => {
+    it('a break recorded exactly at the end of a segment does not count (not deducted)', () => {
         const [r] = run([
             { pickerId: 'p1', date: d, orchardId: 'A', checkIn: t(d, '07:00'), checkOut: t(d, '09:00'), breakStart: t(d, '09:00') },
             { pickerId: 'p1', date: d, orchardId: 'A', checkIn: t(d, '09:30'), checkOut: t(d, '11:00') },
@@ -484,7 +492,7 @@ describe('payForRange — segments, breaks and orchard split details', () => {
     it('past day: an open segment ends at its own orchard\'s last scan before the next segment', () => {
         const [r] = run([
             { pickerId: 'p1', date: d, orchardId: 'A', checkIn: t(d, '07:00') },
-            { pickerId: 'p1', date: d, orchardId: 'B', checkIn: t(d, '12:00'), checkOut: t(d, '15:00') },
+            { pickerId: 'p1', date: d, orchardId: 'B', checkIn: t(d, '12:00'), checkOut: t(d, '15:00'), breakStart: t(d, '13:30') },
         ], [
             { pickerId: 'p1', scannedAt: t(d, '09:00'), orchardId: 'A' },
             { pickerId: 'p1', scannedAt: t(d, '11:00'), orchardId: 'A' },

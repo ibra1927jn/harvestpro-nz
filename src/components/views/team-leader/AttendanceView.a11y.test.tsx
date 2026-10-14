@@ -14,7 +14,7 @@ vi.mock('@/hooks/useAttendance', () => ({
     loading: false,
     processing: null,
     mergedList: [
-      { id: 'p1', name: 'Ana Present', isPresent: true, attendanceRecord: { id: 'att-1', check_in: '2026-10-13T07:00:00+13:00' } },
+      { id: 'p1', name: 'Ana Present', isPresent: true, breakMissing: true, attendanceRecord: { id: 'att-1', check_in: '2026-10-13T07:00:00+13:00' } },
       { id: 'p2', name: 'Bea Absent', isPresent: false },
     ],
     stats: { present: 1, absent: 1, total: 2 },
@@ -46,6 +46,13 @@ describe('AttendanceView accessibility', () => {
     await waitFor(() => expect(heard).toContain('Ana Present checked out.'));
     off();
     expect(checkOut).toHaveBeenCalledWith('att-1');
+  });
+
+  it('warns (and tells TalkBack) when a present picker has no meal break recorded', () => {
+    render(<AttendanceView />);
+    const warning = screen.getByText('Meal break not recorded');
+    expect(warning.closest('p')?.textContent).toContain('Record the break time in the Timesheet tab');
+    expect(screen.getAllByText('Meal break not recorded')).toHaveLength(1);
   });
 
   it('does not add a second main landmark inside the page layout', () => {

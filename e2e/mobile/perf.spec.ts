@@ -7,6 +7,7 @@ import { test } from './fixtures';
 import type { CDPSession, Page } from '@playwright/test';
 import { writeFileSync } from 'fs';
 import { loginAs } from './helpers';
+import { translations } from '../../src/i18n/locales/all';
 
 const OUT = process.env.MOBILE_PERF_FILE ?? '/home/claude/reports/mobile-perf.json';
 const SLOW_3G = {
@@ -254,6 +255,40 @@ test.describe('performance (Slow 3G + 4x CPU)', () => {
         .waitFor({ state: 'visible', timeout: 300_000 });
       const interactiveMs = Date.now() - t0;
       samples.push({ scenario: 'runner warm (SW)', interactiveMs, ...(await lcp(page)), ...bytes() });
+      await ctx.close();
+    }
+
+    // 4. Usuario en español, en frío: el chunk del idioma (aparte desde lazy-locales)
+    //    se precarga desde index.html; "interactivo" = la pantalla ya en español
+    {
+      const ctx = await browser.newContext({ ...device, serviceWorkers: 'block' });
+      await ctx.addInitScript(() => localStorage.setItem('harvestpro_locale', 'es'));
+      const page = await ctx.newPage();
+      const cdp = await throttle(page);
+      const bytes = trackBytes(cdp);
+      const t0 = Date.now();
+      await page.goto('/login', { waitUntil: 'commit' });
+      await page.locator('html[lang="es"] input[type="email"]').waitFor({ state: 'visible', timeout: 300_000 });
+      const interactiveMs = Date.now() - t0;
+      await page.waitForLoadState('networkidle', { timeout: 300_000 }).catch(() => undefined);
+      samples.push({ scenario: 'login cold (es)', interactiveMs, ...(await lcp(page)), ...bytes() });
+      await ctx.close();
+    }
+    {
+      const ctx = await browser.newContext({ ...device, serviceWorkers: 'block' });
+      const page = await ctx.newPage();
+      await loginAs(page, 'runner');
+      await page.evaluate(() => localStorage.setItem('harvestpro_locale', 'es'));
+      const cdp = await throttle(page);
+      await cdp.send('Network.clearBrowserCache');
+      const bytes = trackBytes(cdp);
+      const t0 = Date.now();
+      await page.reload({ waitUntil: 'commit' });
+      await page
+        .getByRole('button', { name: translations.es['runner.scan_sticker'] })
+        .waitFor({ state: 'visible', timeout: 300_000 });
+      const interactiveMs = Date.now() - t0;
+      samples.push({ scenario: 'runner cold (es)', interactiveMs, ...(await lcp(page)), ...bytes() });
       await ctx.close();
     }
 

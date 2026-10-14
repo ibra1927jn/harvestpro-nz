@@ -20,6 +20,7 @@ import {
   EMPTY_CORRECTION,
   buildCorrectionUpdates,
   correctionFormFor,
+  isMealBreakMissing,
 } from './timesheet-utils';
 import TimesheetRow from './TimesheetRow';
 import DailyTimesheetSummary from './DailyTimesheetSummary';
@@ -44,6 +45,7 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const { showToast } = useToast();
+  const breaksMissing = records.filter(r => isMealBreakMissing(r)).length;
   // ========================================
   // DATA LOADING
   // ========================================
@@ -167,6 +169,14 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
           </span>
           <p className="text-text-muted font-medium">{t('tse.empty', { date: formatNZDate(selectedDate, 'medium') })}</p>
           <p className="text-sm text-text-muted mt-1">{t('tse.empty_hint')}</p>
+        </div>
+      )}
+
+      {/* Descansos sin anotar: solo se descuenta lo anotado, hay que anotarlos antes de cerrar el día */}
+      {!loading && breaksMissing > 0 && (
+        <div role="status" className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <span aria-hidden="true" className="material-symbols-outlined text-lg text-amber-600">warning</span>
+          <span className="text-sm font-medium text-amber-800">{t('tse.break_missing_banner', { n: breaksMissing })}</span>
         </div>
       )}
 

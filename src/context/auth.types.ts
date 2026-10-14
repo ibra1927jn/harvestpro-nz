@@ -43,6 +43,8 @@ export interface AuthState {
   needsReAuth: boolean;
   /** 🔐 True when user has not yet accepted NZ Privacy Act 2020 consent */
   needsPrivacyConsent: boolean;
+  /** Cuándo se aceptó el código 2FA en esta sesión (los datos se recargan con aal2) */
+  mfaVerifiedAt?: number;
 }
 
 // =============================================

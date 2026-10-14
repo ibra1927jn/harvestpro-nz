@@ -45,7 +45,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
  * Internal component to sync context values between providers
  */
 const SyncContexts: React.FC = () => {
-  const { appUser, orchardId } = useAuth();
+  const { appUser, orchardId, mfaVerifiedAt } = useAuth();
   const { setUserId, setOrchardId, refreshMessages } = useMessaging();
 
   useEffect(() => {
@@ -54,9 +54,10 @@ const SyncContexts: React.FC = () => {
     }
     if (orchardId) {
       setOrchardId(orchardId);
+      // También tras el código 2FA: con aal1 la BD no daba los mensajes
       refreshMessages();
     }
-  }, [appUser?.id, orchardId, setUserId, setOrchardId, refreshMessages]);
+  }, [appUser?.id, orchardId, mfaVerifiedAt, setUserId, setOrchardId, refreshMessages]);
 
   return null;
 };

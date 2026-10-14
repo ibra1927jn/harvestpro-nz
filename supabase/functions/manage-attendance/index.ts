@@ -125,8 +125,11 @@ serve(async (req) => {
                     date: today,
                     check_in: nowISO,
                     status: 'present',
-                    // Quien ficha es quien verifica (el verified_by del cuerpo no cuenta)
-                    verified_by: user.id,
+                    // Quien ficha queda como recorded_by (el verified_by del cuerpo no
+                    // cuenta). verified_by es la APROBACIÓN de nómina/manager
+                    // (approve-timesheet): antes se ponía aquí y toda hoja de horas
+                    // nacía aprobada, sin nada pendiente en Nómina.
+                    recorded_by: user.id,
                 })
                 .select('id')
                 .single()

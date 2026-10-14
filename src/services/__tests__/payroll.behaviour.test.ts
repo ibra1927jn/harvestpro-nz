@@ -79,7 +79,7 @@ describe('fetchTimesheets — hours from the single pay calculation', () => {
         const d = '2026-10-12';
         const shifts = [
             { id: 's1', picker_id: 'p1', orchard_id: 'A', check_in: t(d, '07:00'), check_out: t(d, '11:00'), break_start: null, break_minutes: null },
-            { id: 's2', picker_id: 'p1', orchard_id: 'B', check_in: t(d, '11:30'), check_out: t(d, '16:30'), break_start: null, break_minutes: null },
+            { id: 's2', picker_id: 'p1', orchard_id: 'B', check_in: t(d, '11:30'), check_out: t(d, '16:30'), break_start: t(d, '13:00'), break_minutes: null },
         ];
         repo.fetchTimesheetAttendance.mockResolvedValue({ data: [{ ...shifts[0], date: d, verified_by: null, updated_at: 'u' }], error: null });
         repo.fetchPickerNames.mockResolvedValue({ p1: 'Ana' });
@@ -87,7 +87,7 @@ describe('fetchTimesheets — hours from the single pay calculation', () => {
 
         const [row] = await payrollService.fetchTimesheets('A', d);
 
-        // Dia: 4 h + 30 min trayecto + 5 h - 30 min descanso = 9 h. A pesa 4.25 de 9.5 -> 4.03 h
+        // Dia: 4 h + 30 min trayecto + 5 h - 30 min descanso anotado = 9 h. A pesa 4.25 de 9.5 -> 4.03 h
         expect(row).toMatchObject({ id: 's1', picker_name: 'Ana', hours_worked: 4.03, requires_review: false });
         expect(repo.fetchDayOfPeople).toHaveBeenCalledWith(['p1'], d, '2026-10-12T00:00:00+13:00', '2026-10-12T23:59:59+13:00');
     });

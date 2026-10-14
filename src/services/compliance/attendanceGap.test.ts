@@ -60,8 +60,8 @@ describe('checkAttendanceGap', () => {
   });
 
   it('BUG-08: horas sin actividad de cosecha → attendanceWithoutScans = true', async () => {
-    // Emily Foster el 09 abr: check_in presente, 6h trabajadas, 0 scans
-    const supabase = mockSupabase({ check_in: '2026-04-09T07:00:00+12:00', check_out: '2026-04-09T13:30:00+12:00' }, 0);
+    // Emily Foster el 09 abr: check_in presente, 6 h trabajadas, 0 scans
+    const supabase = mockSupabase({ check_in: '2026-04-09T07:00:00+12:00', check_out: '2026-04-09T13:00:00+12:00' }, 0);
     const result = await checkAttendanceGap(supabase, 'emily-foster-uuid', '2026-04-09');
 
     expect(result.hasAttendance).toBe(true);

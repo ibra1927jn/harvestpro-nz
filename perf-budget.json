@@ -57,7 +57,17 @@
       "^assets/ScannerModal-",
       "^assets/material-symbols-subset-[\\w-]+\\.woff2$",
       "^assets/inter-latin-wght-[\\w-]+\\.woff2$",
-      "^offline\\.html$"
+      "^offline\\.html$",
+      "^assets/locale-es-[\\w-]+\\.js$",
+      "^assets/locale-mi-[\\w-]+\\.js$",
+      "^assets/locale-sm-[\\w-]+\\.js$",
+      "^assets/locale-hi-[\\w-]+\\.js$",
+      "^assets/locale-to-[\\w-]+\\.js$",
+      "^assets/locale-tl-[\\w-]+\\.js$"
     ]
+  },
+  "locales": {
+    "comment": "Cada idioma no inglés es un chunk aparte (carga bajo demanda, precacheado; sin claves: scripts/i18n/compact-locales.mjs). Límite por idioma, gzip; medido 2026-10-14: 12.8–16.1 KB.",
+    "maxGzipKB": 19
   }
 }

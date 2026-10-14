@@ -25,10 +25,10 @@ Deno.test({ name: 'close-pay-week', ...testOpts, fn: async t => {
         const tue = addDays(monday, 1)
         onCleanup(() => service.from('pay_weeks').delete().eq('week_start', monday))
 
-        // 8 h (08:00–16:30 con descanso), 20 cubetas × 5 = 100 → complemento a 191.60
+        // 8 h (08:00–16:30 con descanso anotado), 20 cubetas × 5 = 100 → complemento a 191.60
         const { data: att } = must(await service.from('daily_attendance').insert({
             picker_id: picker.id, orchard_id: orchard, date: tue,
-            check_in: nzTime(tue, '08:00'), check_out: nzTime(tue, '16:30'), status: 'present',
+            check_in: nzTime(tue, '08:00'), check_out: nzTime(tue, '16:30'), status: 'present', break_start: nzTime(tue, '12:00'),
         }).select('id').single(), 'attendance')
         const start = new Date(nzTime(tue, '08:10')).getTime()
         must(await service.from('bucket_records').insert(Array.from({ length: 20 }, (_, i) => ({

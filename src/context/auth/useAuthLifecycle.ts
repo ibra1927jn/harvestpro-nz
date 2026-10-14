@@ -1,6 +1,7 @@
 /**
  * Ciclo de vida de la sesión: comprobación inicial (reapertura de la PWA)
- * y escucha de onAuthStateChange (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED).
+ * y escucha de onAuthStateChange (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED,
+ * MFA_CHALLENGE_VERIFIED).
  * @module context/auth/useAuthLifecycle
  */
 import { useEffect, type MutableRefObject } from 'react';
@@ -62,6 +63,13 @@ export function useAuthLifecycle(deps: AuthLifecycleDeps): void {
       );
       if (event === 'TOKEN_REFRESHED') {
         logger.info('[Auth] Token refreshed silently in background');
+      }
+      // Código 2FA aceptado: el token pasa a aal2. supabase-js no se lo pasa al
+      // realtime en este evento (solo en SIGNED_IN/TOKEN_REFRESHED) y la BD no
+      // da datos a un rol privilegiado con aal1: hay que pasarlo y recargar
+      if (event === 'MFA_CHALLENGE_VERIFIED' && session?.access_token) {
+        supabase.realtime.setAuth(session.access_token);
+        deps.updateAuthState({ mfaVerifiedAt: Date.now() });
       }
       if (action === 'load-session-user' && session?.user) {
         deps.loadUserData(session.user.id);

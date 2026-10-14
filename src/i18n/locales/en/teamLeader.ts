@@ -13,6 +13,8 @@ const teamLeader: TranslationDict = {
     'tl.attendance.present': 'Present',
     'tl.attendance.absent': 'Absent',
     'tl.attendance.in_at': 'In: {time}',
+    'tl.attendance.break_missing': 'Meal break not recorded',
+    'tl.attendance.break_missing_hint': 'Over 4 h on shift. Record the break time in the Timesheet tab before closing the day.',
     'tl.attendance.not_checked_in': 'Not checked in',
     'tl.attendance.check_in': 'Check In',
     'tl.attendance.check_out': 'Check Out',

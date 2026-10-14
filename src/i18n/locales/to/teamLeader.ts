@@ -13,6 +13,8 @@ const teamLeader: TranslationDict = {
     'tl.attendance.present': 'ʻI heni',
     'tl.attendance.absent': 'ʻIkai heni',
     'tl.attendance.in_at': 'Hū: {time}',
+    'tl.attendance.break_missing': 'ʻIkai lēkooti ʻa e mālōlō kai',
+    'tl.attendance.break_missing_hint': 'Laka hake he 4h ʻa e sifi. Lēkooti ʻa e taimi mālōlō ʻi he Lēkooti Taimi kimuʻa pea tāpuni ʻa e ʻaho.',
     'tl.attendance.not_checked_in': 'Teʻeki lēsisita',
     'tl.attendance.check_in': 'Lēsisita',
     'tl.attendance.check_out': 'Mavahe',

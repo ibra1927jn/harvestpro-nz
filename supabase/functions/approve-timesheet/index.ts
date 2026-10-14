@@ -5,19 +5,20 @@ import {
     errorResponse,
     jsonResponse,
     checkRateLimit,
+    AuthError,
     TimesheetApprovalSchema,
 } from '../_shared/security.ts'
 import { writeAudit } from '../_shared/audit.ts'
 
 /**
- * approve-timesheet — Server-side timesheet approval with optimistic locking
+ * approve-timesheet — aprobar o rechazar una hoja de horas (con bloqueo optimista)
  *
- * Ensures:
- * - Only authorized managers can approve timesheets
- * - Optimistic locking prevents stale approvals
- * - Audit trail for every approval
- *
- * Security: Requires admin/manager role
+ * - Pueden: admin y payroll_admin (cualquier huerto: la nómina es de la
+ *   empresa) y manager (su huerto). Lo decide public.review_timesheet en la BD.
+ * - Quien aprueba / rechaza es SIEMPRE quien llama (el verified_by del cuerpo
+ *   no cuenta).
+ * - Semana de pago cerrada: no se cambia nada (409).
+ * - Cada decisión queda en audit_logs.
  */
 serve(async (req) => {
     const preflight = handlePreflight(req)
@@ -26,14 +27,11 @@ serve(async (req) => {
     const origin = req.headers.get('Origin')
 
     try {
-        const { user, supabase } = await requireRole(req, ['admin', 'manager'])
+        const { user, supabase } = await requireRole(req, ['admin', 'manager', 'payroll_admin'])
         checkRateLimit(user.id)
 
         const body = await req.json()
-        const { attendance_id, current_updated_at } = TimesheetApprovalSchema.parse(body)
-        // Quien aprueba es quien llama; el verified_by del cuerpo no cuenta
-        // (antes un manager podía anotar a otra persona como aprobadora)
-        const verified_by = user.id
+        const { attendance_id, current_updated_at, decision, reason } = TimesheetApprovalSchema.parse(body)
 
         // ── Optimistic Locking Check ─────────────────
         if (current_updated_at) {
@@ -56,37 +54,43 @@ serve(async (req) => {
             }
         }
 
-        // ── Apply Approval ───────────────────────────
-        const { data: updated, error: updateErr } = await supabase
-            .from('daily_attendance')
-            .update({
-                verified_by,
-                updated_at: new Date().toISOString(),
-            })
-            .eq('id', attendance_id)
-            .select('id, picker_id, verified_by, updated_at')
-            .single()
-
-        if (updateErr) throw new Error(`Failed to approve timesheet: ${updateErr.message}`)
+        // ── Aprobar / rechazar (reglas en la BD) ─────
+        const { data: rows, error: reviewErr } = await supabase.rpc('review_timesheet', {
+            p_attendance_id: attendance_id,
+            p_decision: decision,
+            p_reason: decision === 'reject' ? (reason ?? null) : null,
+        })
+        if (reviewErr) {
+            if (reviewErr.code === '42501') throw new AuthError(reviewErr.message, 403)
+            if (reviewErr.message?.includes('PAY_WEEK_CLOSED')) {
+                throw new AuthError('PAY_WEEK_CLOSED: the pay week of this timesheet is closed. Reopen it to change timesheets.', 409)
+            }
+            throw new Error(`Failed to ${decision} timesheet: ${reviewErr.message}`)
+        }
+        const updated = (rows as { id: string; picker_id: string; verified_by: string | null; rejected_by: string | null; updated_at: string }[] | null)?.[0]
+        if (!updated) throw new Error(`Failed to ${decision} timesheet: no row returned`)
 
         // ── Audit Trail — must succeed for compliance ──
         const { error: auditErr } = await writeAudit(supabase, {
-            action: 'timesheet_approved',
+            action: decision === 'approve' ? 'timesheet_approved' : 'timesheet_rejected',
             table: 'daily_attendance',
             recordId: attendance_id,
             userId: user.id,
-            newValues: { verified_by },
+            newValues: decision === 'approve' ? { verified_by: user.id } : { rejected_by: user.id },
+            ...(decision === 'reject' && reason ? { reason } : {}),
         })
 
-        if (auditErr) throw new Error(`Approval applied but audit trail failed: ${auditErr.message}`)
+        if (auditErr) throw new Error(`Review applied but audit trail failed: ${auditErr.message}`)
 
-        console.info(`[approve-timesheet] Approved: id=${attendance_id}, by=${user.id}`)
+        console.info(`[approve-timesheet] ${decision}: id=${attendance_id}, by=${user.id}`)
 
         return jsonResponse({
             success: true,
+            decision,
             attendance_id: updated.id,
             picker_id: updated.picker_id,
             verified_by: updated.verified_by,
+            rejected_by: updated.rejected_by,
             updated_at: updated.updated_at,
         }, origin)
 

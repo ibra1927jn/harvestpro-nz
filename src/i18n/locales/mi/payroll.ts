@@ -82,6 +82,7 @@ const payroll: TranslationDict = {
     'pay.ts.approve_failed': 'Kāore i taea te whakaae i te rēhita wā o {name}',
     'pay.ts.rejected_for': 'Kua whakakāhoretia te rēhita wā o {name}',
     'pay.ts.reject_failed': 'Kāore i taea te whakakāhore i te rēhita wā o {name}',
+    'pay.ts.week_closed': 'Kua katia tēnei wiki utu. Whakatuwheratia anō kia huri ai te rēhita wā o {name}',
     'pay.ts.pending_approval': 'E tatari ana kia whakaaetia',
     'pay.ts.pending_count': '{n} e tatari ana',
     'pay.ts.loading': 'E uta ana i ngā rēhita wā...',

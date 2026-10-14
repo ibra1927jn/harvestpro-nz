@@ -5,6 +5,7 @@ import { databaseService } from '../services/database.service';
 import { attendanceService } from '../services/attendance.service';
 import { Picker, AppUser, AttendanceRecord } from '../types';
 import { queryKeys } from '@/config/queryClient';
+import { mealBreakMissing } from '@/services/harvestMetrics/pay';
 
 export const useAttendance = (appUser: AppUser | undefined) => {
   const qc = useQueryClient();
@@ -79,10 +80,16 @@ export const useAttendance = (appUser: AppUser | undefined) => {
         .filter((a: AttendanceRecord) => a.picker_id === picker.id)
         .sort((x, y) => (x.check_in ?? '').localeCompare(y.check_in ?? ''));
       const record = records.find(r => !r.check_out) ?? records[records.length - 1];
+      const isPresent = !!record && !record.check_out;
       return {
         ...picker,
         attendanceRecord: record,
-        isPresent: !!record && !record.check_out,
+        isPresent,
+        // Trabajando hoy más de 4 h sin descanso de comida anotado: avisar al
+        // team leader (el pago solo descuenta descansos anotados)
+        breakMissing: isPresent && mealBreakMissing(records.map(r => ({
+          checkIn: r.check_in, checkOut: r.check_out, breakStart: r.break_start,
+        }))),
       };
     });
   }, [roster, attendance]);

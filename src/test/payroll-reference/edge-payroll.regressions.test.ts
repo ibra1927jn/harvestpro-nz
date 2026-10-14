@@ -28,11 +28,11 @@ describe('computePayroll — turnos que cruzan la medianoche en el borde de la s
             ...Array.from({ length: 10 }, () => ({ picker_id: 'p1', scanned_at: nz('2026-10-18', '21:00') })),
             ...Array.from({ length: 10 }, () => ({ picker_id: 'p1', scanned_at: nz('2026-10-19', '01:00') })),
         ];
-        const attendance = [{ picker_id: 'p1', date: '2026-10-18', check_in: nz('2026-10-18', '20:00'), check_out: nz('2026-10-19', '02:00') }];
+        const attendance = [{ picker_id: 'p1', date: '2026-10-18', check_in: nz('2026-10-18', '20:00'), check_out: nz('2026-10-19', '02:00'), break_start: nz('2026-10-18', '23:00') }];
         const db = fakeSupabase(tables({ attendance, buckets }));
         const week = await computePayroll(db, { start_date: '2026-10-12', end_date: '2026-10-18' });
         const [p] = week.picker_breakdown;
-        // 6 h − 30 min = 5.5 h; 20 × 6.50 = 130.00; mínimo 131.725 → complemento 1.73
+        // 6 h − 30 min anotados = 5.5 h; 20 × 6.50 = 130.00; mínimo 131.725 → complemento 1.73
         expect([p.buckets, p.hours_worked, p.piece_rate_earnings, p.top_up_required, p.total_earnings]).toEqual([20, 5.5, 130, 1.73, 131.73]);
 
         // La semana siguiente no vuelve a pagar esas cubetas ni inventa horas el lunes

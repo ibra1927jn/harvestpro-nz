@@ -110,6 +110,9 @@ export function checkRateLimit(key: string, options: RateLimitOptions = DEFAULT_
 /** Allowed roles that can invoke management Edge Functions */
 type AllowedRole = 'admin' | 'manager' | 'team_leader' | 'runner' | 'qc_inspector' | 'payroll_admin' | 'hr_admin' | 'logistics';
 
+/** Roles que necesitan 2FA (aal2); misma lista que MFAGuard y public.mfa_satisfied() */
+const MFA_ROLES: ReadonlySet<string> = new Set(['admin', 'manager', 'payroll_admin', 'hr_admin']);
+
 interface AuthResult {
   user: { id: string; email: string };
   supabase: SupabaseClient;
@@ -165,6 +168,19 @@ export async function requireRole(
       `Insufficient permissions. Required: ${roles.join('|')}. Got: ${userRole || 'none'}`,
       403
     );
+  }
+
+  // 2FA en el servidor: un rol privilegiado necesita sesión aal2 (salvo que
+  // security_settings.enforce_mfa esté apagado, solo en el PC de desarrollo).
+  // Lo decide la BD con el mismo token (mfa_satisfied), igual que el RLS.
+  if (MFA_ROLES.has(userRole)) {
+    const { data: satisfied, error: mfaError } = await supabase.rpc('mfa_satisfied');
+    if (mfaError) {
+      throw new Error(`2FA check failed: ${mfaError.message}`);
+    }
+    if (satisfied !== true) {
+      throw new AuthError('Two-factor authentication required: verify your 2FA code and try again', 403);
+    }
   }
 
   return {
@@ -321,6 +337,9 @@ export const ComplianceCheckSchema = z.object({
 // Timesheet Approval
 export const TimesheetApprovalSchema = z.object({
   attendance_id: z.string().uuid('attendance_id must be a valid UUID'),
+  // Aprobar (por defecto) o rechazar; el motivo solo cuenta al rechazar
+  decision: z.enum(['approve', 'reject']).default('approve'),
+  reason: z.string().trim().max(500).optional(),
   // Se ignora: quien aprueba es siempre quien llama. La pantalla de Nómina
   // manda 'current_user' (no es un UUID) y antes toda aprobación daba 400.
   verified_by: z.string().optional(),

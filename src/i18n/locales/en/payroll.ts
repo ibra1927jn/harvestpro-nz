@@ -82,6 +82,7 @@ const payroll: TranslationDict = {
     'pay.ts.approve_failed': 'Failed to approve timesheet for {name}',
     'pay.ts.rejected_for': 'Timesheet rejected for {name}',
     'pay.ts.reject_failed': 'Failed to reject timesheet for {name}',
+    'pay.ts.week_closed': "This pay week is closed. Reopen it to change {name}'s timesheet",
     'pay.ts.pending_approval': 'Pending Approval',
     'pay.ts.pending_count': '{n} Pending',
     'pay.ts.loading': 'Loading timesheets...',

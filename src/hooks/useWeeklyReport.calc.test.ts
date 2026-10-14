@@ -6,7 +6,7 @@ const t = (date: string, hhmm: string) => `${date}T${hhmm}:00+13:00`;
 describe('buildWeekBreakdown', () => {
     it('complemento por día y totales coherentes', () => {
         const attendance = ['2026-10-05', '2026-10-06'].map(date => ({
-            picker_id: 'p1', date, check_in: t(date, '07:00'), check_out: t(date, '17:00'),
+            picker_id: 'p1', date, check_in: t(date, '07:00'), check_out: t(date, '17:00'), break_start: t(date, '12:00'),
         }));
         const buckets = [
             ...Array.from({ length: 80 }, () => ({ picker_id: 'p1', scanned_at: t('2026-10-05', '10:00') })),

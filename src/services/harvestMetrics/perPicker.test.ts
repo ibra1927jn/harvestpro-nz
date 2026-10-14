@@ -131,10 +131,11 @@ describe('computePerPicker — horas desde el fichaje del team leader', () => {
     const withShift = (extra: Partial<Picker>): Picker =>
         ({ ...picker(), ...extra }) as Picker;
 
-    it('usa entrada/salida del fichaje, no los escaneos, y descuenta 30 min', () => {
+    it('usa entrada/salida del fichaje, no los escaneos, y descuenta el descanso anotado', () => {
         const crew = [withShift({
             check_in: '2026-04-18T07:00:00+12:00',
             check_out: '2026-04-18T17:00:00+12:00',
+            break_start: '2026-04-18T12:00:00+12:00',
         })];
         const records = [scan('uuid-1', 60), scan('uuid-1', 120)]; // escaneos de 08:00 a 09:00
         const [m] = computePerPicker(crew, records, settings, now);
@@ -142,6 +143,13 @@ describe('computePerPicker — horas desde el fichaje del team leader', () => {
         expect(m.hoursWorked).toBe(9.5);
         // 2 cubetas × 6.50 = 13; 9.5 h × 23.95 = 227.53 → complemento 214.53
         expect(m.topUp).toBe(214.53);
+    });
+
+    it('sin descanso anotado no descuenta nada (decisión del dueño 2026-10-14)', () => {
+        const crew = [withShift({ check_in: '2026-04-18T07:00:00+12:00', check_out: '2026-04-18T17:00:00+12:00' })];
+        const [m] = computePerPicker(crew, [], settings, now);
+        expect(m.hoursWorked).toBe(10);
+        expect(m.topUp).toBe(239.5);
     });
 
     it('quien fichó y aún no tiene cubetas aparece igualmente (cobra el mínimo)', () => {
@@ -168,7 +176,7 @@ describe('computePerPicker — tramos y variedades', () => {
             id: 'p1', picker_id: 'P1', name: 'Ana', role: 'picker', status: 'active',
             shifts: [
                 { check_in: '2026-10-12T07:00:00+13:00', check_out: '2026-10-12T11:00:00+13:00' },
-                { check_in: '2026-10-12T12:00:00+13:00', check_out: '2026-10-12T16:00:00+13:00' },
+                { check_in: '2026-10-12T12:00:00+13:00', check_out: '2026-10-12T16:00:00+13:00', break_start: '2026-10-12T14:00:00+13:00' },
             ],
         }] as unknown as Parameters<typeof computePerPicker>[0];
         const bucket = (variety: string) => ({ id: variety + Math.random(), picker_id: 'p1', bin_id: 'b', timestamp: '', scanned_at: '2026-10-12T09:00:00+13:00', variety, orchard_id: 'A' });

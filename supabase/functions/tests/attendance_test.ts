@@ -1,8 +1,10 @@
 /**
  * manage-attendance y approve-timesheet.
  *
- * - Quién verifica / corrige / aprueba es SIEMPRE quien llama (no un id del
- *   cuerpo): si no, cualquiera podría firmar en nombre de otro.
+ * - Quién ficha / corrige / aprueba / rechaza es SIEMPRE quien llama (no un id
+ *   del cuerpo): si no, cualquiera podría firmar en nombre de otro.
+ * - Nómina (payroll_admin) aprueba y rechaza en cualquier huerto; manager solo
+ *   en el suyo; semana de pago cerrada → 409.
  * - Huertos: no se ficha a nadie en un huerto ajeno; al fichar en otro huerto
  *   se cierra el tramo abierto en el anterior (la gente rota).
  * - Una corrección que la base de datos no aplica (p. ej. el propio fichaje)
@@ -10,7 +12,8 @@
  */
 import { assert, assertEquals, assertNotEquals } from 'https://deno.land/std@0.168.0/testing/asserts.ts'
 import {
-    call, cleanupAll, makeOrchard, makePicker, makeUser, must, nzTime, nzToday, service, show, testOpts,
+    addDays, call, cleanupAll, makeOrchard, makePicker, makeUser, must, nzTime, nzToday, onCleanup, randomMonday,
+    seededId, seededToken, service, show, testOpts,
 } from './_helpers.ts'
 
 type CheckIn = { id: string; already_checked_in: boolean; closed_shift_id?: string | null }
@@ -27,7 +30,7 @@ Deno.test({ name: 'manage-attendance and approve-timesheet', ...testOpts, fn: as
         const today = nzToday()
 
         let shiftT = ''
-        await t.step('check_in: verified_by is the caller, not the body', async () => {
+        await t.step('check_in: recorded_by is the caller, not the body; not approved yet', async () => {
             const r = await call<CheckIn>('manage-attendance', {
                 token: leaderT.token,
                 body: { action: 'check_in', picker_id: picker.id, orchard_id: orchardT, verified_by: managerT.id },
@@ -35,8 +38,10 @@ Deno.test({ name: 'manage-attendance and approve-timesheet', ...testOpts, fn: as
             assertEquals(r.status, 200, show(r))
             assertEquals(r.json.already_checked_in, false)
             shiftT = r.json.id
-            const { data } = must(await service.from('daily_attendance').select('verified_by, orchard_id, date, check_out').eq('id', shiftT).single(), 'row')
-            assertEquals(data!.verified_by, leaderT.id)
+            const { data } = must(await service.from('daily_attendance').select('recorded_by, verified_by, orchard_id, date, check_out').eq('id', shiftT).single(), 'row')
+            assertEquals(data!.recorded_by, leaderT.id)
+            // Aprobar es cosa de nómina/manager (antes nacía "aprobada" por quien fichaba)
+            assertEquals(data!.verified_by, null)
             assertEquals(data!.orchard_id, orchardT)
             assertEquals(data!.date, today)
             assertEquals(data!.check_out, null)
@@ -72,9 +77,10 @@ Deno.test({ name: 'manage-attendance and approve-timesheet', ...testOpts, fn: as
             const { data: prev } = must(await service.from('daily_attendance').select('check_out, notes').eq('id', shiftT).single(), 'prev')
             assertNotEquals(prev!.check_out, null)
             assert(String(prev!.notes).includes('Auto-closed'))
-            const { data: now } = must(await service.from('daily_attendance').select('orchard_id, verified_by').eq('id', shiftU).single(), 'now')
+            const { data: now } = must(await service.from('daily_attendance').select('orchard_id, recorded_by, verified_by').eq('id', shiftU).single(), 'now')
             assertEquals(now!.orchard_id, orchardU)
-            assertEquals(now!.verified_by, leaderU.id)
+            assertEquals(now!.recorded_by, leaderU.id)
+            assertEquals(now!.verified_by, null)
         })
 
         await t.step('check_out records the time and paid hours', async () => {
@@ -99,7 +105,7 @@ Deno.test({ name: 'manage-attendance and approve-timesheet', ...testOpts, fn: as
             assertEquals(r.status, 200, show(r))
             const { data } = must(await service.from('daily_attendance').select('corrected_by, hours_worked, correction_reason').eq('id', shiftT).single(), 'corr')
             assertEquals(data!.corrected_by, leaderT.id)
-            assertEquals(Number(data!.hours_worked), 8) // 8.5 h − 30 min sin pagar
+            assertEquals(Number(data!.hours_worked), 8.5) // 8.5 h; sin descanso anotado no se descuenta nada
             const { data: audit } = must(await service.from('audit_logs').select('user_id')
                 .eq('record_id', shiftT).eq('new_values->>event', 'timesheet_correction'), 'audit')
             assertEquals(audit!.map(a => a.user_id), [leaderT.id])
@@ -150,12 +156,67 @@ Deno.test({ name: 'manage-attendance and approve-timesheet', ...testOpts, fn: as
             assertEquals(audit![0].new_values.verified_by, managerT.id)
         })
 
-        await t.step('approve-timesheet: what the Payroll screen sends (verified_by "current_user") works', async () => {
-            // PayrollTabs.handleApprove manda verified_by: 'current_user'
-            const r = await call('approve-timesheet', { token: managerT.token, body: { attendance_id: shiftU, verified_by: 'current_user' } })
-            assertEquals(r.status, 200, show(r))
+        await t.step('approve-timesheet: a manager cannot review another orchard', async () => {
+            const r = await call('approve-timesheet', { token: managerT.token, body: { attendance_id: shiftU } })
+            assertEquals(r.status, 403, show(r))
             const { data } = must(await service.from('daily_attendance').select('verified_by').eq('id', shiftU).single(), 'u')
-            assertEquals(data!.verified_by, managerT.id)
+            assertEquals(data!.verified_by, null)
+        })
+
+        await t.step('approve-timesheet: payroll_admin approves in ANY orchard (what the Payroll screen sends)', async () => {
+            // TimesheetsTab.handleApprove manda verified_by: 'current_user'
+            const payrollId = await seededId('payroll_admin')
+            const r = await call<{ verified_by: string }>('approve-timesheet', {
+                token: await seededToken('payroll_admin'), body: { attendance_id: shiftU, verified_by: 'current_user' },
+            })
+            assertEquals(r.status, 200, show(r))
+            assertEquals(r.json.verified_by, payrollId)
+            const { data } = must(await service.from('daily_attendance').select('verified_by').eq('id', shiftU).single(), 'u')
+            assertEquals(data!.verified_by, payrollId)
+        })
+
+        await t.step('approve-timesheet: payroll_admin rejects; the rejecter is the caller and it is audited', async () => {
+            const payrollId = await seededId('payroll_admin')
+            const r = await call<{ rejected_by: string; verified_by: string | null }>('approve-timesheet', {
+                token: await seededToken('payroll_admin'),
+                body: { attendance_id: shiftU, decision: 'reject', reason: 'Break time missing', verified_by: managerT.id },
+            })
+            assertEquals(r.status, 200, show(r))
+            assertEquals(r.json.rejected_by, payrollId)
+            const { data } = must(await service.from('daily_attendance')
+                .select('verified_by, rejected_by, rejection_reason').eq('id', shiftU).single(), 'u')
+            assertEquals(data!.verified_by, null)
+            assertEquals(data!.rejected_by, payrollId)
+            assertEquals(data!.rejection_reason, 'Break time missing')
+            const { data: audit } = must(await service.from('audit_logs').select('user_id, new_values')
+                .eq('record_id', shiftU).eq('new_values->>event', 'timesheet_rejected'), 'audit')
+            assertEquals(audit!.length, 1)
+            assertEquals(audit![0].user_id, payrollId)
+            assertEquals(audit![0].new_values.reason, 'Break time missing')
+        })
+
+        await t.step('approve-timesheet: a closed pay week cannot be approved or rejected (409)', async () => {
+            // Semana de un año lejano: cerrarla no afecta a nada más
+            const monday = randomMonday(2019)
+            const { data: att } = must(await service.from('daily_attendance').insert({
+                picker_id: other.id, orchard_id: orchardT, date: monday,
+                check_in: nzTime(monday, '07:00'), check_out: nzTime(monday, '15:00'), status: 'present',
+            }).select('id').single(), 'closed-week attendance')
+            const { data: week } = must(await service.from('pay_weeks').insert({
+                week_start: monday, week_end: addDays(monday, 6), status: 'closed', closed_at: new Date().toISOString(), snapshot: {},
+            }).select('id').single(), 'pay_weeks.insert')
+            onCleanup(async () => {
+                await service.from('pay_weeks').delete().eq('id', week!.id)
+                await service.from('daily_attendance').delete().eq('id', att!.id)
+            })
+            for (const decision of ['approve', 'reject']) {
+                const r = await call('approve-timesheet', { token: await seededToken('payroll_admin'), body: { attendance_id: att!.id, decision } })
+                assertEquals(r.status, 409, `${decision}: ${show(r)}`)
+                assert(r.text.includes('PAY_WEEK_CLOSED'), show(r))
+            }
+            const { data } = must(await service.from('daily_attendance').select('verified_by, rejected_at').eq('id', att!.id).single(), 'cw')
+            assertEquals(data!.verified_by, null)
+            assertEquals(data!.rejected_at, null)
         })
 
         await t.step('approve-timesheet: stale copy (optimistic lock) and unknown id → 400', async () => {

@@ -17,7 +17,7 @@ const t = (date: string, hhmm: string) => `${date}T${hhmm}:00+13:00`;
 function weekOf10() {
     const crew = Array.from({ length: 10 }, (_, i) => ({ id: `p${i}`, name: `Picker ${i}` }));
     const attendance = crew.flatMap(p => DAYS.map(date => ({
-        picker_id: p.id, date, check_in: t(date, '07:00'), check_out: t(date, '16:00'),
+        picker_id: p.id, date, check_in: t(date, '07:00'), check_out: t(date, '16:00'), break_start: t(date, '12:00'),
     })));
     const buckets = crew.flatMap((p, i) => DAYS.flatMap(date =>
         Array.from({ length: 10 + i * 6 }, (_, k) => ({
@@ -52,7 +52,7 @@ describe('Export + Payroll Pipeline — Integration', () => {
     it('el complemento es por día también en la exportación', () => {
         // Lunes 80 cubetas (sin complemento), martes 10 (con complemento)
         const breakdown = buildWeekBreakdown({
-            attendance: ['2026-10-05', '2026-10-06'].map(date => ({ picker_id: 'p1', date, check_in: t(date, '07:00'), check_out: t(date, '17:00') })),
+            attendance: ['2026-10-05', '2026-10-06'].map(date => ({ picker_id: 'p1', date, check_in: t(date, '07:00'), check_out: t(date, '17:00'), break_start: t(date, '12:00') })),
             buckets: [
                 ...Array.from({ length: 80 }, () => ({ picker_id: 'p1', scanned_at: t('2026-10-05', '10:00') })),
                 ...Array.from({ length: 10 }, () => ({ picker_id: 'p1', scanned_at: t('2026-10-06', '10:00') })),

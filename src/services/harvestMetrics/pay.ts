@@ -9,7 +9,9 @@
  * - Ficha el team leader por todo su equipo: la entrada/salida del picker en
  *   daily_attendance es la de su equipo, corregida después en la hoja de horas.
  * - Descanso de comida: 30 min NO pagados. El team leader anota a qué hora fue.
- *   Si no lo anotó y el turno pasa de 4 h, se descuentan igualmente.
+ *   SOLO se descuenta el descanso anotado (decisión del dueño 2026-10-14):
+ *   nunca se descuenta uno supuesto. Si un turno pasa de 4 h sin descanso
+ *   anotado, la app avisa al team leader (mealBreakMissing) para que lo anote.
  * - Complemento al salario mínimo POR DÍA: cada día se garantiza el mínimo por
  *   las horas de ese día; un día bueno no compensa uno malo.
  * - Semana de pago lunes–domingo (hora NZ); la nómina se cierra el lunes siguiente.
@@ -23,7 +25,12 @@
 export const PAY_RULES = {
     /** Duración del descanso de comida, no pagado */
     mealBreakMinutes: 30,
-    /** A partir de cuántas horas de turno se descuenta el descanso si no se anotó */
+    /**
+     * Más de estas horas de trabajo dan derecho a un descanso de comida
+     * (Employment Relations Act 2000, Parte 6D, s69ZD/s69ZE: periodo de más de
+     * 4 h → un descanso de comida de 30 min). Solo sirve para AVISAR de que
+     * falta anotarlo; nunca se descuenta un descanso que no se anotó.
+     */
     mealBreakAfterHours: 4,
     /** Salario mínimo adulto NZ, Minimum Wage Order 2026 (desde 1 abril 2026) */
     minWageFloor: 23.95,
@@ -81,10 +88,9 @@ function round2(n: number): number {
 
 /**
  * Minutos de descanso a descontar de un tramo [startMs, endMs].
- * - Si el team leader anotó la hora y cae dentro del tramo: se descuenta
- *   (como mucho lo transcurrido, si el descanso está en curso).
- * - Si no la anotó, o la hora cae fuera del tramo: se descuenta el descanso
- *   completo cuando el tramo supera el umbral.
+ * Solo el descanso que el team leader anotó DENTRO del tramo (como mucho lo
+ * transcurrido, si está en curso). Sin anotar, o anotado fuera del tramo
+ * (error al anotarlo): no se descuenta nada (y la app avisa de que falta).
  */
 function breakToDeduct(
     startMs: number,
@@ -92,16 +98,38 @@ function breakToDeduct(
     breakStart: string | null | undefined,
     breakMinutes: number,
 ): number {
-    const grossHours = (endMs - startMs) / MS_PER_HOUR;
     const breakStartMs = toMs(breakStart);
-    // Descanso anotado dentro del turno: se descuenta (como mucho lo transcurrido).
-    // Si la hora anotada cae fuera del turno (error al anotarla), se aplica la
-    // regla por defecto en vez de pagar el descanso.
     if (breakStartMs !== null && breakStartMs >= startMs && breakStartMs < endMs) {
         const elapsed = (endMs - breakStartMs) / 60_000;
         return Math.min(breakMinutes, elapsed);
     }
-    return grossHours > PAY_RULES.mealBreakAfterHours ? breakMinutes : 0;
+    return 0;
+}
+
+/**
+ * ¿Falta anotar el descanso de comida? Los tramos de una persona en un día
+ * suman más de mealBreakAfterHours (ERA 2000 Parte 6D) y ninguno tiene un
+ * descanso anotado dentro. Un tramo abierto cuenta hasta `now`.
+ * Como el pago solo descuenta descansos anotados, este aviso es lo que hace
+ * que el team leader los anote antes de cerrar el día.
+ */
+export function mealBreakMissing(
+    shifts: ReadonlyArray<{ checkIn?: string | null; checkOut?: string | null; breakStart?: string | null }>,
+    now: Date = new Date(),
+): boolean {
+    const nowMs = now.getTime();
+    let grossMs = 0;
+    let recorded = false;
+    for (const sh of shifts) {
+        const inMs = toMs(sh.checkIn);
+        if (inMs === null) continue;
+        const endMs = toMs(sh.checkOut) ?? Math.max(inMs, nowMs);
+        if (endMs <= inMs) continue;
+        grossMs += endMs - inMs;
+        const b = toMs(sh.breakStart);
+        if (b !== null && b >= inMs && b < endMs) recorded = true;
+    }
+    return !recorded && grossMs / MS_PER_HOUR > PAY_RULES.mealBreakAfterHours;
 }
 
 /**
@@ -411,7 +439,7 @@ interface ScanForPay {
  *   pasado: hasta el último escaneo de ese tramo (estimado).
  * - Un solo descanso de comida al día (no pagado): si el team leader anotó su
  *   hora dentro de algún tramo, se descuenta (como mucho lo transcurrido); si
- *   no, se descuentan breakMinutes cuando el día supera mealBreakAfterHours.
+ *   no lo anotó, no se descuenta nada.
  * - Trayecto: el hueco entre un tramo y el siguiente en OTRO huerto se paga;
  *   la mitad se carga al huerto de salida y la otra mitad al de llegada.
  *   El hueco entre dos tramos del mismo huerto (salió y volvió) no se paga.
@@ -497,8 +525,6 @@ function dayHours(
     if (withBreak) {
         const b = toMs(withBreak.row.breakStart) as number;
         deducted = Math.min(breakMinutesSetting, (withBreak.end - b) / 60_000);
-    } else if (grossHours > PAY_RULES.mealBreakAfterHours) {
-        deducted = breakMinutesSetting;
     }
 
     const segments: PaySegment[] = ranges.map((x, i) => ({

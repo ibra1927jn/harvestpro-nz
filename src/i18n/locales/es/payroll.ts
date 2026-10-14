@@ -82,6 +82,7 @@ const payroll: TranslationDict = {
     'pay.ts.approve_failed': 'No se pudo aprobar la planilla de {name}',
     'pay.ts.rejected_for': 'Planilla de {name} rechazada',
     'pay.ts.reject_failed': 'No se pudo rechazar la planilla de {name}',
+    'pay.ts.week_closed': 'Esta semana de pago está cerrada. Reábrela para cambiar la planilla de {name}',
     'pay.ts.pending_approval': 'Pendientes de aprobar',
     'pay.ts.pending_count': '{n} pendientes',
     'pay.ts.loading': 'Cargando planillas...',

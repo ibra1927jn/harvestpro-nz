@@ -114,7 +114,7 @@ describe('AnalyticsTrendsService', () => {
       const iso = (msAgo: number) => new Date(now - msAgo).toISOString();
       vi.mocked(repo.getPayInputs).mockResolvedValue({
         attendance: [
-          // 10 h fichadas hoy → 9.5 h pagables
+          // 10 h fichadas hoy, sin descanso anotado → 10 h pagables (no se descuenta)
           { picker_id: 'p1', date: today, check_in: iso(10 * 3600_000), check_out: iso(0), break_start: null, break_minutes: 30 },
         ],
         buckets: [
@@ -125,8 +125,8 @@ describe('AnalyticsTrendsService', () => {
 
       const result = await service.getDailyBleed('orch-1', 7, 'en-NZ', { piece_rate: 6.5, min_wage_rate: 23.95 });
       expect(result).toHaveLength(7);
-      // 9.5 h × 23.95 = 227.53 − 12 × 6.5 = 78 → 149.53 ≈ 150
-      expect(result[result.length - 1].value).toBe(150);
+      // 10 h × 23.95 = 239.50 − 12 × 6.5 = 78 → 161.50 ≈ 162
+      expect(result[result.length - 1].value).toBe(162);
     });
 
     it('all values are non-negative', async () => {

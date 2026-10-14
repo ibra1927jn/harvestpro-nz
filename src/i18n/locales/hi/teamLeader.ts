@@ -13,6 +13,8 @@ const teamLeader: TranslationDict = {
     'tl.attendance.present': 'हाज़िर',
     'tl.attendance.absent': 'ग़ैरहाज़िर',
     'tl.attendance.in_at': 'आए: {time}',
+    'tl.attendance.break_missing': 'भोजन ब्रेक दर्ज नहीं',
+    'tl.attendance.break_missing_hint': 'शिफ़्ट 4 घंटे से ज़्यादा। दिन बंद करने से पहले टाइमशीट में ब्रेक का समय दर्ज करें।',
     'tl.attendance.not_checked_in': 'चेक-इन नहीं',
     'tl.attendance.check_in': 'चेक-इन',
     'tl.attendance.check_out': 'चेक-आउट',

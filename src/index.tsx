@@ -4,7 +4,7 @@ import { RouterProvider } from 'react-router-dom';
 import { AppProvider } from './context';
 import { router } from './routes';
 import { MFAGuard } from './components/MFAGuard';
-import { I18nProvider } from './i18n';
+import { I18nProvider, prepareInitialLocale } from './i18n';
 import LiveAnnouncer from './components/ui/LiveAnnouncer';
 import { addSentryBreadcrumb, installEarlyErrorCapture } from './config/sentry';
 import { analytics } from './config/analytics';
@@ -77,7 +77,9 @@ if (navigator.storage?.persist) {
   });
 }
 
-startMocks().then(() => {
+// El idioma guardado (chunk aparte, ya pedido por index.html) se carga detrás
+// del splash: nada de pantalla en inglés antes de pasar al español
+Promise.all([startMocks(), prepareInitialLocale()]).then(() => {
   renderApp();
 });
 

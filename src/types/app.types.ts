@@ -338,6 +338,8 @@ export interface AttendanceRecord {
   orchard_id?: string;
   date?: string;
   verified_by?: string;
+  /** Hora del descanso de comida anotada por el team leader */
+  break_start?: string | null;
 }
 
 export interface LiveProductionStat {

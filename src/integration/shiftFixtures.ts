@@ -16,12 +16,16 @@ export function asShiftData<T extends CrewFixture>(crew: T[], now: Date = new Da
             bucketRecords.push({ id: `${p.id}-b${i}`, picker_id: p.id, bin_id: '', timestamp: ts, scanned_at: ts, quality_grade: 'A' });
         }
         if (hours <= 0) return p;
-        // Turnos de más de 4 h llevan 30 min de descanso no pagado
-        const gross = hours > 4 ? hours + 0.5 : hours;
+        // Turnos de más de 4 h: el team leader anota 30 min de descanso no
+        // pagado (solo se descuenta el descanso anotado)
+        const withBreak = hours > 4;
+        const gross = withBreak ? hours + 0.5 : hours;
+        const checkInMs = nowMs - gross * 3_600_000;
         return {
             ...p,
-            check_in: new Date(nowMs - gross * 3_600_000).toISOString(),
+            check_in: new Date(checkInMs).toISOString(),
             check_out: new Date(nowMs).toISOString(),
+            ...(withBreak ? { break_start: new Date(checkInMs + 2 * 3_600_000).toISOString() } : {}),
         };
     });
     return { crew: withShifts, bucketRecords };

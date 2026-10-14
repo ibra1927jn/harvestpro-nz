@@ -82,6 +82,7 @@ const payroll: TranslationDict = {
     'pay.ts.approve_failed': '{name} की टाइमशीट स्वीकृत नहीं हो सकी',
     'pay.ts.rejected_for': '{name} की टाइमशीट अस्वीकृत',
     'pay.ts.reject_failed': '{name} की टाइमशीट अस्वीकार नहीं हो सकी',
+    'pay.ts.week_closed': 'यह वेतन सप्ताह बंद है। {name} की टाइमशीट बदलने के लिए इसे फिर से खोलें',
     'pay.ts.pending_approval': 'स्वीकृति लंबित',
     'pay.ts.pending_count': '{n} लंबित',
     'pay.ts.loading': 'टाइमशीट लोड हो रही हैं...',

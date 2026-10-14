@@ -27,9 +27,14 @@ export const ROUTE_MODULES = {
   '/payroll': ['src/pages/Payroll.tsx'],
 };
 
+/** Idiomas que van en chunk aparte (src/i18n/locales/index.ts; el inglés va en el bundle). */
+export const LAZY_LOCALES = ['es', 'mi', 'sm', 'hi', 'to', 'tl'];
+export const LOCALE_STORAGE_KEY = 'harvestpro_locale';
+export const localeModule = l => `src/i18n/locales/${l}/index.ts`;
+
 /**
  * @param {Record<string, import('rollup').OutputChunk | import('rollup').OutputAsset>} bundle
- * @returns {Record<string, string[]>} ruta → URLs de JS a precargar
+ * @returns {{ routes: Record<string, string[]>, locales: Record<string, string[]> }} URLs de JS a precargar
  */
 export function routePreloadMap(bundle, root) {
   const chunks = Object.values(bundle).filter(c => c.type === 'chunk');
@@ -62,11 +67,30 @@ export function routePreloadMap(bundle, root) {
     return out;
   };
   const startup = filesFor(STARTUP_MODULES);
-  const map = {};
+  const routes = {};
   for (const [route, modules] of Object.entries(ROUTE_MODULES)) {
-    map[route] = [...new Set([...filesFor(modules), ...startup])].map(f => `/${f}`);
+    routes[route] = [...new Set([...filesFor(modules), ...startup])].map(f => `/${f}`);
   }
-  return map;
+  const locales = {};
+  for (const l of LAZY_LOCALES) locales[l] = [...filesFor([localeModule(l)])].map(f => `/${f}`);
+  return { routes, locales };
+}
+
+/**
+ * Script inline de index.html: precarga los chunks de la ruta actual y del idioma
+ * guardado (misma regla que getInitialLocale() en src/i18n/index.ts: localStorage,
+ * si no el idioma del navegador). Así el chunk del idioma baja en paralelo con el
+ * bundle principal y no retrasa el primer render.
+ */
+export function preloadScript({ routes, locales }) {
+  return (
+    `(function(r,g){function p(l){if(!l)return;for(var i=0;i<l.length;i++){var e=document.createElement('link');` +
+    `e.rel='modulepreload';e.crossOrigin='';e.href=l[i];document.head.appendChild(e);}}` +
+    `p(r[location.pathname]);var c=null;try{c=localStorage.getItem(${JSON.stringify(LOCALE_STORAGE_KEY)})}catch(x){}` +
+    `if(!c||!(c in g)&&c!=='en'){c=(navigator.language||'').split('-')[0]}` +
+    `if(Object.prototype.hasOwnProperty.call(g,c))p(g[c]);})` +
+    `(${JSON.stringify(routes)},${JSON.stringify(locales)});`
+  );
 }
 
 /** Plugin de Vite (solo build). */
@@ -91,13 +115,8 @@ export function routePreloadPlugin() {
       order: 'post',
       handler(html, ctx) {
         if (!ctx.bundle) return html;
-        const map = routePreloadMap(ctx.bundle, root);
         // Rutas con barra final o mayúsculas no se precargan: solo es una optimización
-        const code =
-          `(function(m){var l=m[location.pathname];if(!l)return;` +
-          `for(var i=0;i<l.length;i++){var e=document.createElement('link');` +
-          `e.rel='modulepreload';e.crossOrigin='';e.href=l[i];document.head.appendChild(e);}})` +
-          `(${JSON.stringify(map)});`;
+        const code = preloadScript(routePreloadMap(ctx.bundle, root));
         return [{ tag: 'script', children: code, injectTo: 'head-prepend' }];
       },
     },

@@ -1,13 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { shiftHours, dayPay, nzDateOf, payWeekOf, payForRange, isNZPublicHoliday, PAY_RULES, pieceRateFor } from './pay';
+import { shiftHours, dayPay, nzDateOf, payWeekOf, payForRange, isNZPublicHoliday, PAY_RULES, pieceRateFor, mealBreakMissing } from './pay';
 
 // Fechas en NZDT (UTC+13) — 11 oct 2026
 const at = (hhmm: string) => `2026-10-11T${hhmm}:00+13:00`;
 
 describe('shiftHours', () => {
-    it('jornada completa sin descanso anotado: descuenta 30 min', () => {
+    // Decisión del dueño (2026-10-14): solo se descuenta el descanso ANOTADO
+    it('jornada completa sin descanso anotado: NO descuenta nada (se avisa al team leader)', () => {
         const r = shiftHours({ checkIn: at('07:00'), checkOut: at('17:00') });
-        expect(r).toEqual({ hours: 9.5, grossHours: 10, breakMinutes: 30, source: 'timesheet' });
+        expect(r).toEqual({ hours: 10, grossHours: 10, breakMinutes: 0, source: 'timesheet' });
     });
 
     it('descanso anotado por el team leader dentro del turno: descuenta 30 min', () => {
@@ -22,9 +23,10 @@ describe('shiftHours', () => {
         expect(r.breakMinutes).toBe(0);
     });
 
-    it('descanso anotado fuera de un turno largo (error al anotar): regla por defecto', () => {
+    it('descanso anotado fuera de un turno largo (error al anotar): no se descuenta', () => {
         const r = shiftHours({ checkIn: at('07:00'), checkOut: at('16:00'), breakStart: '2026-10-10T12:00:00+13:00' });
-        expect(r.hours).toBe(8.5);
+        expect(r.hours).toBe(9);
+        expect(r.breakMinutes).toBe(0);
     });
 
     it('turno corto (≤ 4 h) sin descanso anotado: no descuenta', () => {
@@ -34,8 +36,13 @@ describe('shiftHours', () => {
     });
 
     it('respeta una duración de descanso distinta', () => {
-        const r = shiftHours({ checkIn: at('07:00'), checkOut: at('17:00'), breakMinutes: 45 });
+        const r = shiftHours({ checkIn: at('07:00'), checkOut: at('17:00'), breakStart: at('12:00'), breakMinutes: 45 });
         expect(r.hours).toBe(9.25);
+    });
+
+    it('una duración de descanso sin hora anotada no descuenta', () => {
+        const r = shiftHours({ checkIn: at('07:00'), checkOut: at('17:00'), breakMinutes: 45 });
+        expect(r.hours).toBe(10);
     });
 
     it('turno abierto: cuenta hasta ahora', () => {
@@ -49,15 +56,15 @@ describe('shiftHours', () => {
         expect(r.hours).toBe(5);
     });
 
-    it('sin fichaje: estima por primer y último escaneo', () => {
+    it('sin fichaje: estima por primer y último escaneo (sin descanso anotado, sin descontar)', () => {
         const r = shiftHours({ scanTimes: [at('08:00'), at('13:30'), null, at('15:00')] });
         expect(r.source).toBe('scan_estimate');
         expect(r.grossHours).toBe(7);
-        expect(r.hours).toBe(6.5);
+        expect(r.hours).toBe(7);
     });
 
     it('el fichaje manda sobre los escaneos', () => {
-        const r = shiftHours({ checkIn: at('07:00'), checkOut: at('17:00'), scanTimes: [at('09:00'), at('10:00')] });
+        const r = shiftHours({ checkIn: at('07:00'), checkOut: at('17:00'), breakStart: at('12:00'), scanTimes: [at('09:00'), at('10:00')] });
         expect(r.source).toBe('timesheet');
         expect(r.hours).toBe(9.5);
     });
@@ -163,8 +170,8 @@ describe('payForRange', () => {
 
     it('suma el complemento día a día', () => {
         const attendance = [
-            { pickerId: 'p1', date: d1, checkIn: t(d1, '07:00'), checkOut: t(d1, '17:00') },
-            { pickerId: 'p1', date: d2, checkIn: t(d2, '07:00'), checkOut: t(d2, '17:00') },
+            { pickerId: 'p1', date: d1, checkIn: t(d1, '07:00'), checkOut: t(d1, '17:00'), breakStart: t(d1, '12:00') },
+            { pickerId: 'p1', date: d2, checkIn: t(d2, '07:00'), checkOut: t(d2, '17:00'), breakStart: t(d2, '12:00') },
         ];
         // Día 1: 80 cubetas (520, sin complemento). Día 2: 10 cubetas (65 + 162.53).
         const buckets = [
@@ -213,7 +220,7 @@ describe('payForRange', () => {
             { pickerId: 'p1', scannedAt: t(d1, '15:00') },
         ];
         const [r] = payForRange({ attendance, buckets, pieceRate: 6.5, minWage: 23.95, now: new Date(t(d2, '12:00')) });
-        expect(r.hours).toBe(7.5); // 07:00–15:00 = 8 h − 30 min
+        expect(r.hours).toBe(8); // 07:00–15:00, sin descanso anotado (no se descuenta)
         expect(r.estimatedDays).toBe(1);
     });
 
@@ -224,7 +231,7 @@ describe('payForRange', () => {
             { pickerId: 'p1', scannedAt: t(d1, '15:20') },
         ];
         const [r] = payForRange({ attendance, buckets, pieceRate: 6.5, minWage: 23.95, now: new Date(t(d2, '12:00')) });
-        expect(r.hours).toBe(7.5);
+        expect(r.hours).toBe(8); // 07:20–15:20
     });
 
     it('turno abierto de un día pasado sin cubetas: no desaparece, queda a 0 h marcado', () => {
@@ -236,7 +243,7 @@ describe('payForRange', () => {
 
     it('festivos nacionales por defecto (Labour Day 2026-10-26)', () => {
         const day = '2026-10-26';
-        const attendance = [{ pickerId: 'p1', date: day, checkIn: t(day, '07:00'), checkOut: t(day, '15:30') }];
+        const attendance = [{ pickerId: 'p1', date: day, checkIn: t(day, '07:00'), checkOut: t(day, '15:30'), breakStart: t(day, '12:00') }];
         const buckets = Array.from({ length: 10 }, () => ({ pickerId: 'p1', scannedAt: t(day, '10:00') }));
         const [r] = payForRange({ attendance, buckets, pieceRate: 6.5, minWage: 23.95 });
         // Mínimo 8 h × 23.95 × 1.5 = 287.40. Cubetas 65 + plus de festivo 32.50
@@ -273,7 +280,7 @@ describe('payForRange — varios tramos y variedades', () => {
 
     it('dos huertos el mismo día: suma tramos y trayecto, descanso una vez, complemento del día entero', () => {
         const attendance = [
-            { pickerId: 'p1', date: d1, orchardId: 'A', checkIn: t('07:00'), checkOut: t('11:00') },
+            { pickerId: 'p1', date: d1, orchardId: 'A', checkIn: t('07:00'), checkOut: t('11:00'), breakStart: t('10:00') },
             { pickerId: 'p1', date: d1, orchardId: 'B', checkIn: t('11:30'), checkOut: t('16:30') },
         ];
         // Mañana en A: 20 cubetas Royal Gala a 6.50. Tarde en B: 10 Braeburn a 8.00.
@@ -303,7 +310,7 @@ describe('payForRange — varios tramos y variedades', () => {
         // En A gana mucho y en B poco: por día completo no hay complemento.
         const attendance = [
             { pickerId: 'p1', date: d1, orchardId: 'A', checkIn: t('07:00'), checkOut: t('11:00') },
-            { pickerId: 'p1', date: d1, orchardId: 'B', checkIn: t('11:30'), checkOut: t('15:30') },
+            { pickerId: 'p1', date: d1, orchardId: 'B', checkIn: t('11:30'), checkOut: t('15:30'), breakStart: t('13:00') },
         ];
         const buckets = [
             ...Array.from({ length: 30 }, () => ({ pickerId: 'p1', scannedAt: t('09:00'), orchardId: 'A', pieceRate: 6.5 })),
@@ -345,7 +352,7 @@ describe('payForRange — trayecto', () => {
         ];
         const [r] = payForRange({ attendance, buckets: [], pieceRate: 6.5, minWage: 23.95, now: new Date('2026-10-07T12:00:00+13:00') });
         expect(r.dayDetails[0].travelMinutes).toBe(0);
-        expect(r.hours).toBe(4.5); // 5 h − 30 min
+        expect(r.hours).toBe(5); // 3 h + 2 h (sin descanso anotado: no se descuenta)
     });
 });
 
@@ -420,5 +427,30 @@ describe('festivo: tiempo y medio también sobre las cubetas (Holidays Act s.50)
         const p = dayPay({ buckets: 0, pieceEarnings: 300, hours: 8, pieceRate: 6.5, minWage: 23.95, isPublicHoliday: false });
         expect(p.holidayPremium).toBe(0);
         expect(p.total).toBe(300);
+    });
+});
+
+describe('mealBreakMissing (aviso al team leader)', () => {
+    it('más de 4 h sin descanso anotado: falta', () => {
+        expect(mealBreakMissing([{ checkIn: at('07:00'), checkOut: at('11:01') }])).toBe(true);
+    });
+    it('exactamente 4 h: no hace falta (ERA Parte 6D: MÁS de 4 h)', () => {
+        expect(mealBreakMissing([{ checkIn: at('07:00'), checkOut: at('11:00') }])).toBe(false);
+    });
+    it('descanso anotado dentro del turno: no falta', () => {
+        expect(mealBreakMissing([{ checkIn: at('07:00'), checkOut: at('17:00'), breakStart: at('12:00') }])).toBe(false);
+    });
+    it('descanso anotado fuera del turno (error): sigue faltando', () => {
+        expect(mealBreakMissing([{ checkIn: at('07:00'), checkOut: at('17:00'), breakStart: at('18:00') }])).toBe(true);
+    });
+    it('turno abierto: cuenta hasta ahora', () => {
+        expect(mealBreakMissing([{ checkIn: at('07:00') }], new Date(at('10:30')))).toBe(false);
+        expect(mealBreakMissing([{ checkIn: at('07:00') }], new Date(at('11:30')))).toBe(true);
+    });
+    it('dos tramos del día suman; un descanso en cualquiera vale', () => {
+        const a = { checkIn: at('07:00'), checkOut: at('09:30') };
+        const b = { checkIn: at('10:00'), checkOut: at('12:00') };
+        expect(mealBreakMissing([a, b])).toBe(true);
+        expect(mealBreakMissing([a, { ...b, breakStart: at('11:00') }])).toBe(false);
     });
 });
