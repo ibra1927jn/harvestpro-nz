@@ -411,6 +411,10 @@ BEGIN
     -- de prueba de hoy: dentro de esta transacción (ROLLBACK) se reabren
     UPDATE public.pay_weeks SET status = 'reopened' WHERE status = 'closed';
 
+    -- Las pruebas usan el valor de producción (2FA exigido en el servidor),
+    -- aunque la BD de desarrollo lo tenga apagado (scripts/dev-disable-mfa.sql)
+    UPDATE public.security_settings SET enforce_mfa = true;
+
     -- Semana de pago cerrada (lejos en el pasado para no afectar a nada más)
     INSERT INTO public.daily_attendance (picker_id, orchard_id, date, check_in, check_out, status, hours_worked)
     VALUES (sec_test.id_of('A.picker'), sec_test.id_of('A'), DATE '2020-01-07',
