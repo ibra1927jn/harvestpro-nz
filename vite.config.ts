@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { checkIconSubset } from './scripts/icons/check-icons.mjs';
 import { routePreloadPlugin } from './scripts/route-preload.mjs';
+import { compactLocalesPlugin } from './scripts/i18n/compact-locales.mjs';
 
 /** Falla el build si el código usa un icono que no está en la fuente subconjunto. */
 function iconSubsetGuard(): Plugin {
@@ -31,15 +32,14 @@ export default defineConfig(() => {
     plugins: [
       iconSubsetGuard(),
       routePreloadPlugin(),
+      // Idiomas sin repetir las claves en cada chunk (solo build)
+      compactLocalesPlugin(),
       react(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: [
-          'favicon.ico',
-          'apple-touch-icon.png',
-          'favicon-32x32.png',
-          'favicon-16x16.png',
-        ],
+        // favicon/iconos ya entran por globPatterns: includeAssets e includeManifestIcons
+        // los volvían a añadir y salían duplicados en el precache
+        includeManifestIcons: false,
         manifest: {
           name: 'HarvestPro NZ',
           short_name: 'HarvestPro',
@@ -134,6 +134,11 @@ export default defineConfig(() => {
         // Capacitor plugins are native-only — never bundle them for web
         external: ['@capacitor-community/barcode-scanner'],
         output: {
+          // Un chunk por idioma con nombre legible (precache y perf-budget los buscan por nombre)
+          chunkFileNames: chunk => {
+            const m = /\/src\/i18n\/locales\/([a-z]{2})\/index\.ts$/.exec(chunk.facadeModuleId ?? '');
+            return m ? `assets/locale-${m[1]}-[hash].js` : 'assets/[name]-[hash].js';
+          },
           manualChunks: {
             // react-dom/client y scheduler iban en el chunk index (cambia en cada deploy)
             'vendor-react': ['react', 'react-dom', 'react-dom/client', 'react-router-dom', 'scheduler'],

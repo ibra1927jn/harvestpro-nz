@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console -- herramienta de línea de comandos: su salida es la consola */
 /**
  * Presupuesto de rendimiento (barato, para CI): se ejecuta después de `vite build`.
  *
@@ -14,7 +15,7 @@
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
 import { join, resolve } from 'path';
 import { gzipSync, brotliCompressSync, constants } from 'zlib';
-import { ROUTE_MODULES, STARTUP_MODULES } from './route-preload.mjs';
+import { ROUTE_MODULES, STARTUP_MODULES, LAZY_LOCALES, localeModule } from './route-preload.mjs';
 
 const args = process.argv.slice(2);
 const argValue = name => {
@@ -116,6 +117,33 @@ for (const [route, cfg] of Object.entries(budget.routes)) {
   }
 }
 
+// ── Idiomas (chunk aparte cada uno, fuera del JS inicial) ──
+// Un usuario no inglés descarga además el chunk de su idioma (en paralelo, precargado
+// desde index.html). Que ninguno se cuele en la ruta crítica ni crezca sin control.
+if (budget.locales) {
+  report.locales = {};
+  const initial = new Set(Object.keys(ROUTE_MODULES).flatMap(r =>
+    budget.routes[r] ? closure(['index.html', ...ROUTE_MODULES[r], ...STARTUP_MODULES]).js : []));
+  for (const l of LAZY_LOCALES) {
+    const key = localeModule(l);
+    if (!manifest[key]) {
+      failures.push(`idioma ${l}: ${key} no es un chunk aparte (¿import estático de todos los idiomas?)`);
+      continue;
+    }
+    const c = closure([key]);
+    const own = c.js.filter(f => !initial.has(f));
+    const g = total(own, 'gzip');
+    report.locales[l] = { files: own, gzipKB: Number(kb(g)) };
+    console.log(`\n[idioma ${l}] +${kb(g)} KB gzip (límite ${budget.locales.maxGzipKB} KB): ${own.join(', ')}`);
+    if (g / 1024 > budget.locales.maxGzipKB) failures.push(`idioma ${l}: ${kb(g)} KB gzip > ${budget.locales.maxGzipKB} KB`);
+    for (const f of initial) {
+      if ((chunkModules[f] ?? []).some(m => m.startsWith(`src/i18n/locales/${l}/`))) {
+        failures.push(`idioma ${l}: está en el JS inicial (${f})`);
+      }
+    }
+  }
+}
+
 // ── Assets con límite (fuente de iconos, etc.) ─
 const assetFiles = readdirSync(join(DIST, 'assets'));
 for (const rule of budget.assets ?? []) {
@@ -137,7 +165,8 @@ for (const rule of budget.assets ?? []) {
 // informes, mocks ni chunks grandes que no hacen falta offline.
 if (budget.precache) {
   const sw = readFileSync(join(DIST, 'sw.js'), 'utf8');
-  const urls = [...sw.matchAll(/url:"([^"]+)"/g)].map(m => m[1]);
+  // Sin repetir: workbox descarga cada URL una vez aunque salga dos veces en la lista
+  const urls = [...new Set([...sw.matchAll(/url:"([^"]+)"/g)].map(m => m[1]))];
   let bytes = 0;
   for (const u of urls) {
     try {
