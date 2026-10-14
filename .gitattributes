@@ -1,0 +1,2 @@
+# Los módulos CLI con shebang deben conservar LF también en Windows.
+*.mjs text eol=lf

@@ -9,7 +9,8 @@
  * comparando con los ficheros fuente. En dev y en los tests se usa el TS original.
  */
 import { buildSync } from 'esbuild';
-import { join, sep } from 'node:path';
+import { join } from 'node:path';
+import { normalizePath } from 'vite';
 
 export const LOCALES = ['en', 'es', 'mi', 'sm', 'hi', 'to', 'tl'];
 
@@ -69,13 +70,14 @@ export function compactLocalesPlugin() {
     apply: 'build',
     enforce: 'pre',
     configResolved(cfg) {
-      localesDir = join(cfg.root, 'src', 'i18n', 'locales');
+      localesDir = normalizePath(join(cfg.root, 'src', 'i18n', 'locales'));
     },
     load(id) {
-      const m = id.startsWith(localesDir + sep) && /[\\/]([a-z]{2})[\\/]index\.ts$/.exec(id);
-      if (!m || !LOCALES.includes(m[1]) || id !== join(localesDir, m[1], 'index.ts')) return null;
+      const moduleId = normalizePath(id);
+      const m = moduleId.startsWith(`${localesDir}/`) && /\/([a-z]{2})\/index\.ts$/.exec(moduleId);
+      if (!m || !LOCALES.includes(m[1]) || moduleId !== `${localesDir}/${m[1]}/index.ts`) return null;
       const { dicts, enKeys } = build();
-      return { code: compactLocaleSource(m[1], dicts[m[1]], enKeys, join(localesDir, 'en', 'index.ts')), map: null };
+      return { code: compactLocaleSource(m[1], dicts[m[1]], enKeys, `${localesDir}/en/index.ts`), map: null };
     },
   };
 }
