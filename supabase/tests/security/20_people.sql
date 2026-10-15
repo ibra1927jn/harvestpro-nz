@@ -40,7 +40,9 @@ FROM unnest(ARRAY['A.team_leader', 'A.hr_admin']) AS w;
 SELECT sec_test.deny(w, 'cannot add pickers',
     $$INSERT INTO pickers (picker_id, name, orchard_id, team_leader_id) VALUES ('SECTEST-NEW', 'New', {A}, {A.team_leader})$$)
 FROM unnest(ARRAY['anon', 'A.manager', 'A.runner', 'A.qc_inspector', 'A.logistics', 'A.payroll_admin']) AS w;
-SELECT sec_test.allow('A.team_leader', 'archives a picker', $$UPDATE pickers SET status = 'archived', archived_at = now() WHERE id = {A.picker}$$);
+-- Dar de baja es de RRHH, no del team leader (regla 2026-10-16, ver 25_picker_teams.sql)
+SELECT sec_test.deny('A.team_leader', 'cannot archive a picker (HR does it)', $$UPDATE pickers SET status = 'archived', archived_at = now() WHERE id = {A.picker}$$);
+SELECT sec_test.allow('A.hr_admin', 'archives a picker', $$UPDATE pickers SET status = 'archived', archived_at = now() WHERE id = {A.picker}$$);
 SELECT sec_test.deny('A.manager', 'cannot archive a picker', $$UPDATE pickers SET status = 'archived', archived_at = now() WHERE id = {A.picker}$$);
 SELECT sec_test.deny('A.manager', 'cannot move a picker to another team', $$UPDATE pickers SET team_leader_id = {A.team_leader2} WHERE id = {A.picker}$$);
 SELECT sec_test.deny('A.manager', 'cannot delete a picker', $$DELETE FROM pickers WHERE id = {A.picker}$$);

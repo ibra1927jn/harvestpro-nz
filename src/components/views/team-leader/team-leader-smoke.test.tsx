@@ -129,6 +129,14 @@ describe('TeamView', () => {
     render(<TeamView />);
     expect(screen.getByText('Alice')).toBeDefined();
   });
+
+  // Soltar o dar de baja es de RRHH (regla 2026-10-16): sin botón de borrar
+  it('has no remove button and points to HR instead', async () => {
+    const { default: TeamView } = await import('./TeamView');
+    render(<TeamView />);
+    expect(screen.queryByRole('button', { name: /delete|archive|remove/i })).toBeNull();
+    expect(screen.getByText(/ask HR/i)).toBeDefined();
+  });
 });
 
 describe('TasksView', () => {

@@ -14,7 +14,6 @@ const TeamView = () => {
     const {
         crew,
         addPicker,
-        removePicker,
         updatePicker,
     } = useHarvest();
     // Usuario que ha iniciado sesión (store.currentUser no se rellena nunca)
@@ -40,13 +39,6 @@ const TeamView = () => {
     const totalCrew = displayedCrew.length;
     const activeCrew = displayedCrew.filter(isPresentToday).length;
     const pendingCrew = displayedCrew.filter(p => !p.safety_verified).length;
-
-    const handleDelete = async (e: React.MouseEvent, pickerId: string, pickerName: string) => {
-        e.stopPropagation();
-        if (window.confirm(t('tl.team.confirm_remove', { name: pickerName }))) {
-            await removePicker(pickerId);
-        }
-    };
 
     return (
         <div className="relative">
@@ -140,13 +132,6 @@ const TeamView = () => {
                                         <span className="block text-2xl font-black text-slate-800 leading-none tracking-tight">{picker.total_buckets_today || 0}</span>
                                         <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 block">{t('tl.home.buckets')}</span>
                                     </div>
-                                    <button aria-label={t('tl.team.delete_name', { name: picker.name })}
-                                        onClick={(e) => handleDelete(e, picker.id, picker.name)}
-                                        className="size-8 rounded-xl bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 active:scale-95 transition-all border border-red-100/50"
-                                        title={t('tl.team.delete_title')}
-                                    >
-                                        <span aria-hidden="true" className="material-symbols-outlined text-base">delete</span>
-                                    </button>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-100/50">
@@ -183,6 +168,11 @@ const TeamView = () => {
                     ))
                 )}
 
+                {/* Soltar, pasar a otro equipo o dar de baja es de RRHH (regla 2026-10-16) */}
+                <p className="text-center text-[11px] font-semibold text-slate-400 px-4 pt-2">
+                    {t('tl.team.hr_handles_moves')}
+                </p>
+
                 <div className="fixed bottom-24 left-0 w-full px-5 pb-2 z-40 pointer-events-none">
                     <div className="pointer-events-auto">
                         <button
@@ -207,7 +197,6 @@ const TeamView = () => {
                 <PickerDetailsModal
                     picker={selectedPicker}
                     onClose={() => setSelectedPicker(null)}
-                    onDelete={removePicker}
                     onUpdate={updatePicker}
                     allCrew={displayedCrew}
                 />
