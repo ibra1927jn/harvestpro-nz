@@ -40,7 +40,7 @@ Across every role: **7 languages** (English, Spanish, Te Reo Māori, Samoan, Ton
 - **One pay engine, two places.** The same pay rules run in the browser (instant feedback) and in an Edge Function (the source of truth). The two files are byte-identical and a test fails if they ever diverge. A differential test runs a realistic week — Matariki, orchard switches, a shift past midnight — against an independent reference implementation, to the cent.
 - **NZ pay rules built in:** piece-rate with daily minimum-wage top-up, public holidays at time-and-a-half with alternative days, only recorded breaks deducted, weekly pay summed across all orchards a person worked at.
 - **Pay weeks that stay closed.** Closing a week stores a snapshot; database triggers then lock that week's attendance and scans.
-- **Security in the database, not just the UI.** Row-level security on every table, role checks re-read from the database on the server, 2FA (`aal2`) enforced by Postgres policies for admin, manager, payroll and HR accounts, and a SQL security suite with **769 checks** covering who can read and change what.
+- **Security in the database, not just the UI.** Row-level security on every table, role checks re-read from the database on the server, 2FA (`aal2`) enforced by Postgres policies for admin, manager, payroll and HR accounts, and a SQL security suite with **771 checks** covering who can read and change what.
 
 ## Architecture
 
@@ -87,8 +87,8 @@ Numbers from the last full run (16 Oct 2026), not targets:
 
 | Check                                        | Result                                          |
 | -------------------------------------------- | ----------------------------------------------- |
-| Unit and component tests (Vitest, 484 files) | **5,340 passing**                               |
-| Database security suite (SQL, RLS and 2FA)   | **769 / 769 passing**                           |
+| Unit and component tests (Vitest, 485 files) | **5,344 passing**                               |
+| Database security suite (SQL, RLS and 2FA)   | **771 / 771 passing**                           |
 | TypeScript `--noEmit`                        | 0 errors                                        |
 | ESLint (`--max-warnings 0`)                  | 0 warnings                                      |
 | End-to-end specs (Playwright)                | 40 specs, desktop and mobile                    |
@@ -144,7 +144,6 @@ From the [16 October 2026 external audit](docs/audits/2026-10-16-external-audit.
 - **Public holidays:** regional anniversary days (e.g. Otago) are missing, and the holiday list only covers 2026–2027.
 - **Minimum wage:** one current rate ($23.95, from 1 April 2026) instead of a dated table, so recalculating older weeks would use today's rate.
 - **Offline:** check-in and check-out still need signal; if a local database upgrade fails, unsent scans on that device can be lost.
-- **Dependencies:** some packages have published security advisories and need updating.
 - **Multi-company:** one installation = one company. Several companies in one database would need a tenant column and stricter policies.
 
 ## Documentation
