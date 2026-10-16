@@ -8,6 +8,7 @@
  */
 import { PickerBreakdown } from '@/services/payroll.service';
 import { TrendDataPoint } from '@/components/charts/TrendLineChart';
+import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 // ── SVG Sparkline builder ──
 export function buildSparkline(data: TrendDataPoint[], color: string): string {
@@ -102,7 +103,7 @@ export function buildCostAnalysis(sortedPickers: PickerBreakdown[]): string {
         <td style="padding:4px 8px;text-align:right;font-size:10px;font-weight:800;color:#0284c7;">${p.buckets}</td>
         <td style="padding:4px 8px;text-align:right;font-size:10px;color:#475569;">$${p.total_earnings.toFixed(2)}</td>
         <td style="padding:4px 8px;text-align:right;font-size:11px;font-weight:800;color:${isBottom ? '#dc2626' : '#059669'};">$${p.costPerBin.toFixed(2)}</td>
-        <td style="padding:4px 8px;text-align:right;font-size:10px;color:${p.effRate < 23.95 ? '#dc2626' : '#059669'};font-weight:700;">$${p.effRate.toFixed(2)}/hr</td>
+        <td style="padding:4px 8px;text-align:right;font-size:10px;color:${p.effRate < PAY_RULES.minWageFloor ? '#dc2626' : '#059669'};font-weight:700;">$${p.effRate.toFixed(2)}/hr</td>
     </tr>`).join('');
     const thStyle = 'padding: 4px 8px; font-size: 8px; text-transform: uppercase; color: #94a3b8;';
     const headers = `<th style="${thStyle}">#</th><th style="${thStyle} text-align: left;">Name</th><th style="${thStyle} text-align: right;">Bins</th><th style="${thStyle} text-align: right;">Earned</th><th style="${thStyle} text-align: right;">$/Bin</th><th style="${thStyle} text-align: right;">$/Hr</th>`;

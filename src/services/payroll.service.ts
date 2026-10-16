@@ -282,6 +282,7 @@ export const payrollService = {
         localBuckets: segs.reduce((s, t) => s + (bySegment.get(t.id)?.total ?? 0), 0),
         localEarnings: segs.reduce((s, t) => s + (bySegment.get(t.id)?.earnings ?? 0), 0),
         isPublicHoliday: holiday,
+        date: targetDate,
       }));
     }
 

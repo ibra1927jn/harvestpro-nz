@@ -30,6 +30,7 @@ import { useVelocityDrilldown } from '@/hooks/useVelocityDrilldown';
 import { UnclosedShiftsAlert } from '@/components/common/UnclosedShiftsAlert';
 import RejectedScansAlert from '@/components/common/RejectedScansAlert';
 import { formatNZD, formatNZDateTime } from '@/utils/nzFormat';
+import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 interface DashboardViewProps {
   stats: HarvestState['stats'];
@@ -136,7 +137,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
     const csv = analyticsService.generateDailyReport(
       crew,
       bucketRecords,
-      { piece_rate: settings.piece_rate || 6.5, min_wage_rate: settings.min_wage_rate || 23.95 },
+      { piece_rate: settings.piece_rate || 6.5, min_wage_rate: settings.min_wage_rate || PAY_RULES.minWageFloor },
       teamLeaders,
       metadata
     );
@@ -331,7 +332,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
             teamLeaders={teamLeaders}
             settings={{
               piece_rate: settings.piece_rate || 6.5,
-              min_wage_rate: settings.min_wage_rate || 23.95,
+              min_wage_rate: settings.min_wage_rate || PAY_RULES.minWageFloor,
             }}
             alerts={alerts}
             onUserSelect={onUserSelect}

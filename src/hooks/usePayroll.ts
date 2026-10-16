@@ -14,6 +14,7 @@ import { logger } from '@/utils/logger';
 import { useAuth } from '@/context/AuthContext';
 import type { PayWeekActionResult } from '@/repositories/payroll.repository';
 import { translate } from '@/i18n';
+import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 /** Semana de pago a mostrar por defecto: el lunes se cierra la semana anterior. */
 export function defaultPayWeek(today: string = todayNZST()): PayWeek {
@@ -110,7 +111,7 @@ export function usePayroll() {
     const summary = payrollData?.summary || { total_buckets: 0, total_hours: 0, total_piece_rate_earnings: 0, total_top_up: 0, total_earnings: 0 };
     const compliance = payrollData?.compliance || { workers_below_minimum: 0, workers_total: 0, compliance_rate: 100 };
     const pickers = payrollData?.picker_breakdown || [];
-    const settings = payrollData?.settings || { bucket_rate: 0, min_wage_rate: 23.95 };
+    const settings = payrollData?.settings || { bucket_rate: 0, min_wage_rate: PAY_RULES.minWageFloor };
 
     return {
         orchardId, isLoading, hasLoadedOnce, error, week, goToWeek, summary, compliance, pickers, settings,

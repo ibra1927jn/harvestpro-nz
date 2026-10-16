@@ -10,10 +10,11 @@ import { auditService } from '@/services/audit.service';
 import { logger } from '@/utils/logger';
 import { HarvestSettings } from '@/types';
 import type { HarvestStoreState, SettingsSlice } from '../storeTypes';
+import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 // --- Default State ---
 export const defaultSettings: HarvestSettings = {
-    min_wage_rate: 23.95, // NZ Minimum Wage 2026-2027
+    min_wage_rate: PAY_RULES.minWageFloor, // NZ Minimum Wage 2026-2027
     piece_rate: 6.50,
     min_buckets_per_hour: 3.6,
     target_tons: 100,

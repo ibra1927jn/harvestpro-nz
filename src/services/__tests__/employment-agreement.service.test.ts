@@ -108,6 +108,13 @@ describe('employmentAgreementService', () => {
       expect(text).toContain('4%');
     });
 
+    // Desde el 1 abril 2026 el mínimo es 3.5% (antes salía "4%" redondeado y el empleador fijo en 3%)
+    it('shows 3.5% KiwiSaver rates without rounding', () => {
+      const text = employmentAgreementService.generate({ ...base, kiwisaverRate: 0.035 });
+      expect(text).toContain('KiwiSaver contribution: 3.5% (employee contribution)');
+      expect(text).toContain('Employer KiwiSaver contribution: 3.5% (compulsory)');
+    });
+
     it('fixed-term agreement includes end date', () => {
       const text = employmentAgreementService.generate({ ...base, endDate: '2026-06-30' });
       expect(text).toContain('2026-06-30');

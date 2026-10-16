@@ -1,3 +1,4 @@
+import { PAY_RULES } from '@/services/harvestMetrics/pay';
 export enum Role {
   MANAGER = 'manager',
   TEAM_LEADER = 'team_leader',
@@ -266,7 +267,7 @@ export interface QualityInspection {
 //    Prefer `settings.min_wage_rate` / `settings.piece_rate` from the Zustand store.
 //    These are kept for backward compatibility and offline-first safety.
 /** @deprecated Use NZ_MINIMUM_WAGE_2026 from constants/nz-law.ts */
-export const MINIMUM_WAGE = 23.95; // NZD Minimum Wage 2026-2027 (fallback)
+export const MINIMUM_WAGE = PAY_RULES.minWageFloor; // NZD Minimum Wage 2026-2027 (fallback)
 /** @deprecated Use `settings.piece_rate` from store when available */
 export const PIECE_RATE = 6.5; // Per bucket (fallback)
 export const MAX_BUCKETS_PER_BIN = 72;

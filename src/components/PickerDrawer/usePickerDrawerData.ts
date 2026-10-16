@@ -12,6 +12,7 @@ import { useHarvestMetrics } from '@/hooks/useHarvestMetrics';
 import { pickerHistoryService, type PickerHistory } from '@/services/picker-history.service';
 import { logger } from '@/utils/logger';
 import type { Picker } from '@/types';
+import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 export interface PickerTodayData {
     bins: number;
@@ -99,7 +100,7 @@ export function usePickerDrawerData(pickerId: string | null): PickerDrawerData {
     const role: 'picker' | 'team_leader' | 'runner' =
         rawRole === 'team_leader' || rawRole === 'runner' ? rawRole : 'picker';
 
-    const minWage = settings?.min_wage_rate ?? 23.95;
+    const minWage = settings?.min_wage_rate ?? PAY_RULES.minWageFloor;
     const pieceRate = settings?.piece_rate ?? 6.5;
 
     return {

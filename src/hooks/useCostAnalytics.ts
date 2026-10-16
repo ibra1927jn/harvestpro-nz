@@ -12,6 +12,7 @@ import { analyticsService } from '@/services/analytics.service';
 import { TrendDataPoint, DayMeta } from '@/components/charts/TrendLineChart';
 import { logger } from '@/utils/logger';
 import { useHarvestMetrics } from '@/hooks/useHarvestMetrics';
+import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 export interface TeamCost {
     teamLeader: string;
@@ -65,8 +66,8 @@ export function useCostAnalytics() {
             buckets: m.bins,
             hours_worked: m.hoursWorked,
             piece_rate_earnings: m.pieceRateEarnings,
-            hourly_rate: settings?.min_wage_rate || 23.95,
-            minimum_required: m.hoursWorked * (settings?.min_wage_rate || 23.95),
+            hourly_rate: settings?.min_wage_rate || PAY_RULES.minWageFloor,
+            minimum_required: m.hoursWorked * (settings?.min_wage_rate || PAY_RULES.minWageFloor),
             top_up_required: m.topUp,
             total_earnings: m.earned,
             is_below_minimum: m.topUp > 0,
@@ -102,8 +103,8 @@ export function useCostAnalytics() {
             buckets: m.bins,
             hours_worked: m.hoursWorked,
             piece_rate_earnings: m.pieceRateEarnings,
-            hourly_rate: settings?.min_wage_rate || 23.95,
-            minimum_required: m.hoursWorked * (settings?.min_wage_rate || 23.95),
+            hourly_rate: settings?.min_wage_rate || PAY_RULES.minWageFloor,
+            minimum_required: m.hoursWorked * (settings?.min_wage_rate || PAY_RULES.minWageFloor),
             top_up_required: m.topUp,
             total_earnings: m.earned,
             is_below_minimum: m.topUp > 0,

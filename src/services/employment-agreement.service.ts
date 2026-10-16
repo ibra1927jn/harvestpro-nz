@@ -21,6 +21,11 @@
  * @module services/employment-agreement
  */
 
+import { NZ_KIWISAVER_EMPLOYER_MIN } from '@/constants/nz-law';
+
+/** 0.035 → "3.5%", 0.04 → "4%" */
+const pct = (rate: number): string => `${Number((rate * 100).toFixed(1))}%`;
+
 export interface AgreementInput {
   employerName: string;
   orchardName: string;
@@ -92,8 +97,8 @@ ${input.isRSE ? 'Status:       RSE (Recognised Seasonal Employer Scheme)\n' : ''
 6. DEDUCTIONS
    - PAYE income tax (as per Tax Administration Act 1994)
    - ACC earner's levy (Accident Compensation Act 2001)
-   - KiwiSaver contribution: ${(input.kiwisaverRate * 100).toFixed(0)}% (employee contribution)
-   - Employer KiwiSaver contribution: 3% (compulsory)
+   - KiwiSaver contribution: ${pct(input.kiwisaverRate)} (employee contribution)
+   - Employer KiwiSaver contribution: ${pct(NZ_KIWISAVER_EMPLOYER_MIN)} (compulsory)
    ${input.isRSE ? '- Note: RSE workers may be exempt from KiwiSaver if visa < 12 months' : ''}
 
 7. LEAVE ENTITLEMENTS (Holidays Act 2003)

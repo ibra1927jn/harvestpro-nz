@@ -86,8 +86,8 @@ describe('NZ Law Constants — Break Requirements (ERA 2000)', () => {
 });
 
 describe('NZ Law Constants — KiwiSaver', () => {
-  it('offers 5 employee contribution rates', () => {
-    expect(NZ_KIWISAVER_RATES).toHaveLength(5);
+  it('offers 6 employee contribution rates (3% only with a temporary reduction)', () => {
+    expect(NZ_KIWISAVER_RATES).toHaveLength(6);
   });
 
   it('minimum employee rate is 3%', () => {
@@ -98,8 +98,8 @@ describe('NZ Law Constants — KiwiSaver', () => {
     expect(NZ_KIWISAVER_RATES[NZ_KIWISAVER_RATES.length - 1]).toBe(0.10);
   });
 
-  it('employer minimum contribution is 3%', () => {
-    expect(NZ_KIWISAVER_EMPLOYER_MIN).toBe(0.03);
+  it('employer minimum contribution is 3.5% from 1 April 2026', () => {
+    expect(NZ_KIWISAVER_EMPLOYER_MIN).toBe(0.035);
   });
 
   it('all rates are between 0 and 1', () => {

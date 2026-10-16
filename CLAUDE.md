@@ -108,5 +108,6 @@ Version: 9.9.0
 - Sin usuarios reales todavía. Una instalación = una empresa con varios huertos.
 - Auditoría externa y pendientes: `docs/audits/2026-10-16-external-audit.md`.
 - Reglas de equipos: el team leader solo gestiona su equipo y puede coger a gente sin equipo; mover, soltar, dar de baja o borrar es de RRHH/admin; el manager mueve equipos de fila (migración 20261016000000_picker_team_rules).
-- Nómina: la app calcula bruto y horas y exporta a Xero/PaySauce. NO hace PAYE, KiwiSaver, ACC ni nóminas.
+- Nómina: la app calcula bruto y horas y exporta a Xero/PaySauce. El 8% de holiday pay de casuales, PAYE, KiwiSaver, ACC y las nóminas los hace el programa de nóminas (decisión del dueño, 2026-10-16).
+- Salario mínimo: tabla con fechas `NZ_MIN_WAGE_HISTORY` en src/services/harvestMetrics/pay.ts (copiar igual a supabase/functions/_shared/pay-rules.ts). Cada año, cuando se publique el Minimum Wage Order, añadir la fila con fecha 1 de abril. No volver a escribir 23.95 a mano: usar `PAY_RULES.minWageFloor` o `minWageFloorOn(fecha)`.
 - Documentación histórica (auditorías de abril, guías de Hetzner/Vercel/Supabase Cloud): `docs/archive/2026-04/`.

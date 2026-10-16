@@ -4,7 +4,7 @@
  * Reparto de horas del día por tramo, fila de hoja de horas, asignación de
  * cubetas a tramos y fila de la hoja diaria con pago. La usa payroll.service.
  */
-import { shiftHours, dayPay, PAY_RULES, type PayDay } from '@/services/harvestMetrics/pay';
+import { shiftHours, dayPay, PAY_RULES, minWageFloorOn, type PayDay } from '@/services/harvestMetrics/pay';
 import type { DailyTimesheetRecord, TimesheetEntry } from './payroll.types';
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
@@ -162,15 +162,17 @@ export function dayTopUpFor(params: {
   localBuckets: number;
   localEarnings: number;
   isPublicHoliday: boolean;
+  /** Día (YYYY-MM-DD): decide el salario mínimo legal. Sin fecha, el de hoy */
+  date?: string;
 }): DayTopUp {
-  const { day, orchardId, hours, minWageRate, pieceRate, localBuckets, localEarnings, isPublicHoliday } = params;
+  const { day, orchardId, hours, minWageRate, pieceRate, localBuckets, localEarnings, isPublicHoliday, date } = params;
   const share = day?.byOrchard.find(o => o.orchardId === orchardId);
   if (day && share) {
     const multiplier = day.isPublicHoliday ? PAY_RULES.publicHolidayMultiplier : 1;
-    const minimum = round2(hours * Math.max(minWageRate, PAY_RULES.minWageFloor) * multiplier);
+    const minimum = round2(hours * Math.max(minWageRate, minWageFloorOn(date)) * multiplier);
     return { topUp: share.topUp, belowMinimum: day.belowMinimum, minimum };
   }
-  const p = dayPay({ buckets: localBuckets, pieceEarnings: localEarnings, hours, pieceRate, minWage: minWageRate, isPublicHoliday });
+  const p = dayPay({ buckets: localBuckets, pieceEarnings: localEarnings, hours, pieceRate, minWage: minWageRate, isPublicHoliday, date });
   return { topUp: p.topUp, belowMinimum: p.belowMinimum, minimum: p.minimumEarnings };
 }
 

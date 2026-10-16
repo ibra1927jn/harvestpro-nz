@@ -12,6 +12,7 @@
  */
 import type { Picker, BucketRecord, HarvestSettings } from '@/types';
 import { shiftHours, payForRange, pieceRateFor, nzDateOf, type HoursSource, type AttendanceRow, type BucketRow } from './pay';
+import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 export interface PickerMetrics {
     pickerId: string;
@@ -46,7 +47,7 @@ export function computePerPicker(
     now: Date = new Date()
 ): PickerMetrics[] {
     const pieceRate = settings.piece_rate || 6.5;
-    const minWage = settings.min_wage_rate || 23.95;
+    const minWage = settings.min_wage_rate || PAY_RULES.minWageFloor;
     const today = nzDateOf(now);
     const varietyRates = (settings.variety_rates ?? []).map(r => ({
         orchardId: r.orchard_id, variety: r.variety, pieceRate: Number(r.piece_rate),

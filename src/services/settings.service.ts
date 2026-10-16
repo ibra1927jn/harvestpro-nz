@@ -1,6 +1,7 @@
 import { logger } from '@/utils/logger';
 import { settingsRepository } from '@/repositories/settings.repository';
 import { HarvestSettings } from '../types';
+import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 export const settingsService = {
     // --- SETTINGS ---
@@ -29,7 +30,7 @@ export const settingsService = {
             logger.error('[SettingsService] Failed to update settings:', msg);
             // Motivo legible para la pantalla
             const reason = /min_wage_floor/i.test(msg)
-                ? 'Minimum wage cannot be below the NZ legal minimum ($23.95/h).'
+                ? `Minimum wage cannot be below the NZ legal minimum ($${PAY_RULES.minWageFloor}/h).`
                 : /fetch|network/i.test(msg)
                     ? 'No connection — settings not saved.'
                     : 'Settings not saved. Please try again.';

@@ -87,7 +87,7 @@ Numbers from the last full run (16 Oct 2026), not targets:
 
 | Check                                        | Result                                          |
 | -------------------------------------------- | ----------------------------------------------- |
-| Unit and component tests (Vitest, 485 files) | **5,344 passing**                               |
+| Unit and component tests (Vitest, 486 files) | **5,354 passing**                               |
 | Database security suite (SQL, RLS and 2FA)   | **771 / 771 passing**                           |
 | TypeScript `--noEmit`                        | 0 errors                                        |
 | ESLint (`--max-warnings 0`)                  | 0 warnings                                      |
@@ -134,15 +134,16 @@ npm run i18n:check             # every key translated in every language
 
 ## Payroll scope
 
-HarvestPro calculates **gross pay and records hours**. It then exports to an external payroll provider (Xero or PaySauce), which handles PAYE, KiwiSaver, ACC levies, payslips and payday filing with Inland Revenue. HarvestPro does **not** do those deductions itself.
+HarvestPro calculates **gross pay and records hours**: piece-rate earnings, the minimum-wage top-up (using the legal minimum in force on each day, from a dated table), public-holiday rates and alternative days. It then exports to the company's payroll provider (Xero or PaySauce).
+
+By design, the payroll provider handles **the 8% pay-as-you-go holiday pay for casual staff**, PAYE, KiwiSaver, ACC levies, payslips and payday filing with Inland Revenue. HarvestPro does not calculate those.
 
 ## Known gaps
 
 From the [16 October 2026 external audit](docs/audits/2026-10-16-external-audit.md). These are open, not hidden:
 
-- **Holiday pay:** the 8% pay-as-you-go holiday pay for casual staff is not calculated (it must be added in the payroll provider for now).
 - **Public holidays:** regional anniversary days (e.g. Otago) are missing, and the holiday list only covers 2026–2027.
-- **Minimum wage:** one current rate ($23.95, from 1 April 2026) instead of a dated table, so recalculating older weeks would use today's rate.
+- **Public holidays (2):** a holiday on a weekend is only applied on the Monday it is moved to, and an unworked public holiday that would otherwise have been a working day is not paid.
 - **Offline:** check-in and check-out still need signal; if a local database upgrade fails, unsent scans on that device can be lost.
 - **Multi-company:** one installation = one company. Several companies in one database would need a tenant column and stricter policies.
 

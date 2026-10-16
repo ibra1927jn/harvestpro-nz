@@ -8,11 +8,12 @@
  * Update this file annually when NZ Minimum Wage Orders change:
  * https://www.employment.govt.nz/hours-and-wages/pay/minimum-wage/minimum-wage-rates
  */
+import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 /**
  * Legal NZ minimum wage from 1 April 2026 (Minimum Wage Order 2026)
  */
-export const NZ_MINIMUM_WAGE_2026 = 23.95; // $/hr
+export const NZ_MINIMUM_WAGE_2026 = PAY_RULES.minWageFloor; // $/hr
 
 /** Legal NZ minimum wage from 1 April 2025 (Minimum Wage Order 2025) — histórico.
  *  Antes decía 23.15, que era la de 2024. */
@@ -41,9 +42,14 @@ export const NZ_REST_BREAK_DURATION_MINUTES = 10;
 export const NZ_MEAL_BREAK_INTERVAL_HOURS = 4;
 export const NZ_MEAL_BREAK_DURATION_MINUTES = 30;
 
-/** KiwiSaver employee contribution rates available (3%, 4%, 6%, 8%, 10%) */
-export const NZ_KIWISAVER_RATES = [0.03, 0.04, 0.06, 0.08, 0.10] as const;
-export const NZ_KIWISAVER_EMPLOYER_MIN = 0.03;
+/**
+ * KiwiSaver employee rates from 1 April 2026 (default 3.5%; 3% only with a
+ * temporary rate reduction approved by Inland Revenue). Informativo: la app
+ * no calcula deducciones, las hace el programa de nóminas.
+ */
+export const NZ_KIWISAVER_RATES = [0.03, 0.035, 0.04, 0.06, 0.08, 0.10] as const;
+/** Minimum employer contribution from 1 April 2026 (was 3%) */
+export const NZ_KIWISAVER_EMPLOYER_MIN = 0.035;
 
 /**
  * Default wage rates per job type — these are the DB fallback values
@@ -51,7 +57,7 @@ export const NZ_KIWISAVER_EMPLOYER_MIN = 0.03;
  * Admin/HR updates these via the Settings → Wage Rates panel.
  */
 export const NZ_DEFAULT_WAGE_RATES: WageRateDefaults = {
-  picker:           23.95,  // Minimum wage floor (Minimum Wage Order 2026)
+  picker:           PAY_RULES.minWageFloor,  // Minimum wage floor (Minimum Wage Order 2026)
   team_leader:      26.00,  // Typically $2-5 above minimum
   runner:           24.00,  // Runner premium
   qc_inspector:     27.50,  // Skilled role

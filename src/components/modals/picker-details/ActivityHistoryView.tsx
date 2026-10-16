@@ -9,6 +9,7 @@ import { Picker } from '../../../types';
 import { isPicker, isTeamLeader } from './roleUtils';
 import { useTranslation } from '@/i18n';
 import { formatNZD } from '@/utils/nzFormat';
+import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 interface ActivityHistoryViewProps {
     picker: Picker;
@@ -30,7 +31,7 @@ const ActivityHistoryView: React.FC<ActivityHistoryViewProps> = React.memo(({
     const speed = picker.hours && picker.hours > 0
         ? Math.round(picker.total_buckets_today / picker.hours) : 0;
     const hourlyRate = picker.hours && picker.hours > 0 ? earnings / picker.hours : 0;
-    const minWage = 23.95; // NZ Minimum Wage 2026-2027
+    const minWage = PAY_RULES.minWageFloor; // NZ Minimum Wage 2026-2027
     const isAboveMinimum = hourlyRate >= minWage;
 
     const teamMembers = useMemo(() => {

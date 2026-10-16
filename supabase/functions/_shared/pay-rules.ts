@@ -22,6 +22,34 @@
  * pay-parity.test.ts falla si las dos copias divergen.
  */
 
+/**
+ * Salario mínimo adulto NZ por fecha de entrada en vigor (Minimum Wage Order
+ * de cada año, siempre desde el 1 de abril). Ordenado de más antiguo a más
+ * nuevo. Cuando se publique el del año siguiente, se añade aquí con su fecha
+ * y el cambio se aplica solo ese día, aunque caiga a mitad de semana.
+ */
+export const NZ_MIN_WAGE_HISTORY: ReadonlyArray<{ readonly from: string; readonly rate: number }> = [
+    { from: '2023-04-01', rate: 22.7 },
+    { from: '2024-04-01', rate: 23.15 },
+    { from: '2025-04-01', rate: 23.5 },
+    { from: '2026-04-01', rate: 23.95 },
+];
+
+/**
+ * Salario mínimo adulto vigente en un día (YYYY-MM-DD). Sin fecha, el más
+ * reciente. Antes del primer registro, el primero.
+ */
+export function minWageFloorOn(dateYMD?: string): number {
+    const last = NZ_MIN_WAGE_HISTORY[NZ_MIN_WAGE_HISTORY.length - 1];
+    if (!dateYMD) return last.rate;
+    const day = dateYMD.slice(0, 10);
+    let rate = NZ_MIN_WAGE_HISTORY[0].rate;
+    for (const row of NZ_MIN_WAGE_HISTORY) {
+        if (row.from <= day) rate = row.rate;
+    }
+    return rate;
+}
+
 export const PAY_RULES = {
     /** Duración del descanso de comida, no pagado */
     mealBreakMinutes: 30,
@@ -32,8 +60,11 @@ export const PAY_RULES = {
      * falta anotarlo; nunca se descuenta un descanso que no se anotó.
      */
     mealBreakAfterHours: 4,
-    /** Salario mínimo adulto NZ, Minimum Wage Order 2026 (desde 1 abril 2026) */
-    minWageFloor: 23.95,
+    /**
+     * Salario mínimo adulto NZ vigente HOY (el último de NZ_MIN_WAGE_HISTORY).
+     * Para pagar un día concreto usar minWageFloorOn(fecha): dayPay ya lo hace.
+     */
+    minWageFloor: NZ_MIN_WAGE_HISTORY[NZ_MIN_WAGE_HISTORY.length - 1].rate,
     /** Multiplicador del mínimo en festivo trabajado */
     publicHolidayMultiplier: 1.5,
     timeZone: 'Pacific/Auckland',
@@ -191,8 +222,10 @@ export interface DayPayInput {
     /** Horas pagables del día (shiftHours().hours) */
     hours: number;
     pieceRate: number;
-    /** Salario mínimo configurado; nunca se usa menos que PAY_RULES.minWageFloor */
+    /** Salario mínimo configurado; nunca se usa menos que el legal de ese día */
     minWage: number;
+    /** Día que se paga (YYYY-MM-DD): decide el salario mínimo legal. Sin fecha, el de hoy */
+    date?: string;
     /** El día es festivo nacional NZ */
     isPublicHoliday?: boolean;
 }
@@ -226,7 +259,7 @@ function holidayPremiumOf(pieceEarnings: number, multiplier: number): number {
  * Para una semana: sumar los dayPay de cada día, nunca agregar antes.
  */
 export function dayPay(input: DayPayInput): DayPay {
-    const minWage = Math.max(input.minWage || 0, PAY_RULES.minWageFloor);
+    const minWage = Math.max(input.minWage || 0, minWageFloorOn(input.date));
     const multiplier = input.isPublicHoliday ? PAY_RULES.publicHolidayMultiplier : 1;
     const minWageApplied = minWage * multiplier;
     const hours = Math.max(0, input.hours);
@@ -718,6 +751,7 @@ function payDayOf(date: string, rows: AttendanceRow[], dayScans: ScanForPay[], c
         pieceRate: ctx.pieceRate,
         minWage: ctx.minWage,
         isPublicHoliday: holiday,
+        date,
     });
     return {
         date,

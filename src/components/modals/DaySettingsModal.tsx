@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import ModalOverlay from '@/components/ui/ModalOverlay';
 import { formatNZD } from '@/utils/nzFormat';
 import { useTranslation } from '@/i18n';
+import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 interface DaySettings {
     bucketRate?: number;
@@ -22,7 +23,7 @@ interface DaySettingsModalProps {
     minWage?: number;
 }
 
-const DaySettingsModal: React.FC<DaySettingsModalProps> = ({ settings, onClose, onSave, minWage = 23.95 }) => {
+const DaySettingsModal: React.FC<DaySettingsModalProps> = ({ settings, onClose, onSave, minWage = PAY_RULES.minWageFloor }) => {
     const { t } = useTranslation();
     const [bucketRate, setBucketRate] = useState(settings.bucketRate?.toString() || '6.50');
     const [targetTons, setTargetTons] = useState(settings.targetTons?.toString() || '40');

@@ -25,6 +25,7 @@ import {
     getStatusConfig,
     type SubView,
 } from './picker-details/roleUtils';
+import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 interface PickerDetailsModalProps {
     picker: Picker;
@@ -47,7 +48,7 @@ const PickerDetailsModal: React.FC<PickerDetailsModalProps> = ({
     onDelete,
     showDeleteButton = false,
     variant: _variant = 'dark',
-    minWage = 23.95,
+    minWage = PAY_RULES.minWageFloor,
     pieceRate = 6.50,
     allCrew = [],
     onSendMessage,

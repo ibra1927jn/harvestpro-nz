@@ -7,6 +7,7 @@ import { settingsService } from '@/services/settings.service';
 import { notificationService } from '@/services/notification.service';
 import { supabase } from '@/services/supabase';
 import { logger } from '@/utils/logger';
+import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 /** Roles que pueden editar el salario mínimo (valor regulado por ley NZ) */
 const WAGE_EDIT_ROLES = new Set(['admin', 'hr_admin']);
@@ -44,7 +45,7 @@ export function useSettings() {
     // Form data
     const [formData, setFormData] = useState<SettingsFormData>({
         piece_rate: settings?.piece_rate ?? 6.5,
-        min_wage_rate: settings?.min_wage_rate ?? 23.95,
+        min_wage_rate: settings?.min_wage_rate ?? PAY_RULES.minWageFloor,
         min_buckets_per_hour: settings?.min_buckets_per_hour ?? 8,
         target_tons: settings?.target_tons ?? 40,
         variety: settings?.variety ?? 'Cherry',

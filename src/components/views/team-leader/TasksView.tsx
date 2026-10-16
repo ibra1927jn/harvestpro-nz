@@ -9,6 +9,7 @@ import { HeatMapView } from '../manager/HeatMapView';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import { useTranslation } from '@/i18n';
 import { formatNZD } from '@/utils/nzFormat';
+import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 const TARGET_BUCKETS_PER_ROW = 60;
 
@@ -20,7 +21,7 @@ const TasksView = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     // Calculate Dynamic Target
-    const minWage = settings?.min_wage_rate || 23.95;
+    const minWage = settings?.min_wage_rate || PAY_RULES.minWageFloor;
     const pieceRate = settings?.piece_rate || 6.50;
     const targetBucketsPerHour = pieceRate > 0 ? (minWage / pieceRate) : 0;
 

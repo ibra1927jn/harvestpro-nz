@@ -11,6 +11,7 @@ import { nowNZST } from '@/utils/nzst';
 import { computePerPicker, dayPay, shiftHours, nzDateOf, isNZPublicHoliday } from '@/services/harvestMetrics';
 import { selectPresentPickers } from '@/services/harvestMetrics/roster';
 import type { BucketRecord } from '@/types';
+import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 // --- Default State ---
 const defaultStats: HarvestStats = {
@@ -75,7 +76,7 @@ export const createIntelligenceSlice: StateCreator<
                 pieceEarnings: m.pieceRateEarnings,
                 hours,
                 pieceRate: settings.piece_rate || 6.5,
-                minWage: settings.min_wage_rate || 23.95,
+                minWage: settings.min_wage_rate || PAY_RULES.minWageFloor,
                 isPublicHoliday: isNZPublicHoliday(nzDateOf(new Date())),
             }) : undefined;
             const startedAt = p.check_in
