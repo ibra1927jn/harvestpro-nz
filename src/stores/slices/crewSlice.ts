@@ -44,6 +44,7 @@ export const createCrewSlice: StateCreator<
             safety_verified: picker.safety_verified || false,
             qcStatus: picker.qcStatus || [],
             team_leader_id: picker.team_leader_id ?? undefined,
+            harness_id: picker.harness_id || undefined,
         };
         set(state => ({ crew: [...state.crew, newPicker] }));
 
@@ -69,6 +70,7 @@ export const createCrewSlice: StateCreator<
             current_row: newPicker.current_row,
             safety_verified: newPicker.safety_verified,
             team_leader_id: newPicker.team_leader_id ?? null,
+            harness_number: newPicker.harness_id || null,
         };
 
         try {
@@ -146,7 +148,10 @@ export const createCrewSlice: StateCreator<
             // Build clean update (no undefined fields)
             const cleanUpdate: Record<string, unknown> = {};
             Object.entries(updates).forEach(([key, value]) => {
-                if (value !== undefined) cleanUpdate[key] = value;
+                if (value === undefined) return;
+                // En la BD el arnés es harness_number (en la app, harness_id)
+                if (key === 'harness_id') cleanUpdate.harness_number = value || null;
+                else cleanUpdate[key] = value;
             });
 
             await pickerCrudRepository.updateById(id, cleanUpdate);

@@ -119,7 +119,7 @@ describe('crewSlice', () => {
         await slice.addPicker({ name: 'Alice', picker_id: 'LOC-900' });
         const row = insert.mock.calls[insert.mock.calls.length - 1][0];
         expect(Object.keys(row).sort()).toEqual(
-            ['current_row', 'id', 'name', 'orchard_id', 'picker_id', 'role', 'safety_verified', 'status', 'team_leader_id']
+            ['current_row', 'harness_number', 'id', 'name', 'orchard_id', 'picker_id', 'role', 'safety_verified', 'status', 'team_leader_id']
         );
 
         insert.mockRejectedValueOnce({ code: '23505', message: 'duplicate key value' });

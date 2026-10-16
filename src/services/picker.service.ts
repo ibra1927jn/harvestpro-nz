@@ -35,7 +35,7 @@ export const pickerService = {
                 status: (p.status !== 'archived' && p.status !== 'inactive' ? 'active' : 'inactive') as 'active' | 'break' | 'issue',
                 safety_verified: p.safety_verified,
                 qcStatus: [1, 1, 1],
-                harness_id: p.picker_id || undefined,
+                harness_id: p.harness_number || undefined,
                 team_leader_id: p.team_leader_id || undefined,
                 orchard_id: p.orchard_id ?? undefined,
                 role: (p.role as Picker['role']) || 'picker'
@@ -99,6 +99,10 @@ export const pickerService = {
         delete dbUpdates.id;
         delete dbUpdates.qcStatus;
         delete dbUpdates.harness_id;
+        // En la BD el arnés es harness_number (en la app, harness_id)
+        if (updates.harness_id !== undefined) {
+            (dbUpdates as Record<string, unknown>).harness_number = updates.harness_id || null;
+        }
 
         if (expectedUpdatedAt) {
             return withOptimisticLock({

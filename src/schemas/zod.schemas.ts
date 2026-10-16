@@ -46,6 +46,7 @@ export const PickerSchema = z.object({
     team_leader_id: z.string().nullable().optional(),
     role: z.string().optional(),
     archived_at: z.string().nullable().optional(),
+    harness_number: z.string().nullable().optional(),
 });
 
 export type ValidatedPicker = z.infer<typeof PickerSchema>;

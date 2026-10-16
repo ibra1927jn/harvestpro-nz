@@ -38,6 +38,7 @@ END $$;
 SELECT sec_test.allow('A.team_leader', 'adds a new picker to own team',
     $$INSERT INTO pickers (picker_id, name, orchard_id, team_leader_id) VALUES ('SECTEST-NEW1', 'New', {A}, {A.team_leader})$$);
 SELECT sec_test.allow('A.team_leader', 'renames a picker of own team', $$UPDATE pickers SET name = 'Renamed' WHERE id = {A.picker}$$);
+SELECT sec_test.allow('A.team_leader', 'sets the harness number of own picker', $$UPDATE pickers SET harness_number = 'H-17' WHERE id = {A.picker}$$);
 SELECT sec_test.allow('A.team_leader', 'moves own team to a row', $$UPDATE pickers SET current_row = 4 WHERE id = {A.picker}$$);
 SELECT sec_test.allow('A.team_leader', 'takes a picker who has no team', $$UPDATE pickers SET team_leader_id = auth.uid() WHERE id = {A.picker_free}$$);
 
@@ -55,6 +56,7 @@ SELECT sec_test.deny('A.team_leader', 'cannot bring back an archived picker', $$
 -- ── Team leader: gente de otros equipos ─────────────────────────────────────
 SELECT sec_test.deny('A.team_leader', 'cannot take a picker from another team', $$UPDATE pickers SET team_leader_id = auth.uid() WHERE id = {A.picker_tl2}$$);
 SELECT sec_test.deny('A.team_leader', 'cannot rename a picker of another team', $$UPDATE pickers SET name = 'Hacked' WHERE id = {A.picker_tl2}$$);
+SELECT sec_test.deny('A.team_leader', 'cannot set the harness number on another team', $$UPDATE pickers SET harness_number = 'H-99' WHERE id = {A.picker_tl2}$$);
 SELECT sec_test.deny('A.team_leader', 'cannot mark safety on another team', $$UPDATE pickers SET safety_verified = false WHERE id = {A.picker_tl2}$$);
 SELECT sec_test.deny('A.team_leader', 'cannot archive a picker of another team', $$UPDATE pickers SET status = 'archived' WHERE id = {A.picker_tl2}$$);
 SELECT sec_test.deny('A.team_leader', 'cannot touch a picker of another orchard', $$UPDATE pickers SET team_leader_id = auth.uid() WHERE id = {B.picker}$$);

@@ -5,7 +5,7 @@ import type { PickerPayload } from './types';
  * Procesa items de sync tipo PICKER — crea o actualiza pickers en Supabase.
  */
 export async function processPicker(payload: PickerPayload): Promise<void> {
-  const { id, picker_id, name, orchard_id, status, role, team_leader_id } = payload;
+  const { id, picker_id, name, orchard_id, status, role, team_leader_id, harness_id } = payload;
 
   const existing = await pickerCrudRepository.query(undefined, orchard_id);
   const match = existing.find((p: Record<string, unknown>) => p.id === id || p.picker_id === picker_id);
@@ -15,6 +15,7 @@ export async function processPicker(payload: PickerPayload): Promise<void> {
     if (status !== undefined) updates.status = status;
     if (role !== undefined) updates.role = role;
     if (team_leader_id !== undefined) updates.team_leader_id = team_leader_id;
+    if (harness_id !== undefined) updates.harness_number = harness_id || null;
     await pickerCrudRepository.updateById(match.id as string, updates);
   } else {
     await pickerCrudRepository.insert({
@@ -25,6 +26,7 @@ export async function processPicker(payload: PickerPayload): Promise<void> {
       status: status || 'active',
       role: role || 'picker',
       team_leader_id: team_leader_id || null,
+      harness_number: harness_id || null,
     });
   }
 }

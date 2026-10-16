@@ -96,7 +96,7 @@ export const attendanceService = {
           | 'issue',
         safety_verified: p.safety_verified,
         qcStatus: [1, 1, 1],
-        harness_id: p.picker_id || undefined,
+        harness_id: p.harness_number || undefined,
         team_leader_id: p.team_leader_id || undefined,
         orchard_id: p.orchard_id,
         role: 'picker',

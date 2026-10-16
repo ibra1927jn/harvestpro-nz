@@ -1178,6 +1178,7 @@ export type Database = {
           created_at: string | null
           current_row: number | null
           deleted_at: string | null
+          harness_number: string | null
           id: string
           name: string
           orchard_id: string | null
@@ -1195,6 +1196,7 @@ export type Database = {
           created_at?: string | null
           current_row?: number | null
           deleted_at?: string | null
+          harness_number?: string | null
           id?: string
           name: string
           orchard_id?: string | null
@@ -1212,6 +1214,7 @@ export type Database = {
           created_at?: string | null
           current_row?: number | null
           deleted_at?: string | null
+          harness_number?: string | null
           id?: string
           name?: string
           orchard_id?: string | null

@@ -75,6 +75,7 @@ export type PickerPayload = {
     status?: string;
     role?: string;
     team_leader_id?: string | null;
+    harness_id?: string;
     [key: string]: unknown;
 };
 
