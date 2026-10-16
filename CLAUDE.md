@@ -4,7 +4,7 @@
 React 19 + TypeScript (strict, no `any`, allowJs: false) + Vite 7 + Tailwind 3
 Supabase (PostgreSQL, Edge Functions, RLS) + Capacitor 8 (Android)
 State: Zustand (7 slices) + Dexie v3 (IndexedDB offline) + TanStack React Query
-Validacion: Zod 4 | Monitoring: Sentry + PostHog (lazy) | i18n: 5 idiomas
+Validacion: Zod 4 | Monitoring: Sentry + PostHog (lazy) | i18n: 7 idiomas (en, es, mi, sm, to, hi, tl)
 Crypto: AES-256-GCM via Web Crypto API
 Version: 9.9.0
 
@@ -36,17 +36,17 @@ Version: 9.9.0
 - `src/hooks/` — 40+ custom hooks
 - `src/schemas/` — Zod: zod.schemas.ts (boundary validation) + api.schemas.ts (Edge Function responses)
 - `src/types/` — app.types.ts + database.types.ts (auto-gen) + result.ts (Result<T>)
-- `src/config/` — env validation, sentry, analytics, queryClient, crop-profiles, nz-tax-rates
+- `src/config/` — env validation, sentry, analytics, queryClient, crop-profiles, mfa
 - `src/context/` — AuthContext (estado + signIn/signOut/switchOrchard; el resto en `context/auth/`: lifecycle, keep-alive del token, registro con whitelist, modales re-auth/privacidad) + MessagingContext
 - `src/utils/` — money (NZD), nzst (fechas/semanas NZ), csvParser, logger
 - `src/constants/` — nz-law.ts (compliance legal NZ)
 
 ### Supabase
-- `supabase/migrations/` — 9 activas (000_baseline + 8 incrementales)
-- `supabase/functions/` — 11 Edge Functions: approve-timesheet, calculate-payroll, check-compliance, detect-anomalies, manage-admin, manage-attendance, provision-orchard, record-bucket, send-push, submit-audit-log, api-v1
-- `supabase/functions/_shared/` — cors.ts, security.ts (rate limit, Zod validation, CORS allowlist)
-- `supabase/seeds/` — 6 seed files
-- 30+ tablas con RLS, optimistic locking, soft deletes
+- `supabase/migrations/` — 90 migraciones (las viejas en archive/ no se aplican)
+- `supabase/functions/` — 12 Edge Functions: approve-timesheet, calculate-payroll, check-compliance, close-pay-week, detect-anomalies, manage-admin, manage-attendance, provision-orchard, record-bucket, send-push, submit-audit-log, api-v1 (api-v1 sin tabla api_keys todavía)
+- `supabase/functions/_shared/` — pay-rules.ts (idéntico a src/services/harvestMetrics/pay.ts, lo vigila pay-parity.test.ts), payroll-calc.ts, security.ts, scan-time.ts, cors.ts
+- `supabase/seeds/` — seeds locales (orden: seed_00_local_bootstrap → seed_2weeks_local → seed_role_users)
+- 35 tablas, RLS en todas, 2FA (aal2) exigido por política para roles privilegiados
 
 ### Offline
 - Dexie IndexedDB con sync queue (10 tipos con processor)
@@ -88,7 +88,7 @@ Version: 9.9.0
 ## Variables de entorno (solo keys, NUNCA valores)
 - VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (requeridas)
 - VITE_SENTRY_DSN, VITE_POSTHOG_KEY, VITE_POSTHOG_HOST
-- VITE_VAPID_PUBLIC_KEY, VITE_GEMINI_API_KEY
+- VITE_VAPID_PUBLIC_KEY, VITE_MFA_ENFORCE (solo dev)
 - VITE_APP_VERSION, VITE_ENABLE_ANALYTICS, VITE_LOG_LEVEL
 - TEST_DEMO_PASSWORD, TEST_MANAGER_PASSWORD, TEST_ACID_PASSWORD, TEST_STRESS_PASSWORD (solo E2E)
 
@@ -103,7 +103,10 @@ Version: 9.9.0
 - Security: OWASP ZAP scan
 - Tests en CI necesitan VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY como env vars (placeholders OK)
 
-## Estado actual (ver PROGRESS.md y ERRORES.md para detalle)
-- Todos los P0 resueltos
-- 5 TS errors bloqueantes resueltos (2026-03-29)
-- Pendiente: tests de schemas Zod, routes.tsx, MFAGuard, indexes de DB
+## Estado actual (2026-10-16)
+- `main` al día (antes la pila de ramas iba 254 commits por delante). Trabajo nuevo: ramas cortas que se fusionan en 1–2 días, nunca apiladas.
+- Sin usuarios reales todavía. Una instalación = una empresa con varios huertos.
+- Auditoría externa y pendientes: `docs/audits/2026-10-16-external-audit.md`.
+- Reglas de equipos: el team leader solo gestiona su equipo y puede coger a gente sin equipo; mover, soltar, dar de baja o borrar es de RRHH/admin; el manager mueve equipos de fila (migración 20261016000000_picker_team_rules).
+- Nómina: la app calcula bruto y horas y exporta a Xero/PaySauce. NO hace PAYE, KiwiSaver, ACC ni nóminas.
+- Documentación histórica (auditorías de abril, guías de Hetzner/Vercel/Supabase Cloud): `docs/archive/2026-04/`.

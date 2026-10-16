@@ -1,7 +1,7 @@
 /**
  * MFA flow e2e — enroll → verify → login with TOTP.
  *
- * Requiere que MFA esté habilitado en el servidor (ver docs/MFA_ENABLE_FIX_2026_04_19.md).
+ * Requiere que MFA esté habilitado en el servidor (ver docs/archive/2026-04/MFA_ENABLE_FIX_2026_04_19.md).
  * Si MFA NO está habilitado, los tests hacen skip con mensaje claro.
  *
  * El test usa el rol 'manager' como sujeto (manager@harvestpro.nz / 111111).
@@ -58,7 +58,7 @@ test.describe('MFA TOTP flow', () => {
     const mfaEnabled = settings.mfa_totp_enroll_enabled === true;
     test.skip(
       !mfaEnabled,
-      'MFA TOTP NO enabled en server. Aplicar docs/MFA_ENABLE_FIX_2026_04_19.md primero.',
+      'MFA TOTP NO enabled en server. Aplicar docs/archive/2026-04/MFA_ENABLE_FIX_2026_04_19.md primero.',
     );
 
     // Paso 1 — ir a la página de settings/profile del manager (ruta depende del app)

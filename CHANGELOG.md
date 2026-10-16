@@ -2,6 +2,23 @@
 
 All notable changes to HarvestPro NZ will be documented in this file.
 
+## [Unreleased] - 2026-10-16
+
+### Changed
+
+- `main` brought up to date: the October development line (254 commits: people model, pay-week close, server-side 2FA, timesheet review, offline hardening, 7 languages, a11y and mobile e2e) merged by fast-forward.
+- Team rules enforced in the database: team leaders manage only their own team and can take someone without a team; only HR/admin move, release, archive or delete people; managers can no longer delete staff rows (`20261016000000_picker_team_rules`). The team leader screen no longer shows a remove button.
+- Documentation rewritten: README, `docs/ARCHITECTURE.md`, `CLAUDE.md`; historical audits and retired deployment guides moved to `docs/archive/2026-04/`.
+
+### Added
+
+- External audit report: `docs/audits/2026-10-16-external-audit.md`.
+- 35 database security checks for team permissions (`supabase/tests/security/25_picker_teams.sql`); suite now 769 checks.
+
+### Removed
+
+- `scripts/setup-db.cjs` (credentials for a deleted Supabase Cloud project), tracked `supabase/.temp/` files and log dumps.
+
 ## [9.9.0] - 2026-03-24
 
 ### Fixed — Technical Debt Remediation (Sprint 18)

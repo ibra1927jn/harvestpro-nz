@@ -1,532 +1,170 @@
-# 🌿 HarvestPro NZ — Industrial Orchard Management Platform
+# HarvestPro NZ
 
-![Version](https://img.shields.io/badge/version-9.9.0-green)
-![Build](https://img.shields.io/badge/build-passing-brightgreen)
-![Tests](https://img.shields.io/badge/tests-3800%2B%20pass-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-~50%25%20stmts-yellow)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)
-![React](https://img.shields.io/badge/React-19-61DAFB)
-![Lint](https://img.shields.io/badge/lint-0%20errors-brightgreen)
-![LOC](https://img.shields.io/badge/LOC-~92k-informational)
-![Security](https://img.shields.io/badge/adversarial%20audit-24%20fixes-critical)
-![a11y](https://img.shields.io/badge/a11y-WCAG%202.1-blue)
-![Storybook](https://img.shields.io/badge/Storybook-19%20components-FF4785)
-![E2E](https://img.shields.io/badge/E2E-Playwright-45ba4b)
+**Offline-first harvest management for New Zealand orchards** — bucket scanning, team and row management, timesheets, piece-rate pay with minimum-wage top-up, HR and quality control, in one installable web app with eight role-based workspaces.
 
-> Real-time harvest tracking, wage compliance, and offline-first operations for New Zealand orchards.
+![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
+![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3ECF8E?logo=supabase&logoColor=white)
+![PWA](https://img.shields.io/badge/PWA-offline--first-5A0FC8)
+![Android](https://img.shields.io/badge/Android-Capacitor%208-3DDC84?logo=android&logoColor=white)
+![Status](https://img.shields.io/badge/status-pre--pilot-orange)
+
+> **Status (October 2026):** in active development towards a first pilot, running on a local Supabase stack. It has **no production users yet**. Known gaps are listed openly under [Known gaps](#known-gaps) — see the latest [external audit](docs/audits/2026-10-16-external-audit.md).
 
 ---
 
-## 🚀 What It Does
+## The problem
 
-HarvestPro NZ bridges the gap between field and office with four core pillars:
+A New Zealand orchard in harvest runs on paper tallies, WhatsApp groups and a spreadsheet that someone rebuilds every Friday for payroll. Pickers are paid per bin or bucket, but the law says every hour worked must still reach the minimum wage. People move between orchards of the same company during the week, signal in the rows is unreliable, and the crew speaks half a dozen languages.
 
-| Pillar                | Description                                                                                                                                      |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Real-Time Ledger**  | Immutable record of every bin and bucket via mobile scanning — no paper, no human error                                                          |
-| **Wage Shield**       | Built-in payroll audit and minimum wage compliance to prevent legal disputes                                                                     |
-| **Offline-First**     | Dexie-based sync engine with DLQ, Zod-validated payloads, conflict resolution, JWT silent refresh, and delta sync — crews work 100% disconnected |
-| **Central Command**   | CSV imports, timesheet corrections, multi-platform payroll exports (Xero, PaySauce)                                                              |
-| **HR & Contracts**    | Employee management, contract lifecycle tracking, compliance alerts                                                                              |
-| **Fleet & Logistics** | Vehicle tracking, transport request dispatch, zone-based bin inventory                                                                           |
+HarvestPro replaces that with one app that works **without signal in the field**, records every bucket against the right person, row and orchard, and turns the week's scans and hours into a pay calculation that payroll can review, close and export.
 
----
+## What it does
 
-## 👥 Role-Based System (8 Roles)
+| Role              | Workspace highlights                                                                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Runner**        | Scan picker QR codes for each bucket (works offline), bin and warehouse view, messaging                                                                       |
+| **Team leader**   | Own team roster, check-in / check-out and breaks, row assignments, team messaging                                                                             |
+| **Manager**       | Live orchard dashboard, row map and heat map, team-to-row assignment with row history, timesheet review, cost analytics, anomaly alerts, MPI export readiness |
+| **QC inspector**  | Fruit quality inspections with photos, grade distribution, trends                                                                                             |
+| **HR admin**      | Employees, contracts, HR documents (secure storage), calendar, seasonal planning, team moves                                                                  |
+| **Payroll admin** | Weekly timesheets, approve or reject hours, pay-week close with locked snapshot, wage calculator, Xero and PaySauce CSV export                                |
+| **Logistics**     | Bin inventory, fleet, transport requests and history                                                                                                          |
+| **Admin**         | Company setup wizard, orchards, users and invitations                                                                                                         |
 
-The platform uses a hierarchical role system. Each role sees a dedicated dashboard:
+Across every role: **7 languages** (English, Spanish, Te Reo Māori, Samoan, Tongan, Hindi, Tagalog), installable on phones as a PWA or Android app, and two-factor authentication for privileged accounts.
 
-```text
-┌───────────────────────────────────────────────────────┐
-│                    MANAGER                            │
-│  • Strategic dashboard (velocity, cost, earnings)     │
-│  • Productivity heatmaps                              │
-│  • Broadcast messaging                                │
-│  • CSV bulk import / Payroll export                    │
-│  • Timesheet correction (audit trail)                 │
-│  • 2FA enforced                                       │
-├───────────────────────────────────────────────────────┤
-│               TEAM LEADER                             │
-│  • Attendance & check-in/out                          │
-│  • Row assignments                                    │
-│  • Crew management                                    │
-│  • Transport request submission                       │
-├───────────────────────────────────────────────────────┤
-│              BUCKET RUNNER                            │
-│  • QR / sticker code scanning                         │
-│  • Bin delivery tracking                              │
-│  • Warehouse management (works fully offline)         │
-├───────────────────────────────────────────────────────┤
-│              QC INSPECTOR                             │
-│  • Quality grading (A/B/C/Reject)                     │
-│  • Grade distribution analytics                       │
-│  • Inspection history                                 │
-├───────────────────────────────────────────────────────┤
-│              HR ADMIN                                 │
-│  • Employee directory with search                     │
-│  • Contract management (permanent/seasonal/casual)    │
-│  • Payroll overview with Wage Shield indicators       │
-│  • Compliance alerts (expiring contracts, visa)       │
-├───────────────────────────────────────────────────────┤
-│           LOGISTICS COORDINATOR                       │
-│  • Fleet management (tractor/vehicle tracking)        │
-│  • Zone map with real-time asset positions             │
-│  • Transport request dispatch & assignment            │
-│  • Bin inventory (fill status, transit tracking)      │
-├───────────────────────────────────────────────────────┤
-│             PAYROLL ADMIN                             │
-│  • Timesheet approval workflow                        │
-│  • Payroll calculations & exports                     │
-│  • Wage Shield compliance monitoring                  │
-├───────────────────────────────────────────────────────┤
-│                 ADMIN                                 │
-│  • Full system administration                         │
-│  • Dead letter queue management                       │
-│  • Security dashboard                                 │
-└───────────────────────────────────────────────────────┘
+## Highlights
+
+- **Offline scanning that does not lose or duplicate buckets.** Each scan gets a device-generated ID and is written to IndexedDB before the runner sees "saved". Uploads are batched and idempotent on the server, so a lost response or a resend never creates a second bucket. Rejected scans go to a dead-letter queue that managers can see.
+- **One pay engine, two places.** The same pay rules run in the browser (instant feedback) and in an Edge Function (the source of truth). The two files are byte-identical and a test fails if they ever diverge. A differential test runs a realistic week — Matariki, orchard switches, a shift past midnight — against an independent reference implementation, to the cent.
+- **NZ pay rules built in:** piece-rate with daily minimum-wage top-up, public holidays at time-and-a-half with alternative days, only recorded breaks deducted, weekly pay summed across all orchards a person worked at.
+- **Pay weeks that stay closed.** Closing a week stores a snapshot; database triggers then lock that week's attendance and scans.
+- **Security in the database, not just the UI.** Row-level security on every table, role checks re-read from the database on the server, 2FA (`aal2`) enforced by Postgres policies for admin, manager, payroll and HR accounts, and a SQL security suite with **769 checks** covering who can read and change what.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Device["Phone / tablet (PWA or Android)"]
+    UI["React 19 UI<br/>8 role workspaces"]
+    Store["Zustand store"]
+    Dexie[("IndexedDB (Dexie)<br/>scans, outbox,<br/>dead-letter queue")]
+    UI --> Store --> Dexie
+  end
+
+  subgraph Supabase["Supabase (local Docker today)"]
+    Auth["Auth + 2FA"]
+    PG[("Postgres<br/>35 tables, RLS on all")]
+    Edge["Edge Functions (Deno)<br/>record-bucket · calculate-payroll<br/>close-pay-week · approve-timesheet<br/>manage-attendance · check-compliance · …"]
+    Storage[("Storage<br/>HR documents, QC photos")]
+  end
+
+  Dexie -- "batched, idempotent sync" --> Edge
+  Store -- "queries (RLS)" --> PG
+  Edge --> PG
+  UI --> Auth
+  UI --> Storage
+  Edge -- "CSV export" --> Payroll["Xero / PaySauce"]
 ```
 
----
+More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## 🛠️ Tech Stack
+## Tech stack
 
-| Layer                 | Technology                                                                                       |
-| --------------------- | ------------------------------------------------------------------------------------------------ |
-| **Frontend**          | React 19 + TypeScript 5.3 + Vite 7                                                               |
-| **Styling**           | Tailwind CSS 3.4 + CSS Custom Properties (dynamic theming)                                       |
-| **UI Docs**           | Storybook 10 (19 component stories with autodocs)                                                |
-| **State**             | Zustand 5 (global) + React Query 5 (server) + React Context (auth, messaging)                    |
-| **Validation**        | Zod 4 (runtime schema validation at API boundaries)                                              |
-| **Database**          | Supabase (PostgreSQL) with RLS — 26 tables, 40+ policies, 20+ functions                          |
-| **Offline Storage**   | Dexie.js (IndexedDB) — sync queue, dead-letter queue, conflict store, user cache                 |
-| **Sync Engine**       | Delta sync (`updated_at`-based) with zombie purge, 2-min jitter, Dexie DLQ, optimistic locking   |
-| **Auth**              | Supabase Auth + MFA (TOTP) for managers                                                          |
-| **PWA**               | Service Workers via vite-plugin-pwa (43 precached entries)                                       |
-| **Virtual Scrolling** | react-virtuoso for large lists                                                                   |
-| **CSV Parsing**       | PapaParse (bulk import with flexible column aliases)                                             |
-| **Testing**           | Vitest + Testing Library (3,800+ tests across 344 suites, incl. 89 integration) + Playwright E2E |
-| **i18n**              | Custom i18n service with EN/ES/MI translations                                                   |
+| Layer         | Choices                                                                                                                     |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Frontend      | React 19, TypeScript (strict, no `any`), Vite 7, Tailwind 3, React Router 7                                                 |
+| State & data  | Zustand, TanStack Query, Dexie (IndexedDB), Zod 4 at every boundary                                                         |
+| Backend       | Supabase: Postgres with RLS, Auth with TOTP 2FA, Storage, Deno Edge Functions                                               |
+| Mobile        | PWA with service worker, Capacitor 8 for Android                                                                            |
+| Quality       | Vitest, Testing Library, Playwright (desktop and mobile), Stryker mutation testing, SQL security suite, Deno function tests |
+| Observability | Sentry (text masked), PostHog (opt-in)                                                                                      |
 
----
+## Quality, measured
 
-## 📦 Quick Start
+Numbers from the last full run (16 Oct 2026), not targets:
 
-### 1. Clone & Install
+| Check                                        | Result                                          |
+| -------------------------------------------- | ----------------------------------------------- |
+| Unit and component tests (Vitest, 484 files) | **5,340 passing**                               |
+| Database security suite (SQL, RLS and 2FA)   | **769 / 769 passing**                           |
+| TypeScript `--noEmit`                        | 0 errors                                        |
+| ESLint (`--max-warnings 0`)                  | 0 warnings                                      |
+| End-to-end specs (Playwright)                | 40 specs, desktop and mobile                    |
+| Edge Function tests (Deno)                   | 16 files, including a payroll differential test |
+
+## Getting started (local)
+
+**Requirements:** Node 22, Docker, and the [Supabase CLI](https://supabase.com/docs/guides/cli).
 
 ```bash
 git clone https://github.com/ibra1927jn/harvestpro-nz.git
 cd harvestpro-nz
-npm install
+npm ci
+
+# Local Supabase (Postgres, Auth, Storage, Edge runtime) in Docker
+supabase start
+supabase db reset          # applies all migrations
+
+# Demo data, in this order
+psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f supabase/seeds/seed_00_local_bootstrap.sql
+psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f supabase/seeds/seed_2weeks_local.sql
+psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f supabase/seeds/seed_role_users.sql
+
+cp .env.example .env.local   # then paste the API URL and anon key printed by `supabase start`
+npm run dev                  # http://localhost:5173
 ```
 
-### 2. Environment Variables
+**Demo accounts** (local seeds only): `manager@`, `lead@`, `runner@`, `qc@`, `payroll@`, `hr@`, `logistics@`, `admin@harvestpro.nz` — password `111111`.
 
-Create `.env.local` in the project root:
+Privileged accounts need 2FA. On a development machine you can switch it off with `VITE_MFA_ENFORCE=false` in `.env.local` **and** `scripts/dev-disable-mfa.sql` on the database (both are needed: the database enforces it too).
 
-```env
-# Supabase (required)
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-
-# Sentry (optional)
-VITE_SENTRY_DSN=https://your-sentry-dsn
-
-# PostHog (optional)
-VITE_POSTHOG_KEY=your-posthog-key
-VITE_POSTHOG_HOST=https://app.posthog.com
-```
-
-### 3. Database Setup
-
-For a **fresh database**, use the consolidated schema:
+### Useful commands
 
 ```bash
-# Single source of truth (26 tables, all RLS, all functions)
-supabase/schema_v3_consolidated.sql
-
-# Seed data
-supabase/seeds/seed_blocks_and_rows.sql         # Orchard blocks A/B/C + rows
-scripts/seed_demo_hr_logistics.sql              # Demo accounts (HR, Logistics roles)
+npm test                       # unit and component tests
+npm run lint                   # ESLint, zero warnings allowed
+npm run build                  # type-check + production build
+npm run test:e2e               # Playwright
+scripts/test-db-security.sh    # SQL security suite against the local database
+npm run test:functions         # Edge Function tests (Deno, needs .env.local)
+npm run i18n:check             # every key translated in every language
 ```
 
-> **Note**: If your database already has tables from earlier migrations, do NOT run V3. It is a reference document for fresh setups only.
+## Payroll scope
 
-### 4. Start Dev Server
+HarvestPro calculates **gross pay and records hours**. It then exports to an external payroll provider (Xero or PaySauce), which handles PAYE, KiwiSaver, ACC levies, payslips and payday filing with Inland Revenue. HarvestPro does **not** do those deductions itself.
 
-```bash
-npm run dev
-# → http://localhost:5173
-```
+## Known gaps
 
-### 5. Test Accounts
+From the [16 October 2026 external audit](docs/audits/2026-10-16-external-audit.md). These are open, not hidden:
 
-| Role          | Email                     | Password |
-| ------------- | ------------------------- | -------- |
-| Manager       | <manager@harvestpro.nz>   | 111111   |
-| Team Leader   | <lead@harvestpro.nz>      | 111111   |
-| Bucket Runner | <runner@harvestpro.nz>    | 111111   |
-| QC Inspector  | <qc@harvestpro.nz>        | 111111   |
-| Payroll Admin | <payroll@harvestpro.nz>   | 111111   |
-| Admin         | <admin@harvestpro.nz>     | 111111   |
-| HR Admin      | <hr@harvestpro.nz>        | 111111   |
-| Logistics     | <logistics@harvestpro.nz> | 111111   |
+- **Holiday pay:** the 8% pay-as-you-go holiday pay for casual staff is not calculated (it must be added in the payroll provider for now).
+- **Public holidays:** regional anniversary days (e.g. Otago) are missing, and the holiday list only covers 2026–2027.
+- **Minimum wage:** one current rate ($23.95, from 1 April 2026) instead of a dated table, so recalculating older weeks would use today's rate.
+- **Offline:** check-in and check-out still need signal; if a local database upgrade fails, unsent scans on that device can be lost.
+- **Dependencies:** some packages have published security advisories and need updating.
+- **Multi-company:** one installation = one company. Several companies in one database would need a tenant column and stricter policies.
 
----
+## Documentation
 
-## 📁 Project Structure
+| Document                                                                                                   | What it covers                                               |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                                                               | How the pieces fit: offline sync, pay engine, security model |
+| [docs/audits/2026-10-16-external-audit.md](docs/audits/2026-10-16-external-audit.md)                       | Latest audit: findings, what was fixed, what is open         |
+| [docs/PATTERNS.md](docs/PATTERNS.md)                                                                       | React and TypeScript patterns used in the codebase           |
+| [docs/MANUAL_OPERACIONES.md](docs/MANUAL_OPERACIONES.md)                                                   | Field manual for team leaders (Spanish)                      |
+| [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)                                                                 | 15-minute demo walkthrough                                   |
+| [docs/DATA_RETENTION_POLICY.md](docs/DATA_RETENTION_POLICY.md)                                             | What is kept and for how long                                |
+| [docs/legal/](docs/legal/)                                                                                 | Privacy policy, terms, data processing agreement (drafts)    |
+| [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY_RULES.md](SECURITY_RULES.md) · [CHANGELOG.md](CHANGELOG.md) | Working rules and history                                    |
+| [docs/archive/](docs/archive/)                                                                             | Earlier audits and retired guides (historical)               |
 
-```text
-src/
-├── components/              # ~160 TSX components
-│   ├── common/              # Shared components (SyncBridge, ErrorBoundary, VirtualList, etc.)
-│   │   └── setup-wizard/    # ← Refactored: OrchardStep, TeamsStep, RatesStep, SummaryStep
-│   ├── modals/              # 25 modals (AddPicker, ImportCSV, Export, Scanner, etc.)
-│   ├── ui/                  # 19 UI primitives + Storybook stories
-│   ├── views/
-│   │   ├── manager/         # 20 components (refactored god files)
-│   │   │   ├── DashboardView   → KPIs (orchestrator → DashboardStatCard, DashboardEmptyState)
-│   │   │   ├── anomaly/        → AnomalyCard, SmartDismissals, anomaly.constants
-│   │   │   ├── RowAssignmentModal → Orchestrator → RowTeamDisplay, RowGrid
-│   │   │   ├── TeamsView       → Crew management + CSV import
-│   │   │   ├── TimesheetEditor → Admin correction with audit trail
-│   │   │   ├── HeatMapView     → Row productivity visualization
-│   │   │   ├── SettingsView    → Harvest config + compliance toggles
-│   │   │   ├── WageShieldPanel → Compliance alerts
-│   │   │   └── DayClosureButton → End-of-day lockdown
-│   │   ├── team-leader/     # 11 components
-│   │   ├── runner/          # 4 components
-│   │   ├── qc/              # 4 components (Phase 2)
-│   │   │   ├── InspectTab      → Picker search + grade entry (Turbo Mode)
-│   │   │   ├── HistoryTab      → Recent inspections list
-│   │   │   ├── StatsTab        → Grade distribution analytics
-│   │   │   └── DistributionBar → Shared visualization
-│   │   ├── hhrr/            # 5 components (Phase 2)
-│   │   │   ├── EmployeesTab    → Employee directory + search
-│   │   │   ├── ContractsTab    → Contract lifecycle management
-│   │   │   ├── PayrollTab      → Payroll overview + wage shield
-│   │   │   ├── DocumentsTab    → Document management
-│   │   │   └── CalendarTab     → Calendar view
-│   │   └── logistics/       # 5 components (Phase 2)
-│   │       ├── FleetTab        → Vehicle tracking + zone map
-│   │       ├── BinsTab         → Bin inventory + fill status
-│   │       ├── RequestsTab     → Transport request cards
-│   │       ├── RoutesTab       → Route planning
-│   │       └── HistoryTab      → Transport log
-│   ├── AuditLogViewer.tsx   # Immutable audit trail viewer
-│   ├── SecurityDashboard.tsx # Admin security overview
-│   └── MFASetup.tsx         # TOTP 2FA enrollment
-├── context/                 # AuthContext, MessagingContext
-├── hooks/                   # 20+ custom hooks (useToast, useInspectionHistory, etc.)
-├── pages/                   # 9 pages
-│   ├── Manager.tsx          → Orchard manager dashboard (7 tabs)
-│   ├── TeamLeader.tsx       → Team leader dashboard
-│   ├── Runner.tsx           → Bucket runner dashboard
-│   ├── QualityControl.tsx   → QC inspector (decomposed → 3 tabs)
-│   ├── HHRR.tsx             → HR department (5 tabs)
-│   ├── LogisticsDept.tsx    → Logistics department (5 tabs)
-│   ├── Payroll.tsx          → Payroll admin dashboard + wage calculator
-│   ├── Admin.tsx            → System admin dashboard (orchestrator → admin/)
-│   │   └── admin/           → AdminOrchardsTab, AdminUsersTab, AdminComplianceTab
-│   └── Login.tsx            → Authentication (email/password + MFA)
-├── services/                # ~55 service files + test files
-│   ├── hhrr.service          → Employee/contract queries (Supabase)
-│   ├── logistics-dept.service → Fleet/transport queries (Supabase)
-│   ├── payroll.service       → Payroll calculations + timesheets
-│   ├── qc.service            → Quality inspections
-│   ├── sync.service          → Offline queue (8 types + Zod validation)
-│   ├── offline.service       → Dexie IndexedDB queue
-│   ├── bucket-ledger.service → Immutable scan ledger
-│   ├── attendance.service    → Check-in/out + corrections
-│   ├── compliance.service    → Wage law alerts + NZ Employment Standards
-│   ├── export.service        → CSV/Xero/PaySauce/PDF
-│   ├── picker.service        → CRUD + bulk import + soft delete
-│   ├── audit.service         → Immutable audit logging
-│   ├── authHardening.service → Rate limiting, brute-force protection
-│   ├── i18n.service          → EN/ES/MI translations
-│   └── ...
-├── stores/                  # 8 files — Zustand (useHarvestStore) + React Query + tests
-├── types/                   # TypeScript interfaces + database.types.ts
-└── utils/
-    ├── nzst.ts               → NZST timezone utilities
-    ├── csvParser.ts           → CSV parsing with column aliases
-    └── logger.ts              → Structured logging
-```
+## About this project
 
----
+Designed and directed by **Ibrahim Boutebila**, drawing on hands-on work in New Zealand harvests. The implementation is built with AI coding agents (mainly Claude Code) under his direction: he defines what each role and screen must do, reviews the behaviour, and decides the business rules.
 
-## 🧪 Scripts
+## License
 
-```bash
-npm run dev            # Start development server (→ localhost:5173)
-npm run build          # TypeScript check + Vite production build
-npm run lint           # ESLint check (0 errors)
-npm run lint:fix       # ESLint auto-fix
-npm run format         # Prettier formatting
-npm test               # Run unit tests (Vitest) — 3,800+ tests
-npm run test:watch     # Tests in watch mode
-npm run test:coverage  # Tests with coverage report
-npm run test:e2e       # Run Playwright E2E tests (5 critical flows)
-npm run docs           # Generate API documentation (TypeDoc)
-npm run storybook      # Launch Storybook UI docs (→ localhost:6006)
-npm run build-storybook # Build static Storybook site
-```
-
----
-
-## ✨ Features by Phase
-
-### Phase 1: Central Command ✅
-
-- **CSV Bulk Import** — Drag & drop upload, flexible column aliases (EN/ES), duplicate detection
-- **Timesheet Correction** — Inline edit with mandatory reason, full audit trail
-- **Payroll Export** — 4 formats: Generic CSV, Xero, PaySauce, PDF
-- **Productivity Heatmap** — Row-level visualization with intensity scaling
-- **Broadcast Messaging** — Manager → all crew, real-time delivery
-- **Day Closure** — End-of-day lockdown with archive
-
-### Phase 3: Analytics & Communications Overhaul ✅
-
-- **Weekly PDF Report — Print-First Redesign**
-  - Compact KPI strip (white, no pastel cards) with 8 metrics
-  - Period date in header ("Week 9: 23 Feb – 1 Mar, 2026")
-  - Executive insights inline row (Top Performer, Wage Bleeding, Workforce)
-  - Compact sparklines (Harvest Velocity, Workforce Size)
-  - Team Rankings as clean audit-style table
-  - Picker performance table with Days, Avg/Day, $/Hr columns + tier border accents
-  - **Daily Summary** table (day-by-day aggregates: Pickers, Bins, Hours, Avg B/Hr, Est. Cost, Cost/Bin)
-  - **Performance Distribution** histogram (text-based bars by Bins/Hr brackets)
-  - **Cost Analysis** (Top 5 Most Efficient + Top 5 Most Costly pickers by $/bin)
-  - **Per-Team Breakdown** with page-break-before per team for individual distribution
-
-- **Messaging System Overhaul**
-  - Premium indigo/blue gradient design matching app theme
-  - Real-time Supabase subscription fix (messages appear live)
-  - Sender name resolution via userNameMap (fixes "Worker xxxx" bug)
-  - Search bar for conversations and alerts
-  - Quick replies for field context (👍 ✅ 🚜 ⚠️ ☔ 🔄)
-  - Message date separators (Today, Yesterday, Mon 24 Feb)
-  - Delivery indicators (✓✓) on sent messages
-  - Online status dots on avatars
-  - Role badges in new chat modal
-  - Person search when creating conversations
-
-### Phase 2: Department Services ✅
-
-- **HR Department** (HHRR.tsx)
-  - Employee directory with role badges, status, visa info
-  - Contract lifecycle: draft → active → expiring → expired → terminated
-  - Compliance alerts: expiring contracts, visa monitoring
-  - Payroll overview with Wage Shield indicators
-
-- **Logistics Department** (LogisticsDept.tsx)
-  - Fleet management: tractor/vehicle status (active/idle/maintenance/offline)
-  - Zone map: real-time vehicle positions across orchard zones
-  - Transport requests: team leaders request pickups, logistics dispatch vehicles
-  - Bin inventory: fill percentage, transit tracking
-
-- **Quality Control** (QualityControl.tsx)
-  - Decomposed architecture: InspectTab, HistoryTab, StatsTab
-  - Grade entry: A (Export) / B (Domestic) / C (Process) / Reject
-  - Distribution analytics with visual bar
-
-- **Payroll Admin** (Payroll.tsx)
-  - Timesheet approval workflow
-  - Attendance-based calculations
-
-- **Offline-First Sync** (sync.service.ts)
-  - 8 queue types: SCAN, MESSAGE, ATTENDANCE, ASSIGNMENT, CONTRACT, TRANSPORT, TIMESHEET, PICKER, QC_INSPECTION
-  - **Zod runtime validation** on all sync payloads (Sprint 17 — replaces unsafe `as` casts)
-  - Conflict resolution with `keep_local` / `keep_remote` (re-queues properly)
-  - Auto-retry with 50 attempt cap → Dead Letter Queue
-  - DLQ admin editor: edit payload JSON and retry
-  - Atomic DLQ persistence (V28 — no data loss on DLQ insert failure)
-
----
-
-## 🔒 Security
-
-- **Row Level Security (RLS)**: 26 tables with 40+ policies — users only access their assigned orchard
-- **Role-Based Access**: 8 granular roles with per-table policies
-- **MFA**: Managers require TOTP-based two-factor authentication
-- **Audit Logs**: Every data change generates an immutable audit trail
-- **Auth Hardening**: Rate limiting, session management, brute-force protection
-- **IndexedDB Encryption**: AES-256 encryption on PII fields via `dbCrypto.ts` with device-bound keys (Sprint 16)
-- **Content Security Policy**: CSP meta tag whitelisting Supabase, Google Fonts, Sentry, PostHog (Sprint 16)
-- **API Boundary Validation**: Zod runtime schemas on all Edge Function responses AND all sync queue payloads — no unsafe `as T` casts (Sprint 16+17)
-- **JWT Silent Refresh**: Proactive 50-min timer + visibility-based refresh with 3-min throttle (Sprint 12)
-- **Session Lifecycle**: Sign-out wipes Dexie DB, blocks if unsynced data, forces page reload (U6+V26+V27)
-- **Anti-Fraud Trigger**: Server-side enforcement blocks bucket inserts on closed days
-- **Optimistic Locking**: `bump_version()` trigger on pickers, attendance, row_assignments
-- **Conflict Resolution**: `keep_local` properly re-queues via table→type mapping (U7+V25)
-- **Dead Letter Queue**: Atomic persistence — items only removed from sync_queue on DLQ success (V28)
-- **Financial Guards**: Negative hour prevention (`Math.max(0, ...)`) in payroll + HHRR (U10+U11)
-- **Soft Delete**: All critical tables use `deleted_at` — data is never physically destroyed
-- **Error Logging**: All catch blocks log to structured logger (17 silent catches fixed in Sprint 8)
-- **API Key Rotation**: New-format publishable/secret keys (migrated from legacy JWT keys)
-
----
-
-## ♿ Accessibility (WCAG 2.1 Level AA)
-
-All form components audited and compliant:
-
-- **Labels**: Every `<input>`, `<select>`, and `<textarea>` linked via `htmlFor`/`id` or `aria-label`
-- **ARIA attributes**: Switches use `role="switch"` with proper `aria-checked` string values
-- **Screen readers**: Dynamic selects include `aria-label` for assistive context
-- **CSS architecture**: Dynamic styles use CSS Custom Properties pattern (no raw inline styles)
-- **Keyboard navigation**: All interactive elements keyboard-accessible
-
-Audited components: `NewContractModal`, `AddVehicleModal`, `SetupWizard`, `InlineSelect`, `InlineEdit`, `InspectTab`, `SettingsView`, `NewTransportRequestModal`, `Payroll`, `TeamView`, `ProfileView`, `AddRunnerModal`, `DayConfigModal`, `PickerDetailsModal`, `ProfileModal`, `RowAssignmentModal`, `SettingsFormComponents`
-
----
-
-## 🗃️ Database Schema (26 Tables)
-
-> **Source of truth**: `supabase/schema_v3_consolidated.sql`
-
-| Category       | Tables                                                                                     |
-| -------------- | ------------------------------------------------------------------------------------------ |
-| **Hierarchy**  | `harvest_seasons`, `orchard_blocks`, `block_rows`                                          |
-| **Core**       | `orchards`, `users`, `pickers`, `day_setups`, `bucket_records`, `bins`                     |
-| **Assignment** | `row_assignments`                                                                          |
-| **Quality**    | `quality_inspections`, `qc_inspections`                                                    |
-| **Messaging**  | `conversations`, `chat_messages`, `messages`                                               |
-| **Attendance** | `daily_attendance`, `day_closures`                                                         |
-| **Logistics**  | `fleet_vehicles`, `transport_requests`                                                     |
-| **HR**         | `contracts`                                                                                |
-| **Security**   | `login_attempts`, `account_locks`, `audit_logs`, `sync_conflicts`, `allowed_registrations` |
-| **Settings**   | `harvest_settings`                                                                         |
-
-**Views**: `pickers_performance_today`
-
-**Key features**: Soft deletes (`deleted_at`), optimistic locking (`version` + `bump_version()` trigger), partial unique indexes, season-scoped queries, anti-fraud closed-day trigger
-
----
-
-## 📊 Sprint History
-
-| Sprint | Focus                            | Key Results                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| ------ | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1**  | Architecture & Base              | Role routing, Supabase integration, component structure                                                                                                                                                                                                                                                                                                                                                                      |
-| **2**  | Security Hardening               | MFA, auth flows, destructor audit, sync bridge fixes                                                                                                                                                                                                                                                                                                                                                                         |
-| **3**  | Clean-Sheet Protocol             | 201→0 lint errors, type guards, PATTERNS.md                                                                                                                                                                                                                                                                                                                                                                                  |
-| **4**  | Warning Reduction                | 115→0 warnings, catch block refactoring, profile sync                                                                                                                                                                                                                                                                                                                                                                        |
-| **5**  | Central Command (Phase 1)        | CSV bulk import, timesheet corrections, Xero/PaySauce export                                                                                                                                                                                                                                                                                                                                                                 |
-| **6**  | Department Services (Phase 2)    | HR/Logistics/Payroll wiring to Supabase, QC decomposition, 3 new DB tables, offline sync expansion                                                                                                                                                                                                                                                                                                                           |
-| **7**  | Quality Assurance & a11y         | 40-point browser audit (all passed), WCAG 2.1 accessibility compliance across 10 components, Playwright E2E tests                                                                                                                                                                                                                                                                                                            |
-| **8**  | Code Quality & Performance       | Silent catch fixes (17), RLS remediation (3 tables), `fetchGlobalData` refactor (217→15 lines), DashboardView split (338→190 lines), React.memo on heavy lists, comments standardized to English                                                                                                                                                                                                                             |
-| **9**  | Visual Polish & UX               | CSS inline styles refactored to CSS Custom Properties + utility classes, `window.alert()` → toast system, double Inter font load eliminated, `max-w-md` constraint removed across 9 files, virtual scrolling (VirtualList), OrchardMapView visual overhaul, animation system (slide-up, breathe, fade-in), demo mode re-enabled in production, 17 accessibility fixes (aria-label, aria-checked), schema alignment migration |
-| **10** | Adversarial Hardening (6 rounds) | **24 fixes**: Dexie migration (sync queue, DLQ, conflict store), session sign-out hardening (wipe + reload), conflict resolution `keep_local` re-queue, DLQ edit & retry, atomic DLQ persistence, negative hours guards, realtime anti-squash, RLS recursion fix, bucket_records RLS, closed-day trigger, optimistic locking, NZST-safe calculations                                                                         |
-| **11** | Code Quality & Modernization     | React Query integration, Zod validation layer, lint cleanup (0 errors, 0 warnings), atomic RPCs for roster/attendance/bins/fleet, optimistic lock trigger, setupWizard service, Result<T> type pattern                                                                                                                                                                                                                       |
-| **12** | Database & Offline Hardening     | Schema V3 consolidated (26 tables, 40+ RLS, 20+ functions, 1 VIEW), JWT silent refresh (50-min timer + visibility throttle), delta sync (`updated_at`-based with zombie purge + 2-min jitter), database hierarchy (`harvest_seasons` → `orchard_blocks` → `block_rows`)                                                                                                                                                      |
-| **13** | Analytics & Communications       | PDF print-first redesign (compact KPI, audit-style tables, sparklines), 5 new report sections (Daily Summary, Performance Distribution, Cost Analysis, Per-Team Breakdown), messaging overhaul (premium design, real-time fix, quick replies, search, date separators, delivery indicators)                                                                                                                                  |
-| **14** | Tier 2 Technical Debt            | God file refactoring (5 files, 1,801→990 LOC, 15 sub-components), push.service → repository pattern, Storybook setup (19 UI component stories), Playwright E2E tests (5 critical flows), code splitting already done (React.lazy)                                                                                                                                                                                            |
-| **15** | Test Coverage Push               | 577 new tests (+34% growth): 488 unit tests (utils, repos, services, stores, components) + 89 integration tests (bucket pipeline, intelligence engine, crew/compliance, export/validation, sync/offline). Coverage: 43%→49.9% stmts, 44.8%→49.9% lines. Integration tests use real Zustand store + compliance.service, mocking only Supabase/Dexie                                                                           |
-| **16** | Post-Audit Security Hardening    | Deep audit (tech/agri/agritech perspectives), IndexedDB AES-256 encryption (`dbCrypto.ts`), CSP headers, Zod schemas at API boundaries (payroll + attendance), `eslint-plugin-jsx-a11y`, TypeDoc setup, API key rotation to new Supabase format                                                                                                                                                                              |
-| **17** | Audit Bug Fixes + Test Coverage  | All 6 Deep Audit v3 bugs fixed (Zod sync validation, MINIMUM_WAGE centralized, messages RLS, payroll piece rate), 88 new hook/slice tests (67 hooks + 21 slices), test suite: 3,728 tests across 344 files, 100% pass rate                                                                                                                                                                                                   |
-| **18** | Technical Debt Remediation       | All 26 failing tests fixed (auth mocks, compliance constants, offline queue), `useQC.ts` dynamic imports → static, bundle optimization (vendor-sentry/analytics split), npm vulnerability audit, Playwright config fixes, `any` → `Record` in config files                                                                                                                                                                   |
-
----
-
-## 🗺️ Roadmap — Next Steps
-
-### Pre-Pilot (Deployment)
-
-| #   | Feature                                                                         | Priority    | Status  |
-| --- | ------------------------------------------------------------------------------- | ----------- | ------- |
-| 1   | **Apply migrations in Supabase** — Execute all SQL files in production DB       | 🔴 Critical | Pending |
-| 2   | **Auth flow verification** — Full signup → email verify → role assign → login   | 🔴 Critical | Pending |
-| 3   | **Monitoring setup** — Configure Sentry DSN + PostHog for production visibility | High        | Pending |
-
-### Feature Enhancements
-
-| #   | Feature                                                             | Priority | Status                            |
-| --- | ------------------------------------------------------------------- | -------- | --------------------------------- |
-| 1   | **Push notifications** — Web Push for urgent transport requests     | Medium   | Planned                           |
-| 2   | **Contract action buttons** — Renew, terminate from ContractsTab UI | Medium   | Planned                           |
-| 3   | **Transport dispatch UI** — Accept/assign/complete in RequestsTab   | Medium   | Planned                           |
-| 4   | **Weekly/monthly reporting** — Automated email reports for managers | Medium   | Planned                           |
-| 5   | **Cost analytics** — Labour cost per bin, per zone, per team        | Medium   | Planned                           |
-| 6   | ~~**Rate limiting** — Client-side throttle for scan operations~~    | ~~Low~~  | ✅ Done (`useScanRateLimit` hook) |
-| 7   | **Performance monitoring** — Web Vitals + Lighthouse CI             | Low      | Planned                           |
-
-### Already Completed ✅
-
-| Feature                                                                                           | Sprint |
-| ------------------------------------------------------------------------------------------------- | ------ |
-| PWA (Service Worker + manifest.json + offline caching via `vite-plugin-pwa`)                      | 7      |
-| Realtime dashboard (Supabase channels in `useHarvestStore` + `MessagingContext`)                  | 6      |
-| Seed data (`seed_season_simulation.sql` + `seed_demo_hr_logistics.sql`)                           | 6      |
-| Error boundaries — React boundaries per route + ComponentErrorBoundary                            | 7–9    |
-| Accessibility audit — WCAG 2.1 AA compliance across 17+ components                                | 7–9    |
-| Silent catch fixes (17) + structured logging                                                      | 8      |
-| RLS remediation (22 tables audited, 3 gaps fixed)                                                 | 8      |
-| `fetchGlobalData` refactor (217→15 lines) + DashboardView split (338→190 lines)                   | 8      |
-| React.memo on heavy list components                                                               | 8      |
-| CSS Custom Properties system (20+ utility classes for dynamic styles)                             | 9      |
-| Toast notification system (replaces all `window.alert()`)                                         | 9      |
-| VirtualList component (`@tanstack/react-virtual`)                                                 | 9      |
-| OrchardMapView visual overhaul (animated row cards, gradient fills)                               | 9      |
-| Animation system (slide-up, breathe, fade-in, micro-interactions)                                 | 9      |
-| Demo mode available in production                                                                 | 9      |
-| Schema alignment migration (`20260214_schema_alignment.sql`)                                      | 9      |
-| Unit test coverage — 3,728+ tests across 344 suites                                               | 3–17   |
-| Integration test layer — 89 tests across 5 files (real store + real services)                     | 15     |
-| Dexie-based sync with DLQ + conflict store (replaces localStorage queues)                         | 10     |
-| Session sign-out hardening (Dexie wipe + sync guard + hard reload)                                | 10     |
-| Conflict resolution `keep_local` → re-queue with table→type map                                   | 10     |
-| DLQ admin editor (edit payload JSON + retry)                                                      | 10     |
-| Atomic DLQ persistence (V28)                                                                      | 10     |
-| Negative hours financial guards (Math.max in payroll + HHRR)                                      | 10     |
-| Realtime anti-squash (QC/timesheet → capped list)                                                 | 10     |
-| RLS recursion fix + bucket_records RLS + closed-day trigger                                       | 10     |
-| React Query integration (`@tanstack/react-query` + `queryClient.ts`)                              | 11     |
-| Zod runtime schema validation                                                                     | 11     |
-| Lint cleanup — 0 errors, 0 warnings                                                               | 11     |
-| Atomic RPCs for roster, attendance, bins, fleet operations                                        | 11     |
-| Optimistic lock trigger for attendance records                                                    | 11     |
-| Result<T> type pattern for type-safe error handling                                               | 11     |
-| Schema V3 Consolidated (26 tables, 40+ RLS, 20+ functions) — single source of truth               | 12     |
-| Database hierarchy: `harvest_seasons` → `orchard_blocks` → `block_rows`                           | 12     |
-| Soft deletes + optimistic locking on all critical tables                                          | 12     |
-| JWT silent refresh (50-min timer + visibility-based + TOKEN_REFRESHED handler)                    | 12     |
-| Delta sync (`updated_at`-based, zombie purge, 2-min jitter, O(1) Map merge)                       | 12     |
-| Anti-fraud closed-day trigger (`enforce_closed_day_bucket_records`)                               | 12     |
-| `pickers_performance_today` VIEW for attendance service                                           | 12     |
-| Weekly PDF print-first redesign (compact KPIs, audit-style tables, sparklines)                    | 13     |
-| 5 new report sections: Daily Summary, Perf. Distribution, Cost Analysis, Team Breakdown           | 13     |
-| Messaging overhaul: premium design, real-time subscription fix, quick replies                     | 13     |
-| Message search, date separators, delivery indicators, online status dots                          | 13     |
-| Role badges + person search in new chat modal                                                     | 13     |
-| God file refactoring: SetupWizard, AnomalyDetectionView, Admin, DashboardView, RowAssignmentModal | 14     |
-| Push service → repository pattern migration                                                       | 14     |
-| Storybook setup with 19 UI component stories (autodocs)                                           | 14     |
-| Playwright E2E tests (login, dashboard, attendance, payroll, admin)                               | 14     |
-| IndexedDB AES-256 encryption on PII fields (user_cache, settings, queues)                         | 16     |
-| Content Security Policy headers (CSP meta tag)                                                    | 16     |
-| Zod runtime validation at API boundaries (payroll, attendance Edge Functions)                     | 16     |
-| `eslint-plugin-jsx-a11y` accessibility linting                                                    | 16     |
-| TypeDoc API documentation (`npm run docs`)                                                        | 16     |
-| Supabase API key rotation (legacy JWT → new publishable/secret format)                            | 16     |
-
----
-
-## 📚 Additional Docs
-
-- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — System architecture, data flow, sync pipeline
-- [`DEPLOYMENT.md`](./DEPLOYMENT.md) — Production deployment guide
-- [`PATTERNS.md`](./PATTERNS.md) — React & TypeScript patterns reference
-- [`MANUAL_OPERACIONES.md`](./MANUAL_OPERACIONES.md) — Operations manual (Spanish)
-- [`SETUP_SECRETS.md`](./SETUP_SECRETS.md) — Environment variable configuration
-- [`docs/DEMO_SCRIPT.md`](./docs/DEMO_SCRIPT.md) — Demo walkthrough script
-- [`docs/FUNCTIONAL_AUDIT.md`](./docs/FUNCTIONAL_AUDIT.md) — Functional audit report
-
----
-
-## 📝 License
-
-Proprietary — Harvest NZ Merr. All rights reserved.
-
----
-
-_Last updated: 2026-03-24 | Sprint 18 — Technical Debt Remediation (26 failing tests fixed, bundle optimization, npm audit, dynamic import cleanup, 3,800+ tests all passing)_
+Proprietary. All rights reserved.

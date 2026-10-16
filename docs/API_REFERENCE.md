@@ -1,5 +1,7 @@
 # HarvestPro NZ — Public REST API Reference (v1)
 
+> **Status (Oct 2026): not usable yet.** The `api-v1` Edge Function exists, but no migration creates the `api_keys` table it authenticates against, so every request fails. The design below is the intended contract.
+
 ## Base URL
 
 ```
