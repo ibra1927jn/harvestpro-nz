@@ -63,8 +63,6 @@ SELECT sec_test.allow('A.manager@aal1', 'aal1: saves own privacy consent',
     $$UPDATE users SET privacy_consent_at = now() WHERE id = auth.uid()$$);
 SELECT sec_test.allow('A.manager@aal1', 'aal1: reads the orchard list (name in the header)',
     $$SELECT 1 FROM orchards WHERE id = {A}$$);
-SELECT sec_test.allow('A.manager@aal1', 'aal1: logs a login attempt',
-    $$INSERT INTO login_attempts (email, success) VALUES ('sectest.aal1@example.test', true)$$);
 
 -- Con 2FA: acceso normal
 SELECT sec_test.sees('A.manager', 'aal2: manager sees attendance of own orchard',

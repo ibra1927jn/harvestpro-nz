@@ -96,10 +96,8 @@ export function useQC(): UseQCResult {
           if (uploadError) {
             logger.error('[QC] Photo upload failed:', uploadError.message);
           } else if (uploadData?.path) {
-            const { data: urlData } = supabase.storage
-              .from('qc-photos')
-              .getPublicUrl(uploadData.path);
-            photoUrl = urlData.publicUrl;
+            // Bucket privado: se guarda la ruta; se muestra con enlace firmado (useQcPhotoUrl)
+            photoUrl = uploadData.path;
           }
         } catch (err) {
           logger.error('[QC] Photo upload error:', err);

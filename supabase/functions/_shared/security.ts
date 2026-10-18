@@ -14,10 +14,6 @@ function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return false;
   // Production custom domain
   if (origin === 'https://app.harvestpro.nz') return true;
-  // Production Vercel domain
-  if (origin === 'https://harvestpro.vercel.app') return true;
-  // Vercel preview deployments (any branch)
-  if (origin.endsWith('.vercel.app')) return true;
   // Local development
   if (origin === 'http://localhost:5173') return true;
   if (origin === 'http://localhost:3000') return true;

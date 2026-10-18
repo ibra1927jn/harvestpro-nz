@@ -11,6 +11,7 @@ import { QCInspection } from '@/services/qc.service';
 import { Picker } from '@/types';
 import { useTranslation } from '@/i18n';
 import { formatNZTime } from '@/utils/nzFormat';
+import { useQcPhotoUrl } from '@/hooks/useQcPhotoUrl';
 
 const GRADE_PILL_COLORS: Record<string, string> = {
     A: 'bg-green-100 text-green-700',
@@ -18,6 +19,19 @@ const GRADE_PILL_COLORS: Record<string, string> = {
     C: 'bg-amber-100 text-amber-700',
     reject: 'bg-red-100 text-red-700',
 };
+
+/** Miniatura de la foto (bucket privado: enlace firmado) */
+function QcThumb({ stored, alt }: { stored: string; alt: string }) {
+    const src = useQcPhotoUrl(stored);
+    if (!src) return <span className="block w-10 h-10 rounded border border-border-light bg-slate-100" aria-hidden="true" />;
+    return (
+        <img
+            src={src}
+            alt={alt}
+            className="w-10 h-10 object-cover rounded border border-border-light hover:ring-2 hover:ring-indigo-400 transition-all cursor-pointer"
+        />
+    );
+}
 
 interface HistoryTabProps {
     inspections: QCInspection[];
@@ -31,6 +45,7 @@ export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
     const lightboxRef = useRef<HTMLDivElement>(null);
     useDialogA11y(lightboxRef, { onClose: () => setLightboxUrl(null), enabled: !!lightboxUrl });
+    const lightboxSrc = useQcPhotoUrl(lightboxUrl);
 
     const gradeOptions = useMemo(() =>
         [...new Set(inspections.map(i => i.grade))].sort(),
@@ -93,11 +108,7 @@ export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
                                             className="flex-shrink-0"
                                             aria-label={t('qc.view_photo')}
                                         >
-                                            <img
-                                                src={insp.photo_url}
-                                                alt={t('qc.photo_alt')}
-                                                className="w-10 h-10 object-cover rounded border border-border-light hover:ring-2 hover:ring-indigo-400 transition-all cursor-pointer"
-                                            />
+                                            <QcThumb stored={insp.photo_url} alt={t('qc.photo_alt')} />
                                         </button>
                                     )}
                                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${GRADE_PILL_COLORS[insp.grade] || ''}`}>
@@ -132,7 +143,7 @@ export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
                 >
                     <div className="relative max-w-2xl max-h-[80vh]">
                         <img
-                            src={lightboxUrl}
+                            src={lightboxSrc ?? undefined}
                             alt={t('qc.photo_alt')}
                             className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
                         />

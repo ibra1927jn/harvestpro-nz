@@ -40,9 +40,9 @@ FROM unnest(ARRAY['anon', 'A.runner']) AS w;
 SELECT sec_test.sees('A.manager', 'reads account locks', $$SELECT 1 FROM account_locks WHERE email = 'sectest.locked@example.test'$$, 1);
 SELECT sec_test.sees(w, 'cannot read login attempts', $$SELECT 1 FROM login_attempts$$, 0)
 FROM unnest(ARRAY['anon', 'A.runner']) AS w;
--- Antes de iniciar sesión la app registra el intento y mira si la cuenta está bloqueada
-SELECT sec_test.allow('anon', 'logs a login attempt', $$INSERT INTO login_attempts (email, success) VALUES ('someone@example.test', true)$$);
-SELECT sec_test.returns('anon', 'checks whether an account is locked', $$SELECT is_account_locked('sectest.locked@example.test')::text$$, 'true');
+-- Ya no hay bloqueo de la app (20261018000000): nadie registra intentos y ninguna cuenta sale bloqueada
+SELECT sec_test.deny('anon', 'cannot log login attempts (app lockout removed)', $$INSERT INTO login_attempts (email, success) VALUES ('someone@example.test', true)$$);
+SELECT sec_test.returns('anon', 'no account reports as locked (app lockout removed)', $$SELECT is_account_locked('sectest.locked@example.test')::text$$, 'false');
 SELECT sec_test.deny(w, 'cannot unlock accounts', $$SELECT unlock_account('sectest.locked@example.test', 'x')$$)
 FROM unnest(ARRAY['anon', 'A.runner']) AS w;
 SELECT sec_test.returns('A.manager', 'unlocks an account', $$SELECT unlock_account('sectest.locked@example.test', 'sectest')::text$$, 'true');
