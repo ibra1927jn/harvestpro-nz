@@ -1,5 +1,6 @@
 import Dexie, { Table } from 'dexie';
 import { HarvestSettings, Picker } from '../types';
+import { snapshotPending, saveRescue, restorePending, countRows } from './dbRescue';
 
 export interface QueuedBucket {
   id: string; // UUID from Store
@@ -198,13 +199,31 @@ export class HarvestDB extends Dexie {
 export const db = new HarvestDB();
 
 /**
+ * Lo rescatado en un reinicio anterior vuelve a la cola antes de que la app
+ * use la BD (Dexie espera a esta promesa antes de servir otras consultas).
+ */
+db.on('ready', async () => {
+  try {
+    const restored = await restorePending(db);
+    if (restored > 0) {
+      console.warn(`[HarvestProDB] ${restored} pending item(s) restored after a local database reset`);
+    }
+  } catch (err) {
+    // El rescate se conserva y se reintenta en el próximo arranque
+    console.error('[HarvestProDB] Could not restore rescued items yet:', err);
+  }
+});
+
+/**
  * Recuperación automática de schema corrupto.
  *
  * Si el upgrade de Dexie falla (UpgradeError / DatabaseClosedError), el IndexedDB
  * queda bloqueado y TODOS los accesos futuros fallan en cascada.
- * Solución: borrar la DB local y recargar. El IndexedDB es cache — los datos
- * reales están en Supabase, nada se pierde excepto la cola de sincronización
- * pendiente (que el usuario verá como "datos no sincronizados" en el próximo login).
+ * Solución: borrar la DB local y recargar. Antes de borrar se copia lo que no
+ * se ha subido (cubos, mensajes, cola de sync, dead letters y la sal del cifrado)
+ * a la BD HarvestProRescue; al volver a abrir, db.on('ready') lo restaura.
+ * Si no se puede guardar el rescate y había algo pendiente, NO se borra: es
+ * mejor una app que no arranca que perder escaneos (= horas de paga).
  */
 db.open().catch(async (err: unknown) => {
   const name = (err as { name?: string })?.name ?? '';
@@ -215,7 +234,19 @@ db.open().catch(async (err: unknown) => {
     innerName === 'UpgradeError';
 
   if (isUpgradeError) {
-    console.error('[HarvestProDB] Schema upgrade failed — borrando cache local y recargando:', err);
+    console.error('[HarvestProDB] Schema upgrade failed — rescuing pending items, then resetting the local database:', err);
+    let pending = 0;
+    try {
+      const snapshot = await snapshotPending('HarvestProDB');
+      pending = countRows(snapshot);
+      await saveRescue(snapshot);
+    } catch (rescueErr) {
+      if (pending > 0) {
+        console.error(`[HarvestProDB] Could not save ${pending} pending item(s) — keeping the local database:`, rescueErr);
+        return;
+      }
+      console.error('[HarvestProDB] Rescue failed (nothing pending was found):', rescueErr);
+    }
     try {
       await Dexie.delete('HarvestProDB');
     } catch (deleteErr) {
