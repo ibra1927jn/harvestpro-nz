@@ -105,6 +105,14 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
     }
   }, [rateLimitedScan]);
 
+  // El callback cambia en cada render (lote, aviso de éxito…). La cámara lee
+  // siempre el último desde un ref: si fuera dependencia del efecto, la cámara
+  // se apagaba y volvía a arrancar tras cada escaneo y en lote se quedaba parada.
+  const scanHandlerRef = useRef(rateLimitedScan);
+  useEffect(() => {
+    scanHandlerRef.current = rateLimitedScan;
+  }, [rateLimitedScan]);
+
   // ── Web Scanner Flow (qr-scanner — CSP-compatible, sin eval()) ──────────
   useEffect(() => {
     // Skip web scanner if native or manual mode
@@ -115,7 +123,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
 
     const initScanner = async () => {
       try {
-        scanner = new QrScanner(videoRef.current!, result => rateLimitedScan(result.data), {
+        scanner = new QrScanner(videoRef.current!, result => scanHandlerRef.current(result.data), {
           preferredCamera: 'environment',
           highlightScanRegion: true,
           highlightCodeOutline: true,
@@ -139,7 +147,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({
       scanner?.stop();
       scanner?.destroy();
     };
-  }, [showManual, rateLimitedScan, isNative]);
+  }, [showManual, isNative]);
 
   // ── Cleanup native scanner on unmount ─────────
   useEffect(() => {
