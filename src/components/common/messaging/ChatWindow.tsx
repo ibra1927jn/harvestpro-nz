@@ -104,7 +104,7 @@ const ChatWindow: React.FC<Props> = ({
             <div className="flex-1 overflow-y-auto px-5 py-4 no-scrollbar chat-bg-pattern">
                 {messages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center px-6">
-                        <div className="size-24 rounded-3xl bg-white/80 backdrop-blur-sm shadow-lg flex items-center justify-center mb-5 animate-[breathe_3s_ease-in-out_infinite]">
+                        <div className="size-24 rounded-3xl bg-white/80 backdrop-blur-sm shadow-lg flex items-center justify-center mb-5">
                             <span aria-hidden="true" className="material-symbols-outlined text-5xl text-indigo-300">waving_hand</span>
                         </div>
                         <h4 className="text-base font-black text-slate-600 mb-1">{t('chat.start_title')}</h4>

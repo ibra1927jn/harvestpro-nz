@@ -42,7 +42,6 @@ const RunnersView: React.FC<RunnersViewProps> = ({ onBack }) => {
                     <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('runner.crew.active_pickers')}</h2>
                     <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-full border border-emerald-100">
                         <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                         </span>
                         <span className="text-emerald-700 font-bold text-[10px] uppercase tracking-wider">{t('runner.crew.checked_in_n', { n: activePickers.length })}</span>
@@ -59,7 +58,6 @@ const RunnersView: React.FC<RunnersViewProps> = ({ onBack }) => {
                         <div className="flex items-start justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="relative size-14 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center text-xl font-black text-slate-400 border border-slate-200/60 shadow-inner uppercase overflow-hidden">
-                                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-[150%] animate-[shimmer_2.5s_infinite]"></div>
                                     {picker.avatar}
                                 </div>
                                 <div>

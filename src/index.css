@@ -681,7 +681,8 @@ html.dark body {
 }
 
 .animate-breathe {
-  animation: breathe 3s ease-in-out infinite;
+  /* Avisos del mapa: llaman la atención 3 veces y paran (infinita = batería gastada con el móvil quieto) */
+  animation: breathe 3s ease-in-out 3;
 }
 
 .animate-slide-right {
@@ -1166,37 +1167,6 @@ body.sunlight-mode {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-/* Progress bar shimmer effect */
-.dash-shimmer {
-  animation: dashShimmer 2s ease-in-out infinite;
-}
-
-@keyframes dashShimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-
-  100% {
-    transform: translateX(200%);
-  }
-}
-
-/* Broadcast FAB subtle pulse */
-.dash-fab-pulse {
-  animation: dashFabPulse 3s ease-in-out infinite;
-}
-
-@keyframes dashFabPulse {
-  0%,
-  100% {
-    box-shadow: 0 8px 24px rgba(22, 163, 74, 0.3);
-  }
-
-  50% {
-    box-shadow: 0 8px 32px rgba(22, 163, 74, 0.5);
   }
 }
 

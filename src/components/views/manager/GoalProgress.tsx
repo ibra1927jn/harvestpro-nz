@@ -79,7 +79,6 @@ const GoalProgress: React.FC<GoalProgressProps> = ({
                     {/* Shimmer sobre el fill coral/naranja */}
                     {barWidth > 0 && (
                         <div className="absolute inset-0 overflow-hidden rounded-full">
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent dash-shimmer" />
                         </div>
                     )}
                 </div>

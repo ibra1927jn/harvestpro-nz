@@ -5,15 +5,16 @@
  * El cold start tiene una penalización de 300-600ms — perceptible en el flujo de
  * escaneo QR (record-bucket) y el check-in matutino (manage-attendance).
  *
- * Estrategia: ping cada WARMUP_INTERVAL_MS mientras el usuario está autenticado
- * y hay conexión. Las funciones responden al payload { _warmup: true } con un
- * 200 inmediato sin ejecutar lógica de negocio.
+ * Estrategia: un solo ping al iniciar sesión (con conexión), para que el primer
+ * escaneo o fichaje del día no espere el arranque. Las funciones responden al
+ * payload { _warmup: true } con un 200 inmediato sin ejecutar lógica de negocio.
+ * Antes se repetía cada 4 min: despertaba la radio del móvil 15 veces por hora
+ * durante todo el turno (batería) para ahorrar ~0,5 s de vez en cuando.
  *
  * Seguridad: el warmup requiere un JWT válido — el mismo del usuario autenticado.
  * No es posible hacer warmup sin estar logueado.
  *
- * Consumo: 4 llamadas cada 4 min = ~360 llamadas/día por usuario activo.
- * Bien dentro de los límites de Supabase (500k invocaciones/mes en Pro plan).
+ * Consumo: 1–4 llamadas por inicio de sesión.
  */
 import { logger } from '@/utils/logger';
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
@@ -21,11 +22,13 @@ import { supabase } from '@/services/supabase';
 import { mfaRequiredFor } from '@/config/mfa';
 import { Role } from '@/types/app.types';
 
-/** 4 minutos — Supabase cold-starts tras ~5 min de inactividad */
-const WARMUP_INTERVAL_MS = 4 * 60 * 1000;
-
 /** Funciones críticas: campo (scan, attendance) + oficina (payroll, compliance) */
-const CRITICAL_FUNCTIONS = ['manage-attendance', 'record-bucket', 'calculate-payroll', 'check-compliance'] as const;
+const CRITICAL_FUNCTIONS = [
+  'manage-attendance',
+  'record-bucket',
+  'calculate-payroll',
+  'check-compliance',
+] as const;
 type CriticalFunction = (typeof CRITICAL_FUNCTIONS)[number];
 
 /**
@@ -46,14 +49,14 @@ export function warmupFunctionsFor(role: Role | null | undefined): CriticalFunct
   return CRITICAL_FUNCTIONS.filter(fn => ALLOWED_ROLES[fn].includes(role));
 }
 
-let intervalId: ReturnType<typeof setInterval> | null = null;
+let started = false;
 let activeFunctions: CriticalFunction[] = [];
 let activeRole: Role | null | undefined = null;
 
 /**
  * Un rol con 2FA obligatorio aún sin código (sesión aal1) recibiría 403 del
  * servidor: no se calienta hasta que la sesión sea aal2 (lo dice el token
- * local, sin red). El primer ping al entrar se salta; los siguientes ya van.
+ * local, sin red): en ese caso no se calienta.
  */
 async function sessionCanCall(): Promise<boolean> {
   if (!mfaRequiredFor(activeRole)) return true;
@@ -66,8 +69,11 @@ async function sessionCanCall(): Promise<boolean> {
 }
 
 async function pingAll(): Promise<void> {
-  if (!navigator.onLine) return;
-  if (!(await sessionCanCall())) return;
+  // Sin red o sin 2FA todavía: no cuenta como hecho, el siguiente start() lo intenta
+  if (!navigator.onLine || !(await sessionCanCall())) {
+    started = false;
+    return;
+  }
 
   for (const fn of activeFunctions) {
     try {
@@ -84,32 +90,23 @@ async function pingAll(): Promise<void> {
 
 export const edgeFunctionWarmupService = {
   /**
-   * Inicia el warmup periódico.
-   * Llamar tras login exitoso — AuthContext.signIn / onAuthStateChange SIGNED_IN.
-   * Solo calienta las funciones que el rol puede invocar.
+   * Calienta una vez las funciones que el rol puede invocar.
+   * Llamar tras login — AuthContext (onAuthStateChange / carga de sesión).
+   * Idempotente hasta stop(): varias llamadas en la misma sesión no repiten pings.
    */
   start(role: Role | null | undefined): void {
-    if (intervalId !== null) return; // Ya está corriendo
+    if (started) return;
     activeRole = role;
     activeFunctions = warmupFunctionsFor(role);
     if (activeFunctions.length === 0) return;
-
-    // Primer ping inmediato — calienta las funciones al arrancar sesión
+    started = true;
     pingAll();
-
-    intervalId = setInterval(pingAll, WARMUP_INTERVAL_MS);
-    logger.info(`[Warmup] Started — pinging every ${WARMUP_INTERVAL_MS / 60_000}min`);
   },
 
-  /**
-   * Detiene el warmup periódico.
-   * Llamar en signOut para no consumir llamadas después del logout.
-   */
+  /** Al cerrar sesión: la siguiente sesión vuelve a calentar. */
   stop(): void {
-    if (intervalId !== null) {
-      clearInterval(intervalId);
-      intervalId = null;
-      logger.info('[Warmup] Stopped');
-    }
+    started = false;
+    activeFunctions = [];
+    activeRole = null;
   },
 };

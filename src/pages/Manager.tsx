@@ -279,7 +279,7 @@ const Manager = () => {
       <div className="fixed bottom-[136px] md:bottom-8 right-4 z-40">
         <button
           onClick={() => setShowBroadcast(true)}
-          className="gradient-primary glow-primary text-white rounded-full h-14 px-6 flex items-center justify-center gap-2 transition-all active:scale-95 hover:scale-105 shadow-2xl dash-fab-pulse"
+          className="gradient-primary glow-primary text-white rounded-full h-14 px-6 flex items-center justify-center gap-2 transition-all active:scale-95 hover:scale-105 shadow-2xl"
         >
           <span aria-hidden="true" className="material-symbols-outlined">campaign</span>
           <span className="font-bold tracking-wide">{t('common.broadcast')}</span>

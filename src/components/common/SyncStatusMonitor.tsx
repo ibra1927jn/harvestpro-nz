@@ -8,6 +8,7 @@ import { announce } from '../../services/announcer';
 import { useTranslation } from '@/i18n';
 import { formatNZDateTime } from '@/utils/nzFormat';
 import { syncTypeLabel } from './syncTypeLabel';
+import { onLocalDbChange } from '../../services/dbChanges';
 
 const SyncStatusMonitor: React.FC = () => {
     const { t } = useTranslation();
@@ -38,7 +39,7 @@ const SyncStatusMonitor: React.FC = () => {
         }
     }, [wasOffline, isOnline, clearWasOffline]);
 
-    // Poll Dexie for "True" pending count + sync metadata
+    // Pendientes reales en Dexie + metadatos: se relee cuando cambia la BD local (no cada 5 s)
     useEffect(() => {
         const checkStatus = async () => {
             try {
@@ -62,8 +63,7 @@ const SyncStatusMonitor: React.FC = () => {
         };
 
         checkStatus();
-        const interval = setInterval(checkStatus, 5000);
-        return () => clearInterval(interval);
+        return onLocalDbChange(checkStatus);
     }, []);
 
     // Show success toast when items finish syncing

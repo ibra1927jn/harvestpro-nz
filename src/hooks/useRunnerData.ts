@@ -9,6 +9,7 @@ import { useHarvestStore } from '@/stores/useHarvestStore';
 import { useMessaging } from '@/context/MessagingContext';
 import { useAuth } from '@/context/AuthContext';
 import { offlineService } from '@/services/offline.service';
+import { onLocalDbChange } from '@/services/dbChanges';
 import { feedbackService } from '@/services/feedback.service';
 import { nowNZST } from '@/utils/nzst';
 import { logger } from '@/utils/logger';
@@ -124,8 +125,8 @@ export function useRunnerData(): UseRunnerDataResult {
       }
     };
     poll();
-    const interval = setInterval(poll, 5000);
-    return () => clearInterval(interval);
+    // Se relee cuando cambia la BD local (escaneo, sincronización), no cada 5 s
+    return onLocalDbChange(poll);
   }, []);
 
   const handleScanClick = useCallback((type: 'BIN' | 'BUCKET' = 'BUCKET') => {

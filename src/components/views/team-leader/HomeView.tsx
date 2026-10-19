@@ -133,7 +133,6 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                                 style={{ width: `${progressPercent}%` }}
                             >
                                 {/* Shimmer effect overlay */}
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_2s_infinite]"></div>
                             </div>
                         </div>
                         <p className="text-center text-[11px] text-slate-500 font-medium mt-4 tracking-wide">

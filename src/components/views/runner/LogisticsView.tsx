@@ -184,7 +184,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
               </p>
             </div>
             <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border border-emerald-100/50 flex items-center gap-1">
-                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span className="size-1.5 rounded-full bg-emerald-500"></span>
                 {t('common.active')}
             </div>
           </div>

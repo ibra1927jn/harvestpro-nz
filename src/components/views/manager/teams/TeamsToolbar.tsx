@@ -34,7 +34,7 @@ const TeamsToolbar: React.FC<TeamsToolbarProps> = ({
                     </h2>
                     <p className="text-xs text-text-muted mt-1 flex items-center gap-2">
                         <span className="inline-flex items-center gap-1 bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-bold text-[10px]">
-                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
                             {t('teams.staff_loaded').replace('{n}', String(usersCount))}
                         </span>
                         <span className="text-slate-300">•</span>

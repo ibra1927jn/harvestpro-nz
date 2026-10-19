@@ -34,9 +34,10 @@ describe('edgeFunctionWarmupService', () => {
         await vi.advanceTimersByTimeAsync(0);
         expect(invokeSpy).not.toHaveBeenCalled();
 
-        // Ya verificó el código: la siguiente ronda sí calienta
+        // Ya verificó el código: el siguiente start() (cambio de sesión) sí calienta
         level.mockResolvedValue({ data: { currentLevel: 'aal2', nextLevel: 'aal2', currentAuthenticationMethods: [] }, error: null } as AalResult);
-        await vi.advanceTimersByTimeAsync(4 * 60 * 1000);
+        edgeFunctionWarmupService.start(Role.PAYROLL_ADMIN);
+        await vi.advanceTimersByTimeAsync(0);
         expect(invokeSpy).toHaveBeenCalledWith('calculate-payroll', { _warmup: true }, { maxRetries: 0 });
     });
 
@@ -65,7 +66,7 @@ describe('edgeFunctionWarmupService', () => {
         expect(invokeSpy).toHaveBeenCalledTimes(4);
     });
 
-    it('dispara ping cada 4min tras el start inmediato', async () => {
+    it('no repite pings con el tiempo: solo al entrar (batería)', async () => {
         const invokeSpy = vi.spyOn(edgeFunctionsRepository, 'invoke').mockResolvedValue({
             data: null,
             error: null,
@@ -75,16 +76,12 @@ describe('edgeFunctionWarmupService', () => {
         await vi.advanceTimersByTimeAsync(0);
         expect(invokeSpy).toHaveBeenCalledTimes(4);
 
-        // Avanzar 4 min → otra ronda de 4 calls
-        await vi.advanceTimersByTimeAsync(4 * 60 * 1000);
-        expect(invokeSpy).toHaveBeenCalledTimes(8);
-
-        // Y otros 4 min
-        await vi.advanceTimersByTimeAsync(4 * 60 * 1000);
-        expect(invokeSpy).toHaveBeenCalledTimes(12);
+        // Un turno entero sin más llamadas
+        await vi.advanceTimersByTimeAsync(10 * 60 * 60 * 1000);
+        expect(invokeSpy).toHaveBeenCalledTimes(4);
     });
 
-    it('start() es idempotente — no spawnea intervals duplicados', async () => {
+    it('start() es idempotente en la misma sesión', async () => {
         const invokeSpy = vi.spyOn(edgeFunctionsRepository, 'invoke').mockResolvedValue({
             data: null,
             error: null,
@@ -99,7 +96,7 @@ describe('edgeFunctionWarmupService', () => {
         expect(invokeSpy).toHaveBeenCalledTimes(4);
     });
 
-    it('stop() cancela el interval', async () => {
+    it('tras stop() (logout) la siguiente sesión vuelve a calentar', async () => {
         const invokeSpy = vi.spyOn(edgeFunctionsRepository, 'invoke').mockResolvedValue({
             data: null,
             error: null,
@@ -109,9 +106,12 @@ describe('edgeFunctionWarmupService', () => {
         await vi.advanceTimersByTimeAsync(0);
         edgeFunctionWarmupService.stop();
 
-        await vi.advanceTimersByTimeAsync(10 * 60 * 1000); // 10 min — no debería pingar más
+        await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
+        expect(invokeSpy).toHaveBeenCalledTimes(4);
 
-        expect(invokeSpy).toHaveBeenCalledTimes(4); // Sólo el inicial
+        edgeFunctionWarmupService.start(Role.MANAGER);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(invokeSpy).toHaveBeenCalledTimes(8);
     });
 
     it('skip completo cuando navigator.onLine === false', async () => {

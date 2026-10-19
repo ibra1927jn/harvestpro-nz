@@ -50,10 +50,23 @@ function sizes(file) {
 
 const kb = n => (n / 1024).toFixed(1);
 
+/**
+ * Clave del manifest para un módulo. Si Rollup lo fusionó en un chunk compartido
+ * (p. ej. dos páginas importan algo suyo), el manifest no lo lista por su ruta:
+ * se busca el chunk que lo contiene con chunk-modules.json.
+ */
+function manifestKey(k) {
+  if (manifest[k]) return k;
+  const file = Object.keys(chunkModules).find(f => chunkModules[f].includes(k));
+  const key = file && Object.keys(manifest).find(mk => manifest[mk].file === file);
+  if (!key) throw new Error(`perf-budget: "${k}" no está en el manifest de Vite`);
+  return key;
+}
+
 /** Cierre de imports estáticos de una lista de claves del manifest. */
 function closure(keys) {
   const seen = new Set();
-  const stack = [...keys];
+  const stack = keys.map(manifestKey);
   while (stack.length) {
     const k = stack.pop();
     if (seen.has(k)) continue;
