@@ -210,7 +210,7 @@ db.on('ready', async () => {
     }
   } catch (err) {
     // El rescate se conserva y se reintenta en el próximo arranque
-    console.error('[HarvestProDB] Could not restore rescued items yet:', err);
+    console.error('[HarvestProDB] Could not put back the rescued items yet:', err);
   }
 });
 

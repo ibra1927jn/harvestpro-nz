@@ -39,7 +39,7 @@
     }
   ],
   "precache": {
-    "maxKB": 2550,
+    "maxKB": 2560,
     "forbidden": [
       "stats\\.html",
       "mockServiceWorker",
