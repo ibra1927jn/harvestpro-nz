@@ -63,7 +63,8 @@ BEGIN
         RAISE EXCEPTION 'Not signed in' USING ERRCODE = '42501';
     END IF;
 
-    SELECT * INTO v_row FROM public.users WHERE id = v_uid;
+    -- Solo cuentas activas (una cuenta dada de baja no edita nada)
+    SELECT * INTO v_row FROM public.users WHERE id = v_uid AND is_active IS DISTINCT FROM false;
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Profile not found' USING ERRCODE = 'P0002';
     END IF;
