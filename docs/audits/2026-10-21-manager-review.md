@@ -1,9 +1,11 @@
-# Revisión del rol Manager — 2026-10-21
+# Revisión por roles — 2026-10-21
 
-Lista de problemas que encontró el dueño al entrar como manager en el servidor local
+Lista de problemas que encontró el dueño al entrar rol por rol en el servidor local
 (rama `perf/season-load-sim`, seeds `00 → 2weeks → role_users → today`), con la causa
 de cada uno en el código y la propuesta de arreglo. **No se ha tocado nada: este documento
-es para decidir antes de empezar.**
+es para decidir antes de empezar.** Parte A: Manager. Parte B: Team Leader.
+
+# Parte A — Manager
 
 | # | Problema | Causa | Tamaño | Necesita decisión |
 |---|----------|-------|--------|-------------------|
@@ -266,6 +268,160 @@ Cada punto en su rama corta sobre `main`, fusionada en 1–2 días, como acordam
 4. **#6 plan del día** — rama `feat/day-plan`, tras decidir alcance.
 5. **#4 idiomas** — rama `chore/locales-en-es-fr`, cuando digas.
 
-Lo que no bloquea y sigo haciendo mientras revisas los demás roles: pruebas en el servidor
-local con los seeds y anotar lo que encuentres de Team Leader, Runner, QC, RRHH, Nómina,
-Logística y Admin en este mismo documento.
+
+---
+
+# Parte B — Team Leader
+
+| # | Problema | Causa | Tamaño | Necesita decisión |
+|---|----------|-------|--------|-------------------|
+| 7 | Pulsar un picker no hace nada (en Manager sale la tarjeta lateral) | Las tarjetas de Inicio no tienen `onClick`; el cajón de perfil (`PickerDrawer`) solo está montado en la página del manager | S | No |
+| 8 | Mapa: cambiar al formato del manager sin la «tabla de carga» | El TL solo ve el mapa de calor (`HeatMapView`) en un marco de 45 vh; el táctico con equipos por fila existe pero no se le muestra | M | Confirmar qué quitar (mapa de calor) |
+| 9 | Timesheets de uno en uno: poder corregir varios o todos a la vez | `TimesheetEditor` edita una fila por vez y `manage-attendance` corrige un `attendance_id` por llamada; además al TL le sale el huerto entero, no su equipo | M | Sí: alcance del TL (su equipo o el huerto) |
+| 10 | Falta una zona de usuario personal (foto, datos) en todos los roles | Solo Manager y TL tienen algo al pulsar el avatar; el del TL es una maqueta de solo lectura. No hay columnas de foto, teléfono ni datos personales en `users` ni `pickers` | L | Sí: qué datos y quién los edita |
+
+## 7. Pulsar un picker no abre nada
+
+### Lo que se ve
+En Inicio del team leader, las tarjetas del ranking del equipo (los 5 primeros) no responden
+al toque. En Manager, cualquier picker abre un cajón lateral con Hoy / Historial / Calidad.
+
+### Causa
+- El cajón del manager es `src/components/PickerDrawer/` (pestañas Hoy, Historial 14 días,
+  Calidad, con insignias de riesgo; ya distingue picker / team leader / runner). Se abre con
+  `openPickerProfile(id)` del store (`stores/slices/uiSlice.ts`) y está montado **solo** en
+  `pages/Manager.tsx` (`<PickerProfileDrawer />`). `pages/TeamLeader.tsx` no lo monta.
+- `team-leader/HomeView.tsx` (línea 162): las tarjetas del ranking son `<div>` sin `onClick`.
+- `team-leader/TeamView.tsx` (pestaña «Equipo», que no está en la barra inferior; se llega
+  desde «Ver equipo» en Inicio) sí abre algo, pero es el modal antiguo `PickerDetailsModal`,
+  otro componente distinto del cajón del manager.
+- `team-leader/AttendanceView.tsx` (Pase de lista): filas sin toque.
+
+### Propuesta
+- Montar `<PickerDrawer />` en `pages/TeamLeader.tsx` igual que en Manager.
+- En Inicio, Equipo y Pase de lista: tocar un picker → `openPickerProfile(picker.id)`.
+- Retirar `PickerDetailsModal` de `TeamView` (un solo componente de perfil para los dos roles).
+- Los datos del cajón (`usePickerDrawerData` → cubetas, fichajes, QC del huerto) ya los puede
+  leer el TL por RLS (miembro del huerto); no hace falta política nueva. Comprobarlo con el
+  test de seguridad existente.
+
+## 8. Mapa del team leader
+
+### Lo que se ve
+La pestaña «Mapa» muestra arriba un mapa de calor (celdas por fila coloreadas por cubetas,
+con filtros hoy / 7 días / 30 días) y debajo objetivo mínimo, mis filas, última alerta y
+filas asignadas. Al TL le interesa: en qué fila está su equipo y en qué filas están los otros.
+
+### Causa
+`team-leader/TasksView.tsx` incrusta `manager/HeatMapView` (352 líneas, densidad de cubetas)
+en un `h-[45vh]`. El manager tiene `MapToggleView` con tres modos: **Táctico**
+(`OrchardMapView`: bloques → filas → avatares de pickers, con el team leader marcado),
+**Calor** (`HeatMapView`) y **Lista** (`RowListView`). El TL solo recibe el de calor, que es el
+que menos le dice (cubetas por fila, no quién está dónde). «Tabla de carga» = el modo Calor.
+
+### Propuesta
+- `TasksView` pasa a mostrar `OrchardMapView` (el táctico) a pantalla completa en vez del mapa
+  de calor, con dos realces: las filas donde está **mi equipo** (color del rol TL) y las filas
+  con **otros equipos** (gris, con el nombre del team leader). Sin modo Calor ni Lista.
+- `useOrchardMap` ya calcula pickers por fila y marca al team leader (`RowCard.tsx` línea 24);
+  falta solo el agrupado por equipo (`selectTeamOf` ya existe) y el resalte.
+- Se mantienen debajo «Mis filas» (`RowHistory`) y «Filas activas» con el botón Asignar. La
+  lista «Filas activas» hoy enseña las asignaciones de **todo el huerto**
+  (`useHarvest().rowAssignments`): filtrar a las del propio equipo, con las de los otros
+  equipos solo en el mapa.
+- Lo que se quita: `HeatMapView` del TL, el widget de objetivo mínimo / precio (ya está en
+  Inicio y Perfil).
+
+## 9. Timesheets en lote
+
+### Lo que se ve
+La pestaña «Timesheet» del TL es el editor del manager: un día, una fila por fichaje, botón
+«Editar» en cada una, formulario (entrada, salida, descanso, motivo) y guardar. Para arreglar
+10 fichajes iguales hay que repetirlo 10 veces.
+
+### Causa
+- `manager/TimesheetEditor.tsx` (263 líneas) + `TimesheetRow.tsx`: estado `editingId` único,
+  `saveCorrection(record)` por fila.
+- `attendanceService.correctAttendance()` → Edge Function `manage-attendance` acción `correct`
+  con **un** `attendance_id`, un motivo y auditoría (`timesheet_correction`). No hay acción en
+  lote (sí la hay ya en `approve-timesheet`, `items[]` hasta 500, hecha el 21-10 para Nómina).
+- Alcance: `getAttendanceByDate(orchardId, date)` trae **todo el huerto**; el TL ve y puede
+  corregir fichajes de equipos que no son el suyo. El RLS lo permite (`Manage attendance`:
+  team_leader en su huerto), pero las reglas de equipos del 16-10 dicen que el TL gestiona
+  solo su equipo.
+
+### Propuesta
+- **Selección múltiple** en la tabla (casilla por fila + «todos» + «los que tienen aviso», p.
+  ej. sin descanso de comida o sin salida), y un único formulario que se aplica a los
+  seleccionados: fijar entrada / salida / descanso **o** aplicar la misma corrección relativa
+  («salida a las 16:30 para todos», «descanso 30 min para todos»). Un motivo para el lote.
+- `manage-attendance` acción nueva `correct_batch` (`items[]`, máx. 200, una fila de auditoría
+  por fichaje, mismo esquema Zod en `_shared/security.ts`), con el mismo patrón que
+  `approve-timesheet` (resultados por índice, errores por fila sin tirar el lote).
+- Para el TL: filtrar el editor a los fichajes de **su equipo** (`getPickersByTeam`, como ya
+  hace Pase de lista). El manager sigue viendo el huerto entero.
+- Offline: la corrección se encola como ahora (tipo `attendance` en la cola de Dexie, hallazgo
+  13 de la auditoría de carga sigue pendiente).
+
+Decisión: ¿el TL corrige solo los de su equipo (recomendado, coherente con el 16-10) o todo el
+huerto como hoy?
+
+## 10. Zona de usuario personal (todos los roles)
+
+### Lo que se ve
+No hay dónde cambiar la foto, el teléfono o los datos personales. Al pulsar el avatar de la
+cabecera: en Manager se abre Ajustes del huerto (no es personal); en Team Leader se abre
+«Perfil»; en Runner, QC, RRHH, Logística, Nómina y Admin el avatar no hace nada.
+
+### Causa
+- `common/Header.tsx`: el avatar muestra iniciales (`appUser.full_name`) y solo es botón si la
+  página pasa `onProfileClick`. Lo pasan `Manager.tsx` (→ Ajustes) y `TeamLeader.tsx` (→
+  `ProfileView`). Los otros 6 roles no.
+- `team-leader/ProfileView.tsx` (127 líneas) es una maqueta: comentario «Mocked for now»,
+  selector de huerto deshabilitado, interruptor «modo offline» sin conectar, botón «Fin de
+  jornada» sin `onClick`, pie «v1.2.0 • Build 2024». Solo funciona «Cerrar sesión».
+- Datos: `users` tiene `email, full_name, role, orchard_id, team_id, is_active,
+  privacy_consent_at` y nada más; `pickers` tampoco tiene teléfono ni foto. Los avatares de la
+  app se generan con `utils/avatarUrl.ts` (servicio externo ui-avatars.com por nombre).
+- Seguridad de cuenta: el 2FA se configura en `components/MFASetup.tsx` (forzado por
+  `MFAGuard` a los roles privilegiados), pero no hay pantalla para volver a verlo o
+  regenerarlo; la contraseña solo se cambia por enlace de correo (`resetPasswordForEmail`).
+- Idioma: se elige en Ajustes del manager (sección Idioma) y en ningún sitio para el resto.
+
+### Propuesta: «Mi cuenta», una pantalla común para los 8 roles
+Un componente `common/account/AccountView` abierto desde el avatar de la cabecera en todas
+las páginas (`ResponsiveLayout` lo pasa; se quita el `onProfileClick` especial del manager y
+la maqueta del TL). Secciones:
+1. **Foto**: subir / cambiar / quitar. Bucket privado `avatars` (mismo patrón que
+   `hr-documents`, con URL firmada) y columna `users.avatar_url`. Cabecera y cajón de perfil
+   la usan; si no hay foto, iniciales como ahora (sin ui-avatars externo, que además envía el
+   nombre a un tercero).
+2. **Datos personales**: nombre a mostrar, teléfono, idioma preferido. Columnas nuevas en
+   `users` (`phone`, `preferred_locale`), migración nueva, RLS «cada uno edita lo suyo» (ya
+   hay patrón: `No self attendance update` al revés).
+3. **Seguridad**: cambiar contraseña (`supabase.auth.updateUser`, pidiendo la actual),
+   ver / regenerar 2FA (reutiliza `MFASetup`), sesiones.
+4. **Mi trabajo** (solo lectura): rol, huerto(s), equipo, ID de picker, y para quien cobra por
+   cubeta su precio y mínimo (lo que hoy enseña la maqueta del TL).
+5. **Preferencias de la app**: idioma (mover aquí la sección de Ajustes del manager),
+   notificaciones push (hoy en Ajustes del manager, `notificationService.getPrefs`).
+6. Cerrar sesión y versión real (`VITE_APP_VERSION`).
+
+Decisiones que hacen falta:
+- Qué datos personales edita cada uno y cuáles solo RRHH (p. ej. nombre legal, IRD, banco y
+  visado se quedan en RRHH; teléfono y foto los edita cada uno).
+- Si la foto es obligatoria para pickers (útil para pase de lista) o solo para usuarios con
+  cuenta. Los pickers sin cuenta no entran en la app: su foto la subiría RRHH o el TL.
+
+---
+
+## Orden propuesto (actualizado con el Team Leader)
+
+1. `fix/manager-insights-settings` — #2, #3, #6-mini (sin decisiones).
+2. `fix/manager-logistics-single-page` — #1 (decidido).
+3. `fix/tl-picker-drawer-map` — #7 y #8 (tras confirmar que «tabla de carga» = mapa de calor).
+4. `feat/timesheet-batch-correct` — #9 (tras decidir alcance del TL).
+5. `feat/shift-end-by-person` — #5 (decidido).
+6. `feat/day-plan` — #6 (tras decidir alcance).
+7. `feat/my-account` — #10 (tras decidir datos editables).
+8. `chore/locales-en-es-fr` — #4 (cuando digas).
