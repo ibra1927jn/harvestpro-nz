@@ -8,8 +8,10 @@ import EmptyState from '@/components/ui/EmptyState';
 import FilterBar from '@/components/ui/FilterBar';
 import InlineSelect from '@/components/ui/InlineSelect';
 import { Employee, ComplianceAlert } from '@/services/hhrr.service';
+import { EMPLOYEE_STATUSES, VISA_STATUSES, domainOptions, type OnboardingItem } from '@/services/hhrr/hrLogic';
 import { formatNZDate } from '@/utils/nzFormat';
 import { roleLabel } from '@/i18n/roleLabel';
+import { statusLabel } from '@/i18n/statusLabel';
 import type { TFunction } from '@/i18n';
 import { useTranslation } from '@/i18n';
 
@@ -38,6 +40,9 @@ const visaLabel = (t: TFunction, emp: Employee) =>
         ? (emp.visa_expiry ? t('hr.visa_until', { date: formatNZDate(emp.visa_expiry, 'medium') }) : t('hr.visa'))
         : emp.visa_status === 'expired' ? t('hr.visa_expired') : t('hr.visa_none');
 
+/** Semáforo de alta: qué falta para considerarla completa */
+const missingLabel = (t: TFunction, item: OnboardingItem) => t(`hr.missing.${item}`);
+
 interface EmployeesTabProps {
     employees: Employee[];
     alerts: ComplianceAlert[];
@@ -58,12 +63,14 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
     };
     const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
 
-    // Extract unique values for filter options
+    // Estado y visado: dominio completo con recuento (las de 0 en gris, no ocultas);
+    // roles: los que hay en la lista, con recuento y nombre traducido
     const filterOptions = useMemo(() => ({
-        roles: [...new Set(employees.map(e => e.role))].sort(),
-        statuses: [...new Set(employees.map(e => e.status))].sort(),
-        visas: [...new Set(employees.map(e => e.visa_status))].sort(),
-    }), [employees]);
+        roles: domainOptions([...new Set(employees.map(e => e.role))].sort(), employees.map(e => e.role))
+            .map(o => ({ ...o, label: roleLabel(t, o.value) })),
+        statuses: domainOptions(EMPLOYEE_STATUSES, employees.map(e => e.status)),
+        visas: domainOptions(VISA_STATUSES, employees.map(e => e.visa_status)),
+    }), [employees, t]);
 
     const filtered = employees.filter(emp => {
         const matchesSearch = !searchQuery ||
@@ -126,23 +133,54 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
                                             {roleLabel(t, emp.role)}
                                         </span>
                                     </div>
-                                    <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+                                    <div className="flex items-center gap-3 text-xs text-slate-500 font-medium flex-wrap">
+                                        {/* Alta / baja (lo que RRHH cambia a mano) */}
                                         <InlineSelect
-                                            value={emp.status}
+                                            value={emp.status === 'terminated' ? 'terminated' : 'active'}
                                             options={['active', 'terminated']}
                                             colorMap={STATUS_COLORS}
                                             onSave={(val) => update(emp, { status: val as Employee['status'] })}
                                         />
+                                        {/* Situación derivada: de permiso hoy o alta incompleta */}
+                                        {(emp.status === 'on_leave' || emp.status === 'pending') && (
+                                            <span
+                                                data-testid={`derived-status-${emp.id}`}
+                                                title={emp.status === 'pending' ? (emp.missing_items ?? []).map(i => missingLabel(t, i)).join(' · ') : undefined}
+                                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${STATUS_COLORS[emp.status]}`}
+                                            >
+                                                {statusLabel(t, emp.status)}
+                                            </span>
+                                        )}
                                         <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/50 border border-slate-100 ${VISA_COLORS[emp.visa_status] || 'text-slate-500'}`}>
                                             <span aria-hidden="true" className="material-symbols-outlined text-[14px]">public</span>
                                             {visaLabel(t, emp)}
                                         </span>
                                     </div>
-                                    <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100/60">
+                                    <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100/60 flex-wrap">
                                         <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
                                             <span aria-hidden="true" className="material-symbols-outlined text-[14px]">event</span>
                                             {t('hr.hired', { date: formatNZDate(emp.hire_date, 'medium') })}
                                         </div>
+                                        {/* Semáforo "qué falta" para el alta completa */}
+                                        {emp.status !== 'terminated' && emp.missing_items && emp.missing_items.length > 0 && (
+                                            <div data-testid={`missing-${emp.id}`} className="flex items-center gap-1 flex-wrap">
+                                                {emp.missing_items.map(item => (
+                                                    <span key={item} className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${
+                                                        item === 'contract' || item === 'signed_copy'
+                                                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                            : 'bg-slate-50 text-slate-500 border-slate-200'
+                                                    }`}>
+                                                        {missingLabel(t, item)}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {emp.status !== 'terminated' && emp.missing_items && emp.missing_items.length === 0 && (
+                                            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600">
+                                                <span aria-hidden="true" className="material-symbols-outlined text-[14px]">task_alt</span>
+                                                {t('hr.missing.none')}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                                 <button aria-hidden="true" tabIndex={-1} className="size-8 rounded-full border border-slate-200 bg-white/50 text-slate-400 flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100 transition-all opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0">

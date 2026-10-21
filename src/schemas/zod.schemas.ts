@@ -93,6 +93,51 @@ export const HarvestSettingsSchema = z.object({
 
 export type ValidatedSettings = z.infer<typeof HarvestSettingsSchema>;
 
+// ─── RRHH: ausencias y permisos (leave_requests) ────
+// Lo que escribe la Agenda de RRHH y lo que vuelve de la tabla.
+
+export const LEAVE_TYPES = ['annual', 'sick', 'bereavement', 'family_violence', 'unpaid', 'day_off', 'other'] as const;
+export const LEAVE_STATUSES = ['requested', 'approved', 'rejected', 'cancelled'] as const;
+
+const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD');
+
+/** Alta de una ausencia (formulario → insert) */
+export const NewLeaveRequestSchema = z.object({
+    orchard_id: z.string().uuid(),
+    picker_id: z.string().uuid(),
+    type: z.enum(LEAVE_TYPES),
+    start_date: ymd,
+    end_date: ymd,
+    half_day: z.boolean().default(false),
+    reason: z.string().trim().max(500).nullable().default(null),
+    requested_by: z.string().uuid().nullable().default(null),
+    status: z.enum(LEAVE_STATUSES).default('requested'),
+}).refine(v => v.end_date >= v.start_date, { message: 'End date must be on or after the start date', path: ['end_date'] })
+  .refine(v => !v.half_day || v.start_date === v.end_date, { message: 'A half day is a single day', path: ['half_day'] });
+
+export type NewLeaveRequest = z.infer<typeof NewLeaveRequestSchema>;
+
+/** Fila de leave_requests (lo que vuelve de la BD) */
+export const LeaveRequestSchema = z.object({
+    id: z.string().uuid(),
+    orchard_id: z.string().uuid(),
+    picker_id: z.string().uuid(),
+    type: z.enum(LEAVE_TYPES),
+    start_date: ymd,
+    end_date: ymd,
+    half_day: z.boolean().default(false),
+    reason: z.string().nullable().default(null),
+    status: z.enum(LEAVE_STATUSES),
+    requested_by: z.string().uuid().nullable().default(null),
+    decided_by: z.string().uuid().nullable().default(null),
+    decided_at: z.string().nullable().default(null),
+    decision_note: z.string().nullable().default(null),
+    created_at: z.string(),
+    updated_at: z.string(),
+});
+
+export type ValidatedLeaveRequest = z.infer<typeof LeaveRequestSchema>;
+
 // ─── Utilities ──────────────────────────────────
 
 /**
