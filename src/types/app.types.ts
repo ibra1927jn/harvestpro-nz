@@ -38,6 +38,12 @@ export interface AppUser {
   updated_at?: string;
   /** NZ Privacy Act 2020: timestamp when user accepted privacy consent. NULL = pending */
   privacy_consent_at?: string;
+  /** Mi cuenta: ruta de la foto en el almacén privado "avatars" (<uid>/avatar-<ts>.jpg); null = iniciales */
+  avatar_url?: string | null;
+  /** Mi cuenta: teléfono de contacto que escribe la propia persona */
+  phone?: string | null;
+  /** Mi cuenta: idioma preferido de la app (código de Locale) */
+  preferred_locale?: string | null;
 }
 
 export interface Picker {
