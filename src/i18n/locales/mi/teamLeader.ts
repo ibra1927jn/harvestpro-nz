@@ -77,6 +77,8 @@ const teamLeader: TranslationDict = {
     'tl.team.harness_no': 'Nama tātua',
     'tl.team.assign_placeholder': 'Tohaina...',
     'tl.team.add_picker': 'Tāpiri Kaikohi',
+    // Cajón de perfil de persona (Inicio, Equipo y Pase de lista)
+    'tl.picker.open_profile': 'Whakatuwhera te kōtaha o {name}',
 };
 
 export default teamLeader;

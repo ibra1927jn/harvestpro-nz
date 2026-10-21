@@ -62,6 +62,10 @@ vi.mock('../components/views/team-leader/AttendanceView', () => ({
 vi.mock('@/components/views/manager/TimesheetEditor', () => ({
   default: () => <div>Timesheet Editor</div>,
 }));
+// #7: el cajón de perfil se monta en la página (igual que en Manager)
+vi.mock('@/components/PickerDrawer', () => ({
+  PickerDrawer: () => <div data-testid="picker-drawer" />,
+}));
 vi.mock('@/components/ui/ComponentErrorBoundary', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
@@ -83,6 +87,11 @@ describe('TeamLeader Page', () => {
   it('renders the Home view by default', async () => {
     render(<TeamLeader />);
     expect(await screen.findByTestId('home-view')).toBeTruthy();
+  });
+
+  it('mounts the picker profile drawer (same component as Manager)', () => {
+    render(<TeamLeader />);
+    expect(screen.getByTestId('picker-drawer')).toBeTruthy();
   });
 
   it('renders bottom navigation tabs', () => {

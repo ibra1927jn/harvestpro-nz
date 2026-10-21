@@ -77,6 +77,8 @@ const teamLeader: TranslationDict = {
     'tl.team.harness_no': 'N.º de arnés',
     'tl.team.assign_placeholder': 'Asignar...',
     'tl.team.add_picker': 'Añadir recolector',
+    // Cajón de perfil de persona (Inicio, Equipo y Pase de lista)
+    'tl.picker.open_profile': 'Abrir el perfil de {name}',
 };
 
 export default teamLeader;

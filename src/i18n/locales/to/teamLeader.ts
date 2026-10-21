@@ -77,6 +77,8 @@ const teamLeader: TranslationDict = {
     'tl.team.harness_no': 'Fika haanisi',
     'tl.team.assign_placeholder': 'Vahe...',
     'tl.team.add_picker': 'Tānaki Toli',
+    // Cajón de perfil de persona (Inicio, Equipo y Pase de lista)
+    'tl.picker.open_profile': 'Fakaava e fakamatala \'o {name}',
 };
 
 export default teamLeader;

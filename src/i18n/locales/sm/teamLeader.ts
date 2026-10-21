@@ -77,6 +77,8 @@ const teamLeader: TranslationDict = {
     'tl.team.harness_no': 'Numera fusi',
     'tl.team.assign_placeholder': 'Tofi...',
     'tl.team.add_picker': 'Fa\'aopoopo Tagata',
+    // Cajón de perfil de persona (Inicio, Equipo y Pase de lista)
+    'tl.picker.open_profile': 'Tatala le fa\'amatalaga o {name}',
 };
 
 export default teamLeader;

@@ -77,6 +77,8 @@ const teamLeader: TranslationDict = {
     'tl.team.harness_no': 'Harness No.',
     'tl.team.assign_placeholder': 'Italaga...',
     'tl.team.add_picker': 'Magdagdag ng picker',
+    // Cajón de perfil de persona (Inicio, Equipo y Pase de lista)
+    'tl.picker.open_profile': 'Buksan ang profile ni {name}',
 };
 
 export default teamLeader;

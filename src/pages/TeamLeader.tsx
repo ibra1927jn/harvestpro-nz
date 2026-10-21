@@ -14,6 +14,7 @@ import React, { useState, Suspense } from 'react';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import ResponsiveLayout from '@/components/common/ResponsiveLayout';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
+import { PickerDrawer } from '@/components/PickerDrawer';
 import { TEAM_LEADER_NAV_TABS, type TeamLeaderTab } from '@/config/navigation/team-leader.nav';
 import { useTranslation } from '@/i18n';
 
@@ -42,6 +43,7 @@ const TeamLeader = () => {
     const mobileActiveTab = activeTab === 'team' || activeTab === 'profile' ? 'home' : activeTab;
 
     return (
+        <>
         <ResponsiveLayout
             navItems={TEAM_LEADER_NAV_TABS}
             mobileTabs={TEAM_LEADER_NAV_TABS}
@@ -102,6 +104,9 @@ const TeamLeader = () => {
                 </div>
             </div>
         </ResponsiveLayout>
+        {/* Cajón de perfil de persona (el mismo que el manager): se abre con openPickerProfile(id) */}
+        <PickerDrawer />
+        </>
     );
 };
 

@@ -77,6 +77,8 @@ const teamLeader: TranslationDict = {
     'tl.team.harness_no': 'हार्नेस नं.',
     'tl.team.assign_placeholder': 'असाइन...',
     'tl.team.add_picker': 'नया पिकर जोड़ें',
+    // Cajón de perfil de persona (Inicio, Equipo y Pase de lista)
+    'tl.picker.open_profile': '{name} की प्रोफ़ाइल खोलें',
 };
 
 export default teamLeader;
