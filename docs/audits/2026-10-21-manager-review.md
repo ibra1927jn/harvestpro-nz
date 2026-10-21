@@ -3,7 +3,7 @@
 Lista de problemas que encontró el dueño al entrar rol por rol en el servidor local
 (rama `perf/season-load-sim`, seeds `00 → 2weeks → role_users → today`), con la causa
 de cada uno en el código y la propuesta de arreglo. **No se ha tocado nada: este documento
-es para decidir antes de empezar.** Parte A: Manager. Parte B: Team Leader.
+es para decidir antes de empezar.** Parte A: Manager. Parte B: Team Leader. Parte C: Runner.
 
 # Parte A — Manager
 
@@ -413,15 +413,140 @@ Decisiones que hacen falta:
 - Si la foto es obligatoria para pickers (útil para pase de lista) o solo para usuarios con
   cuenta. Los pickers sin cuenta no entran en la app: su foto la subiría RRHH o el TL.
 
+
 ---
 
-## Orden propuesto (actualizado con el Team Leader)
+# Parte C — Runner
+
+| # | Problema | Causa | Tamaño | Necesita decisión |
+|---|----------|-------|--------|-------------------|
+| 11 | Timesheet: salen todos los runners; debe salir solo el del usuario | Usa el `TimesheetEditor` del manager (todo el huerto, un fichaje por fila); además el runner no puede guardar correcciones (la Edge Function le devuelve 403) | M | Sí: ¿el runner ficha su propia entrada/salida? Hoy la regla lo prohíbe |
+| 12 | Almacén: «hay que ver lo del almacén» | Pantalla de tres contadores (bins llenos / vacíos / en curso) con adornos sin función; no enseña bins ni solicitudes | M | Sí: qué tiene que mostrar |
+| 13 | Mapa de runners: quién está en el huerto y qué hace cada uno (driver, runner, forklift) | La pestaña «Corredores» lista **pickers**, no runners; no hay dato de «qué hace» un runner ni de tipo de vehículo | L | Sí: cómo se sabe el tipo (driver / forklift / a pie) |
+
+## 11. Timesheet del runner: solo el suyo
+
+### Lo que se ve
+La pestaña «Timesheet» del runner es el editor de fichajes del manager: todos los fichajes
+del huerto del día, con botón «Editar» en cada uno.
+
+### Causa
+- `pages/Runner.tsx` (línea 119) monta `manager/TimesheetEditor` con `orchardId`, igual que el
+  team leader. `getAttendanceByDate(orchardId, date)` trae el huerto entero y la política
+  `Read attendance` (SELECT por huerto) se lo permite.
+- Guardar no funciona para el runner: `manage-attendance` exige `admin | manager | team_leader`
+  (`requireRole`, línea 32) → 403 **después** de rellenar el formulario. Y aunque pudiera, las
+  políticas restrictivas `No self attendance insert/update/delete` (migración
+  `20261013101000`) impiden que nadie toque su propio fichaje salvo admin.
+- Fichar: `check_in` de `manage-attendance` rechaza `picker_id === user.id` («You cannot
+  check yourself in», línea 55). Hoy al runner lo ficha el manager o un team leader.
+
+### Propuesta
+- Pestaña nueva **«Mi hoja»** (`runner/MyTimesheetView`): solo los tramos del usuario
+  (`daily_attendance.picker_id = auth.uid()`), por semana de pago: entrada, salida, descanso,
+  horas, estado (pendiente / aprobado), total de la semana. Solo lectura.
+- Botón **«Pedir corrección»** en cada tramo: motivo + hora propuesta → aviso al manager y al
+  team leader (mensaje del sistema, tabla `messages`), que la aplican desde su editor. Así
+  se respeta «nadie se corrige a sí mismo» y queda auditoría.
+- Quitar `TimesheetEditor` del runner.
+
+Decisión del dueño: «cada runner se hace su timesheet». Dos lecturas:
+- **(a)** El runner **ficha su propia entrada y salida** (y pide correcciones). Hay que
+  relajar la regla del 13-10 para el rol runner: permitir `check_in` / `check_out` sobre uno
+  mismo en `manage-attendance` y en las políticas restrictivas (solo insert de entrada y
+  update de salida, nunca corregir horas pasadas), con auditoría. Los pickers siguen igual.
+- **(b)** El runner **solo ve** su hoja y pide correcciones; fichar lo hace manager / TL como
+  hoy. Sin cambio de seguridad.
+Lo mismo valdría para el team leader (hoy tampoco puede ficharse a sí mismo).
+
+## 12. Almacén
+
+### Lo que hay hoy
+`runner/WarehouseView.tsx` (165 líneas): tres contadores del huerto —bins llenos («listo» /
+«esperando»), bins vacíos («crítico» si < 5), bins en curso— y el botón «Solicitar
+transporte» (crea un `transport_request`). Los números salen del store (`inventory` =
+tabla `bins`, refresco cada ≤ 5 min tras la prueba de carga).
+
+Lo que no cuadra:
+- Campana de notificaciones decorativa (sin `onClick`) y un avatar «Warehouse» pedido a
+  ui-avatars.com (imagen externa, sin función).
+- El texto «Transporte solicitado» aparece cuando hay más de 10 bins llenos, no cuando hay
+  una solicitud real; el runner no ve el estado de **sus** solicitudes (pendiente / asignada
+  / completada), que sí existe en `transport_requests`.
+- No hay lista de bins (código, zona, estado, llenado) ni por zona; no se puede saber dónde
+  están los llenos que hay que recoger.
+- Con la base vacía de bins (seeds) se ve solo el estado vacío con el botón.
+
+### Propuesta (a confirmar contigo qué quieres del almacén)
+- Arriba: los tres contadores, sin adornos.
+- **Mis solicitudes de transporte**: las del runner (`requested_by = auth.uid()`), con estado
+  y vehículo asignado, y poder cancelar una pendiente.
+- **Bins por zona**: lista agrupada por `bins.location.zone` con estado y llenado; los llenos
+  primero. Toque → marcar «recogido» si es su tarea (hoy eso lo hace Logística en
+  `BinsTab`; decidir si el runner también puede).
+- Realtime: ya hay suscripción a `bins` y `transport_requests` en Logística
+  (`useLogistics`, con el coalescado de 2 s de la prueba de carga); reutilizarla aquí.
+
+## 13. Mapa de runners
+
+### Lo que se ve
+La pestaña «Corredores» (`runner/RunnersView.tsx`) se titula «equipo» y lista los **pickers**
+fichados con su fila y cubetas; no sale ningún runner. No hay mapa en el rol runner.
+
+### Causa
+- `RunnersView` usa `selectPresentPickers(crew)` sin filtrar por rol: enseña pickers.
+- No existe el concepto «qué está haciendo un runner». Lo que hay en datos:
+  - `pickers.role`: `picker | runner | bucket_runner | team_leader` (sin driver ni forklift).
+  - `fleet_vehicles`: `name, registration, zone, driver_id, status (active / idle /
+    maintenance / offline), load_status, bins_loaded, max_capacity` — **sin tipo de
+    vehículo** (tractor / forklift / camión).
+  - `transport_requests`: `zone, bins_count, status, assigned_vehicle, assigned_by,
+    completed_at`.
+  - `bucket_records.scanned_by` + `row_number`: la última fila en la que un runner escaneó.
+  - No hay GPS ni posición; la «posición» de un runner solo puede ser su última fila
+    escaneada o la zona de su vehículo.
+- El «Logistics Hub» de febrero (hasta `dfb5a53`) tenía estados de runner (en cola /
+  cargando / hacia bin / volviendo) **derivados de `pickers.status`** con un mapeo fijo, no
+  de lo que hacía de verdad.
+
+### Propuesta: «Runners en el huerto» (sustituye a «Corredores»)
+- **Quiénes**: runners fichados hoy (`pickers.role in (runner, bucket_runner)` con tramo
+  abierto en `daily_attendance`).
+- **Qué hace cada uno**, derivado de los datos, sin que nadie lo teclee:
+  - **Driver**: es `driver_id` de un vehículo con `status = active` → «Tractor X · 5/8 bins ·
+    zona B» (y la solicitud en curso si tiene `assigned_vehicle`).
+  - **Forklift**: igual, con un vehículo de tipo forklift → hace falta añadir
+    `fleet_vehicles.type` (`tractor | forklift | truck`) en una migración nueva; Logística
+    lo rellena en Flota.
+  - **Runner a pie** (bucket runner): último escaneo < 10 min → «recogiendo · fila N»;
+    sin escaneo en 15 min → «en espera»; sin vehículo ni escaneo → «sin actividad».
+- **Mapa**: el táctico (`OrchardMapView`, el mismo que se propone para el team leader en #8)
+  con un avatar de runner sobre su fila (a pie) o sobre la zona del vehículo (driver /
+  forklift), y debajo la lista con el estado de cada uno. La misma pantalla puede servir en
+  la pestaña Logística del manager (#1) como sección «Runners».
+- Datos: una RPC `runners_now(orchard_id)` que junte pickers + tramo abierto + vehículo +
+  último escaneo en una consulta (SECURITY INVOKER, RLS del huerto), refrescada por el
+  realtime de `bins` / `transport_requests` ya existente y cada 60 s.
+
+Decisiones que hacen falta:
+- Tipo de runner: ¿se deriva del vehículo asignado (recomendado: ningún campo nuevo en la
+  persona, un runner puede ser driver hoy y a pie mañana) o es un rol fijo de la persona
+  (añadir `driver` y `forklift` a `pickers.role`)?
+- Añadir `fleet_vehicles.type` (necesario para distinguir forklift de tractor).
+- Si el runner también puede ver a los pickers de su zona (lo que hoy enseña «Corredores»)
+  o solo a los runners.
+
+---
+
+## Orden propuesto (actualizado con Team Leader y Runner)
 
 1. `fix/manager-insights-settings` — #2, #3, #6-mini (sin decisiones).
 2. `fix/manager-logistics-single-page` — #1 (decidido).
 3. `fix/tl-picker-drawer-map` — #7 y #8 (tras confirmar que «tabla de carga» = mapa de calor).
-4. `feat/timesheet-batch-correct` — #9 (tras decidir alcance del TL).
-5. `feat/shift-end-by-person` — #5 (decidido).
-6. `feat/day-plan` — #6 (tras decidir alcance).
-7. `feat/my-account` — #10 (tras decidir datos editables).
-8. `chore/locales-en-es-fr` — #4 (cuando digas).
+4. `fix/runner-my-timesheet` — #11 (tras decidir a / b).
+5. `feat/timesheet-batch-correct` — #9 (tras decidir alcance del TL).
+6. `feat/runners-map` — #13 y #12 (tras decidir tipo de runner y qué enseña el almacén).
+7. `feat/shift-end-by-person` — #5 (decidido).
+8. `feat/day-plan` — #6 (tras decidir alcance).
+9. `feat/my-account` — #10 (tras decidir datos editables).
+10. `chore/locales-en-es-fr` — #4 (cuando digas).
