@@ -3,7 +3,7 @@
 Lista de problemas que encontró el dueño al entrar rol por rol en el servidor local
 (rama `perf/season-load-sim`, seeds `00 → 2weeks → role_users → today`), con la causa
 de cada uno en el código y la propuesta de arreglo. **No se ha tocado nada: este documento
-es para decidir antes de empezar.** Parte A: Manager. Parte B: Team Leader. Parte C: Runner. Parte D: Control de calidad.
+es para decidir antes de empezar.** Parte A: Manager. Parte B: Team Leader. Parte C: Runner. Parte D: Control de calidad. Parte E: RRHH.
 
 # Parte A — Manager
 
@@ -628,18 +628,173 @@ Decisiones que hacen falta:
 - Quién ve las preguntas 7 y 8 (propuesto: team leader, manager y RRHH; nunca en el perfil
   público del picker).
 
+
 ---
 
-## Orden propuesto (actualizado con Team Leader, Runner y QC)
+# Parte E — RRHH
 
-1. `fix/manager-insights-settings` — #2, #3, #6-mini y **#14** (sin decisiones).
+| # | Problema | Causa | Tamaño | Necesita decisión |
+|---|----------|-------|--------|-------------------|
+| 16 | El filtro «Estado» solo tiene una opción («Activo»): no sirve para nada | Las opciones se sacan de los valores que hay en la lista, y el estado solo puede ser activo / baja (el modelo tiene `on_leave` y `pending` pero nunca se asignan) | S | No |
+| 17 | Al crear un contrato no se puede subir el PDF firmado | El formulario tiene tipo, tarifa, inicio y fin; Documentos sube archivos pero no los enlaza al contrato | S–M | No |
+| 18 | La Agenda no sirve si no se pueden gestionar los próximos días | La pestaña enseña solo el horario de **hoy** (entrada, descansos, salida, calculado del turno del huerto). No hay permisos, ausencias, días libres ni calendario; la tabla `leave_requests` no existe («placeholder» desde abril) | L | Sí: qué se gestiona (ausencias / permisos / disponibilidad / turnos) |
+| 19 | RRHH en general es muy pobre | Seis pestañas con lo mínimo: lista, contratos, nómina resumida, documentos, horario de hoy, previsión de vencimientos | XL | Sí: prioridades de la lista de abajo |
+
+## 16. Filtro «Estado» con una sola opción
+
+### Causa
+`hhrr/EmployeesTab.tsx` líneas 62–66: `statuses: [...new Set(employees.map(e => e.status))]` —
+las opciones son los valores que hay en los datos. Y `hrLogic.ts` línea 66 pone
+`status: person.active ? 'active' : 'terminated'`, así que con todos activos solo sale
+«Activo». Igual en Contratos (`filterOptions.types/statuses`) y en Planificación.
+
+### Propuesta
+- Opciones fijas del dominio (`active`, `on_leave`, `terminated`, `pending`; visado:
+  `work_visa`, `expired`, `not_recorded`), con el recuento al lado de cada una y las que
+  tienen 0 en gris, no ocultas. `FilterBar` ya acepta la lista; es pasar el dominio en vez de
+  lo que hay.
+- Dar sentido a los estados: `on_leave` cuando hay una ausencia aprobada que cubre hoy (#18),
+  `pending` para el alta sin contrato / sin documentos obligatorios (#19).
+
+## 17. Subir el contrato firmado
+
+### Causa
+`hhrr/ContractsTab.tsx` líneas 266–287: el formulario de contrato nuevo solo pide tipo
+(permanente / temporada / casual), tarifa por hora, inicio y fin opcional. La tabla
+`hr_documents` (bucket privado `hr-documents`, tipos `employment_agreement`, `work_visa`,
+`passport`, …) existe y Documentos sube archivos, pero **no hay enlace** entre el contrato y
+su documento: `hr_documents` no tiene `contract_id`.
+
+### Propuesta
+- En el formulario de contrato: campo «Contrato firmado (PDF)» opcional; al guardar, se sube a
+  `hr-documents` como `employment_agreement` con `contract_id` (columna nueva, migración
+  nueva) y `expires_at = end_date`.
+- En la tarjeta del contrato: icono «ver PDF» (URL firmada 5 min, ya existe) y aviso «sin
+  copia firmada» cuando falta; también «Subir firmado» para contratos ya creados.
+- Renovar un contrato pide el nuevo PDF (o lo deja pendiente con aviso).
+- El resumen «Contratos pendientes» cuenta también los activos sin copia firmada, porque la
+  ley exige tener copia del acuerdo (ver #19).
+
+## 18. Agenda: gestionar los próximos días
+
+### Lo que hay
+`hhrr/CalendarTab.tsx` (82 líneas): «Horario de hoy» generado de `shift_start_time` /
+`shift_end_time` del huerto (que además se van a quitar, #5) y un bloque «Próximas
+ausencias» vacío con un comentario de que la tabla `leave_requests` no existe.
+
+### Propuesta: Agenda = calendario de la plantilla
+- **Ausencias y permisos**: tabla nueva `leave_requests` (persona, tipo: vacaciones / baja
+  por enfermedad / duelo / violencia familiar / sin sueldo / día libre; desde, hasta,
+  medio día, motivo, estado solicitado / aprobado / rechazado, quién aprueba, notas). La
+  pide RRHH o el team leader por la persona (los pickers no tienen cuenta), la aprueba RRHH.
+  Con «Mi cuenta» (#10) los que sí tienen cuenta (TL, runners, oficina) la piden ellos.
+- **Vista de calendario** por mes y por semana: ausencias aprobadas, días libres,
+  vencimientos de visado y de contrato, fin de temporada, festivos NZ (hay tabla de
+  festivos en `constants/nz-law.ts`), y los descansos obligatorios solo como recordatorio.
+- **Disponibilidad**: por persona, qué días de la próxima semana puede trabajar (lo rellena
+  el TL en el pase de lista o la persona desde Mi cuenta). Sirve al manager para el plan del
+  día (#6): cuántos pickers habrá mañana por equipo.
+- **Efectos**: una ausencia aprobada pone `status = on_leave` ese día (#16), quita a la
+  persona del pase de lista y del plan del día, y pasa a la nómina como día no trabajado
+  (el pago de la ausencia lo calcula el programa de nóminas, como el holiday pay).
+
+Decisión: ¿también turnos / cuadrantes (quién trabaja qué día en qué huerto) o solo
+ausencias y disponibilidad? Lo segundo encaja con «cada persona se administra» (#5); lo
+primero es un módulo grande (Droppah / RosterElf lo venden aparte).
+
+## 19. RRHH en conjunto: qué hacen los demás y qué falta
+
+### Lo que exige la ley NZ (employment.govt.nz, registro obligatorio)
+- Por persona: nombre, dirección postal, edad si < 20, fecha de alta, tipo de trabajo, fecha
+  de baja, **copia del acuerdo de empleo** (y si es colectivo, cuál).
+- Registro de horas y salario por periodo de pago, con cómo se calculó, 6 años.
+- Registro de vacaciones y permisos (fechas de derecho, saldos, días tomados y pagados,
+  festivos trabajados / transferidos), 6 años.
+- Entregar los registros al inspector de trabajo en 10 días hábiles; multas de $1.000 por
+  infracción (hasta $20.000 por trimestre) y hasta $20.000 por incumplimiento para empresas.
+- Buena práctica: contacto de emergencia, cuenta bancaria, datos del permiso de trabajo,
+  constancia de descansos tomados.
+
+### Qué ofrecen los programas del sector (PayHero, AgriSmart, RosterElf, Employment Hero)
+- **Alta digital**: contrato desde plantilla, firma electrónica con estado (enviado / pendiente
+  / firmado), IR330 (código de impuestos) y KiwiSaver (KS2) recogidos en el alta, comprobación
+  de identidad y visado, inducción y políticas firmadas **antes del primer día**; recontratar
+  a un temporero de la temporada pasada con un clic.
+- **Expediente**: todos los documentos por persona con caducidad (visado, licencia, carnet
+  de seguridad, certificados), avisos a 90 / 60 / 30 días, y bloqueo para asignar a quien
+  tiene un documento caducado.
+- **Permisos y saldos**: solicitud desde el móvil, aprobación viendo la cobertura, saldos de
+  vacaciones / enfermedad / duelo / violencia familiar, aniversarios diferidos para temporeros
+  con huecos entre temporadas, festivo «día que habría trabajado» por patrón real.
+- **Horas**: fichaje por equipo desde el móvil del supervisor, carga en lote por equipo,
+  descansos, GPS opcional, offline, y paso a la nómina (Xero / PaySauce) ya aprobado.
+- **Pago a destajo** con complemento al mínimo automático, reglas RSE / PALM, alojamiento.
+- **Seguridad y salud**: incidentes desde el campo, charlas de seguridad firmadas, registro
+  de peligros.
+- **Baja**: liquidación, vacaciones pendientes, devolución de material, encuesta de salida.
+- **Retención 6 años** de horas, pago y permisos.
+
+### Lo que HarvestPro ya tiene
+Plantilla de la empresa (`pickers` + `users`), contratos (tipo, tarifa, fechas, renovar,
+terminar), documentos con caducidad y alerta de visado, pase de lista y tramos por el TL,
+nómina semanal con complemento al mínimo y export a Xero / PaySauce, 2FA, auditoría,
+previsión de vencimientos a 90 días.
+
+### Lo que falta, por orden de valor
+1. **Expediente completo por persona** (una ficha, no seis pestañas): datos obligatorios
+   (dirección, fecha de nacimiento si < 20, contacto de emergencia, IRD, código de
+   impuestos, KiwiSaver, banco), documentos con caducidad, contratos con PDF (#17),
+   permisos, historial de equipos y huertos, notas. Lista de «qué falta» por persona
+   (semáforo de alta completa) → `status = pending` (#16).
+2. **Alta guiada (onboarding)**: checklist por tipo de contrato (temporada / casual / RSE):
+   acuerdo firmado, IR330, KS2, visado comprobado, inducción de seguridad, plan de cuidado
+   pastoral (RSE), y recontratación de temporada anterior. Firma: subir el PDF firmado (#17)
+   ahora; firma electrónica más adelante (necesita proveedor).
+3. **Agenda / permisos / disponibilidad** (#18).
+4. **Alertas de cumplimiento** unificadas: visado, contrato, documento caducado, alta
+   incompleta, descansos no registrados, semanas sin complemento aplicado; con «resolver»
+   y quién lo resolvió.
+5. **Baja**: fecha de fin, motivo, documentos de salida, vacaciones pendientes para el
+   programa de nóminas, material devuelto.
+6. **Exportación para inspección**: por persona y rango de fechas, horas + pago + permisos
+   en un PDF / CSV (la ley: 10 días hábiles).
+7. **Seguridad y salud**: incidentes y charlas firmadas (más adelante).
+
+Decisiones que hacen falta:
+- Orden de los 7 puntos (propuesto: 1 → 2 → 3 → 4 → 5 → 6 → 7).
+- Datos personales sensibles (IRD, banco, fecha de nacimiento): ¿se guardan en HarvestPro o
+  solo en el programa de nóminas y aquí la casilla «entregado»? Guardarlos obliga a cifrado
+  en reposo (ya hay AES-GCM en el cliente para la cola offline, pero no en tablas) y a una
+  política de acceso solo RRHH.
+- Firma electrónica: ¿subir PDF firmado (sin coste) o proveedor de firma (Dropbox Sign,
+  DocuSign; de pago) más adelante?
+
+---
+
+## Nota del 21-10, 11:55
+
+El dueño da por terminada esta primera pasada («muy superficial, pero te orienta») y pide
+ponerse a ello esta noche siguiendo su visión. Lo que se hace sin esperar más decisiones:
+los puntos sin decisión y los ya decididos, más una primera versión razonable de los que
+tienen decisión pendiente, siempre en ramas cortas aparte con PR, sin fusionar a `main`
+(eso lo hace él tras probarlo). Las decisiones tomadas por mi cuenta quedan apuntadas en
+cada PR y aquí abajo.
+
+---
+
+## Orden propuesto (actualizado con Team Leader, Runner, QC y RRHH)
+
+1. `fix/manager-insights-settings` — #2, #3, #6-mini, #14, #16 (sin decisiones).
 2. `fix/manager-logistics-single-page` — #1 (decidido).
-3. `fix/tl-picker-drawer-map` — #7 y #8 (tras confirmar que «tabla de carga» = mapa de calor).
-4. `fix/runner-my-timesheet` — #11 (tras decidir a / b).
-5. `feat/timesheet-batch-correct` — #9 (tras decidir alcance del TL).
-6. `feat/qc-criteria` — #15 (tras confirmar criterios y escala).
-7. `feat/runners-map` — #13 y #12 (tras decidir tipo de runner y qué enseña el almacén).
+3. `fix/tl-picker-drawer-map` — #7 y #8.
+4. `fix/runner-my-timesheet` — #11.
+5. `feat/hr-contract-pdf` — #17.
+6. `feat/timesheet-batch-correct` — #9.
+7. `feat/qc-criteria` — #15.
 8. `feat/shift-end-by-person` — #5 (decidido).
-9. `feat/day-plan` — #6 (tras decidir alcance).
-10. `feat/my-account` — #10 (tras decidir datos editables).
-11. `chore/locales-en-es-fr` — #4 (cuando digas).
+9. `feat/my-account` — #10.
+10. `feat/hr-leave-calendar` — #18 (+ #16 `on_leave`).
+11. `feat/runners-map` — #13 y #12.
+12. `feat/day-plan` — #6.
+13. `feat/hr-employee-file` — #19.1 y #19.2.
+14. `chore/locales-en-es-fr` — #4 (cuando digas).
