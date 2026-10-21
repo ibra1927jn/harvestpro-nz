@@ -1,6 +1,10 @@
 /**
  * HistoryTab — QC Inspection History
  * Extracted from QualityControl.tsx monolith
+ *
+ * Lista de inspecciones del día (nota, criterios con aviso, foto) y, solo para
+ * team leader / manager / RRHH / admin, la sección «Bienestar» con las personas
+ * que dijeron no estar informadas o no estar a gusto en el equipo.
  */
 import { useState, useMemo, useRef } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
@@ -12,6 +16,8 @@ import { Picker } from '@/types';
 import { useTranslation } from '@/i18n';
 import { formatNZTime } from '@/utils/nzFormat';
 import { useQcPhotoUrl } from '@/hooks/useQcPhotoUrl';
+import { gradeLabel, gradeLetter, type QCGrade } from './gradeLabel';
+import { markedCriteria, normalizeCriteria } from '@/services/qcCriteria';
 
 const GRADE_PILL_COLORS: Record<string, string> = {
     A: 'bg-green-100 text-green-700',
@@ -33,13 +39,41 @@ function QcThumb({ stored, alt }: { stored: string; alt: string }) {
     );
 }
 
+/** Criterios en regular (ámbar) o mal (rojo) de una inspección, como chips */
+function CriteriaChips({ criteria, t }: { criteria: unknown; t: (k: string) => string }) {
+    const flagged = markedCriteria(normalizeCriteria(criteria)).filter(([, state]) => state !== 'ok');
+    if (flagged.length === 0) return null;
+    return (
+        <span className="flex flex-wrap gap-1 mt-0.5">
+            {flagged.map(([key, state]) => (
+                <span
+                    key={key}
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${state === 'bad' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}
+                >
+                    {t(`qc.crit.${key}`)}
+                </span>
+            ))}
+        </span>
+    );
+}
+
 interface HistoryTabProps {
     inspections: QCInspection[];
     crew: Picker[];
+    /** Solo team leader, manager, RRHH y admin ven la sección de bienestar */
+    canViewWellbeing?: boolean;
 }
 
-export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
+export default function HistoryTab({ inspections, crew, canViewWellbeing = false }: HistoryTabProps) {
     const { t } = useTranslation();
+    const pickerName = (id: string) => crew.find(p => p.id === id)?.name || t('common.unknown');
+
+    // Bienestar: respuestas «no» a informado / a gusto (fuera de la nota y de las estadísticas)
+    // TODO: aviso al team leader («N pickers de tu equipo dicen no estar informados») — fuera de alcance aquí.
+    const wellbeingFlags = useMemo(
+        () => (canViewWellbeing ? inspections.filter(i => i.informed === false || i.comfortable === false) : []),
+        [inspections, canViewWellbeing],
+    );
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -62,6 +96,46 @@ export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
 
     return (
         <>
+            {canViewWellbeing && (
+                <section
+                    className="bg-white rounded-lg border border-border-light shadow-sm mb-4"
+                    aria-label={t('qc.wellbeing_title')}
+                    data-testid="wellbeing-section"
+                >
+                    <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                        <h2 className="text-sm font-semibold text-text-main flex items-center gap-2">
+                            <span aria-hidden="true" className="material-symbols-outlined text-base text-rose-500">favorite</span>
+                            {t('qc.wellbeing_title')}
+                        </h2>
+                        <span className="text-xs text-text-muted">{t('qc.wellbeing_n', { n: wellbeingFlags.length })}</span>
+                    </div>
+                    {wellbeingFlags.length === 0 ? (
+                        <p className="px-4 py-3 text-sm text-text-muted">{t('qc.wellbeing_empty')}</p>
+                    ) : (
+                        <ul className="divide-y divide-slate-100">
+                            {wellbeingFlags.map(insp => (
+                                <li key={insp.id} className="px-4 py-3 flex items-start gap-3">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-text-main truncate">{pickerName(insp.picker_id)}</p>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {insp.informed === false && (
+                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700">{t('qc.flag_not_informed')}</span>
+                                            )}
+                                            {insp.comfortable === false && (
+                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700">{t('qc.flag_not_comfortable')}</span>
+                                            )}
+                                        </div>
+                                        {insp.wellbeing_notes && (
+                                            <p className="text-xs text-text-muted mt-1">{insp.wellbeing_notes}</p>
+                                        )}
+                                    </div>
+                                    <span className="text-xs text-text-muted">{formatNZTime(insp.created_at)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </section>
+            )}
             <div className="bg-white rounded-lg border border-border-light shadow-sm">
                 <div className="px-4 py-3 border-b border-slate-100">
                     <h2 className="text-sm font-semibold text-text-main mb-3">
@@ -82,7 +156,7 @@ export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
                 {filtered.length > 0 ? (
                     <VirtualList
                         items={filtered}
-                        estimateSize={56}
+                        estimateSize={76}
                         overscan={8}
                         className="max-h-[500px]"
                         getKey={(item) => item.id}
@@ -96,10 +170,14 @@ export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-text-main truncate">
                                             {picker?.name || t('common.unknown')}
+                                            {insp.row_number ? (
+                                                <span className="ml-2 text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('runner.row_n', { n: insp.row_number })}</span>
+                                            ) : null}
                                         </p>
                                         {insp.notes && (
                                             <p className="text-xs text-text-muted truncate">{insp.notes}</p>
                                         )}
+                                        <CriteriaChips criteria={insp.criteria} t={t} />
                                     </div>
                                     {insp.photo_url && (
                                         <button
@@ -111,8 +189,12 @@ export default function HistoryTab({ inspections, crew }: HistoryTabProps) {
                                             <QcThumb stored={insp.photo_url} alt={t('qc.photo_alt')} />
                                         </button>
                                     )}
-                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${GRADE_PILL_COLORS[insp.grade] || ''}`}>
-                                        {insp.grade === 'reject' ? t('qc.rej') : insp.grade}
+                                    <span
+                                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${GRADE_PILL_COLORS[insp.grade] || ''}`}
+                                        title={gradeLabel(t, insp.grade as QCGrade)}
+                                        aria-label={gradeLabel(t, insp.grade as QCGrade)}
+                                    >
+                                        {gradeLetter(t, insp.grade as QCGrade)}
                                     </span>
                                     <span className="text-xs text-text-muted">
                                         {formatNZTime(insp.created_at)}

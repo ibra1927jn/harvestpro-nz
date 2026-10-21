@@ -93,6 +93,39 @@ export const HarvestSettingsSchema = z.object({
 
 export type ValidatedSettings = z.infer<typeof HarvestSettingsSchema>;
 
+// ─── QC: inspección de un picker ────────────────
+// Lo que escribe la pantalla de Calidad (y lo que reintenta la cola offline)
+// antes de llegar a qc_inspections. Los criterios son opcionales: una
+// inspección solo con nota (formato anterior) sigue siendo válida.
+
+export const QcCriterionStateSchema = z.enum(['ok', 'warn', 'bad']);
+
+export const QcCriteriaSchema = z.object({
+    ladder: QcCriterionStateSchema.optional(),
+    tree_damage: QcCriterionStateSchema.optional(),
+    fruit_on_ground: QcCriterionStateSchema.optional(),
+    bucket_fill: QcCriterionStateSchema.optional(),
+    size: QcCriterionStateSchema.optional(),
+    damaged_fruit: QcCriterionStateSchema.optional(),
+});
+
+export const QcInspectionInsertSchema = z.object({
+    orchard_id: z.string().min(1),
+    picker_id: z.string().min(1),
+    inspector_id: z.string().min(1),
+    grade: z.enum(['A', 'B', 'C', 'reject']),
+    notes: z.string().max(2000).nullable().optional(),
+    photo_url: z.string().max(1000).nullable().optional(),
+    criteria: QcCriteriaSchema.nullable().optional(),
+    score: z.number().int().min(0).max(100).nullable().optional(),
+    row_number: z.number().int().min(0).max(9999).nullable().optional(),
+    informed: z.boolean().nullable().optional(),
+    comfortable: z.boolean().nullable().optional(),
+    wellbeing_notes: z.string().max(500).nullable().optional(),
+});
+
+export type ValidatedQcInspectionInsert = z.infer<typeof QcInspectionInsertSchema>;
+
 // ─── Utilities ──────────────────────────────────
 
 /**

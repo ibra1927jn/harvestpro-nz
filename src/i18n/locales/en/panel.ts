@@ -73,10 +73,6 @@ const panel: TranslationDict = {
     'panel.history.col.earned': 'EARNED',
     'panel.history.daily_output_title': 'Daily Output (last {n} days)',
     // Quality tab
-    'panel.quality.grade_a': 'Grade A',
-    'panel.quality.grade_b': 'Grade B',
-    'panel.quality.grade_c': 'Grade C',
-    'panel.quality.rejected': 'Rejected',
     'panel.quality.overall': 'Overall Quality Score',
     'panel.quality.from': 'from {n} inspections',
     'panel.quality.none': 'No quality inspections yet',

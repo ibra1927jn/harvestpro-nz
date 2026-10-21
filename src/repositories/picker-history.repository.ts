@@ -6,6 +6,16 @@
 import { supabase } from '@/services/supabase';
 import { fetchAllRows } from '@/utils/fetchAllRows';
 
+/** Inspección de un picker (qc_inspections o la tabla antigua, sin criterios) */
+export interface PickerInspectionRow {
+    quality_grade: string | null;
+    created_at: string | null;
+    /** {ladder: 'ok'|'warn'|'bad', ...} o null (inspección solo con nota) */
+    criteria?: unknown;
+    score?: number | null;
+    row_number?: number | null;
+}
+
 export const pickerHistoryRepository = {
     /** Get picker profile by ID */
     async getPickerById(pickerId: string) {
@@ -55,18 +65,25 @@ export const pickerHistoryRepository = {
     },
 
     /** Get quality inspections for a picker since a given ISO timestamp */
-    async getInspectionsSince(pickerId: string, sinceIso: string): Promise<Array<{ quality_grade: string | null; created_at: string | null }>> {
+    async getInspectionsSince(pickerId: string, sinceIso: string): Promise<PickerInspectionRow[]> {
         // Las inspecciones de la app de Calidad están en qc_inspections (columna
-        // grade); quality_inspections es la tabla antigua. Se leen las dos.
+        // grade, y desde 2026-10 criterios, puntuación y fila); quality_inspections
+        // es la tabla antigua (solo nota). Se leen las dos.
         const [qc, legacy] = await Promise.all([
-            supabase.from('qc_inspections').select('grade, created_at')
+            supabase.from('qc_inspections').select('grade, created_at, criteria, score, row_number')
                 .eq('picker_id', pickerId).gte('created_at', sinceIso),
             supabase.from('quality_inspections').select('quality_grade, created_at')
                 .eq('picker_id', pickerId).gte('created_at', sinceIso),
         ]);
         return [
-            ...((qc.data || []) as Array<{ grade: string; created_at: string | null }>)
-                .map(i => ({ quality_grade: i.grade, created_at: i.created_at })),
+            ...((qc.data || []) as Array<{ grade: string; created_at: string | null; criteria?: unknown; score?: number | null; row_number?: number | null }>)
+                .map(i => ({
+                    quality_grade: i.grade,
+                    created_at: i.created_at,
+                    criteria: i.criteria ?? null,
+                    score: i.score ?? null,
+                    row_number: i.row_number ?? null,
+                })),
             ...((legacy.data || []) as Array<{ quality_grade: string | null; created_at: string | null }>),
         ];
     },

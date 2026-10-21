@@ -87,6 +87,17 @@ export type QCInspectionPayload = {
     grade: 'A' | 'B' | 'C' | 'reject';
     notes?: string | null;
     photo_url?: string | null;
+    /** Criterios marcados ({ladder: 'ok'|'warn'|'bad', ...}); null = solo nota */
+    criteria?: Partial<Record<'ladder' | 'tree_damage' | 'fruit_on_ground' | 'bucket_fill' | 'size' | 'damaged_fruit', 'ok' | 'warn' | 'bad'>> | null;
+    /** 0-100 calculado de los criterios */
+    score?: number | null;
+    /** Fila donde estaba la persona al inspeccionarla */
+    row_number?: number | null;
+    /** Bienestar (aparte de la nota): ¿sabe qué y cómo recoge? */
+    informed?: boolean | null;
+    /** Bienestar: ¿está a gusto en el equipo? */
+    comfortable?: boolean | null;
+    wellbeing_notes?: string | null;
 };
 
 export type SyncPayload = ScanPayload | MessagePayload | AttendancePayload | ContractPayload | TransportPayload | TimesheetPayload | PickerPayload | QCInspectionPayload;
