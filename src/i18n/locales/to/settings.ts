@@ -24,7 +24,6 @@ const settings: TranslationDict = {
     'settings.harvest.daily_target': 'Taumuʻa ʻAho (toni)',
     'settings.harvest.shift_hours': 'HOUA NGĀUE',
     'settings.harvest.shift_start': 'Kamataʻanga',
-    'settings.harvest.shift_end': 'Ngataʻanga',
     'settings.harvest.min_warning': 'Ke aʻu ki he ${wage}/houa ʻi he ${rate}/pakete = {floor} p/houa',
     'settings.orchard.title': 'Fakaikiiki Ngoue',
     'settings.orchard.subtitle': 'Fakamatala ngoue',

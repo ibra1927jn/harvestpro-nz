@@ -26,7 +26,6 @@ const settings: TranslationDict = {
     'settings.harvest.daily_target': 'Meta Diaria (toneladas)',
     'settings.harvest.shift_hours': 'HORARIO DE TURNO',
     'settings.harvest.shift_start': 'Inicio de Turno',
-    'settings.harvest.shift_end': 'Fin de Turno',
     'settings.harvest.min_warning': 'Mínimo para alcanzar ${wage}/hr a ${rate}/cubeta = {floor} c/hr',
     // Orchard Details
     'settings.orchard.title': 'Detalles del Huerto',

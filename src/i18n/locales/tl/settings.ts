@@ -24,7 +24,6 @@ const settings: TranslationDict = {
     'settings.harvest.daily_target': 'Target sa Araw (tonelada)',
     'settings.harvest.shift_hours': 'ORAS NG SHIFT',
     'settings.harvest.shift_start': 'Simula ng Shift',
-    'settings.harvest.shift_end': 'Tapos ng Shift',
     'settings.harvest.min_warning': 'Para maabot ang ${wage}/oras sa ${rate}/timba = {floor} t/oras',
     'settings.orchard.title': 'Detalye ng Taniman',
     'settings.orchard.subtitle': 'Impormasyon ng farm',

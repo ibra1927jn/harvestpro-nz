@@ -24,7 +24,6 @@ const settings: TranslationDict = {
     'settings.harvest.daily_target': 'Whāinga ā-Rā (tana)',
     'settings.harvest.shift_hours': 'HĀORA MAHI',
     'settings.harvest.shift_start': 'Tīmatanga',
-    'settings.harvest.shift_end': 'Mutunga',
     'settings.harvest.min_warning': 'Kia tae ki ${wage}/hāora i ${rate}/pākete = {floor} b/hāora',
     'settings.orchard.title': 'Taipitopito Māra',
     'settings.orchard.subtitle': 'Mōhiohio pāmu',

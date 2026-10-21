@@ -24,7 +24,6 @@ const settings: TranslationDict = {
     'settings.harvest.daily_target': 'दैनिक लक्ष्य (टन)',
     'settings.harvest.shift_hours': 'शिफ़्ट घंटे',
     'settings.harvest.shift_start': 'शिफ़्ट शुरू',
-    'settings.harvest.shift_end': 'शिफ़्ट ख़त्म',
     'settings.harvest.min_warning': '${rate}/बाल्टी पर ${wage}/घंटा के लिए न्यूनतम = {floor} बा/घं',
     'settings.orchard.title': 'बाग की जानकारी',
     'settings.orchard.subtitle': 'फ़ार्म जानकारी',

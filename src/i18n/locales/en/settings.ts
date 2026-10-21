@@ -26,7 +26,6 @@ const settings: TranslationDict = {
     'settings.harvest.daily_target': 'Daily Target (tons)',
     'settings.harvest.shift_hours': 'SHIFT HOURS',
     'settings.harvest.shift_start': 'Shift Start',
-    'settings.harvest.shift_end': 'Shift End',
     'settings.harvest.min_warning': 'Minimum to meet ${wage}/hr at ${rate}/bucket = {floor} b/hr',
     // Orchard Details
     'settings.orchard.title': 'Orchard Details',

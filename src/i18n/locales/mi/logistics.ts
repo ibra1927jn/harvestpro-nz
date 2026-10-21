@@ -25,7 +25,6 @@ const logistics: TranslationDict = {
     'logistics.events.row_blocked': 'Kua ārai te rārangi',
     'logistics.events.alert': 'Matohi mai i te runner matua',
     'logistics.events.empty': 'Kāore he takahanga hou',
-    'logistics.full_view': 'Huakina te tirohanga kawe katoa →',
     'logistics.operations': 'Ngā mahi',
 };
 
