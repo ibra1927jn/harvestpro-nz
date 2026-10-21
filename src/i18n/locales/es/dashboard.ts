@@ -79,6 +79,10 @@ const dashboard: TranslationDict = {
     'dashboard.team_leaders.picker_count': '{n} recolectores',
     'dashboard.team_leaders.empty': 'Sin Líderes de Equipo asignados.',
     'dashboard.team_leaders.manage': 'Gestionar Equipos',
+    'dashboard.eta_at_pace': 'A este ritmo: {time}',
+    'dashboard.pace_now': 'Ritmo: {n} cubetas/h',
+    'dashboard.remaining_to_goal': 'Faltan {n} cubetas para la meta',
+    'dashboard.velocity.since': 'Desde las {start}',
 };
 
 export default dashboard;

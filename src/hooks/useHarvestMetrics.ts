@@ -15,7 +15,6 @@ import {
     computeKPIs,
     computePerTeam,
     rankByEfficiency,
-    projectEndOfDay,
     computeHoursElapsed,
     type PickerMetrics,
     type HarvestKPIs,
@@ -28,8 +27,6 @@ export interface HarvestMetrics {
     perTeam: TeamMetrics[];
     /** Ordenados de más eficiente (menor costPerBin) a menos */
     efficiency: PickerMetrics[];
-    /** Proyección de bins al final del turno (redondeado a 10) */
-    projectedEndOfDay: number;
     /** Horas de turno transcurridas (desde shiftStart hasta now) */
     hoursElapsed: number;
     /** Snapshot de "now" — se actualiza cada 60s */
@@ -49,7 +46,6 @@ export function useHarvestMetrics(): HarvestMetrics {
     }, []);
 
     const shiftStart = settings.shift_start_time ?? '07:00';
-    const shiftEnd = settings.shift_end_time ?? '17:00';
 
     const perPicker = useMemo(
         () => computePerPicker(crew, bucketRecords, settings, now),
@@ -67,15 +63,7 @@ export function useHarvestMetrics(): HarvestMetrics {
         [shiftStart, now]
     );
 
-    const projectedEndOfDay = useMemo(
-        () => projectEndOfDay({
-            bins: kpis.totalBins,
-            hoursElapsed,
-            shiftStartHHMM: shiftStart,
-            shiftEndHHMM: shiftEnd,
-        }, now),
-        [kpis.totalBins, hoursElapsed, shiftStart, shiftEnd, now]
-    );
-
-    return { kpis, perPicker, perTeam, efficiency, projectedEndOfDay, hoursElapsed, now };
+    // Sin hora de fin de turno no hay «proyección a fin de día»: la meta se
+    // expresa como hora estimada al ritmo actual (analyticsService.calculateETA).
+    return { kpis, perPicker, perTeam, efficiency, hoursElapsed, now };
 }

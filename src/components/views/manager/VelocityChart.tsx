@@ -3,9 +3,10 @@
  * Hourly Bucket Velocity Chart (Pure CSS - No charting dependencies)
  *
  * Modos de operación:
- * - Sin shiftStart/shiftEnd: muestra las últimas 8 horas (comportamiento original).
- * - Con shiftStart + shiftEnd: muestra la ventana completa del turno (07:00–17:00)
- *   y habilita drill-down al hacer click en una barra (requiere onBarClick).
+ * - Sin shiftStart: muestra las últimas 8 horas (comportamiento original).
+ * - Con shiftStart: muestra desde el inicio de turno hasta la hora actual (no hay
+ *   hora de fin de turno: cada equipo acaba cuando acaba) y habilita drill-down al
+ *   hacer click en una barra (requiere onBarClick).
  *
  * Fixes históricos:
  * - Eje X siempre en formato 24h.
@@ -16,16 +17,14 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from '@/i18n';
 import { analyticsService } from '../../../services/analytics.service';
-import { buildShiftSlots } from '@/utils/time';
+import { buildShiftSlotsUntilNow } from '@/utils/time';
 import { BucketRecord } from '../../../types';
 
 interface VelocityChartProps {
     bucketRecords: BucketRecord[];
     targetVelocity?: number;
-    /** Hora de inicio de turno, p.ej. "07:00". Activa el modo shift window. */
+    /** Hora de inicio de turno, p.ej. "07:00". Activa el modo ventana de turno (hasta ahora). */
     shiftStart?: string;
-    /** Hora de fin de turno, p.ej. "17:00". Activa el modo shift window. */
-    shiftEnd?: string;
     /** Callback al hacer click en una barra (solo en modo shift window). */
     onBarClick?: (slotStartMs: number, slotEndMs: number, hourLabel: string) => void;
 }
@@ -58,7 +57,6 @@ const VelocityChart: React.FC<VelocityChartProps> = ({
     bucketRecords,
     targetVelocity = 50,
     shiftStart,
-    shiftEnd,
     onBarClick,
 }) => {
     const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
@@ -66,9 +64,9 @@ const VelocityChart: React.FC<VelocityChartProps> = ({
 
     // Unificación de ambos modos en un único array de barras
     const bars = useMemo((): BarEntry[] => {
-        if (shiftStart && shiftEnd) {
-            // Modo shift window: cubre la ventana completa del turno
-            const slots = buildShiftSlots(shiftStart, shiftEnd);
+        if (shiftStart) {
+            // Modo ventana de turno: desde el inicio hasta la hora actual
+            const slots = buildShiftSlotsUntilNow(shiftStart);
             const nowMs = Date.now();
             return slots.map(slot => {
                 const count = bucketRecords.filter(r => {
@@ -94,7 +92,7 @@ const VelocityChart: React.FC<VelocityChartProps> = ({
             slotEndMs: 0,
             isCurrentHour: idx === lastIdx,
         }));
-    }, [bucketRecords, shiftStart, shiftEnd]);
+    }, [bucketRecords, shiftStart]);
 
     const totalToday = bars.reduce((sum, b) => sum + b.count, 0);
     const hasData = totalToday > 0;
@@ -120,8 +118,8 @@ const VelocityChart: React.FC<VelocityChartProps> = ({
                         {t('dashboard.velocity.title')}
                     </h3>
                     <p className="text-[10px] text-slate-400 mt-0.5">
-                        {shiftStart && shiftEnd
-                            ? `${shiftStart}–${shiftEnd}`
+                        {shiftStart
+                            ? t('dashboard.velocity.since', { start: shiftStart })
                             : t('dashboard.velocity.subtitle')}
                     </p>
                 </div>

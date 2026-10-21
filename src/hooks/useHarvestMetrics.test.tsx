@@ -16,7 +16,6 @@ vi.mock('@/services/harvestMetrics', () => ({
     computeKPIs: vi.fn(() => ({ totalBins: 0, totalHours: 0, avgBinsPerHour: 0 })),
     computePerTeam: vi.fn(() => []),
     rankByEfficiency: vi.fn(() => []),
-    projectEndOfDay: vi.fn(() => 120),
     computeHoursElapsed: vi.fn(() => 4),
 }));
 
@@ -43,14 +42,13 @@ describe('useHarvestMetrics', () => {
         expect(Array.isArray(result.current.perPicker)).toBe(true);
         expect(Array.isArray(result.current.perTeam)).toBe(true);
         expect(Array.isArray(result.current.efficiency)).toBe(true);
-        expect(typeof result.current.projectedEndOfDay).toBe('number');
         expect(typeof result.current.hoursElapsed).toBe('number');
         expect(result.current.now).toBeInstanceOf(Date);
     });
 
-    it('projectedEndOfDay usa el valor de projectEndOfDay service', () => {
+    it('no expone proyección a fin de día (no hay hora de fin de turno)', () => {
         const { result } = renderHook(() => useHarvestMetrics());
-        expect(result.current.projectedEndOfDay).toBe(120);
+        expect('projectedEndOfDay' in result.current).toBe(false);
     });
 
     it('hoursElapsed usa el valor de computeHoursElapsed service', () => {

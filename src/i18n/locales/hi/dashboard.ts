@@ -77,6 +77,10 @@ const dashboard: TranslationDict = {
     'dashboard.team_leaders.picker_count': '{n} पिकर',
     'dashboard.team_leaders.empty': 'कोई टीम लीडर तय नहीं।',
     'dashboard.team_leaders.manage': 'टीमें प्रबंधित करें',
+    'dashboard.eta_at_pace': 'इस गति से: {time}',
+    'dashboard.pace_now': 'गति: {n} बाल्टियाँ/घंटा',
+    'dashboard.remaining_to_goal': 'लक्ष्य तक {n} बाल्टियाँ बाकी',
+    'dashboard.velocity.since': '{start} से',
 };
 
 export default dashboard;

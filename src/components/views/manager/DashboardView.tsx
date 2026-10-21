@@ -57,12 +57,10 @@ const DashboardView: React.FC<DashboardViewProps> = ({
   // Fuente única de verdad para KPIs (mismos datos que InsightsView)
   const {
     kpis,
-    projectedEndOfDay,
     hoursElapsed: metricsHoursElapsed,
   } = useHarvestMetrics();
 
   const shiftStart = settings.shift_start_time ?? '07:00';
-  const shiftEnd = settings.shift_end_time ?? '17:00';
 
   // Drill-down del gráfico de velocidad
   const velocityDrilldown = useVelocityDrilldown(bucketRecords, crew);
@@ -114,11 +112,10 @@ const DashboardView: React.FC<DashboardViewProps> = ({
   const target = settings.target_tons || 40;
   const progress = Math.min(100, (stats.tons / target) * 100);
 
-  // 4. ETA Calculation — anclada a shift_end_time para evitar jitter por wall-clock re-renders
-  const shiftEndTime = settings?.shift_end_time ?? '17:00';
+  // 4. Hora estimada de la meta al ritmo actual (sin hora de fin de turno)
   const etaInfo = useMemo(() => {
-    return analyticsService.calculateETA(stats.tons, target, velocity, 72, shiftEndTime);
-  }, [stats.tons, target, velocity, shiftEndTime]);
+    return analyticsService.calculateETA(stats.tons, target, velocity, 72);
+  }, [stats.tons, target, velocity]);
 
   // 5. Hours elapsed — desde useHarvestMetrics (shift-anchored, no re-calc en cada render)
   const hoursElapsed = metricsHoursElapsed;
@@ -298,7 +295,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({
             velocity={velocity}
             totalBuckets={kpis.totalBins}
             hoursElapsed={hoursElapsed}
-            projectedBuckets={projectedEndOfDay}
           />
           <ComponentErrorBoundary componentName="Velocity Chart">
             <VelocityChart
@@ -307,7 +303,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                 ((settings.min_buckets_per_hour || 3.6) * selectPresentPickers(crew).length) / 2
               )}
               shiftStart={shiftStart}
-              shiftEnd={shiftEnd}
               onBarClick={velocityDrilldown.open}
             />
           </ComponentErrorBoundary>

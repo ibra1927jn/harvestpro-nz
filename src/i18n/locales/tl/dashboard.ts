@@ -77,6 +77,10 @@ const dashboard: TranslationDict = {
     'dashboard.team_leaders.picker_count': '{n} picker',
     'dashboard.team_leaders.empty': 'Walang naitalagang team leader.',
     'dashboard.team_leaders.manage': 'Pamahalaan ang Teams',
+    'dashboard.eta_at_pace': 'Sa bilis na ito: {time}',
+    'dashboard.pace_now': 'Bilis: {n} timba/oras',
+    'dashboard.remaining_to_goal': '{n} timba pa hanggang sa layunin',
+    'dashboard.velocity.since': 'Mula {start}',
 };
 
 export default dashboard;

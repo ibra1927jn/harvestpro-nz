@@ -77,6 +77,10 @@ const dashboard: TranslationDict = {
     'dashboard.team_leaders.picker_count': '{n} tagata toli',
     'dashboard.team_leaders.empty': 'Leai ni ta\'ita\'i vaega ua tofia.',
     'dashboard.team_leaders.manage': 'Pulea Vaega',
+    'dashboard.eta_at_pace': 'I lenei saoasaoa: {time}',
+    'dashboard.pace_now': 'Saoasaoa: {n} pakete/itula',
+    'dashboard.remaining_to_goal': '{n} pakete e totoe i le sini',
+    'dashboard.velocity.since': 'Mai le {start}',
 };
 
 export default dashboard;

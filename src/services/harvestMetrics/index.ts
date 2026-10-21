@@ -18,7 +18,7 @@ export { rankByEfficiency } from './efficiency';
 
 export { deriveHoursWorked, deriveHoursPerPicker, HOURS_NO_DATA } from './hours';
 
-export { projectEndOfDay, computeHoursElapsed } from './projection';
+export { computeHoursElapsed } from './projection';
 
 export type { DrilldownData, DrilldownPickerRow } from './drilldown';
 export { drilldownForHour } from './drilldown';

@@ -109,17 +109,15 @@ export function useLogisticsHealth(): LogisticsHealthData {
 
   // Backlog actual (último punto de la serie)
   const shiftStart = settings?.shift_start_time ?? '07:00';
-  const shiftEnd = settings?.shift_end_time ?? '17:00';
 
   const backlogSeries = useMemo((): BacklogPoint[] => {
     return binBacklogSeries({
       fills,
       runs: pickupRuns,
       shiftStart,
-      shiftEnd,
       now: new Date(),
     });
-  }, [fills, pickupRuns, shiftStart, shiftEnd]);
+  }, [fills, pickupRuns, shiftStart]);
 
   const backlogNow = backlogSeries.length > 0
     ? backlogSeries[backlogSeries.length - 1].pending

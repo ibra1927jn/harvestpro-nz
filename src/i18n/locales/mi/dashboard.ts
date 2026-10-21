@@ -77,6 +77,10 @@ const dashboard: TranslationDict = {
     'dashboard.team_leaders.picker_count': '{n} kaikohi',
     'dashboard.team_leaders.empty': 'Kāore he kaiārahi rōpū kua tohaina.',
     'dashboard.team_leaders.manage': 'Whakahaere Rōpū',
+    'dashboard.eta_at_pace': 'I tēnei tere: {time}',
+    'dashboard.pace_now': 'Tere: {n} pākete/hāora',
+    'dashboard.remaining_to_goal': '{n} pākete e toe ana ki te whāinga',
+    'dashboard.velocity.since': 'Mai i {start}',
 };
 
 export default dashboard;

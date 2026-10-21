@@ -5,7 +5,6 @@
  */
 import { Picker, BucketRecord } from '../types';
 import { formatNZTime } from '@/utils/nzFormat';
-import { getNZShiftBoundaryMs } from '@/utils/time';
 import { translate } from '@/i18n';
 import { computePerPicker } from './harvestMetrics/perPicker';
 import { PAY_RULES } from './harvestMetrics/pay';
@@ -85,30 +84,24 @@ class AnalyticsService extends AnalyticsTrendsService {
     }
 
     /**
-     * Calculate ETA to reach target based on current velocity.
-     * shiftEndTime ancla el final del día (HH:MM, 24h). Default '17:00'.
+     * Hora a la que se alcanza la meta al ritmo actual. No hay hora de fin de
+     * turno (cada equipo y runner acaba cuando acaba, decisión del dueño
+     * 2026-10-21): no se compara con ninguna hora límite ni se da un semáforo
+     * adelantado/atrasado; solo «a este ritmo, la meta se alcanza a las HH:MM».
      */
     calculateETA(
         currentTons: number,
         targetTons: number,
         velocityPerHour: number,
         bucketsPerTon: number = 72,
-        shiftEndTime: string = '17:00'
-    ): { eta: string; status: 'ahead' | 'on_track' | 'behind'; hoursRemaining: number } {
+    ): { eta: string; status: 'complete' | 'no_data' | 'projected'; hoursRemaining: number } {
         const remainingTons = targetTons - currentTons;
-        if (remainingTons <= 0) return { eta: translate('analytics.eta_complete'), status: 'ahead', hoursRemaining: 0 };
-        if (velocityPerHour <= 0) return { eta: translate('analytics.eta_awaiting'), status: 'behind', hoursRemaining: Infinity };
+        if (remainingTons <= 0) return { eta: translate('analytics.eta_complete'), status: 'complete', hoursRemaining: 0 };
+        if (velocityPerHour <= 0) return { eta: translate('analytics.eta_awaiting'), status: 'no_data', hoursRemaining: Infinity };
 
         const hoursNeeded = (remainingTons * bucketsPerTon) / velocityPerHour;
-        // Instantes absolutos; el fin de turno es HH:MM de hoy en NZ (antes: zona horaria del móvil)
         const etaMs = Date.now() + hoursNeeded * 3_600_000;
-        const endOfDayMs = getNZShiftBoundaryMs(shiftEndTime || '17:00');
-
-        let status: 'ahead' | 'on_track' | 'behind';
-        if (etaMs < endOfDayMs) status = hoursNeeded <= 2 ? 'ahead' : 'on_track';
-        else status = 'behind';
-
-        return { eta: formatNZTime(etaMs), status, hoursRemaining: hoursNeeded };
+        return { eta: formatNZTime(etaMs), status: 'projected', hoursRemaining: hoursNeeded };
     }
 
     /**
