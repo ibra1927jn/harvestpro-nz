@@ -1,0 +1,1057 @@
+[
+  {
+    "scenario": "1 día",
+    "key": "A1-day1",
+    "variant": "current",
+    "historyDays": 0,
+    "live": {
+      "calls": 44948,
+      "errors": 195,
+      "gzMB": 59.8,
+      "rawMB": 534,
+      "upMB": 71.5,
+      "realtimeMsgs": 10129,
+      "lagP50": 9231,
+      "lagP95": 28572,
+      "dbGrowthMB": 12.9,
+      "scans": 8812,
+      "lost": 0,
+      "dupes": 0,
+      "truncated": 3,
+      "openShifts": 0,
+      "perDeviceGzMB": {
+        "admin": 0.11,
+        "hr_admin": 0.26,
+        "logistics": 2.76,
+        "manager": 4.84,
+        "payroll_admin": 0.24,
+        "qc_inspector": 1.45,
+        "runner": 1.21,
+        "team_leader": 2.22
+      },
+      "errorsBy": [
+        "manager fn detect-anomalies: 1/9 {\"200\":8,\"503\":1}",
+        "runner fn record-bucket: 3/5497 {\"200\":5494,\"503\":3}",
+        "manager GET bucket_records: 4/36 {\"200\":32,\"500\":4}",
+        "runner fn submit-audit-log: 1/5579 {\"200\":5578,\"503\":1}",
+        "hr_admin fn calculate-payroll: 2/7 {\"200\":5,\"400\":2}",
+        "manager fn calculate-payroll: 6/12 {\"200\":6,\"400\":5,\"503\":1}",
+        "payroll_admin fn calculate-payroll: 1/3 {\"200\":2,\"400\":1}",
+        "hr_admin GET contracts: 7/23 {\"200\":16,\"414\":7}",
+        "payroll_admin fn approve-timesheet: 125/239 {\"200\":114,\"429\":125}",
+        "runner POST broadcasts: 45/45 {\"403\":45}"
+      ],
+      "slowest": [
+        "manager fn calculate-payroll p95=37494ms (n=12)",
+        "hr_admin fn calculate-payroll p95=26835ms (n=7)",
+        "payroll_admin fn calculate-payroll p95=24118ms (n=3)",
+        "manager fn detect-anomalies p95=14561ms (n=9)",
+        "manager GET bucket_records p95=8180ms (n=36)",
+        "admin GET bucket_records p95=5483ms (n=1)"
+      ],
+      "dbCpuAvg": 67.2,
+      "edgeCpuAvg": 30.2,
+      "topSql": [
+        "310689ms/1416 WITH pgrst_source AS ( SELECT \"public\".\"daily_attendance\".\"picker_id\", \"public\".\"daily_att",
+        "275300ms/510 SELECT wal->>$5 as type, wal->>$6 as schema, wal->>$7 as table, COALESCE(wal->>$8, $9) as ",
+        "210722ms/56 WITH pgrst_source AS ( SELECT \"public\".\"bucket_records\".\"picker_id\", \"public\".\"bucket_reco",
+        "186828ms/8812 WITH pgrst_source AS (INSERT INTO \"public\".\"bucket_records\"(\"id\", \"orchard_id\", \"picker_id",
+        "153160ms/1315 WITH pgrst_source AS ( SELECT \"public\".\"bucket_records\".* FROM \"public\".\"bucket_records\" W"
+      ]
+    },
+    "period": {
+      "dbMB": 31,
+      "counts": {
+        "buckets": 8812,
+        "attendance": 239,
+        "audit": 10888,
+        "chat": 0,
+        "days": 1
+      },
+      "ops": [
+        {
+          "op": "calculate-payroll (last week, company)",
+          "variant": "current",
+          "ok": true,
+          "ms": 378,
+          "req": 1,
+          "err": 0,
+          "kbGz": 1,
+          "note": {
+            "people": 0,
+            "withoutName": 0,
+            "total": 0
+          }
+        },
+        {
+          "op": "calculate-payroll (this week, company)",
+          "variant": "current",
+          "ok": true,
+          "ms": 18167,
+          "req": 1,
+          "err": 0,
+          "kbGz": 16,
+          "note": {
+            "people": 239
+          }
+        },
+        {
+          "op": "weekly report (manager, 7 days)",
+          "variant": "current",
+          "ok": true,
+          "ms": 103,
+          "req": 2,
+          "err": 0,
+          "kbGz": 1,
+          "note": {
+            "buckets": 0,
+            "attendance": 0
+          }
+        },
+        {
+          "op": "day sheet: buckets of the day (orchard)",
+          "variant": "current",
+          "ok": true,
+          "ms": 123,
+          "req": 2,
+          "err": 0,
+          "kbGz": 1,
+          "note": {
+            "people": 0,
+            "got": 0,
+            "real": 0,
+            "status": 200
+          }
+        },
+        {
+          "op": "day sheet: buckets of the day (orchard)",
+          "variant": "optimized",
+          "ok": true,
+          "ms": 11,
+          "req": 1,
+          "err": 0,
+          "kbGz": 0,
+          "note": {
+            "people": 0,
+            "got": 0
+          }
+        },
+        {
+          "op": "HR employees: contracts IN (all staff)",
+          "variant": "current",
+          "ok": true,
+          "ms": 132,
+          "req": 3,
+          "err": 1,
+          "kbGz": 7,
+          "note": {
+            "ids": 274,
+            "status": 414,
+            "got": null
+          }
+        },
+        {
+          "op": "HR employees: contracts by chunks",
+          "variant": "optimized",
+          "ok": true,
+          "ms": 246,
+          "req": 5,
+          "err": 0,
+          "kbGz": 19,
+          "note": {
+            "ids": 274,
+            "got": 256
+          }
+        },
+        {
+          "op": "cold start runner: today buckets + crew",
+          "variant": "current",
+          "ok": true,
+          "ms": 339,
+          "req": 4,
+          "err": 0,
+          "kbGz": 181,
+          "note": {
+            "crew": 261,
+            "buckets": 2961
+          }
+        },
+        {
+          "op": "chat list: last messages (all rows)",
+          "variant": "current",
+          "ok": true,
+          "ms": 9,
+          "req": 2,
+          "err": 0,
+          "kbGz": 1,
+          "note": {
+            "conversations": 2,
+            "rows": 0,
+            "truncated": false
+          }
+        },
+        {
+          "op": "chat list: last_messages RPC",
+          "variant": "optimized",
+          "ok": false,
+          "ms": 9,
+          "req": 2,
+          "err": 1,
+          "kbGz": 1,
+          "note": "Could not find the function public.last_messages(p_conversation_ids) in the schema cache"
+        },
+        {
+          "op": "open orchard chat (asc, no limit)",
+          "variant": "current",
+          "ok": true,
+          "ms": 155,
+          "req": 1,
+          "err": 0,
+          "kbGz": 0,
+          "note": {
+            "total": 0,
+            "got": 0,
+            "newestShown": null
+          }
+        },
+        {
+          "op": "open orchard chat (latest 300)",
+          "variant": "optimized",
+          "ok": true,
+          "ms": 9,
+          "req": 1,
+          "err": 0,
+          "kbGz": 0,
+          "note": {
+            "got": 0
+          }
+        },
+        {
+          "op": "manager dashboard: 7-day bleed",
+          "variant": "current",
+          "ok": true,
+          "ms": 2634,
+          "req": 4,
+          "err": 0,
+          "kbGz": 32,
+          "note": {
+            "attendance": 81,
+            "buckets": 2961
+          }
+        },
+        {
+          "op": "payroll: unclosed shifts 30d (company)",
+          "variant": "current",
+          "ok": true,
+          "ms": 8,
+          "req": 1,
+          "err": 0,
+          "kbGz": 0,
+          "note": {
+            "rows": 0
+          }
+        },
+        {
+          "op": "admin: audit log (100)",
+          "variant": "current",
+          "ok": true,
+          "ms": 83,
+          "req": 1,
+          "err": 0,
+          "kbGz": 10,
+          "note": {
+            "rows": 100
+          }
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "1 día",
+    "key": "A1-day1",
+    "variant": "optimized",
+    "historyDays": 0,
+    "live": {
+      "calls": 30535,
+      "errors": 2,
+      "gzMB": 34.1,
+      "rawMB": 159.1,
+      "upMB": 47.9,
+      "realtimeMsgs": 31858,
+      "lagP50": 828,
+      "lagP95": 10345,
+      "dbGrowthMB": 7,
+      "scans": 8654,
+      "lost": 0,
+      "dupes": 0,
+      "truncated": 0,
+      "openShifts": 0,
+      "perDeviceGzMB": {
+        "admin": 0.11,
+        "hr_admin": 0.24,
+        "logistics": 3.44,
+        "manager": 0.41,
+        "payroll_admin": 0.14,
+        "qc_inspector": 0.95,
+        "runner": 0.82,
+        "team_leader": 1.56
+      },
+      "errorsBy": [
+        "runner fn record-bucket: 1/5872 {\"200\":5871,\"503\":1}",
+        "team_leader fn record-bucket: 1/2155 {\"200\":2154,\"500\":1}"
+      ],
+      "slowest": [
+        "hr_admin fn calculate-payroll p95=2194ms (n=4)",
+        "manager fn calculate-payroll p95=1626ms (n=12)",
+        "manager fn record-bucket p95=1230ms (n=3)",
+        "manager fn check-compliance p95=1226ms (n=3)",
+        "payroll_admin fn calculate-payroll p95=1216ms (n=3)",
+        "manager fn detect-anomalies p95=1203ms (n=9)"
+      ],
+      "dbCpuAvg": 48.4,
+      "edgeCpuAvg": 16.4,
+      "topSql": [
+        "440382ms/1685 SELECT wal->>$5 as type, wal->>$6 as schema, wal->>$7 as table, COALESCE(wal->>$8, $9) as ",
+        "59161ms/7444 WITH pgrst_source AS (INSERT INTO \"public\".\"bucket_records\"(\"id\", \"orchard_id\", \"picker_id",
+        "36586ms/1419 WITH pgrst_source AS ( SELECT \"public\".\"bucket_records\".* FROM \"public\".\"bucket_records\" W",
+        "18261ms/7386 with sub_tables as ( select rr.entity from pg_publication_tables pub, lateral ( select for",
+        "15909ms/1450 WITH pgrst_source AS ( SELECT \"public\".\"daily_attendance\".\"picker_id\", \"public\".\"daily_att"
+      ]
+    },
+    "period": {
+      "dbMB": 25,
+      "counts": {
+        "buckets": 8654,
+        "attendance": 243,
+        "audit": 2361,
+        "chat": 1,
+        "days": 1
+      },
+      "ops": [
+        {
+          "op": "calculate-payroll (last week, company)",
+          "variant": "current",
+          "ok": true,
+          "ms": 494,
+          "req": 1,
+          "err": 0,
+          "kbGz": 1,
+          "note": {
+            "people": 0,
+            "withoutName": 0,
+            "total": 0
+          }
+        },
+        {
+          "op": "calculate-payroll (this week, company)",
+          "variant": "current",
+          "ok": true,
+          "ms": 424,
+          "req": 1,
+          "err": 0,
+          "kbGz": 17,
+          "note": {
+            "people": 243
+          }
+        },
+        {
+          "op": "weekly report (manager, 7 days)",
+          "variant": "current",
+          "ok": true,
+          "ms": 35,
+          "req": 2,
+          "err": 0,
+          "kbGz": 1,
+          "note": {
+            "buckets": 0,
+            "attendance": 0
+          }
+        },
+        {
+          "op": "day sheet: buckets of the day (orchard)",
+          "variant": "current",
+          "ok": true,
+          "ms": 76,
+          "req": 2,
+          "err": 0,
+          "kbGz": 1,
+          "note": {
+            "people": 0,
+            "got": 0,
+            "real": 0,
+            "status": 200
+          }
+        },
+        {
+          "op": "day sheet: buckets of the day (orchard)",
+          "variant": "optimized",
+          "ok": true,
+          "ms": 7,
+          "req": 1,
+          "err": 0,
+          "kbGz": 0,
+          "note": {
+            "people": 0,
+            "got": 0
+          }
+        },
+        {
+          "op": "HR employees: contracts IN (all staff)",
+          "variant": "current",
+          "ok": true,
+          "ms": 44,
+          "req": 3,
+          "err": 1,
+          "kbGz": 7,
+          "note": {
+            "ids": 274,
+            "status": 414,
+            "got": null
+          }
+        },
+        {
+          "op": "HR employees: contracts by chunks",
+          "variant": "optimized",
+          "ok": true,
+          "ms": 44,
+          "req": 5,
+          "err": 0,
+          "kbGz": 19,
+          "note": {
+            "ids": 274,
+            "got": 256
+          }
+        },
+        {
+          "op": "cold start runner: today buckets + crew",
+          "variant": "current",
+          "ok": true,
+          "ms": 184,
+          "req": 5,
+          "err": 0,
+          "kbGz": 184,
+          "note": {
+            "crew": 261,
+            "buckets": 3009
+          }
+        },
+        {
+          "op": "chat list: last messages (all rows)",
+          "variant": "current",
+          "ok": true,
+          "ms": 12,
+          "req": 2,
+          "err": 0,
+          "kbGz": 1,
+          "note": {
+            "conversations": 2,
+            "rows": 1,
+            "truncated": false
+          }
+        },
+        {
+          "op": "chat list: last_messages RPC",
+          "variant": "optimized",
+          "ok": true,
+          "ms": 12,
+          "req": 2,
+          "err": 0,
+          "kbGz": 1,
+          "note": {
+            "rows": 1
+          }
+        },
+        {
+          "op": "open orchard chat (asc, no limit)",
+          "variant": "current",
+          "ok": true,
+          "ms": 131,
+          "req": 1,
+          "err": 0,
+          "kbGz": 0,
+          "note": {
+            "total": 0,
+            "got": 0,
+            "newestShown": null
+          }
+        },
+        {
+          "op": "open orchard chat (latest 300)",
+          "variant": "optimized",
+          "ok": true,
+          "ms": 6,
+          "req": 1,
+          "err": 0,
+          "kbGz": 0,
+          "note": {
+            "got": 0
+          }
+        },
+        {
+          "op": "manager dashboard: 7-day bleed",
+          "variant": "current",
+          "ok": true,
+          "ms": 58,
+          "req": 5,
+          "err": 0,
+          "kbGz": 34,
+          "note": {
+            "attendance": 83,
+            "buckets": 3009
+          }
+        },
+        {
+          "op": "payroll: unclosed shifts 30d (company)",
+          "variant": "current",
+          "ok": true,
+          "ms": 9,
+          "req": 1,
+          "err": 0,
+          "kbGz": 0,
+          "note": {
+            "rows": 0
+          }
+        },
+        {
+          "op": "admin: audit log (100)",
+          "variant": "current",
+          "ok": true,
+          "ms": 31,
+          "req": 1,
+          "err": 0,
+          "kbGz": 8,
+          "note": {
+            "rows": 100
+          }
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "2 días",
+    "key": "B-2days",
+    "variant": "current",
+    "historyDays": 1,
+    "live": {
+      "calls": 34565,
+      "errors": 320,
+      "gzMB": 43.9,
+      "rawMB": 280.8,
+      "upMB": 53,
+      "realtimeMsgs": 1184,
+      "lagP50": 4144,
+      "lagP95": 19064,
+      "dbGrowthMB": 5.6,
+      "scans": 1894,
+      "lost": 0,
+      "dupes": 0,
+      "truncated": 0,
+      "openShifts": 0,
+      "perDeviceGzMB": {
+        "admin": 0.08,
+        "hr_admin": 0.19,
+        "logistics": 2.3,
+        "manager": 0.94,
+        "payroll_admin": 0.34,
+        "qc_inspector": 1.04,
+        "runner": 1.35,
+        "team_leader": 1.91
+      },
+      "errorsBy": [
+        "manager GET bucket_records: 15/35 {\"200\":20,\"500\":15}",
+        "manager fn calculate-payroll: 6/12 {\"200\":6,\"400\":5,\"503\":1}",
+        "payroll_admin fn approve-timesheet: 237/476 {\"200\":239,\"429\":237}",
+        "team_leader fn record-bucket: 1/487 {\"200\":486,\"500\":1}",
+        "hr_admin GET contracts: 7/23 {\"200\":16,\"414\":7}",
+        "team_leader fn submit-audit-log: 1/475 {\"200\":474,\"503\":1}",
+        "runner POST broadcasts: 45/45 {\"403\":45}",
+        "hr_admin fn calculate-payroll: 6/7 {\"200\":1,\"400\":6}",
+        "payroll_admin fn calculate-payroll: 2/3 {\"200\":1,\"400\":2}"
+      ],
+      "slowest": [
+        "hr_admin fn calculate-payroll p95=26206ms (n=7)",
+        "manager fn calculate-payroll p95=25832ms (n=12)",
+        "payroll_admin fn calculate-payroll p95=22829ms (n=3)",
+        "manager GET bucket_records p95=8245ms (n=35)",
+        "manager fn detect-anomalies p95=7371ms (n=9)",
+        "hr_admin HEAD pickers p95=3809ms (n=3)"
+      ],
+      "dbCpuAvg": 112.6,
+      "edgeCpuAvg": 11.6,
+      "topSql": [
+        "1636094ms/1632 WITH pgrst_source AS ( SELECT \"public\".\"daily_attendance\".\"picker_id\", \"public\".\"daily_att",
+        "445311ms/270 WITH pgrst_source AS ( SELECT \"public\".\"pickers\".*, COALESCE( \"pickers_daily_attendance_1\"",
+        "409035ms/654 WITH pgrst_source AS ( SELECT \"public\".\"daily_attendance\".*, row_to_json(\"daily_attendance",
+        "346551ms/1362 WITH pgrst_source AS ( SELECT \"public\".\"bucket_records\".* FROM \"public\".\"bucket_records\" W",
+        "225836ms/340 SELECT wal->>$5 as type, wal->>$6 as schema, wal->>$7 as table, COALESCE(wal->>$8, $9) as "
+      ]
+    },
+    "period": {
+      "dbMB": 37,
+      "counts": {
+        "buckets": 11641,
+        "attendance": 476,
+        "audit": 14180,
+        "chat": 130,
+        "days": 2
+      },
+      "ops": [
+        {
+          "op": "calculate-payroll (last week, company)",
+          "variant": "current",
+          "ok": true,
+          "ms": 423,
+          "req": 1,
+          "err": 0,
+          "kbGz": 1,
+          "note": {
+            "people": 0,
+            "withoutName": 0,
+            "total": 0
+          }
+        },
+        {
+          "op": "calculate-payroll (this week, company)",
+          "variant": "current",
+          "ok": true,
+          "ms": 50814,
+          "req": 1,
+          "err": 0,
+          "kbGz": 35,
+          "note": {
+            "people": 258
+          }
+        },
+        {
+          "op": "weekly report (manager, 7 days)",
+          "variant": "current",
+          "ok": true,
+          "ms": 97,
+          "req": 2,
+          "err": 0,
+          "kbGz": 1,
+          "note": {
+            "buckets": 0,
+            "attendance": 0
+          }
+        },
+        {
+          "op": "day sheet: buckets of the day (orchard)",
+          "variant": "current",
+          "ok": true,
+          "ms": 640,
+          "req": 2,
+          "err": 0,
+          "kbGz": 14,
+          "note": {
+            "people": 80,
+            "got": 1000,
+            "real": 3208,
+            "status": 200
+          }
+        },
+        {
+          "op": "day sheet: buckets of the day (orchard)",
+          "variant": "optimized",
+          "ok": true,
+          "ms": 6596,
+          "req": 5,
+          "err": 0,
+          "kbGz": 56,
+          "note": {
+            "people": 80,
+            "got": 3208
+          }
+        },
+        {
+          "op": "HR employees: contracts IN (all staff)",
+          "variant": "current",
+          "ok": true,
+          "ms": 203,
+          "req": 3,
+          "err": 1,
+          "kbGz": 7,
+          "note": {
+            "ids": 274,
+            "status": 414,
+            "got": null
+          }
+        },
+        {
+          "op": "HR employees: contracts by chunks",
+          "variant": "optimized",
+          "ok": true,
+          "ms": 306,
+          "req": 5,
+          "err": 0,
+          "kbGz": 19,
+          "note": {
+            "ids": 274,
+            "got": 256
+          }
+        },
+        {
+          "op": "cold start runner: today buckets + crew",
+          "variant": "current",
+          "ok": true,
+          "ms": 464,
+          "req": 2,
+          "err": 0,
+          "kbGz": 47,
+          "note": {
+            "crew": 261,
+            "buckets": 579
+          }
+        },
+        {
+          "op": "chat list: last messages (all rows)",
+          "variant": "current",
+          "ok": true,
+          "ms": 17,
+          "req": 2,
+          "err": 0,
+          "kbGz": 2,
+          "note": {
+            "conversations": 2,
+            "rows": 50,
+            "truncated": false
+          }
+        },
+        {
+          "op": "chat list: last_messages RPC",
+          "variant": "optimized",
+          "ok": false,
+          "ms": 14,
+          "req": 2,
+          "err": 1,
+          "kbGz": 1,
+          "note": "Could not find the function public.last_messages(p_conversation_ids) in the schema cache"
+        },
+        {
+          "op": "open orchard chat (asc, no limit)",
+          "variant": "current",
+          "ok": true,
+          "ms": 152,
+          "req": 1,
+          "err": 0,
+          "kbGz": 2,
+          "note": {
+            "total": 40,
+            "got": 40,
+            "newestShown": true
+          }
+        },
+        {
+          "op": "open orchard chat (latest 300)",
+          "variant": "optimized",
+          "ok": true,
+          "ms": 8,
+          "req": 1,
+          "err": 0,
+          "kbGz": 2,
+          "note": {
+            "got": 40
+          }
+        },
+        {
+          "op": "manager dashboard: 7-day bleed",
+          "variant": "current",
+          "ok": true,
+          "ms": 7379,
+          "req": 5,
+          "err": 0,
+          "kbGz": 55,
+          "note": {
+            "attendance": 154,
+            "buckets": 3787
+          }
+        },
+        {
+          "op": "payroll: unclosed shifts 30d (company)",
+          "variant": "current",
+          "ok": true,
+          "ms": 13,
+          "req": 1,
+          "err": 0,
+          "kbGz": 0,
+          "note": {
+            "rows": 0
+          }
+        },
+        {
+          "op": "admin: audit log (100)",
+          "variant": "current",
+          "ok": true,
+          "ms": 83,
+          "req": 1,
+          "err": 0,
+          "kbGz": 11,
+          "note": {
+            "rows": 100
+          }
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "2 días",
+    "key": "B-2days",
+    "variant": "optimized",
+    "historyDays": 1,
+    "live": {
+      "calls": 24134,
+      "errors": 3,
+      "gzMB": 34,
+      "rawMB": 168.8,
+      "upMB": 38.5,
+      "realtimeMsgs": 31296,
+      "lagP50": 4499,
+      "lagP95": 18130,
+      "dbGrowthMB": 7.7,
+      "scans": 9245,
+      "lost": 0,
+      "dupes": 0,
+      "truncated": 0,
+      "openShifts": 0,
+      "perDeviceGzMB": {
+        "admin": 0.11,
+        "hr_admin": 0.3,
+        "logistics": 0.12,
+        "manager": 0.86,
+        "payroll_admin": 0.21,
+        "qc_inspector": 1.01,
+        "runner": 0.86,
+        "team_leader": 1.66
+      },
+      "errorsBy": [
+        "runner fn record-bucket: 1/6224 {\"200\":6223,\"500\":1}",
+        "team_leader fn record-bucket: 2/2307 {\"200\":2305,\"503\":2}"
+      ],
+      "slowest": [
+        "manager fn calculate-payroll p95=5366ms (n=12)",
+        "payroll_admin fn calculate-payroll p95=3610ms (n=3)",
+        "payroll_admin fn approve-timesheet p95=3410ms (n=6)",
+        "hr_admin fn calculate-payroll p95=2207ms (n=4)",
+        "manager fn detect-anomalies p95=1824ms (n=9)",
+        "team_leader PATCH pickers p95=866ms (n=36)"
+      ],
+      "dbCpuAvg": 62.9,
+      "edgeCpuAvg": 18.7,
+      "topSql": [
+        "505117ms/818 SELECT wal->>$5 as type, wal->>$6 as schema, wal->>$7 as table, COALESCE(wal->>$8, $9) as ",
+        "83125ms/7850 WITH pgrst_source AS (INSERT INTO \"public\".\"bucket_records\"(\"id\", \"orchard_id\", \"picker_id",
+        "44916ms/1347 WITH pgrst_source AS ( SELECT \"public\".\"bucket_records\".* FROM \"public\".\"bucket_records\" W",
+        "24391ms/1378 WITH pgrst_source AS ( SELECT \"public\".\"daily_attendance\".\"picker_id\", \"public\".\"daily_att",
+        "20711ms/7072 with sub_tables as ( select rr.entity from pg_publication_tables pub, lateral ( select for"
+      ]
+    },
+    "period": {
+      "dbMB": 32,
+      "counts": {
+        "buckets": 18992,
+        "attendance": 485,
+        "audit": 3093,
+        "chat": 359,
+        "days": 2
+      },
+      "ops": [
+        {
+          "op": "calculate-payroll (last week, company)",
+          "variant": "current",
+          "ok": true,
+          "ms": 372,
+          "req": 1,
+          "err": 0,
+          "kbGz": 1,
+          "note": {
+            "people": 0,
+            "withoutName": 0,
+            "total": 0
+          }
+        },
+        {
+          "op": "calculate-payroll (this week, company)",
+          "variant": "current",
+          "ok": true,
+          "ms": 1113,
+          "req": 1,
+          "err": 0,
+          "kbGz": 38,
+          "note": {
+            "people": 261
+          }
+        },
+        {
+          "op": "weekly report (manager, 7 days)",
+          "variant": "current",
+          "ok": true,
+          "ms": 38,
+          "req": 2,
+          "err": 0,
+          "kbGz": 1,
+          "note": {
+            "buckets": 0,
+            "attendance": 0
+          }
+        },
+        {
+          "op": "day sheet: buckets of the day (orchard)",
+          "variant": "current",
+          "ok": true,
+          "ms": 95,
+          "req": 2,
+          "err": 0,
+          "kbGz": 14,
+          "note": {
+            "people": 80,
+            "got": 1000,
+            "real": 3208,
+            "status": 200
+          }
+        },
+        {
+          "op": "day sheet: buckets of the day (orchard)",
+          "variant": "optimized",
+          "ok": true,
+          "ms": 92,
+          "req": 5,
+          "err": 0,
+          "kbGz": 56,
+          "note": {
+            "people": 80,
+            "got": 3208
+          }
+        },
+        {
+          "op": "HR employees: contracts IN (all staff)",
+          "variant": "current",
+          "ok": true,
+          "ms": 46,
+          "req": 3,
+          "err": 1,
+          "kbGz": 7,
+          "note": {
+            "ids": 274,
+            "status": 414,
+            "got": null
+          }
+        },
+        {
+          "op": "HR employees: contracts by chunks",
+          "variant": "optimized",
+          "ok": true,
+          "ms": 39,
+          "req": 5,
+          "err": 0,
+          "kbGz": 19,
+          "note": {
+            "ids": 274,
+            "got": 256
+          }
+        },
+        {
+          "op": "cold start runner: today buckets + crew",
+          "variant": "current",
+          "ok": true,
+          "ms": 143,
+          "req": 5,
+          "err": 0,
+          "kbGz": 194,
+          "note": {
+            "crew": 261,
+            "buckets": 3204
+          }
+        },
+        {
+          "op": "chat list: last messages (all rows)",
+          "variant": "current",
+          "ok": true,
+          "ms": 14,
+          "req": 2,
+          "err": 0,
+          "kbGz": 2,
+          "note": {
+            "conversations": 2,
+            "rows": 118,
+            "truncated": false
+          }
+        },
+        {
+          "op": "chat list: last_messages RPC",
+          "variant": "optimized",
+          "ok": true,
+          "ms": 13,
+          "req": 2,
+          "err": 0,
+          "kbGz": 1,
+          "note": {
+            "rows": 2
+          }
+        },
+        {
+          "op": "open orchard chat (asc, no limit)",
+          "variant": "current",
+          "ok": true,
+          "ms": 132,
+          "req": 1,
+          "err": 0,
+          "kbGz": 5,
+          "note": {
+            "total": 105,
+            "got": 105,
+            "newestShown": true
+          }
+        },
+        {
+          "op": "open orchard chat (latest 300)",
+          "variant": "optimized",
+          "ok": true,
+          "ms": 11,
+          "req": 1,
+          "err": 0,
+          "kbGz": 5,
+          "note": {
+            "got": 105
+          }
+        },
+        {
+          "op": "manager dashboard: 7-day bleed",
+          "variant": "current",
+          "ok": true,
+          "ms": 154,
+          "req": 8,
+          "err": 0,
+          "kbGz": 85,
+          "note": {
+            "attendance": 162,
+            "buckets": 6412
+          }
+        },
+        {
+          "op": "payroll: unclosed shifts 30d (company)",
+          "variant": "current",
+          "ok": true,
+          "ms": 6,
+          "req": 1,
+          "err": 0,
+          "kbGz": 0,
+          "note": {
+            "rows": 0
+          }
+        },
+        {
+          "op": "admin: audit log (100)",
+          "variant": "current",
+          "ok": true,
+          "ms": 28,
+          "req": 1,
+          "err": 0,
+          "kbGz": 8,
+          "note": {
+            "rows": 100
+          }
+        }
+      ]
+    }
+  }
+]

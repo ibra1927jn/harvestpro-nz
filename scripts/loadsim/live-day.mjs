@@ -158,6 +158,14 @@ class Device {
 
   // ----- arranque común de la app (todos los roles) -----
   async bootstrap() {
+    try {
+      await this._bootstrap();
+    } catch (e) {
+      metrics.event('screen_failed', { role: this.role, what: 'bootstrap', message: String(e && e.message).slice(0, 120) });
+    }
+  }
+
+  async _bootstrap() {
     const sb = this.sb;
     await Promise.all([
       sb.from('users').select('*').eq('id', this.id).maybeSingle(),
@@ -565,10 +573,17 @@ async function loadReferenceData() {
     list.push({ id: p.id, tl: p.team_leader_id });
     state.pickersByOrchard.set(p.orchard_id, list);
   }
-  const convs = await admin.sb.from('conversations').select('id, name, participant_ids').like('name', 'Sim%');
-  const office = (await admin.sb.from('conversations').select('id').eq('name', 'Office')).data?.[0]?.id;
+  // conversaciones leídas con el usuario postgres (el RLS solo deja ver las propias)
+  const convRows = (await dbStats(`select id, name, array_to_string(participant_ids, ',') from conversations where name like 'Sim%' or name = 'Office'`))
+    .split('\n')
+    .filter(Boolean)
+    .map(l => {
+      const [id, name, parts] = l.split('\t');
+      return { id, name, participant_ids: parts.split(',') };
+    });
+  const office = convRows.find(c => c.name === 'Office')?.id;
   for (const d of devices) {
-    const c = (convs.data || []).find(x => (x.participant_ids || []).includes(d.id));
+    const c = convRows.find(x => x.name !== 'Office' && x.participant_ids.includes(d.id));
     d.convId = c?.id || (['admin', 'hr_admin', 'payroll_admin', 'logistics'].includes(d.role) ? office : null);
   }
 }
@@ -822,7 +837,8 @@ async function managerDay(d) {
       if (att) await sb.functions.invoke('manage-attendance', { body: { action: 'check_out', attendance_id: att } });
     }
   });
-  await dashboard();
+  // la app enseña el error y sigue (antes el simulador paraba al manager entero)
+  await dashboard().catch(e => metrics.event('screen_failed', { role: 'manager', what: 'dashboard', message: String(e && e.message).slice(0, 120) }));
   // notificationService: cada 5 min
   (async () => {
     while (!clock.over()) {
@@ -859,7 +875,7 @@ async function managerDay(d) {
     );
   }
   for (const t of ['07:30', '11:00', '14:00', '16:10']) scheduleAt(parseHHMM(t) + rnd(0, 20), () => d.chatSession(rnd(3, 8)));
-  for (const t of ['08:00', '12:45', '15:10']) scheduleAt(parseHHMM(t), dashboard);
+  for (const t of ['08:00', '12:45', '15:10']) scheduleAt(parseHHMM(t), () => dashboard().catch(e => metrics.event('screen_failed', { role: 'manager', what: 'dashboard', message: String(e && e.message).slice(0, 120) })));
 
   // 16:30 editor de horas: carga + 3 correcciones
   scheduleAt(parseHHMM('16:30'), async () => {
@@ -1008,6 +1024,15 @@ async function logisticsDay(d) {
   while (!clock.over()) {
     await clock.sleepV(2 * MIN);
     for (const [id, t] of state.transportPending) {
+      // RLS: Logística solo ve y gestiona las peticiones de SU huerto (por diseño,
+      // con pruebas de seguridad). Las de los otros huertos se quedan sin asignar.
+      if (t.orchard_id !== d.orchard_id) {
+        if (!t.reportedInvisible) {
+          t.reportedInvisible = true;
+          metrics.event('transport_other_orchard', { id });
+        }
+        continue;
+      }
       const age = clock.minute() - t.created;
       if (!t.assigned && age > 4) {
         const vehicle = (await sb.from('fleet_vehicles').select('id').eq('orchard_id', t.orchard_id).limit(1)).data?.[0]?.id;
