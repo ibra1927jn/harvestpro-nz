@@ -10,6 +10,8 @@ import {
     PickerSchema,
     AttendanceRecordSchema,
     HarvestSettingsSchema,
+    QcCriteriaSchema,
+    QcInspectionInsertSchema,
     safeParse,
     safeParseArray,
 } from './zod.schemas';
@@ -379,5 +381,48 @@ describe('boundary schemas — exact messages and anchors', () => {
         expect(safeParse(HarvestSettingsSchema, { ...ok, piece_rate: 100.5 })).toEqual({ success: false, error: 'piece_rate: Piece rate seems unreasonably high' });
         expect(HarvestSettingsSchema.safeParse({ ...ok, min_wage_rate: 500, piece_rate: 100, min_buckets_per_hour: 200, target_tons: 10000 }).success).toBe(true);
         expect(HarvestSettingsSchema.safeParse({ ...ok, min_buckets_per_hour: 3.5 }).success).toBe(false);
+    });
+});
+
+// ─── QcInspectionInsertSchema ───────────────────────────────────────────────
+
+describe('QcInspectionInsertSchema', () => {
+    const base = { orchard_id: 'o1', picker_id: 'p1', inspector_id: 'u1', grade: 'B' as const };
+
+    it('accepts an inspection with only a grade (previous format)', () => {
+        expect(QcInspectionInsertSchema.safeParse(base).success).toBe(true);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, notes: null, photo_url: null, criteria: null, score: null, row_number: null, informed: null, comfortable: null, wellbeing_notes: null }).success).toBe(true);
+    });
+
+    it('accepts partial criteria and the wellbeing answers', () => {
+        const r = QcInspectionInsertSchema.safeParse({
+            ...base,
+            criteria: { ladder: 'ok', size: 'warn' },
+            score: 75,
+            row_number: 3,
+            informed: false,
+            comfortable: true,
+            wellbeing_notes: 'short comment',
+        });
+        expect(r.success).toBe(true);
+        if (r.success) expect(r.data.criteria).toEqual({ ladder: 'ok', size: 'warn' });
+    });
+
+    it('rejects unknown grades, criterion states, out-of-range score and row', () => {
+        expect(QcInspectionInsertSchema.safeParse({ ...base, grade: 'D' }).success).toBe(false);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, criteria: { ladder: 'fine' } }).success).toBe(false);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, score: 101 }).success).toBe(false);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, score: -1 }).success).toBe(false);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, score: 50.5 }).success).toBe(false);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, row_number: -1 }).success).toBe(false);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, informed: 'yes' }).success).toBe(false);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, wellbeing_notes: 'x'.repeat(501) }).success).toBe(false);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, picker_id: '' }).success).toBe(false);
+    });
+
+    it('QcCriteriaSchema drops nothing it knows and ignores unknown keys', () => {
+        const r = QcCriteriaSchema.safeParse({ ladder: 'bad', bogus: 'ok' });
+        expect(r.success).toBe(true);
+        if (r.success) expect(r.data).toEqual({ ladder: 'bad' });
     });
 });

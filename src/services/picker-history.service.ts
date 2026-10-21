@@ -9,6 +9,7 @@ import { logger } from '@/utils/logger';
 import { nzMidnight } from '@/utils/nzst';
 import { payForRange, pieceRateFor, nzDateOf, PAY_RULES } from '@/services/harvestMetrics/pay';
 import { payRatesRepository, loadOrchardNames } from '@/repositories/pay-rates.repository';
+import { countCriteriaFailures, type CriterionFailureCount } from '@/services/qcCriteria';
 
 // --- Types ---
 export interface PickerProfile {
@@ -44,6 +45,12 @@ export interface QualitySummary {
   gradeC: number;
   reject: number;
   score: number; // 0-100, A=100, B=70, C=40, reject=0
+  /**
+   * Criterios con regular / mal en las inspecciones del periodo (solo los que
+   * fallaron alguna vez, el peor primero). Vacío si las inspecciones no traen
+   * criterios (formato anterior).
+   */
+  flaggedCriteria: CriterionFailureCount[];
 }
 
 export interface RiskBadge {
@@ -211,9 +218,9 @@ class PickerHistoryService {
     }
   }
 
-  private computeQuality(inspections: Array<{ quality_grade: string | null }>): QualitySummary {
+  private computeQuality(inspections: Array<{ quality_grade: string | null; criteria?: unknown }>): QualitySummary {
     const total = inspections.length;
-    if (total === 0) return { total: 0, gradeA: 0, gradeB: 0, gradeC: 0, reject: 0, score: 0 };
+    if (total === 0) return { total: 0, gradeA: 0, gradeB: 0, gradeC: 0, reject: 0, score: 0, flaggedCriteria: [] };
 
     const gradeA = inspections.filter(
       i => i.quality_grade === 'A' || i.quality_grade === 'good'
@@ -226,8 +233,10 @@ class PickerHistoryService {
       i => i.quality_grade === 'reject' || i.quality_grade === 'bad'
     ).length;
     const score = Math.round((gradeA * 100 + gradeB * 70 + gradeC * 40) / total);
+    // Criterios (null en inspecciones antiguas: countCriteriaFailures los ignora)
+    const flaggedCriteria = countCriteriaFailures(inspections).filter(c => c.total > 0);
 
-    return { total, gradeA, gradeB, gradeC, reject, score };
+    return { total, gradeA, gradeB, gradeC, reject, score, flaggedCriteria };
   }
 
   private computeRiskBadges(

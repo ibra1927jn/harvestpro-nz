@@ -4,6 +4,7 @@
  * así zod no va en el bundle inicial (login / runner).
  */
 import { z } from 'zod';
+import { QcCriteriaSchema } from '@/schemas/zod.schemas';
 
 // 🔧 BUG-3 fix: Zod schemas for sync queue payload validation
 // Replaces unsafe `as unknown as` double-casts that silenced corrupt payloads
@@ -76,6 +77,9 @@ export const PickerPayloadSchema = z.object({
   team_leader_id: z.string().nullable().optional(),
 }).passthrough();
 
+// Inspección con criterios (revisión 2026-10-21, punto 15). Este esquema es
+// estricto (sin passthrough): si no lista las columnas nuevas, zod las quita
+// del payload encolado y la inspección llega a la BD solo con la nota.
 export const QCInspectionPayloadSchema = z.object({
   orchard_id: z.string(),
   picker_id: z.string(),
@@ -83,6 +87,13 @@ export const QCInspectionPayloadSchema = z.object({
   grade: z.enum(['A', 'B', 'C', 'reject']),
   notes: z.string().nullable().optional(),
   photo_url: z.string().nullable().optional(),
+  /** {ladder: 'ok'|'warn'|'bad', ...}; null = inspección solo con nota */
+  criteria: QcCriteriaSchema.nullable().optional(),
+  score: z.number().int().min(0).max(100).nullable().optional(),
+  row_number: z.number().int().min(0).max(9999).nullable().optional(),
+  informed: z.boolean().nullable().optional(),
+  comfortable: z.boolean().nullable().optional(),
+  wellbeing_notes: z.string().max(500).nullable().optional(),
 });
 
 export const UnlinkPayloadSchema = z.object({
