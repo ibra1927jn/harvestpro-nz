@@ -7,11 +7,11 @@ es para decidir antes de empezar.**
 
 | # | Problema | Causa | Tamaño | Necesita decisión |
 |---|----------|-------|--------|-------------------|
-| 1 | Logística del manager son dos páginas (panel + botón «Ver logística completa») | Regresión del commit `d5ce6e3` (2026-04-14) | M | Sí: qué formato de página única |
+| 1 | Logística del manager son dos páginas (panel + botón «Ver logística completa») | Regresión del commit `d5ce6e3` (2026-04-14) | M | **Decidido (21-10): juntar las dos páginas en una** |
 | 2 | «Costo por cubeta — tendencia 7 días» vacío con 2 semanas de datos | `getDailyTrendsV2` devuelve `costPerBin: []` desde que se escribió | S | No |
 | 3 | En Ajustes, tarjetas con 3 líneas se estiran a la altura de la vecina | Grid CSS con `align-items: stretch` por defecto | XS | No |
 | 4 | Idiomas: dejar inglés, español y francés | Hoy 7 idiomas (en, es, mi, sm, to, hi, tl); francés no existe | M | Sí: cuándo (ver nota) |
-| 5 | El manager no decide a qué hora acaba el turno | `harvest_settings.shift_end_time` alimenta ETA, horas restantes, gráficas y calendario de RRHH | M–L | Sí: qué sustituye al fin de turno en los cálculos |
+| 5 | El manager no decide a qué hora acaba el turno | `harvest_settings.shift_end_time` alimenta ETA, horas restantes, gráficas y calendario de RRHH | M–L | **Decidido (21-10): fuera, sin sustituto; cada persona ficha su salida** |
 | 6 | Ajustes no deja elegir qué huerto, filas y variedad se recogen; «Variedades: —» | No hay «plan del día»; las variedades se leen de `orchards.crop_type` (vacío) en vez de las filas | L | Sí: alcance (huerto+variedad o también filas) |
 
 ---
@@ -45,8 +45,13 @@ Dato relevante: la ruta `/logistics-dept` ya admite al manager (`routes.tsx`, `a
 [LOGISTICS, MANAGER]`) y las pestañas (`FleetTab`, `RequestsTab`) tienen prop `readOnly`,
 pero la página nunca la pasa: el manager entra con permisos de escritura completos.
 
+### Decisión del dueño (21-10)
+«Coger lo que hay en esas dos páginas y hacerlo en una.» Es la opción A de abajo. El dueño
+recuerda el formato de una página de más cerca (hacia agosto) que lo que muestra el historial
+de `main`; da igual para el arreglo, el resultado es el mismo.
+
 ### Propuesta
-**Opción A (recomendada): la pestaña Logística del manager ES la página completa.**
+**Opción A (elegida): la pestaña Logística del manager ES la página completa.**
 `LogisticsView` del manager pasa a renderizar lo mismo que `LogisticsDept` (Flota /
 Solicitudes / Bins / Historial, con `useLogistics`), y el panel de salud actual se queda como
 sección «Resumen» arriba (o como primera pestaña). Se elimina `OpenFullLogisticsLink`. El rol
@@ -187,9 +192,15 @@ nómina ya suma tramos por día.
   lo quiere, el team leader ficha la salida de su equipo (una acción, N tramos) y el runner la
   suya; es una pantalla pequeña más y un endpoint de `manage-attendance` en lote.
 
-Decisión que hace falta: ¿la ETA se calcula solo con el ritmo (sin hora límite) o el manager
-pone una **meta de hora** del día (p. ej. «quiero acabar a las 15:00») que no es fin de turno
-sino objetivo? Lo segundo conserva el semáforo adelantado/atrasado tal cual.
+### Decisión del dueño (21-10)
+No lo sustituye nada: cada persona se administra a sí misma y ficha su salida. Por tanto:
+- Se quita «Fin de turno» de Ajustes y de todos los cálculos de la tabla de arriba.
+- La ETA pasa a ser solo por ritmo («a este ritmo, la meta se alcanza a las HH:MM»); el
+  semáforo adelantado/atrasado desaparece, no hay hora límite contra la que medir.
+- «Horas restantes» se quita del panel.
+- Las gráficas por hora van desde el inicio de turno hasta ahora.
+- El calendario de RRHH genera los descansos sobre el tramo real de cada persona.
+- No se añade ninguna «hora objetivo» del día.
 
 ---
 
@@ -250,8 +261,8 @@ Cada punto en su rama corta sobre `main`, fusionada en 1–2 días, como acordam
 
 1. **#2 tendencia 7 días** y **#3 layout de Ajustes** y **#6-mini variedades** — pequeños, sin
    decisiones, una rama `fix/manager-insights-settings`.
-2. **#1 logística en una página** — rama `fix/manager-logistics-single-page`, tras elegir A/B.
-3. **#5 fin de turno** — rama `feat/shift-end-by-person`, tras decidir qué sustituye a la ETA.
+2. **#1 logística en una página** — rama `fix/manager-logistics-single-page` (opción A, decidida).
+3. **#5 fin de turno** — rama `feat/shift-end-by-person` (sin sustituto, decidido).
 4. **#6 plan del día** — rama `feat/day-plan`, tras decidir alcance.
 5. **#4 idiomas** — rama `chore/locales-en-es-fr`, cuando digas.
 
