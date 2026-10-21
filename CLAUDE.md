@@ -84,6 +84,20 @@ Version: 9.9.0
 - Codigo en ingles, comentarios en espanol
 - Commits en ingles: tipo(scope): descripcion breve
 - Ver SECURITY_RULES.md para reglas de seguridad obligatorias
+- Consultas que pueden pasar de 1000 filas (cubetas, fichajes de varios días, chat, auditoría): SIEMPRE
+  `fetchAllRows` con orden estable (`.order('id')`); PostgREST corta en 1000 sin avisar. Listas de ids
+  en `.in()` de más de ~100: `fetchInChunks` (con 200+ UUIDs la URL da 414). En Edge Functions:
+  `_shared/fetch-all-rows.ts` y `_shared/fetch-in-chunks.ts`.
+- Políticas RLS nuevas: las funciones de rol van envueltas, `(SELECT get_my_orchard_id())`,
+  `(SELECT is_role(ARRAY['manager']))`, `(SELECT auth.uid())`: sin el SELECT se ejecutan por cada fila
+  (migración 20261021000100_rls_initplan: la nómina pasó de 18 s a 0,4 s).
+
+## Prueba de carga (scripts/loadsim)
+- Simula una empresa (3 huertos, 240 pickers, 31 móviles) contra el Supabase local: un día en vivo por
+  roles (`live-day.mjs`, reloj acelerado), N días de histórico en bloque (`history.sh`) y las operaciones
+  de oficina con ese volumen (`period-ops.mjs`). `run-scenario.sh <nombre> <dias> current|optimized`.
+- `use-variant.sh` cambia las Edge Functions y migraciones a las de main (current) o a las de la rama.
+- Resultados y comparación: `scripts/loadsim/results/`, informe en `docs/audits/2026-10-21-load-test.md`.
 
 ## Variables de entorno (solo keys, NUNCA valores)
 - VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (requeridas)
