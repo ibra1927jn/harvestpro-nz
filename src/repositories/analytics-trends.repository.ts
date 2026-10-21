@@ -39,6 +39,7 @@ export const analyticsTrendsRepository = {
                 .is('deleted_at', null)
                 .gte('scanned_at', nzMidnight(startDate))
                 .lte('scanned_at', nzEndOfDay(endDate))
+                .order('scanned_at') // el índice da el orden: sin reordenar todo en cada página
                 .order('id')
                 .range(from, to)),
         ]);
@@ -59,6 +60,7 @@ export const analyticsTrendsRepository = {
                 .is('deleted_at', null)
                 .gte('scanned_at', nzMidnight(startDate))
                 .lte('scanned_at', nzEndOfDay(endDate))
+                .order('scanned_at')
                 .order('id')
                 .range(from, to));
     },

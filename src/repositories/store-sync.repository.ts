@@ -76,7 +76,7 @@ export const storeSyncRepository = {
         return fetchAllRows<{ picker_id: string; id: string; orchard_id: string | null; variety: string | null; scanned_at: string | null; quality_grade: string | null; deleted_at: string | null }>((from, to) => {
             let query = supabase.from('bucket_records').select('picker_id, id, orchard_id, variety, scanned_at, quality_grade, deleted_at').gte('scanned_at', since);
             if (orchardId) query = query.eq('orchard_id', orchardId);
-            return query.order('id').range(from, to);
+            return query.order('scanned_at').order('id').range(from, to);
         });
     },
 
