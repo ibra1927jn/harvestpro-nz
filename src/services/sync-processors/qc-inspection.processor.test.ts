@@ -61,13 +61,9 @@ describe('processQCInspection', () => {
         expect(payload.wellbeing_notes).toBe('needs a briefing');
     });
 
-    it('rechaza un payload inválido sin llamar al repo (acaba en la cola de fallidos)', async () => {
-        const insertSpy = vi.spyOn(qcRepository, 'insert');
-        await expect(processQCInspection({ ...base, score: 140 })).rejects.toThrow(/Invalid QC inspection payload/);
-        await expect(processQCInspection({ ...base, criteria: { ladder: 'meh' } } as never)).rejects.toThrow(/Invalid QC inspection payload/);
-        await expect(processQCInspection({ ...base, grade: 'D' } as never)).rejects.toThrow(/Invalid QC inspection payload/);
-        expect(insertSpy).not.toHaveBeenCalled();
-    });
+    // La validación del payload (puntuación fuera de rango, estado de criterio
+    // desconocido, nota inválida) la hace el despachador de la cola con
+    // QCInspectionPayloadSchema: ver src/services/sync-queue/sync-queue.test.ts.
 
     it('notes y photo_url → null cuando undefined', async () => {
         const insertSpy = vi

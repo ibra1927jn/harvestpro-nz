@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { categorizeError, maxRetriesFor, isZodError } from './categorizeError';
 import { summarizeQueue } from './queueStore';
 import { dispatchSyncItem } from './dispatchItem';
+import { qcRepository } from '@/repositories/qc.repository';
 import type { QueuedSyncItem } from '../db';
 
 describe('categorizeError (pure)', () => {
@@ -53,5 +54,59 @@ describe('dispatchSyncItem', () => {
             const it = { id: 'x', type, payload: {}, retryCount: 0, timestamp: 1 } as unknown as QueuedSyncItem;
             await expect(dispatchSyncItem(it, schemas)).resolves.toBe(false);
         }
+    });
+
+    // QC_INSPECTION: el esquema es estricto, así que tiene que conocer las columnas
+    // nuevas (criterios, puntuación, fila, bienestar) o zod las quita del payload
+    // encolado sin red y la inspección llega a la BD solo con la nota.
+    describe('QC_INSPECTION (inspection queued offline)', () => {
+        afterEach(() => vi.restoreAllMocks());
+
+        const base = { orchard_id: 'o1', picker_id: 'p1', inspector_id: 'i1', grade: 'A' };
+        const item = (payload: Record<string, unknown>): QueuedSyncItem =>
+            ({ id: 'qc-1', type: 'QC_INSPECTION', payload, retryCount: 0, timestamp: 1 }) as unknown as QueuedSyncItem;
+
+        it('passes criteria, score, row and the wellbeing answers through to the repository', async () => {
+            const schemas = await import('../sync.schemas');
+            const insert = vi.spyOn(qcRepository, 'insert').mockResolvedValue({ data: { id: 'q1' }, error: null } as never);
+            const full = {
+                ...base,
+                grade: 'C',
+                notes: 'n',
+                photo_url: null,
+                criteria: { ladder: 'ok', size: 'warn', damaged_fruit: 'bad' },
+                score: 50,
+                row_number: 14,
+                informed: false,
+                comfortable: true,
+                wellbeing_notes: 'needs a briefing',
+            };
+            await expect(dispatchSyncItem(item(full), schemas)).resolves.toBe(true);
+            expect(insert).toHaveBeenCalledWith(full);
+        });
+
+        it('a grade-only payload (previous format) still inserts, with the new columns null', async () => {
+            const schemas = await import('../sync.schemas');
+            const insert = vi.spyOn(qcRepository, 'insert').mockResolvedValue({ data: { id: 'q1' }, error: null } as never);
+            await expect(dispatchSyncItem(item(base), schemas)).resolves.toBe(true);
+            expect(insert).toHaveBeenCalledWith({
+                ...base, notes: null, photo_url: null,
+                criteria: null, score: null, row_number: null, informed: null, comfortable: null, wellbeing_notes: null,
+            });
+        });
+
+        it('rejects an invalid payload before the repository (it ends in the dead letter queue)', async () => {
+            const schemas = await import('../sync.schemas');
+            const insert = vi.spyOn(qcRepository, 'insert');
+            for (const bad of [
+                { ...base, score: 140 },
+                { ...base, criteria: { ladder: 'meh' } },
+                { ...base, grade: 'D' },
+                { ...base, informed: 'yes' },
+            ]) {
+                await expect(dispatchSyncItem(item(bad), schemas)).rejects.toSatisfy(isZodError);
+            }
+            expect(insert).not.toHaveBeenCalled();
+        });
     });
 });
