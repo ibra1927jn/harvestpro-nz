@@ -125,38 +125,48 @@ describe('GoalProgress', () => {
         GoalProgress = mod.default;
     });
 
+    // Sin hora de fin de turno (2026-10-21): hora estimada al ritmo actual, sin
+    // proyección «a fin de día» ni semáforo adelantado/atrasado.
     it('renders progress percentage', () => {
-        render(<GoalProgress progress={75} currentTons={3} targetTons={4} eta="15:00" etaStatus="on_track" />);
+        render(<GoalProgress progress={75} currentTons={3} targetTons={4} eta="15:00" etaStatus="projected" />);
         expect(screen.getByText(/75%/)).toBeDefined();
     });
 
     it('renders current vs target tons', () => {
-        const { container } = render(<GoalProgress progress={50} currentTons={2.5} targetTons={5} eta="16:00" etaStatus="behind" />);
+        const { container } = render(<GoalProgress progress={50} currentTons={2.5} targetTons={5} eta="16:00" etaStatus="projected" />);
         expect(container.textContent).toContain('2.5');
         expect(container.textContent).toContain('5');
     });
 
-    it('shows projection when hoursElapsed > 0.5', () => {
+    it('shows pace and buckets to goal (no end-of-day projection) when hoursElapsed > 0.5', () => {
         const { container } = render(
-            <GoalProgress progress={50} currentTons={2} targetTons={4} eta="14:00" etaStatus="on_track"
-                totalBuckets={200} hoursElapsed={4} />
+            <GoalProgress progress={50} currentTons={2} targetTons={4} eta="14:00" etaStatus="projected"
+                velocity={50} totalBuckets={200} hoursElapsed={4} />
         );
-        expect(container.textContent).toContain('Projected');
+        expect(container.textContent).toContain('At this pace: 14:00');
+        expect(container.textContent).toContain('Pace: 50 buckets/h');
+        // 4 t × 72 = 288 cubetas de meta − 200 = 88
+        expect(container.textContent).toContain('88 buckets to goal');
+        expect(container.textContent).not.toContain('Projected');
     });
 
-    it('hides projection when hoursElapsed <= 0.5', () => {
+    it('hides the pace row when hoursElapsed <= 0.5', () => {
         const { container } = render(
             <GoalProgress progress={10} currentTons={0.4} targetTons={4} eta="--" etaStatus="no_data"
                 totalBuckets={5} hoursElapsed={0.2} />
         );
+        expect(container.textContent).not.toContain('Pace:');
         expect(container.textContent).not.toContain('Projected');
     });
 
-    it('shows ahead status as green', () => {
+    it('shows complete status in green with a check, without a traffic light', () => {
         const { container } = render(
-            <GoalProgress progress={90} currentTons={3.6} targetTons={4} eta="13:30" etaStatus="ahead" />
+            <GoalProgress progress={100} currentTons={4} targetTons={4} eta="Complete!" etaStatus="complete" />
         );
-        expect(container.querySelector('.text-green-400')).toBeDefined();
+        expect(container.querySelector('.text-green-300')).not.toBeNull();
+        expect(container.textContent).toContain('check_circle');
+        expect(container.textContent).not.toContain('rocket_launch');
+        expect(container.textContent).not.toContain('warning');
     });
 });
 

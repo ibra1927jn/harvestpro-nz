@@ -60,3 +60,26 @@ describe('useSettings — form defaults', () => {
         expect(defaults.variety).toBe('Cherry');
     });
 });
+
+// ── Variedades del huerto: de las filas (block_rows), no de orchards.crop_type ──
+import { varietiesOfRows } from './useSettings';
+
+describe('varietiesOfRows', () => {
+    it('lists the distinct row varieties of the orchard, alphabetically', () => {
+        const blocks = [
+            { rowVarieties: { 1: 'Royal Gala', 2: 'Royal Gala', 3: 'Braeburn' } },
+            { rowVarieties: { 16: 'Braeburn', 17: 'Royal Gala' } },
+        ];
+        expect(varietiesOfRows(blocks)).toEqual(['Braeburn', 'Royal Gala']);
+    });
+
+    it('ignores blank rows and the "Desconocida" placeholder the map slice uses', () => {
+        const blocks = [{ rowVarieties: { 1: '  ', 2: 'Desconocida', 3: 'Fuji ' } }];
+        expect(varietiesOfRows(blocks)).toEqual(['Fuji']);
+    });
+
+    it('returns an empty list when the orchard has no rows loaded', () => {
+        expect(varietiesOfRows([])).toEqual([]);
+        expect(varietiesOfRows([{ rowVarieties: {} }])).toEqual([]);
+    });
+});
