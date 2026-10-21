@@ -123,3 +123,12 @@ CREATE POLICY "No self leave decision" ON public.leave_requests
         picker_id IS DISTINCT FROM (SELECT auth.uid())
         OR (SELECT public.is_role(ARRAY['admin']))
     );
+
+-- 2FA en el servidor (20261014000000_server_side_mfa): toda tabla de public lleva
+-- esta restrictiva; una cuenta privilegiada sin código no ve ni toca nada
+-- (prueba: supabase/tests/security/01_catalog.sql)
+DROP POLICY IF EXISTS "Require 2FA for privileged roles" ON public.leave_requests;
+CREATE POLICY "Require 2FA for privileged roles" ON public.leave_requests
+    AS RESTRICTIVE FOR ALL TO public
+    USING ((SELECT public.mfa_satisfied()))
+    WITH CHECK ((SELECT public.mfa_satisfied()));

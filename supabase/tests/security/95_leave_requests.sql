@@ -33,7 +33,13 @@ SELECT sec_test.sees(w, 'sees leave of every orchard', $$SELECT 1 FROM leave_req
 FROM unnest(ARRAY['A.hr_admin', 'A.payroll_admin', 'A.admin']) AS w;
 SELECT sec_test.sees(w, 'cannot read leave requests', $$SELECT 1 FROM leave_requests$$, 0)
 FROM unnest(ARRAY['anon', 'A.inactive_manager', 'A.inactive_hr_admin']) AS w;
-SELECT sec_test.sees('A.hr_admin@aal1', 'HR without 2FA cannot read leave requests', $$SELECT 1 FROM leave_requests$$, 0);
+SELECT sec_test.sees(w, 'without 2FA cannot read leave requests', $$SELECT 1 FROM leave_requests$$, 0)
+FROM unnest(ARRAY['A.hr_admin@aal1', 'A.manager@aal1', 'A.admin@aal1']) AS w;
+SELECT sec_test.deny('A.hr_admin@aal1', 'without 2FA cannot request leave',
+    $$INSERT INTO leave_requests (orchard_id, picker_id, type, start_date, end_date, requested_by)
+      VALUES ({A}, {A.picker}, 'annual', current_date + 1, current_date + 1, auth.uid())$$);
+SELECT sec_test.deny('A.manager@aal1', 'without 2FA cannot decide leave',
+    $$UPDATE leave_requests SET status = 'approved' WHERE id = {A.leave}$$);
 
 -- ── Pedir ───────────────────────────────────────────────────────────────────
 SELECT sec_test.allow(w, 'requests leave for a person of own orchard',
