@@ -24,14 +24,14 @@ const loadLogistics = () => import('@/components/views/runner/LogisticsView');
 const loadRunners = () => import('@/components/views/runner/RunnersView');
 const loadWarehouse = () => import('@/components/views/runner/WarehouseView');
 const loadMessaging = () => import('@/components/views/runner/MessagingView');
-const loadTimesheet = () => import('@/components/views/manager/TimesheetEditor');
+const loadTimesheet = () => import('@/components/views/runner/MyTimesheetView');
 const loadScanner = () => import('@/components/modals/ScannerModal');
 const loadQuality = () => import('@/components/modals/QualityRatingModal');
 const LogisticsView = React.lazy(loadLogistics);
 const RunnersView = React.lazy(loadRunners);
 const WarehouseView = React.lazy(loadWarehouse);
 const MessagingView = React.lazy(loadMessaging);
-const TimesheetEditor = React.lazy(loadTimesheet);
+const MyTimesheetView = React.lazy(loadTimesheet);
 const ScannerModal = React.lazy(loadScanner);
 const QualityRatingModal = React.lazy(loadQuality);
 
@@ -120,9 +120,8 @@ const Runner = () => {
               )}
               {activeTab === 'timesheet' && (
                 <ComponentErrorBoundary componentName="Timesheet">
-                  <div className="p-4">
-                    <TimesheetEditor orchardId={runner.orchard?.id || ''} />
-                  </div>
+                  {/* Solo la hoja de la persona: el runner no ve ni corrige los fichajes de otros */}
+                  <MyTimesheetView />
                 </ComponentErrorBoundary>
               )}
             </Suspense>
