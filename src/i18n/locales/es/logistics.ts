@@ -32,6 +32,7 @@ const logistics: TranslationDict = {
   'logistics.events.empty': 'Sin eventos recientes',
   // Enlace
   'logistics.full_view': 'Abrir vista completa de logística →',
+    'logistics.operations': 'Operaciones',
 };
 
 export default logistics;

@@ -26,6 +26,7 @@ const logistics: TranslationDict = {
     'logistics.events.alert': 'सीनियर रनर का अलर्ट',
     'logistics.events.empty': 'कोई हाल की घटना नहीं',
     'logistics.full_view': 'पूरा लॉजिस्टिक्स व्यू खोलें →',
+    'logistics.operations': 'संचालन',
 };
 
 export default logistics;

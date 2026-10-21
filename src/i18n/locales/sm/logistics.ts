@@ -26,6 +26,7 @@ const logistics: TranslationDict = {
     'logistics.events.alert': 'Lapata\'iga mai le runner sinia',
     'logistics.events.empty': 'Leai ni mea fou',
     'logistics.full_view': 'Tatala le va\'aiga atoa →',
+    'logistics.operations': 'Galuega',
 };
 
 export default logistics;
