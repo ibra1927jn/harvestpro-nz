@@ -57,12 +57,10 @@ const DashboardView: React.FC<DashboardViewProps> = ({
   // Fuente única de verdad para KPIs (mismos datos que InsightsView)
   const {
     kpis,
-    projectedEndOfDay,
     hoursElapsed: metricsHoursElapsed,
   } = useHarvestMetrics();
 
   const shiftStart = settings.shift_start_time ?? '07:00';
-  const shiftEnd = settings.shift_end_time ?? '17:00';
 
   // Drill-down del gráfico de velocidad
   const velocityDrilldown = useVelocityDrilldown(bucketRecords, crew);
@@ -114,11 +112,10 @@ const DashboardView: React.FC<DashboardViewProps> = ({
   const target = settings.target_tons || 40;
   const progress = Math.min(100, (stats.tons / target) * 100);
 
-  // 4. ETA Calculation — anclada a shift_end_time para evitar jitter por wall-clock re-renders
-  const shiftEndTime = settings?.shift_end_time ?? '17:00';
+  // 4. Hora estimada de la meta al ritmo actual (sin hora de fin de turno)
   const etaInfo = useMemo(() => {
-    return analyticsService.calculateETA(stats.tons, target, velocity, 72, shiftEndTime);
-  }, [stats.tons, target, velocity, shiftEndTime]);
+    return analyticsService.calculateETA(stats.tons, target, velocity, 72);
+  }, [stats.tons, target, velocity]);
 
   // 5. Hours elapsed — desde useHarvestMetrics (shift-anchored, no re-calc en cada render)
   const hoursElapsed = metricsHoursElapsed;
@@ -153,22 +150,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  // Estimated remaining work time (assuming 5pm NZ end)
-  // Usa Intl con Pacific/Auckland para manejar NZST (UTC+12) y NZDT (UTC+13) automáticamente
-  const remainingHours = useMemo(() => {
-    const parts = new Intl.DateTimeFormat('en-NZ', {
-      timeZone: 'Pacific/Auckland',
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: false,
-    }).formatToParts(currentTime);
-    const nzHour = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10);
-    const nzMinute = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0', 10);
-    const endHour = 17; // 5pm
-    const remaining = endHour - nzHour - nzMinute / 60;
-    return Math.max(0, remaining);
-  }, [currentTime]);
-
+  // Sin «horas restantes» ni «overtime»: no hay hora de fin de turno (antes se
+  // calculaban contra las 17:00 fijas); cada equipo y runner acaba cuando ficha su salida.
   const nzTimeStr = currentTime.toLocaleTimeString('en-NZ', {
     hour: '2-digit',
     minute: '2-digit',
@@ -202,24 +185,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({
               <span aria-hidden="true" className="material-symbols-outlined text-sm">schedule</span>
               {nzTimeStr}
             </span>
-            {remainingHours > 0 && (
-              <span
-                className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
-                  remainingHours <= 1
-                    ? 'text-amber-700 bg-amber-50'
-                    : 'text-emerald-700 bg-emerald-50'
-                }`}
-              >
-                <span aria-hidden="true" className="material-symbols-outlined text-sm">hourglass_top</span>
-                {remainingHours.toFixed(1)}h {t('dashboard.remaining')}
-              </span>
-            )}
-            {remainingHours <= 0 && (
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded-full">
-                <span aria-hidden="true" className="material-symbols-outlined text-sm">timer_off</span>
-                {t('dashboard.overtime')}
-              </span>
-            )}
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -298,7 +263,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({
             velocity={velocity}
             totalBuckets={kpis.totalBins}
             hoursElapsed={hoursElapsed}
-            projectedBuckets={projectedEndOfDay}
           />
           <ComponentErrorBoundary componentName="Velocity Chart">
             <VelocityChart
@@ -307,7 +271,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                 ((settings.min_buckets_per_hour || 3.6) * selectPresentPickers(crew).length) / 2
               )}
               shiftStart={shiftStart}
-              shiftEnd={shiftEnd}
               onBarClick={velocityDrilldown.open}
             />
           </ComponentErrorBoundary>

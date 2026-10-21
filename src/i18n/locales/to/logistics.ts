@@ -25,7 +25,7 @@ const logistics: TranslationDict = {
     'logistics.events.row_blocked': 'Kuo tāpuni ʻa e laine',
     'logistics.events.alert': 'Fakatokanga mei he runner sinia',
     'logistics.events.empty': 'ʻIkai ha meʻa foʻou',
-    'logistics.full_view': 'Fakaava ʻa e vakai kakato →',
+    'logistics.operations': 'Ngāue',
 };
 
 export default logistics;

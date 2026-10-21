@@ -11,7 +11,6 @@ const dashboard: TranslationDict = {
     'dashboard.pickers': 'kau toli',
     'dashboard.daily_target': 'Taumuʻa ʻo e ʻAho',
     'dashboard.complete': 'Kakato',
-    'dashboard.remaining': 'toe',
     'dashboard.export': 'Hiki atu',
     'dashboard.live_map': 'Mape Moʻui',
     'dashboard.broadcast': 'Fakamafola',
@@ -40,7 +39,6 @@ const dashboard: TranslationDict = {
     'dashboard.velocity.tooltip_target_pct': '{pct}% ʻo e taumuʻa',
     'dashboard.velocity.tap_for_details': 'Lomi ki he fakaikiiki',
     'dashboard.velocity.tap_bar_details': 'Lomi ʻa e paa ki he fakaikiiki',
-    'dashboard.overtime': 'Taimi lahi',
     'dashboard.kpi.bins_per_hour': 'b/houa',
     'dashboard.kpi.nzd': 'NZD',
     'dashboard.wage.subtitle': 'Ngaahi top-up ki he vāhenga siʻisiʻi',
@@ -77,6 +75,10 @@ const dashboard: TranslationDict = {
     'dashboard.team_leaders.picker_count': '{n} toli',
     'dashboard.team_leaders.empty': 'ʻIkai ha taki timi kuo vahe.',
     'dashboard.team_leaders.manage': 'Puleʻi Timi',
+    'dashboard.eta_at_pace': 'ʻI he vave ko ʻení: {time}',
+    'dashboard.pace_now': 'Vave: {n} pakete/houa',
+    'dashboard.remaining_to_goal': '{n} pakete ki he taumuʻa',
+    'dashboard.velocity.since': 'Mei he {start}',
 };
 
 export default dashboard;

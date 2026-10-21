@@ -11,7 +11,6 @@ const dashboard: TranslationDict = {
     'dashboard.pickers': 'kaikohi',
     'dashboard.daily_target': 'Whāinga o te Rā',
     'dashboard.complete': 'Oti',
-    'dashboard.remaining': 'e toe ana',
     'dashboard.export': 'Kaweake',
     'dashboard.live_map': 'Mahere Ora',
     'dashboard.broadcast': 'Pāho',
@@ -40,7 +39,6 @@ const dashboard: TranslationDict = {
     'dashboard.velocity.tooltip_target_pct': '{pct}% o te whāinga',
     'dashboard.velocity.tap_for_details': 'Pāwhiri mō ngā taipitopito',
     'dashboard.velocity.tap_bar_details': 'Pāwhiri i te pae mō ngā taipitopito',
-    'dashboard.overtime': 'Wā tāpiri',
     'dashboard.kpi.bins_per_hour': 'b/hāora',
     'dashboard.kpi.nzd': 'NZD',
     'dashboard.wage.subtitle': 'Ngā tāpiri utu-iti',
@@ -77,6 +75,10 @@ const dashboard: TranslationDict = {
     'dashboard.team_leaders.picker_count': '{n} kaikohi',
     'dashboard.team_leaders.empty': 'Kāore he kaiārahi rōpū kua tohaina.',
     'dashboard.team_leaders.manage': 'Whakahaere Rōpū',
+    'dashboard.eta_at_pace': 'I tēnei tere: {time}',
+    'dashboard.pace_now': 'Tere: {n} pākete/hāora',
+    'dashboard.remaining_to_goal': '{n} pākete e toe ana ki te whāinga',
+    'dashboard.velocity.since': 'Mai i {start}',
 };
 
 export default dashboard;

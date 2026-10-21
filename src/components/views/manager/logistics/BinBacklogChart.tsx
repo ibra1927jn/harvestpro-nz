@@ -9,7 +9,6 @@ import { formatHourLabel } from '@/utils/time';
 interface BinBacklogChartProps {
   series: Array<{ hour: number; pending: number }>;
   shiftStart?: string;
-  shiftEnd?: string;
 }
 
 const BAR_FILL = '#6366f1'; // indigo-500

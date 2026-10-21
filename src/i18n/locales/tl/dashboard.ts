@@ -11,7 +11,6 @@ const dashboard: TranslationDict = {
     'dashboard.pickers': 'picker',
     'dashboard.daily_target': 'Target sa Araw',
     'dashboard.complete': 'Tapos',
-    'dashboard.remaining': 'natitira',
     'dashboard.export': 'I-export',
     'dashboard.live_map': 'Live na Mapa',
     'dashboard.broadcast': 'I-broadcast',
@@ -40,7 +39,6 @@ const dashboard: TranslationDict = {
     'dashboard.velocity.tooltip_target_pct': '{pct}% ng target',
     'dashboard.velocity.tap_for_details': 'I-tap para sa detalye',
     'dashboard.velocity.tap_bar_details': 'I-tap ang bar para sa detalye',
-    'dashboard.overtime': 'Overtime',
     'dashboard.kpi.bins_per_hour': 'b/oras',
     'dashboard.kpi.nzd': 'NZD',
     'dashboard.wage.subtitle': 'Kakulangan sa top-up ng minimum wage',
@@ -77,6 +75,10 @@ const dashboard: TranslationDict = {
     'dashboard.team_leaders.picker_count': '{n} picker',
     'dashboard.team_leaders.empty': 'Walang naitalagang team leader.',
     'dashboard.team_leaders.manage': 'Pamahalaan ang Teams',
+    'dashboard.eta_at_pace': 'Sa bilis na ito: {time}',
+    'dashboard.pace_now': 'Bilis: {n} timba/oras',
+    'dashboard.remaining_to_goal': '{n} timba pa hanggang sa layunin',
+    'dashboard.velocity.since': 'Mula {start}',
 };
 
 export default dashboard;

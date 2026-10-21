@@ -100,7 +100,10 @@ export interface HarvestSettings {
   variety?: string;
   /** Hora de inicio de turno (HH:MM, 24h, default: '07:00') */
   shift_start_time?: string;
-  /** Hora de fin de turno (HH:MM, 24h, default: '17:00') */
+  /**
+   * @deprecated Sin uso desde 2026-10-21: no hay hora de fin de turno (cada equipo
+   * y runner termina cuando ficha su salida). La columna sigue en la tabla.
+   */
   shift_end_time?: string;
   /** Horas que dura la confianza de dispositivo MFA (default: 72) */
   mfa_device_trust_ttl_hours?: number;

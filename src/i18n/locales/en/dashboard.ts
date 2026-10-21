@@ -11,7 +11,6 @@ const dashboard: TranslationDict = {
     'dashboard.pickers': 'pickers',
     'dashboard.daily_target': 'Daily Target',
     'dashboard.complete': 'Complete',
-    'dashboard.remaining': 'remaining',
     'dashboard.export': 'Export',
     'dashboard.live_map': 'Live Map',
     'dashboard.broadcast': 'Broadcast',
@@ -41,7 +40,6 @@ const dashboard: TranslationDict = {
     'dashboard.velocity.tooltip_target_pct': '{pct}% of target',
     'dashboard.velocity.tap_for_details': 'Tap for details',
     'dashboard.velocity.tap_bar_details': 'Tap bar for details',
-    'dashboard.overtime': 'Overtime',
     'dashboard.kpi.bins_per_hour': 'b/hr',
     'dashboard.kpi.nzd': 'NZD',
     'dashboard.wage.subtitle': 'Min-wage top-up deficits',
@@ -79,6 +77,10 @@ const dashboard: TranslationDict = {
     'dashboard.team_leaders.picker_count': '{n} pickers',
     'dashboard.team_leaders.empty': 'No Team Leaders assigned.',
     'dashboard.team_leaders.manage': 'Manage Teams',
+    'dashboard.eta_at_pace': 'At this pace: {time}',
+    'dashboard.pace_now': 'Pace: {n} buckets/h',
+    'dashboard.remaining_to_goal': '{n} buckets to goal',
+    'dashboard.velocity.since': 'Since {start}',
 };
 
 export default dashboard;

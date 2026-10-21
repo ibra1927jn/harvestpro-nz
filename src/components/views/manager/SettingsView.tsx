@@ -10,9 +10,12 @@
  *     └── settingsLogic.ts       — Pure helpers (compliance floor clamp, warning text)
  *
  * Responsive layout:
- *   Mobile  (<768px) : single column
- *   Tablet  (≥768px) : 2-column grid
- *   Desktop (≥1024px): 3-column grid, max-width 1200px centered
+ *   Mobile  (<768px) : una columna
+ *   Tablet  (≥768px) : 2 columnas
+ *   Desktop (≥1024px): 3 columnas, max-width 1200px centrado
+ *   Las tarjetas van en columnas CSS (tipo mosaico): cada una mide lo suyo y las
+ *   cortas rellenan debajo de otras, en vez de estirarse a la altura de la vecina
+ *   (antes «Detalles del huerto», con tres líneas, medía lo que «Cosecha»).
  *   Profile card and Danger Zone always span full width.
  */
 import React from 'react';
@@ -78,8 +81,8 @@ const SettingsView: React.FC = () => {
                 </div>
             </section>
 
-            {/* ── Settings Grid — responsive: 1 col mobile / 2 col tablet / 3 col desktop ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* ── Settings — mosaico: 1 col móvil / 2 tablet / 3 escritorio, cada tarjeta con su altura ── */}
+            <div className="columns-1 md:columns-2 lg:columns-3 gap-5 [&>section]:mb-5 [&>section]:break-inside-avoid">
 
             {/* ── Harvest Configuration ────────────────── */}
             <SettingsSection icon="tune" iconBg="bg-indigo-50" iconColor="text-indigo-600" title={t('settings.harvest.title')} subtitle={t('settings.harvest.subtitle')} accentColor="border-l-indigo-500" stagger={2}>
@@ -97,7 +100,8 @@ const SettingsView: React.FC = () => {
                     onChange={(v) => s.handleChange('min_buckets_per_hour', v)}
                 />
                 <FormField label={t('settings.harvest.daily_target')} value={s.formData.target_tons} onChange={(v) => s.handleChange('target_tons', v)} type="number" step="1" />
-                {/* Shift timing — ancla todos los cálculos de ETA/horas restantes */}
+                {/* Hora prevista de inicio: ancla el recorte de horas y el eje de las gráficas.
+                    No hay hora de fin de turno: cada equipo y runner termina cuando ficha su salida. */}
                 <div className="border-t border-slate-100 pt-3 mt-1">
                     <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest mb-3">{t('settings.harvest.shift_hours')}</p>
                     <div className="flex items-center justify-between py-1">
@@ -113,19 +117,7 @@ const SettingsView: React.FC = () => {
                             className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-text-main font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
                         />
                     </div>
-                    <div className="flex items-center justify-between py-1">
-                        <label className="text-sm font-medium text-text-sub flex items-center gap-1.5">
-                            <span aria-hidden="true" className="material-symbols-outlined text-sm text-indigo-400">schedule</span>
-                            {t('settings.harvest.shift_end')}
-                        </label>
-                        <input
-                            type="time"
-                            value={s.formData.shift_end_time}
-                            onChange={(e) => s.handleChange('shift_end_time', e.target.value)}
-                            aria-label={t('settings.harvest.shift_end')}
-                            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-text-main font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
-                        />
-                    </div>
+                    <p className="text-[11px] text-text-muted mt-1">{t('settings.harvest.shift_end_by_person')}</p>
                 </div>
             </SettingsSection>
 

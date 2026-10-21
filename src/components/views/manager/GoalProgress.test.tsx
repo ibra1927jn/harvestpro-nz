@@ -1,5 +1,8 @@
 /**
  * GoalProgress — Deep render tests
+ *
+ * Sin hora de fin de turno (2026-10-21): la meta se expresa como hora estimada
+ * al ritmo actual; no hay proyección «a fin de día» ni semáforo adelantado/atrasado.
  */
 import React from 'react';
 import { describe, it, expect } from 'vitest';
@@ -12,7 +15,8 @@ describe('GoalProgress', () => {
         currentTons: 4.2,
         targetTons: 6.5,
         eta: '14:30',
-        etaStatus: 'on_track' as const,
+        etaStatus: 'projected' as const,
+        velocity: 75,
         totalBuckets: 302,
         hoursElapsed: 4,
     };
@@ -37,34 +41,37 @@ describe('GoalProgress', () => {
         expect(screen.getByText('4.2 / 6.5 t')).toBeTruthy();
     });
 
-    it('renders ETA', () => {
+    it('renders the goal time at the current pace (no shift end, no traffic light)', () => {
         render(<GoalProgress {...defaultProps} />);
-        expect(screen.getByText('ETA: 14:30')).toBeTruthy();
+        expect(screen.getByText('At this pace: 14:30')).toBeTruthy();
+        expect(screen.queryByText(/ETA:/)).toBeNull();
+        expect(screen.queryByText('rocket_launch')).toBeNull();
+        expect(screen.queryByText('warning')).toBeNull();
     });
 
-    it('shows smart projection when hours > 0.5', () => {
+    it('shows pace and buckets remaining to the goal when hours > 0.5', () => {
         render(<GoalProgress {...defaultProps} />);
-        expect(screen.getByText(/Projected end-of-day/)).toBeTruthy();
-    });
-
-    it('shows projected buckets count', () => {
-        render(<GoalProgress {...defaultProps} />);
-        // 302 / 4 * 8 = 604
-        expect(screen.getByText(/604 buckets/)).toBeTruthy();
-    });
-
-    it('does not show projection when hoursElapsed < 0.5', () => {
-        render(<GoalProgress {...defaultProps} hoursElapsed={0.3} />);
+        expect(screen.getByText('Pace: 75 buckets/h')).toBeTruthy();
+        // 6.5 t × 72 = 468 cubetas de meta − 302 = 166
+        expect(screen.getByText('166 buckets to goal')).toBeTruthy();
         expect(screen.queryByText(/Projected end-of-day/)).toBeNull();
     });
 
-    it('shows ahead status with green indicator', () => {
-        render(<GoalProgress {...defaultProps} etaStatus="ahead" />);
-        expect(screen.getByText('rocket_launch')).toBeTruthy();
+    it('does not show pace row when hoursElapsed < 0.5', () => {
+        render(<GoalProgress {...defaultProps} hoursElapsed={0.3} />);
+        expect(screen.queryByText(/Pace:/)).toBeNull();
     });
 
-    it('shows behind status with warning', () => {
-        render(<GoalProgress {...defaultProps} etaStatus="behind" />);
-        expect(screen.getByText('warning')).toBeTruthy();
+    it('complete: green check and no pace row', () => {
+        render(<GoalProgress {...defaultProps} etaStatus="complete" eta="Complete!" progress={100} />);
+        expect(screen.getByText('check_circle')).toBeTruthy();
+        expect(screen.getByText('Complete!')).toBeTruthy();
+        expect(screen.queryByText(/Pace:/)).toBeNull();
+    });
+
+    it('no_data: shows the awaiting text without a time', () => {
+        render(<GoalProgress {...defaultProps} etaStatus="no_data" eta="Awaiting data..." />);
+        expect(screen.getByText('Awaiting data...')).toBeTruthy();
+        expect(screen.getByText('hourglass_empty')).toBeTruthy();
     });
 });
