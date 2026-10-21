@@ -11,6 +11,7 @@ import PickerDrawerHistory from './PickerDrawerHistory';
 import type { PickerTodayData } from './usePickerDrawerData';
 import type { DrawerTheme } from './drawerTheme';
 import { QualityRing, TabButton as TabBtn, QualityTab } from '../common/picker-profile';
+import UserAvatar from '../common/account/UserAvatar';
 
 export type DrawerTab = 'today' | 'history' | 'quality';
 
@@ -42,6 +43,8 @@ export const DrawerNotFound: React.FC = () => {
 
 interface ProfileHeaderProps {
     theme: DrawerTheme;
+    /** Id de la persona: si tiene cuenta con foto (Mi cuenta), se enseña; si no, la inicial */
+    userId?: string;
     displayName: string;
     displayPickerId: string;
     currentStatus: string;
@@ -52,15 +55,16 @@ interface ProfileHeaderProps {
 }
 
 export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
-    theme, displayName, displayPickerId, currentStatus, statusLabel, roleLabel, qualityScore,
+    theme, userId, displayName, displayPickerId, currentStatus, statusLabel, roleLabel, qualityScore,
 }) => (
     <div className={`rounded-2xl p-5 -mx-1 ${theme.headerBg}`}>
         <div className="flex items-start gap-4">
-            <div
-                className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg ${theme.avatarBg}`}
-            >
-                {displayName.charAt(0)}
-            </div>
+            <UserAvatar
+                name={displayName}
+                userId={userId}
+                className={`w-14 h-14 rounded-2xl text-white shadow-lg ${theme.avatarBg}`}
+                textClassName="text-xl font-black"
+            />
             <div className="flex-1">
                 <h2 className="text-lg font-black text-text-main">{displayName}</h2>
                 <p className="text-xs text-text-muted">ID: {displayPickerId}</p>

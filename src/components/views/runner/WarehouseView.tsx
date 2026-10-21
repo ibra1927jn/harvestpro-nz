@@ -1,6 +1,5 @@
 import React from 'react';
 import EmptyState from '@/components/ui/EmptyState';
-import { avatarUrl } from '@/utils/avatarUrl';
 import { useTranslation } from '@/i18n';
 
 interface WarehouseViewProps {
@@ -68,8 +67,9 @@ const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportReq
                         <button aria-label={t('settings.notifications')} className="relative flex items-center justify-center rounded-2xl size-11 bg-white/80 border border-white/60 shadow-sm text-slate-500 hover:text-primary transition-colors hover:shadow-md">
                             <span aria-hidden="true" className="material-symbols-outlined text-[22px]">notifications</span>
                         </button>
-                        <div className="size-11 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden border border-white/60 shadow-sm">
-                            <img src={avatarUrl('Warehouse')} alt={t('common.avatar')} className="w-full h-full object-cover" />
+                        {/* Icono de la pantalla (antes una imagen externa de ui-avatars.com sin función) */}
+                        <div className="size-11 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center border border-white/60 shadow-sm text-slate-500">
+                            <span aria-hidden="true" className="material-symbols-outlined text-[22px]">warehouse</span>
                         </div>
                     </div>
                 </div>

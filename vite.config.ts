@@ -86,6 +86,9 @@ export default defineConfig(() => {
             // configurados: no gastar ~200 KB de datos en la instalación del SW
             'assets/vendor-sentry-*.js',
             'assets/vendor-analytics-*.js',
+            // «Mi cuenta» (foto, datos, contraseña): todo lo que hace necesita red, así que
+            // no se precachea; se guarda en caché la primera vez que se abre (CacheFirst abajo)
+            'assets/AccountSheet-*.js',
           ],
           runtimeCaching: [
             {
@@ -100,12 +103,12 @@ export default defineConfig(() => {
             {
               // Chunks con hash excluidos del precache: inmutables → CacheFirst
               urlPattern: ({ url, sameOrigin }) =>
-                sameOrigin && /^\/assets\/vendor-(sentry|analytics)-[\w-]+\.js$/.test(url.pathname),
+                sameOrigin && /^\/assets\/(vendor-(sentry|analytics)|AccountSheet)-[\w-]+\.js$/.test(url.pathname),
               handler: 'CacheFirst',
               options: {
                 cacheName: 'deferred-vendor-chunks',
                 cacheableResponse: { statuses: [200] },
-                expiration: { maxEntries: 6, maxAgeSeconds: 60 * 60 * 24 * 90 },
+                expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 90 },
               },
             },
             {

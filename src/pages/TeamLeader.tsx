@@ -21,7 +21,6 @@ import { useTranslation } from '@/i18n';
 const HomeView = React.lazy(() => import('@/components/views/team-leader/HomeView'));
 const TeamView = React.lazy(() => import('@/components/views/team-leader/TeamView'));
 const TasksView = React.lazy(() => import('@/components/views/team-leader/TasksView'));
-const ProfileView = React.lazy(() => import('@/components/views/team-leader/ProfileView'));
 const MessagingView = React.lazy(() => import('@/components/views/team-leader/MessagingView'));
 const AttendanceView = React.lazy(() => import('@/components/views/team-leader/AttendanceView'));
 const TimesheetEditor = React.lazy(() => import('@/components/views/manager/TimesheetEditor'));
@@ -38,8 +37,9 @@ const TeamLeader = () => {
     const orchard = useHarvestStore((state) => state.orchard);
 
     const [activeTab, setActiveTab] = useState<TeamLeaderTab>('home');
-    // BottomNav has 5 tabs; 'team' and 'profile' don't appear there — fallback a 'home'.
-    const mobileActiveTab = activeTab === 'team' || activeTab === 'profile' ? 'home' : activeTab;
+    // BottomNav has 5 tabs; 'team' doesn't appear there — fallback a 'home'.
+    // El perfil personal ya no es una pestaña: el avatar de la cabecera abre «Mi cuenta».
+    const mobileActiveTab = activeTab === 'team' ? 'home' : activeTab;
 
     return (
         <ResponsiveLayout
@@ -52,7 +52,6 @@ const TeamLeader = () => {
             subtitle={t('tl.page_subtitle')}
             accentColor="blue"
             titleIcon="groups"
-            onProfileClick={() => setActiveTab('profile')}
         >
             {/* OmniCore ambient background dots — decorativo, pointer-events-none. */}
             <div className="relative overflow-hidden">
@@ -86,11 +85,6 @@ const TeamLeader = () => {
                                 <div className="p-4">
                                     <TimesheetEditor orchardId={orchard?.id || ''} />
                                 </div>
-                            </ComponentErrorBoundary>
-                        )}
-                        {activeTab === 'profile' && (
-                            <ComponentErrorBoundary componentName="Profile">
-                                <ProfileView />
                             </ComponentErrorBoundary>
                         )}
                         {activeTab === 'chat' && (
