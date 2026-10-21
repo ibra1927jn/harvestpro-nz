@@ -7,7 +7,7 @@
 import { useEffect } from 'react';
 import { logger } from '@/utils/logger';
 import { supabase } from '@/services/supabase';
-import { PROACTIVE_REFRESH_MS, shouldRefreshOnVisible } from './authLogic';
+import { PROACTIVE_REFRESH_MS, shouldRefreshOnVisible, tokenNeedsRefresh } from './authLogic';
 
 export function useSessionKeepAlive(): void {
   useEffect(() => {
@@ -32,7 +32,10 @@ export function useSessionKeepAlive(): void {
         )
       ) {
         lastVisibilityRefresh = now;
-        logger.info('[Auth] App in foreground — ensuring token health...');
+        // getSession no va a la red: lee el token guardado
+        const { data } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+        if (!tokenNeedsRefresh(data.session?.expires_at, now)) return;
+        logger.info('[Auth] App in foreground — token close to expiry, refreshing...');
         await supabase.auth.refreshSession().catch(() => {
           logger.warn('[Auth] Visibility refresh failed');
         });

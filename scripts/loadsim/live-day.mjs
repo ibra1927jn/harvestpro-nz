@@ -389,7 +389,12 @@ class Device {
     const nowMs = clock.minute() * 60000; // en tiempo virtual
     if (nowMs - this.lastVisibilityRefresh > 180000) {
       this.lastVisibilityRefresh = nowMs;
-      await this.sb.auth.refreshSession().catch(() => {});
+      // app optimizada: solo si el token caduca en menos de 15 min (virtuales)
+      const tokenAge = nowMs - (this.tokenIssuedAt ?? DAY_BEGIN * 60000);
+      if (!OPT || tokenAge > 45 * 60000) {
+        await this.sb.auth.refreshSession().catch(() => {});
+        this.tokenIssuedAt = nowMs;
+      }
     }
     if (OPT) {
       this.subscribeLive();
