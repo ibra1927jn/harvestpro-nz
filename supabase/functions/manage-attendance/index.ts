@@ -16,12 +16,107 @@ import { writeAudit } from '../_shared/audit.ts'
  * manage-attendance — Server-side attendance operations
  *
  * Actions:
- * - check_in:  Open a work shift (closes an open one in another orchard)
- * - check_out: Record checkout time + paid hours (unpaid 30-min break deducted)
- * - correct:   Admin timesheet correction with audit trail
+ * - check_in:      Open a work shift (closes an open one in another orchard)
+ * - check_out:     Record checkout time + paid hours (unpaid 30-min break deducted)
+ * - correct:       Timesheet correction with audit trail
+ * - correct_batch: The same correction applied to up to 200 timesheets at once
+ *                  (one audit row per timesheet, per-item results, a failing
+ *                  item does not abort the batch)
  *
  * Security: Requires admin/manager/team_leader role
  */
+
+// deno-lint-ignore no-explicit-any
+type SupabaseLike = { from: (table: string) => any }
+
+interface CorrectionItem {
+    attendance_id: string
+    check_in?: string
+    check_out?: string
+    break_start?: string | null
+}
+
+/**
+ * Aplica UNA corrección (la usan `correct` y `correct_batch`): recalcula las
+ * horas pagables, escribe la fila y deja la auditoría. Quien corrige es
+ * siempre quien llama. Si RLS deja la fila sin tocar → 403 (no se audita un
+ * cambio que no hubo).
+ */
+async function applyCorrection(
+    supabase: SupabaseLike,
+    userId: string,
+    item: CorrectionItem,
+    reason: string,
+): Promise<void> {
+    const { attendance_id, check_in, check_out, break_start } = item
+
+    // Build update payload. Quien corrige es quien llama: antes se guardaba
+    // el admin_id del cuerpo (firmar en nombre de otro).
+    const updatePayload: Record<string, string | number | null> = {
+        correction_reason: reason,
+        corrected_by: userId,
+        corrected_at: new Date().toISOString(),
+    }
+
+    if (check_in) updatePayload.check_in = check_in
+    if (check_out) updatePayload.check_out = check_out
+    if (break_start !== undefined) updatePayload.break_start = break_start
+
+    // Recalcular horas pagables con el cálculo único (pay-rules.ts)
+    const { data: existing, error: fetchExistingErr } = await supabase
+        .from('daily_attendance')
+        .select('check_in, check_out, break_start, break_minutes')
+        .eq('id', attendance_id)
+        .single()
+
+    if (fetchExistingErr) {
+        throw new Error(`Failed to fetch existing attendance for hours recalculation: ${fetchExistingErr.message}`)
+    }
+
+    const ci = check_in || existing?.check_in
+    const co = check_out || existing?.check_out
+    if (ci && co) {
+        updatePayload.hours_worked = shiftHours({
+            checkIn: ci,
+            checkOut: co,
+            breakStart: break_start !== undefined ? break_start : existing?.break_start,
+            breakMinutes: existing?.break_minutes,
+        }).hours
+    }
+
+    // Apply correction
+    const { data: corrected, error: corrErr } = await supabase
+        .from('daily_attendance')
+        .update(updatePayload)
+        .eq('id', attendance_id)
+        .select('id')
+
+    if (corrErr) throw new Error(`Failed to apply correction: ${corrErr.message}`)
+    // RLS puede dejar la fila sin tocar sin dar error (p. ej. el propio
+    // fichaje): antes se respondía success y se auditaba un cambio que no hubo
+    if (!corrected || corrected.length === 0) {
+        throw new AuthError('Not allowed to correct this timesheet', 403)
+    }
+
+    // Audit trail — must succeed for compliance
+    const { error: auditErr } = await writeAudit(supabase, {
+        action: 'timesheet_correction',
+        table: 'daily_attendance',
+        recordId: attendance_id,
+        userId,
+        oldValues: existing ?? undefined,
+        newValues: { check_in, check_out, break_start },
+        reason,
+    })
+
+    if (auditErr) throw new Error(`Correction applied but audit trail failed: ${auditErr.message}`)
+
+    console.info(`[Attendance] Correction applied: id=${attendance_id}, by=${userId}`)
+}
+
+/** Lotes de N en paralelo (un lote de 200 secuencial tardaría demasiado) */
+const BATCH_CONCURRENCY = 10
+
 serve(async (req) => {
     const preflight = handlePreflight(req)
     if (preflight) return preflight
@@ -203,71 +298,45 @@ serve(async (req) => {
         // ── CORRECT ──────────────────────────────────
         if (input.action === 'correct') {
             const { attendance_id, check_in, check_out, break_start, reason } = input
-
-            // Build update payload. Quien corrige es quien llama: antes se guardaba
-            // el admin_id del cuerpo (firmar en nombre de otro).
-            const updatePayload: Record<string, string | number | null> = {
-                correction_reason: reason,
-                corrected_by: user.id,
-                corrected_at: new Date().toISOString(),
-            }
-
-            if (check_in) updatePayload.check_in = check_in
-            if (check_out) updatePayload.check_out = check_out
-            if (break_start !== undefined) updatePayload.break_start = break_start
-
-            // Recalcular horas pagables con el cálculo único (pay-rules.ts)
-            const { data: existing, error: fetchExistingErr } = await supabase
-                .from('daily_attendance')
-                .select('check_in, check_out, break_start, break_minutes')
-                .eq('id', attendance_id)
-                .single()
-
-            if (fetchExistingErr) {
-                throw new Error(`Failed to fetch existing attendance for hours recalculation: ${fetchExistingErr.message}`)
-            }
-
-            const ci = check_in || existing?.check_in
-            const co = check_out || existing?.check_out
-            if (ci && co) {
-                updatePayload.hours_worked = shiftHours({
-                    checkIn: ci,
-                    checkOut: co,
-                    breakStart: break_start !== undefined ? break_start : existing?.break_start,
-                    breakMinutes: existing?.break_minutes,
-                }).hours
-            }
-
-            // Apply correction
-            const { data: corrected, error: corrErr } = await supabase
-                .from('daily_attendance')
-                .update(updatePayload)
-                .eq('id', attendance_id)
-                .select('id')
-
-            if (corrErr) throw new Error(`Failed to apply correction: ${corrErr.message}`)
-            // RLS puede dejar la fila sin tocar sin dar error (p. ej. el propio
-            // fichaje): antes se respondía success y se auditaba un cambio que no hubo
-            if (!corrected || corrected.length === 0) {
-                throw new AuthError('Not allowed to correct this timesheet', 403)
-            }
-
-            // Audit trail — must succeed for compliance
-            const { error: auditErr } = await writeAudit(supabase, {
-                action: 'timesheet_correction',
-                table: 'daily_attendance',
-                recordId: attendance_id,
-                userId: user.id,
-                oldValues: existing ?? undefined,
-                newValues: { check_in, check_out, break_start },
-                reason,
-            })
-
-            if (auditErr) throw new Error(`Correction applied but audit trail failed: ${auditErr.message}`)
-
-            console.info(`[Attendance] Correction applied: id=${attendance_id}, by=${user.id}`)
-
+            await applyCorrection(supabase, user.id, { attendance_id, check_in, check_out, break_start }, reason)
             return jsonResponse({ success: true, attendance_id }, origin)
+        }
+
+        // ── CORRECT BATCH ────────────────────────────
+        // La misma corrección para varios fichajes (p. ej. «salida a las 16:30
+        // para todos»): resultados por índice, una fila de auditoría por
+        // fichaje y los errores de una fila no tiran el lote.
+        if (input.action === 'correct_batch') {
+            const { items, reason } = input
+            const results: Array<{ index: number; attendance_id: string; success: boolean; error?: string }> =
+                new Array(items.length)
+
+            for (let start = 0; start < items.length; start += BATCH_CONCURRENCY) {
+                const chunk = items.slice(start, start + BATCH_CONCURRENCY)
+                await Promise.all(chunk.map(async (item, offset) => {
+                    const index = start + offset
+                    try {
+                        await applyCorrection(supabase, user.id, item, reason)
+                        results[index] = { index, attendance_id: item.attendance_id, success: true }
+                    } catch (err) {
+                        const message = err instanceof Error ? err.message : String(err)
+                        console.warn(`[Attendance] Batch correction failed: id=${item.attendance_id}, by=${user.id}: ${message}`)
+                        results[index] = { index, attendance_id: item.attendance_id, success: false, error: message }
+                    }
+                }))
+            }
+
+            const succeeded = results.filter(r => r.success).length
+            const failed = results.length - succeeded
+            console.info(`[Attendance] Batch correction: ${succeeded}/${results.length} applied, by=${user.id}`)
+
+            return jsonResponse({
+                success: failed === 0,
+                total: results.length,
+                succeeded,
+                failed,
+                results,
+            }, origin)
         }
 
         throw new Error(`Unknown action`)

@@ -72,6 +72,20 @@ const manager3: TranslationDict = {
     'dayset.min_rate': 'Tere Iti',
     'dayset.bkt_per_hr': 'p/h',
     'dayset.save': 'Tiaki Tautuhinga',
+    // Editor de fichajes: selección múltiple y corrección en lote (#9)
+    'tse.team_only': 'Ko ngā pepa hāora o tō tīma anake e whakaaturia ana.',
+    'tse.select_of': 'Tīpako i te pepa hāora a {name}',
+    'tse.batch.select_all': 'Tīpako i ngā pepa hāora katoa',
+    'tse.batch.select_flagged': 'Tīpako i ngā mea whakatūpato ({n})',
+    'tse.batch.selected': '{n} kua tīpakohia',
+    'tse.batch.title': 'Whakatika i ngā pepa hāora {n}',
+    'tse.batch.hint': 'Waiho kia wātea tētahi āpure kia mau tonu te uara o ia pepa hāora. Kotahi te take mō te katoa.',
+    'tse.batch.reason_placeholder': 'Te take mō ngā whakatikatika katoa *',
+    'tse.batch.clear': 'Whakakore i te tīpako',
+    'tse.batch.apply': 'Whakamahi ki te {n}',
+    'tse.batch.offline': 'Kāore he hononga: ka haere tika ngā whakatikatika rōpū ki te tūmau, kāore e tatari. Ngana anō ina hono anō koe.',
+    'tse.batch.done': 'Kua whakatikahia ngā pepa hāora {n}',
+    'tse.batch.partial': '{ok} kua whakatikahia, {failed} i rahua (kei te tīpakohia tonu)',
 };
 
 export default manager3;

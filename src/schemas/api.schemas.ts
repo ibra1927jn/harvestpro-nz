@@ -125,6 +125,21 @@ export const CheckOutResponseSchema = z.object({
     hours_worked: z.number().nonnegative(),
 });
 
+/** Resultado de manage-attendance `correct_batch`: una entrada por fichaje enviado */
+export const CorrectBatchResponseSchema = z.object({
+    success: z.boolean(),
+    total: z.number().int().nonnegative(),
+    succeeded: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+    results: z.array(z.object({
+        index: z.number().int().nonnegative(),
+        attendance_id: z.string().min(1),
+        success: z.boolean(),
+        error: z.string().optional(),
+    })),
+});
+export type CorrectBatchResponse = z.infer<typeof CorrectBatchResponseSchema>;
+
 // ── Compliance Boundaries ──────────────────────────
 
 const ComplianceViolationSchema = z.object({

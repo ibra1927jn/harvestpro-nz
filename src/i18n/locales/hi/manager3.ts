@@ -72,6 +72,20 @@ const manager3: TranslationDict = {
     'dayset.min_rate': 'न्यूनतम दर',
     'dayset.bkt_per_hr': 'बकेट/घं',
     'dayset.save': 'सेटिंग सहेजें',
+    // Editor de fichajes: selección múltiple y corrección en lote (#9)
+    'tse.team_only': 'केवल आपकी टीम की टाइमशीट दिखाई जा रही हैं।',
+    'tse.select_of': '{name} की टाइमशीट चुनें',
+    'tse.batch.select_all': 'सभी टाइमशीट चुनें',
+    'tse.batch.select_flagged': 'चेतावनी वाली चुनें ({n})',
+    'tse.batch.selected': '{n} चयनित',
+    'tse.batch.title': '{n} टाइमशीट सुधारें',
+    'tse.batch.hint': 'किसी फ़ील्ड को खाली छोड़ें तो हर टाइमशीट का अपना मान बना रहेगा। सबके लिए एक ही कारण।',
+    'tse.batch.reason_placeholder': 'सभी सुधारों का कारण *',
+    'tse.batch.clear': 'चयन हटाएँ',
+    'tse.batch.apply': '{n} पर लागू करें',
+    'tse.batch.offline': 'कनेक्शन नहीं: बैच सुधार सीधे सर्वर पर जाते हैं और कतार में नहीं रहते। ऑनलाइन होने पर फिर कोशिश करें।',
+    'tse.batch.done': '{n} टाइमशीट सुधारी गईं',
+    'tse.batch.partial': '{ok} सुधारी गईं, {failed} विफल (अभी भी चयनित)',
 };
 
 export default manager3;

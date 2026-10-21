@@ -15,10 +15,14 @@ interface TimesheetRowProps {
   onStartEdit: (record: AttendanceRow) => void;
   onCancel: () => void;
   onSave: (record: AttendanceRow) => void;
+  /** Selección múltiple para corregir en lote (casilla al principio de la fila) */
+  selected?: boolean;
+  onToggleSelect?: (record: AttendanceRow) => void;
 }
 
 export default function TimesheetRow({
   record, isEditing, form, saving, onChangeForm, onStartEdit, onCancel, onSave,
+  selected = false, onToggleSelect,
 }: TimesheetRowProps) {
   const { t } = useTranslation();
   const hours = calculateHours(record);
@@ -28,8 +32,22 @@ export default function TimesheetRow({
 
   return (
     <tr
-      className={`border-t border-border-light ${abnormal ? 'bg-red-50' : ''} ${isEditing ? 'bg-amber-50' : ''}`}
+      className={`border-t border-border-light ${abnormal ? 'bg-red-50' : ''} ${isEditing || selected ? 'bg-amber-50' : ''}`}
     >
+      {/* Casilla de selección (lote) */}
+      {onToggleSelect && (
+        <td className="pl-4 pr-1 py-3">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelect(record)}
+            disabled={saving}
+            aria-label={t('tse.select_of', { name: record.picker?.name ?? '' })}
+            className="size-4 accent-amber-600"
+          />
+        </td>
+      )}
+
       {/* Picker Name */}
       <td className="px-4 py-3">
         <div className="font-medium text-text-main">

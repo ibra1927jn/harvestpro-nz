@@ -156,6 +156,34 @@ export function buildCorrectionUpdates(
     return updates;
 }
 
+/**
+ * Fila "con aviso": descanso de comida sin anotar o sin hora de salida.
+ * Es lo que selecciona «Seleccionar con aviso» en el editor.
+ */
+export function isFlagged(
+    row: Pick<AttendanceRow, 'check_in' | 'check_out' | 'date' | 'break_start'>,
+    today: string = todayNZST(),
+    now: Date = new Date(),
+): boolean {
+    return !row.check_out || isMealBreakMissing(row, today, now);
+}
+
+/**
+ * Corrección en lote: la misma hora NZ para cada fichaje, convertida al
+ * instante UTC de SU día. Solo van los campos con valor (vacío = no tocar).
+ */
+export function buildBatchItems(
+    records: Pick<AttendanceRow, 'id' | 'date'>[],
+    form: Pick<CorrectionForm, 'checkIn' | 'checkOut' | 'breakStart'>,
+): Array<{ attendance_id: string; check_in?: string; check_out?: string; break_start?: string }> {
+    return records.map(record => ({
+        attendance_id: record.id,
+        ...(form.checkIn ? { check_in: nzTimeToIso(record.date, form.checkIn) } : {}),
+        ...(form.checkOut ? { check_out: nzTimeToIso(record.date, form.checkOut) } : {}),
+        ...(form.breakStart ? { break_start: nzTimeToIso(record.date, form.breakStart) } : {}),
+    }));
+}
+
 /** Totales de la hoja diaria (pie de tabla) */
 export function dailyTimesheetTotals(rows: Array<{
     hours_worked: number; buckets_total: number; buckets_rejected: number;

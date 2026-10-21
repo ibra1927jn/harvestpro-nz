@@ -72,6 +72,20 @@ const manager3: TranslationDict = {
     'dayset.min_rate': 'Saoasaoa Maualalo',
     'dayset.bkt_per_hr': 'p/itula',
     'dayset.save': 'Teu Faatulagaga',
+    // Editor de fichajes: selección múltiple y corrección en lote (#9)
+    'tse.team_only': 'E na\'o pepa itula a lau \'au o lo\'o fa\'aalia.',
+    'tse.select_of': 'Filifili le pepa itula a {name}',
+    'tse.batch.select_all': 'Filifili pepa itula uma',
+    'tse.batch.select_flagged': 'Filifili i latou ua fa\'ailogaina ({n})',
+    'tse.batch.selected': '{n} ua filifilia',
+    'tse.batch.title': 'Fa\'asa\'o pepa itula e {n}',
+    'tse.batch.hint': 'Tu\'u avanoa se fa\'amatalaga ina ia tumau le tau o pepa itula ta\'itasi. Tasi le māfua\'aga mo uma.',
+    'tse.batch.reason_placeholder': 'Māfua\'aga o fa\'asa\'oga uma *',
+    'tse.batch.clear': 'Aveese le filifiliga',
+    'tse.batch.apply': 'Fa\'aoga i le {n}',
+    'tse.batch.offline': 'Leai se feso\'ota\'iga: o fa\'asa\'oga fa\'avae e alu sa\'o i le \'auʻaunaga ma e lē fa\'atalitali. Toe taumafai pe a toe feso\'ota\'i.',
+    'tse.batch.done': 'Ua fa\'asa\'oina pepa itula e {n}',
+    'tse.batch.partial': '{ok} ua fa\'asa\'oina, {failed} na lē manuia (o lo\'o filifilia pea)',
 };
 
 export default manager3;
