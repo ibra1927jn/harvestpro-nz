@@ -2,42 +2,48 @@
   "label": "C-week-optimized",
   "date": "2026-10-21",
   "counts": {
-    "buckets": 50659,
-    "attendance": 1337,
-    "audit": 3873,
-    "chat": 843,
+    "buckets": 51330,
+    "attendance": 1349,
+    "audit": 3976,
+    "chat": 865,
     "days": 6
   },
-  "dbMB": 47,
+  "dbMB": 46,
   "sizes": [
     {
       "table": "bucket_records",
-      "rows": 46326,
-      "MB": 20.4,
-      "indexMB": 10.9
+      "rows": 46669,
+      "MB": 20.6,
+      "indexMB": 11
     },
     {
       "table": "audit_logs",
-      "rows": 3873,
-      "MB": 5,
+      "rows": 3976,
+      "MB": 5.1,
       "indexMB": 0.6
     },
     {
       "table": "daily_attendance",
-      "rows": 1337,
+      "rows": 1349,
       "MB": 0.9,
       "indexMB": 0.4
     },
     {
       "table": "chat_messages",
-      "rows": 832,
+      "rows": 865,
       "MB": 0.8,
       "indexMB": 0.2
     },
     {
       "table": "qc_inspections",
-      "rows": 907,
+      "rows": 888,
       "MB": 0.4,
+      "indexMB": 0.2
+    },
+    {
+      "table": "pickers",
+      "rows": 261,
+      "MB": 0.3,
       "indexMB": 0.2
     },
     {
@@ -45,12 +51,6 @@
       "rows": 4,
       "MB": 0.3,
       "indexMB": 0.1
-    },
-    {
-      "table": "pickers",
-      "rows": 261,
-      "MB": 0.3,
-      "indexMB": 0.2
     },
     {
       "table": "transport_requests",
@@ -65,22 +65,22 @@
       "indexMB": 0
     },
     {
-      "table": "pay_weeks",
-      "rows": 0,
-      "MB": 0.2,
-      "indexMB": 0
-    },
-    {
       "table": "contracts",
       "rows": 252,
       "MB": 0.2,
       "indexMB": 0.1
     },
     {
-      "table": "bins",
-      "rows": 600,
+      "table": "pay_weeks",
+      "rows": 0,
       "MB": 0.2,
       "indexMB": 0
+    },
+    {
+      "table": "block_rows",
+      "rows": 300,
+      "MB": 0.2,
+      "indexMB": 0.1
     }
   ],
   "results": [
@@ -88,7 +88,7 @@
       "op": "calculate-payroll (last week, company)",
       "variant": "current",
       "ok": true,
-      "ms": 2747,
+      "ms": 1465,
       "requests": 1,
       "errors": 0,
       "kbIn": 527,
@@ -103,24 +103,24 @@
       "op": "calculate-payroll (this week, company)",
       "variant": "current",
       "ok": true,
-      "ms": 2091,
+      "ms": 1285,
       "requests": 1,
       "errors": 0,
-      "kbIn": 592,
-      "kbInGzip": 51,
+      "kbIn": 600,
+      "kbInGzip": 52,
       "note": {
-        "people": 260
+        "people": 261
       }
     },
     {
       "op": "weekly report (manager, 7 days)",
       "variant": "current",
       "ok": true,
-      "ms": 219,
+      "ms": 333,
       "requests": 9,
       "errors": 0,
       "kbIn": 1504,
-      "kbInGzip": 136,
+      "kbInGzip": 137,
       "note": {
         "buckets": 7514,
         "attendance": 206
@@ -130,7 +130,7 @@
       "op": "day sheet: buckets of the day (orchard)",
       "variant": "current",
       "ok": true,
-      "ms": 118,
+      "ms": 115,
       "requests": 2,
       "errors": 0,
       "kbIn": 197,
@@ -146,7 +146,7 @@
       "op": "day sheet: buckets of the day (orchard)",
       "variant": "optimized",
       "ok": true,
-      "ms": 101,
+      "ms": 129,
       "requests": 5,
       "errors": 0,
       "kbIn": 622,
@@ -160,7 +160,7 @@
       "op": "HR employees: contracts IN (all staff)",
       "variant": "current",
       "ok": true,
-      "ms": 39,
+      "ms": 57,
       "requests": 3,
       "errors": 1,
       "kbIn": 14,
@@ -175,7 +175,7 @@
       "op": "HR employees: contracts by chunks",
       "variant": "optimized",
       "ok": true,
-      "ms": 40,
+      "ms": 57,
       "requests": 5,
       "errors": 0,
       "kbIn": 79,
@@ -189,28 +189,28 @@
       "op": "cold start runner: today buckets + crew",
       "variant": "current",
       "ok": true,
-      "ms": 121,
-      "requests": 4,
+      "ms": 206,
+      "requests": 5,
       "errors": 0,
-      "kbIn": 1488,
-      "kbInGzip": 165,
+      "kbIn": 1748,
+      "kbInGzip": 198,
       "note": {
         "crew": 261,
-        "buckets": 2717
+        "buckets": 3240
       }
     },
     {
       "op": "chat list: last messages (all rows)",
       "variant": "current",
       "ok": true,
-      "ms": 13,
+      "ms": 16,
       "requests": 2,
       "errors": 0,
       "kbIn": 45,
       "kbInGzip": 5,
       "note": {
         "conversations": 2,
-        "rows": 323,
+        "rows": 325,
         "truncated": false
       }
     },
@@ -218,7 +218,7 @@
       "op": "chat list: last_messages RPC",
       "variant": "optimized",
       "ok": true,
-      "ms": 10,
+      "ms": 16,
       "requests": 2,
       "errors": 0,
       "kbIn": 1,
@@ -231,14 +231,14 @@
       "op": "open orchard chat (asc, no limit)",
       "variant": "current",
       "ok": true,
-      "ms": 143,
+      "ms": 158,
       "requests": 1,
       "errors": 0,
       "kbIn": 135,
       "kbInGzip": 11,
       "note": {
-        "total": 271,
-        "got": 271,
+        "total": 274,
+        "got": 274,
         "newestShown": true
       }
     },
@@ -246,34 +246,34 @@
       "op": "open orchard chat (latest 300)",
       "variant": "optimized",
       "ok": true,
-      "ms": 12,
+      "ms": 15,
       "requests": 1,
       "errors": 0,
       "kbIn": 135,
       "kbInGzip": 11,
       "note": {
-        "got": 271
+        "got": 274
       }
     },
     {
       "op": "manager dashboard: 7-day bleed",
       "variant": "current",
       "ok": true,
-      "ms": 619,
-      "requests": 18,
+      "ms": 672,
+      "requests": 19,
       "errors": 0,
-      "kbIn": 1764,
-      "kbInGzip": 240,
+      "kbIn": 1817,
+      "kbInGzip": 247,
       "note": {
-        "attendance": 440,
-        "buckets": 16611
+        "attendance": 447,
+        "buckets": 17134
       }
     },
     {
       "op": "payroll: unclosed shifts 30d (company)",
       "variant": "current",
       "ok": true,
-      "ms": 9,
+      "ms": 7,
       "requests": 1,
       "errors": 0,
       "kbIn": 0,
@@ -286,10 +286,10 @@
       "op": "admin: audit log (100)",
       "variant": "current",
       "ok": true,
-      "ms": 35,
+      "ms": 32,
       "requests": 1,
       "errors": 0,
-      "kbIn": 84,
+      "kbIn": 75,
       "kbInGzip": 8,
       "note": {
         "rows": 100
@@ -299,7 +299,7 @@
       "op": "close-pay-week 2026-10-12",
       "variant": "current",
       "ok": true,
-      "ms": 3121,
+      "ms": 1989,
       "requests": 1,
       "errors": 0,
       "kbIn": 0,

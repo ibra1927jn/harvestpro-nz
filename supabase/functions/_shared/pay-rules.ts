@@ -301,24 +301,9 @@ const NZ_DATE_FMT = new Intl.DateTimeFormat('en-CA', {
     day: '2-digit',
 });
 
-// La fecha NZ no cambia dentro de una misma hora UTC (el desfase NZ es de horas
-// enteras y el cambio de hora cae en punto): se calcula una vez por hora.
-// Formatear cada cubeta costaba ~2,3 µs: media semana de empresa (140.000
-// cubetas) eran 330 ms de CPU, y las Edge Functions tienen 2 s (prueba de carga 2026-10-21).
-const NZ_DATE_BY_HOUR = new Map<number, string>();
-
 /** Fecha YYYY-MM-DD en hora de Nueva Zelanda de un timestamp. */
 export function nzDateOf(ts: string | Date): string {
-    const d = typeof ts === 'string' ? new Date(ts) : ts;
-    const hour = Math.floor(d.getTime() / 3_600_000);
-    if (!Number.isFinite(hour)) return NZ_DATE_FMT.format(d);
-    let date = NZ_DATE_BY_HOUR.get(hour);
-    if (date === undefined) {
-        date = NZ_DATE_FMT.format(d);
-        if (NZ_DATE_BY_HOUR.size > 20_000) NZ_DATE_BY_HOUR.clear();
-        NZ_DATE_BY_HOUR.set(hour, date);
-    }
-    return date;
+    return NZ_DATE_FMT.format(typeof ts === 'string' ? new Date(ts) : ts);
 }
 
 /**
