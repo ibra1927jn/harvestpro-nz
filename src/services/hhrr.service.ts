@@ -18,6 +18,7 @@ import { attendanceRepository } from '@/repositories/attendance.repository';
 import { payForRange, payWeekOf, nzDateOf, pieceRateFor, PAY_RULES, type PickerRangePay } from '@/services/harvestMetrics';
 import { payRatesRepository } from '@/repositories/pay-rates.repository';
 import { hrDocumentsRepository, HR_DOCUMENT_TYPE_LABELS } from '@/repositories/hr-documents.repository';
+import { leaveService, onLeaveOn } from '@/services/leave.service';
 import type { ComplianceAlert, Employee, HRSummary, PayrollEntry } from './hhrr/hhrr.types';
 import {
   buildEmployee,
@@ -42,6 +43,16 @@ async function loadPersonDocuments(): Promise<PersonDoc[]> {
   } catch (error) {
     logger.warn('[HHRR] Could not load HR documents:', error);
     return [];
+  }
+}
+
+/** Quién tiene hoy una ausencia aprobada (→ on_leave); si falla, nadie */
+async function loadOnLeaveToday(todayNZ: string): Promise<Set<string>> {
+  try {
+    return onLeaveOn(await leaveService.listInRange(todayNZ, todayNZ), todayNZ);
+  } catch (error) {
+    logger.warn('[HHRR] Could not load leave requests:', error);
+    return new Set();
   }
 }
 
@@ -89,14 +100,15 @@ export async function fetchHRSummary(orchardId?: string): Promise<HRSummary> {
 export async function fetchEmployees(_orchardId?: string): Promise<Employee[]> {
   try {
     const staff = await userRepository2.getStaff();
-    const [contracts, documents] = await Promise.all([
+    const today = todayNZST();
+    const [contracts, documents, onLeaveToday] = await Promise.all([
       contractRepository2.getByEmployeeIds(staff.map(s => s.id)),
       loadPersonDocuments(),
+      loadOnLeaveToday(today),
     ]);
     const visas = documents.filter(d => d.document_type === 'work_visa');
-    const today = todayNZST();
     const nowISO = new Date().toISOString();
-    return staff.map(person => buildEmployee(person, contracts, visas, today, nowISO, { documents }));
+    return staff.map(person => buildEmployee(person, contracts, visas, today, nowISO, { documents, onLeaveToday }));
   } catch (error) {
     logger.error('[HHRR] Error fetching employees:', error);
     return [];

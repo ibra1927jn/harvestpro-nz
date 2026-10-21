@@ -1792,6 +1792,93 @@ export type Database = {
           },
         ]
       }
+      // Añadido a mano (sin generador): 20261022041000_leave_requests
+      leave_requests: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          deleted_at: string | null
+          end_date: string
+          half_day: boolean
+          id: string
+          orchard_id: string
+          picker_id: string
+          reason: string | null
+          requested_by: string | null
+          start_date: string
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          deleted_at?: string | null
+          end_date: string
+          half_day?: boolean
+          id?: string
+          orchard_id: string
+          picker_id: string
+          reason?: string | null
+          requested_by?: string | null
+          start_date: string
+          status?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          deleted_at?: string | null
+          end_date?: string
+          half_day?: boolean
+          id?: string
+          orchard_id?: string
+          picker_id?: string
+          reason?: string | null
+          requested_by?: string | null
+          start_date?: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_orchard_id_fkey"
+            columns: ["orchard_id"]
+            isOneToOne: false
+            referencedRelation: "orchards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_picker_id_fkey"
+            columns: ["picker_id"]
+            isOneToOne: false
+            referencedRelation: "pickers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       pickers_performance_today: {
