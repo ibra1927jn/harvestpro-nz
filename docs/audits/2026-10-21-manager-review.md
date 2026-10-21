@@ -3,7 +3,7 @@
 Lista de problemas que encontró el dueño al entrar rol por rol en el servidor local
 (rama `perf/season-load-sim`, seeds `00 → 2weeks → role_users → today`), con la causa
 de cada uno en el código y la propuesta de arreglo. **No se ha tocado nada: este documento
-es para decidir antes de empezar.** Parte A: Manager. Parte B: Team Leader. Parte C: Runner.
+es para decidir antes de empezar.** Parte A: Manager. Parte B: Team Leader. Parte C: Runner. Parte D: Control de calidad.
 
 # Parte A — Manager
 
@@ -536,17 +536,110 @@ Decisiones que hacen falta:
 - Si el runner también puede ver a los pickers de su zona (lo que hoy enseña «Corredores»)
   o solo a los runners.
 
+
 ---
 
-## Orden propuesto (actualizado con Team Leader y Runner)
+# Parte D — Control de calidad (QC)
 
-1. `fix/manager-insights-settings` — #2, #3, #6-mini (sin decisiones).
+| # | Problema | Causa | Tamaño | Necesita decisión |
+|---|----------|-------|--------|-------------------|
+| 14 | Al seleccionar un picker ya no se puede deseleccionar; hay que elegir a otro | El toque siempre selecciona (`setSelectedPicker(picker)`), nunca alterna; además la lista enseña a los team leaders y solo a los 5 primeros | XS | No |
+| 15 | La valoración es una sola nota (A/B/C/rechazo) + descripción; faltan los criterios reales (escaleras, daño al árbol, fruta en el suelo, llenado, calibre, fruta dañada) y las dos preguntas a la persona (informado, a gusto en el equipo) | `qc_inspections` solo tiene `grade, notes, photo_url`; las notas A/B/C son calidades de **fruta** (exportación / nacional / proceso), no de la forma de recoger | M–L | Sí: lista final de criterios, escala y quién ve las preguntas personales |
+
+## 14. No se puede deseleccionar
+
+### Causa
+`qc/InspectTab.tsx` línea 170: `onClick={() => setSelectedPicker(picker)}`. `setSelectedPicker`
+ya admite `null`, pero nadie lo llama con `null`. En modo Turbo, tras guardar, `onAutoAdvance`
+(`pages/QualityControl.tsx` línea 86) pasa al siguiente de la lista, así que tampoco hay
+forma de «ninguno».
+
+Dos cosas más de la misma lista:
+- `crew` viene del store sin filtrar por rol: aparecen los team leaders (en la captura,
+  «Team Leader») como si fueran pickers a calificar.
+- Sin búsqueda solo se enseñan los 5 primeros (`crew.slice(0, 5)`, línea 80), sin ordenar
+  por quién está fichado ni por fila.
+
+### Propuesta
+- Tocar al seleccionado lo deselecciona; botón «×» en la tarjeta seleccionada; en Turbo, el
+  avance automático se puede cancelar con el mismo toque.
+- Lista: solo `role = picker` fichados hoy (`selectPresentPickers`), ordenados por fila, con
+  los ya inspeccionados hoy marcados; «ver todos» en vez del corte en 5.
+
+## 15. Qué se evalúa
+
+### Lo que hay hoy
+- Paso 2: cuatro botones **A (exportación) / B (nacional) / C (proceso) / Rechazo
+  (descarte)**. Son grados de fruta para el mercado, no una valoración de cómo recoge la
+  persona. Paso 3: notas libres y foto opcional (bucket `qc-photos`).
+- Tabla `qc_inspections`: `orchard_id, picker_id, inspector_id, grade, notes, photo_url,
+  created_at`. Sin criterios, sin fila, sin cubeta.
+- Quién usa la nota: el cajón del picker (pestaña Calidad, puntuación 0–100 con A=100, B=70,
+  C=40, rechazo=0 en `picker-history.service.ts`), la insignia de riesgo «caída de calidad»,
+  las pestañas Estadísticas / Historial / Tendencias del QC, y un aviso al manager cuando hay
+  rechazo (`notification.service`). **No afecta al pago**: lo que descuenta pago es la nota de
+  la **cubeta** que pone el runner al escanear (`bucket_records.quality_grade = reject`,
+  `pay.ts` línea 718), que es otra cosa.
+
+### Lo que pide el dueño
+Criterios de la inspección (por picker):
+1. Uso correcto de las escaleras.
+2. No corta demasiadas partes del árbol.
+3. No hay muchas cerezas en el suelo.
+4. Cubetas llenas (no a nivel bajo).
+5. Calibre correcto en la mayor parte.
+6. Pocas cerezas dañadas.
+
+Y dos preguntas a la persona, que no son de calidad sino de cómo está:
+7. ¿Está informado? (sabe qué variedad / qué calibre está recogiendo y cómo).
+8. ¿Está a gusto en el equipo?
+
+### Propuesta: inspección con lista de criterios
+- **Pantalla**: Paso 2 pasa a ser la lista de 6 criterios, cada uno con tres estados (bien /
+  regular / mal) de un toque, grandes, para hacerlo con guantes; abajo las dos preguntas
+  (sí / no + comentario corto); foto y notas como ahora. La nota global **se calcula** de los
+  6 criterios (p. ej. todo bien = A; un regular = B; un mal o dos regulares = C; dos males o
+  escaleras mal = rechazo) para que todo lo que ya consume `grade` siga funcionando, y se
+  enseña antes de guardar por si el inspector quiere cambiarla.
+- **Datos**: migración nueva con `qc_inspections.criteria jsonb` (`{ladder: 'ok'|'warn'|'bad',
+  tree_damage, fruit_on_ground, bucket_fill, size, damaged_fruit}`), `score int` (0–100),
+  `row_number int` (fila donde se inspeccionó), `informed boolean`, `comfortable boolean`,
+  `wellbeing_notes text`. `grade` se mantiene. Esquema Zod en `zod.schemas.ts` y en el
+  procesador offline (`qc-inspection.processor.ts`).
+- **Modo Turbo**: se mantiene con los 6 toques en vez de 1; el avance automático solo si los
+  6 están marcados.
+- **Informes**: Estadísticas pasa a enseñar también el criterio que más falla (del huerto y
+  por equipo) — es lo que le sirve al manager y al team leader para corregir en el campo.
+  El cajón del picker enseña sus últimos criterios en rojo.
+- **Preguntas 7 y 8**: fuera de la puntuación. Se guardan con la inspección pero se enseñan
+  en un sitio distinto: al team leader y al manager como aviso («2 pickers de tu equipo dicen
+  no estar informados»), y a RRHH como lista. No entran en Estadísticas de calidad ni en la
+  nota.
+- **Etiquetas**: dejar de llamar a las notas exportación / nacional / proceso en la
+  inspección de pickers (son de la cubeta); llamarlas Bien / Aceptable / A corregir /
+  Grave, en los tres idiomas que queden.
+
+Decisiones que hacen falta:
+- Confirmar la lista de criterios y si alguno pesa más (escaleras es seguridad: ¿un «mal»
+  en escaleras es rechazo directo?).
+- Escala: tres estados por criterio (propuesto) o nota 1–5.
+- Criterios 2 y 3 (daño al árbol, fruta en el suelo) se ven por **fila**, no por persona:
+  ¿se apuntan al picker que está en esa fila o a la fila / equipo?
+- Quién ve las preguntas 7 y 8 (propuesto: team leader, manager y RRHH; nunca en el perfil
+  público del picker).
+
+---
+
+## Orden propuesto (actualizado con Team Leader, Runner y QC)
+
+1. `fix/manager-insights-settings` — #2, #3, #6-mini y **#14** (sin decisiones).
 2. `fix/manager-logistics-single-page` — #1 (decidido).
 3. `fix/tl-picker-drawer-map` — #7 y #8 (tras confirmar que «tabla de carga» = mapa de calor).
 4. `fix/runner-my-timesheet` — #11 (tras decidir a / b).
 5. `feat/timesheet-batch-correct` — #9 (tras decidir alcance del TL).
-6. `feat/runners-map` — #13 y #12 (tras decidir tipo de runner y qué enseña el almacén).
-7. `feat/shift-end-by-person` — #5 (decidido).
-8. `feat/day-plan` — #6 (tras decidir alcance).
-9. `feat/my-account` — #10 (tras decidir datos editables).
-10. `chore/locales-en-es-fr` — #4 (cuando digas).
+6. `feat/qc-criteria` — #15 (tras confirmar criterios y escala).
+7. `feat/runners-map` — #13 y #12 (tras decidir tipo de runner y qué enseña el almacén).
+8. `feat/shift-end-by-person` — #5 (decidido).
+9. `feat/day-plan` — #6 (tras decidir alcance).
+10. `feat/my-account` — #10 (tras decidir datos editables).
+11. `chore/locales-en-es-fr` — #4 (cuando digas).
