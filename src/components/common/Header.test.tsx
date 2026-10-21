@@ -37,6 +37,19 @@ vi.mock('@/services/offline.service', () => ({
 vi.mock('@/services/config.service', () => ({
   getConfig: () => ({ SUPABASE_URL: 'x', SUPABASE_ANON_KEY: 'k' }),
 }));
+// Foto propia: enlace firmado (null = iniciales); sin Supabase en este test
+vi.mock('@/hooks/useAvatarUrl', () => ({
+  useAvatarSignedUrl: (path: string | null | undefined) => (path ? `signed:${path}` : null),
+  useUserAvatarUrl: () => null,
+}));
+// «Mi cuenta» (chunk aparte): basta con saber que se abre y se cierra
+vi.mock('./account/AccountSheet', () => ({
+  default: ({ onClose }: { onClose: () => void }) => (
+    <div role="dialog" aria-label="My account">
+      <button onClick={onClose}>close-account</button>
+    </div>
+  ),
+}));
 
 import { Header } from './Header';
 
@@ -102,5 +115,31 @@ describe('Header', () => {
     mocks.appUser = { full_name: 'Admin', email: 'admin@test.com' };
     render(<Header title="HP" subtitle="test" />);
     expect(screen.getByText('A')).toBeTruthy();
+  });
+
+  // «Mi cuenta» (revisión 2026-10-21, #10): sin onProfileClick el avatar abre la pantalla personal
+  it('opens My account from the avatar when the page passes no onProfileClick', async () => {
+    render(<Header title="HP" subtitle="test" />);
+    expect(screen.queryByRole('dialog', { name: 'My account' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Open my account' }));
+    expect(await screen.findByRole('dialog', { name: 'My account' })).toBeTruthy();
+    fireEvent.click(screen.getByText('close-account'));
+    expect(screen.queryByRole('dialog', { name: 'My account' })).toBeNull();
+  });
+
+  it('does not open My account when the page handles the avatar itself', () => {
+    const onProfile = vi.fn();
+    render(<Header title="HP" subtitle="test" onProfileClick={onProfile} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open profile settings' }));
+    expect(onProfile).toHaveBeenCalled();
+    expect(screen.queryByRole('dialog', { name: 'My account' })).toBeNull();
+  });
+
+  it('shows the profile photo instead of initials when the user has one', () => {
+    mocks.appUser = { full_name: 'Alice Manager', email: 'alice@test.com', avatar_url: 'u1/avatar-1.jpg' } as typeof mocks.appUser;
+    render(<Header title="HP" subtitle="test" />);
+    const img = screen.getByRole('img', { name: 'Alice Manager' });
+    expect(img.getAttribute('src')).toBe('signed:u1/avatar-1.jpg');
+    expect(screen.queryByText('AM')).toBeNull();
   });
 });

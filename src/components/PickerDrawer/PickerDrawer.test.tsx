@@ -20,6 +20,8 @@ vi.mock('@/stores/useHarvestStore', () => ({
 }));
 vi.mock('@/i18n', () => ({ useTranslation: () => ({ t: (k: string) => k }) }));
 vi.mock('@/hooks/useDialogA11y', () => ({ useDialogA11y: () => undefined }));
+// Foto de la cuenta (Mi cuenta): sin Supabase aquí, siempre iniciales
+vi.mock('@/hooks/useAvatarUrl', () => ({ useAvatarSignedUrl: () => null, useUserAvatarUrl: () => null }));
 vi.mock('./PickerDrawerToday', () => ({ default: () => <div>TODAY_PANEL</div> }));
 vi.mock('./PickerDrawerHistory', () => ({ default: () => <div>HISTORY_PANEL</div> }));
 vi.mock('../common/picker-profile', () => ({

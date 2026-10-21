@@ -26,3 +26,20 @@ CREATE POLICY "QC staff upload QC photos" ON storage.objects FOR INSERT TO authe
     WITH CHECK (bucket_id = 'qc-photos' AND public.is_role(ARRAY['qc_inspector', 'manager', 'admin']));
 CREATE POLICY "Uploader deletes own QC photos" ON storage.objects FOR DELETE TO authenticated
     USING (bucket_id = 'qc-photos' AND owner_id = auth.uid()::text);
+
+-- Almacén privado "avatars" (Mi cuenta, migración 20261022050000): cada uno
+-- sube, cambia y borra en avatars/<auth.uid()>/…; lee cualquier cuenta con
+-- sesión (las fotos se ven en los cajones de perfil de todo el huerto).
+DROP POLICY IF EXISTS "Avatars read" ON storage.objects;
+DROP POLICY IF EXISTS "Avatars upload own" ON storage.objects;
+DROP POLICY IF EXISTS "Avatars update own" ON storage.objects;
+DROP POLICY IF EXISTS "Avatars delete own" ON storage.objects;
+CREATE POLICY "Avatars read" ON storage.objects FOR SELECT TO authenticated
+    USING (bucket_id = 'avatars');
+CREATE POLICY "Avatars upload own" ON storage.objects FOR INSERT TO authenticated
+    WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = (SELECT auth.uid())::text);
+CREATE POLICY "Avatars update own" ON storage.objects FOR UPDATE TO authenticated
+    USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = (SELECT auth.uid())::text)
+    WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = (SELECT auth.uid())::text);
+CREATE POLICY "Avatars delete own" ON storage.objects FOR DELETE TO authenticated
+    USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = (SELECT auth.uid())::text);

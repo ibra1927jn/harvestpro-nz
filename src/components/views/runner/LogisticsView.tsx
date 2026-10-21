@@ -2,7 +2,6 @@
 import React from 'react';
 import { bucketsInBin } from '@/services/bin.service';
 import { useHarvestStore } from '@/stores/useHarvestStore';
-import { avatarUrl } from '@/utils/avatarUrl';
 import type { RejectedScan } from '@/hooks/useRunnerData';
 import { useTranslation } from '@/i18n';
 
@@ -105,12 +104,9 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
               <span aria-hidden="true" className="material-symbols-outlined text-[22px]">notifications</span>
               <span className="absolute top-3 right-3 size-2 bg-primary rounded-full shadow-[0_0_8px_rgba(37,99,235,0.8)]"></span>
             </button>
-            <div className="size-11 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden border border-white/60 shadow-sm">
-              <img
-                src={avatarUrl('Runner')}
-                alt={t('common.avatar')}
-                className="w-full h-full object-cover"
-              />
+            {/* Icono del rol (antes una imagen externa de ui-avatars.com sin función) */}
+            <div className="size-11 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center border border-white/60 shadow-sm text-slate-500">
+              <span aria-hidden="true" className="material-symbols-outlined text-[22px]">directions_run</span>
             </div>
           </div>
         </div>

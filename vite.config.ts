@@ -96,6 +96,9 @@ export default defineConfig(() => {
             'assets/DocumentsTab-*.js',
             'assets/CalendarTab-*.js',
             'assets/SeasonalPlanningTab-*.js',
+            // «Mi cuenta» (foto, datos, contraseña): todo lo que hace necesita red, así que
+            // no se precachea; se guarda en caché la primera vez que se abre (CacheFirst abajo)
+            'assets/AccountSheet-*.js',
           ],
           runtimeCaching: [
             {
@@ -111,13 +114,13 @@ export default defineConfig(() => {
               // Chunks con hash excluidos del precache: inmutables → CacheFirst
               urlPattern: ({ url, sameOrigin }) =>
                 sameOrigin &&
-                /^\/assets\/(vendor-(sentry|analytics)|HHRR|EmployeesTab|ContractsTab|PayrollTab|DocumentsTab|CalendarTab|SeasonalPlanningTab)-[\w-]+\.js$/.test(url.pathname),
+                /^\/assets\/(vendor-(sentry|analytics)|HHRR|EmployeesTab|ContractsTab|PayrollTab|DocumentsTab|CalendarTab|SeasonalPlanningTab|AccountSheet)-[\w-]+\.js$/.test(url.pathname),
               handler: 'CacheFirst',
               options: {
                 cacheName: 'deferred-vendor-chunks',
                 cacheableResponse: { statuses: [200] },
-                // 2 vendor + 7 de RRHH (y una versión anterior de cada uno tras un deploy)
-                expiration: { maxEntries: 18, maxAgeSeconds: 60 * 60 * 24 * 90 },
+                // 2 vendor + 7 de RRHH + Mi cuenta (y una versión anterior de cada uno tras un deploy)
+                expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 90 },
               },
             },
             {

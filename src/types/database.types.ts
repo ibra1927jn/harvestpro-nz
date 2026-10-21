@@ -1647,36 +1647,45 @@ export type Database = {
       }
       users: {
         Row: {
+          avatar_url: string | null
           created_at: string | null
           email: string | null
           full_name: string | null
           id: string
           is_active: boolean | null
           orchard_id: string | null
+          phone: string | null
+          preferred_locale: string | null
           privacy_consent_at: string | null
           role: string | null
           team_id: string | null
           updated_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id: string
           is_active?: boolean | null
           orchard_id?: string | null
+          phone?: string | null
+          preferred_locale?: string | null
           privacy_consent_at?: string | null
           role?: string | null
           team_id?: string | null
           updated_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
           is_active?: boolean | null
           orchard_id?: string | null
+          phone?: string | null
+          preferred_locale?: string | null
           privacy_consent_at?: string | null
           role?: string | null
           team_id?: string | null
@@ -1990,6 +1999,15 @@ export type Database = {
       unlock_account: {
         Args: { target_email: string; unlock_reason_text?: string }
         Returns: boolean
+      }
+      update_my_profile: {
+        Args: {
+          p_avatar_url?: string | null
+          p_full_name?: string | null
+          p_phone?: string | null
+          p_preferred_locale?: string | null
+        }
+        Returns: Json
       }
     }
     Enums: {
