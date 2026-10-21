@@ -24,7 +24,6 @@ const settings: TranslationDict = {
     'settings.harvest.daily_target': 'Sini o le Aso (tone)',
     'settings.harvest.shift_hours': 'ITULA FAIGALUEGA',
     'settings.harvest.shift_start': 'Amataga',
-    'settings.harvest.shift_end': 'Fa\'ai\'uga',
     'settings.harvest.min_warning': 'Ina ia maua ${wage}/itula i le ${rate}/pakete = {floor} b/itula',
     'settings.orchard.title': 'Fa\'amatalaga o le Fa\'ato\'aga',
     'settings.orchard.subtitle': 'Fa\'amatalaga o le fa\'ato\'aga',
@@ -53,6 +52,7 @@ const settings: TranslationDict = {
     'settings.saved_banner': 'Ua Fa\'asaoina Suiga Uma',
     'settings.footer': 'HarvestPro NZ · v9.9.0 · © 2026 HarvestPro. Faia mo fa\'ato\'aga a NZ.',
     'settings.locked_by_hr': 'Na\'o HR e mafai ona sui',
+    'settings.harvest.shift_end_by_person': 'E leai se taimi e uma ai le sifi: e uma le tīma ma le tagata tamoʻe pe a latou saini ese.',
 };
 
 export default settings;

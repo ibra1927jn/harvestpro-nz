@@ -26,7 +26,6 @@ const settings: TranslationDict = {
     'settings.harvest.daily_target': 'Meta Diaria (toneladas)',
     'settings.harvest.shift_hours': 'HORARIO DE TURNO',
     'settings.harvest.shift_start': 'Inicio de Turno',
-    'settings.harvest.shift_end': 'Fin de Turno',
     'settings.harvest.min_warning': 'Mínimo para alcanzar ${wage}/hr a ${rate}/cubeta = {floor} c/hr',
     // Orchard Details
     'settings.orchard.title': 'Detalles del Huerto',
@@ -59,6 +58,7 @@ const settings: TranslationDict = {
     'settings.saved_banner': 'Todos los Cambios Guardados',
     'settings.footer': 'HarvestPro NZ · v9.9.0 · © 2026 HarvestPro. Diseñado para Huertos NZ.',
     'settings.locked_by_hr': 'Solo RRHH puede modificar este valor',
+    'settings.harvest.shift_end_by_person': 'No hay hora de fin de turno: cada equipo y cada runner terminan cuando fichan su salida.',
 };
 
 export default settings;

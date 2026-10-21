@@ -26,7 +26,6 @@ const settings: TranslationDict = {
     'settings.harvest.daily_target': 'Daily Target (tons)',
     'settings.harvest.shift_hours': 'SHIFT HOURS',
     'settings.harvest.shift_start': 'Shift Start',
-    'settings.harvest.shift_end': 'Shift End',
     'settings.harvest.min_warning': 'Minimum to meet ${wage}/hr at ${rate}/bucket = {floor} b/hr',
     // Orchard Details
     'settings.orchard.title': 'Orchard Details',
@@ -59,6 +58,7 @@ const settings: TranslationDict = {
     'settings.saved_banner': 'All Changes Saved',
     'settings.footer': 'HarvestPro NZ · v9.9.0 · © 2026 HarvestPro. Built for NZ Orchards.',
     'settings.locked_by_hr': 'Only HR can modify this value',
+    'settings.harvest.shift_end_by_person': 'There is no shift end time: each team and runner finishes when they clock out.',
 };
 
 export default settings;

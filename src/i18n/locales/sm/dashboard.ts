@@ -11,7 +11,6 @@ const dashboard: TranslationDict = {
     'dashboard.pickers': 'tagata toli',
     'dashboard.daily_target': 'Sini o le Aso',
     'dashboard.complete': 'Ua uma',
-    'dashboard.remaining': 'totoe',
     'dashboard.export': 'Auina atu',
     'dashboard.live_map': 'Fa\'afanua Ola',
     'dashboard.broadcast': 'Fa\'asalalau',
@@ -40,7 +39,6 @@ const dashboard: TranslationDict = {
     'dashboard.velocity.tooltip_target_pct': '{pct}% o le sini',
     'dashboard.velocity.tap_for_details': 'Oomi mo fa\'amatalaga',
     'dashboard.velocity.tap_bar_details': 'Oomi le pa mo fa\'amatalaga',
-    'dashboard.overtime': 'Ovataimi',
     'dashboard.kpi.bins_per_hour': 'b/itula',
     'dashboard.kpi.nzd': 'NZD',
     'dashboard.wage.subtitle': 'Fa\'aopoopo i le totogi maualalo',
@@ -77,6 +75,10 @@ const dashboard: TranslationDict = {
     'dashboard.team_leaders.picker_count': '{n} tagata toli',
     'dashboard.team_leaders.empty': 'Leai ni ta\'ita\'i vaega ua tofia.',
     'dashboard.team_leaders.manage': 'Pulea Vaega',
+    'dashboard.eta_at_pace': 'I lenei saoasaoa: {time}',
+    'dashboard.pace_now': 'Saoasaoa: {n} pakete/itula',
+    'dashboard.remaining_to_goal': '{n} pakete e totoe i le sini',
+    'dashboard.velocity.since': 'Mai le {start}',
 };
 
 export default dashboard;

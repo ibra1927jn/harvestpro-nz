@@ -30,8 +30,7 @@ const logistics: TranslationDict = {
   'logistics.events.row_blocked': 'Corredor bloqueado',
   'logistics.events.alert': 'Alerta del corredor senior',
   'logistics.events.empty': 'Sin eventos recientes',
-  // Enlace
-  'logistics.full_view': 'Abrir vista completa de logística →',
+  'logistics.operations': 'Operaciones',
 };
 
 export default logistics;

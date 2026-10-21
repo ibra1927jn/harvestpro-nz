@@ -24,7 +24,6 @@ const settings: TranslationDict = {
     'settings.harvest.daily_target': 'Target sa Araw (tonelada)',
     'settings.harvest.shift_hours': 'ORAS NG SHIFT',
     'settings.harvest.shift_start': 'Simula ng Shift',
-    'settings.harvest.shift_end': 'Tapos ng Shift',
     'settings.harvest.min_warning': 'Para maabot ang ${wage}/oras sa ${rate}/timba = {floor} t/oras',
     'settings.orchard.title': 'Detalye ng Taniman',
     'settings.orchard.subtitle': 'Impormasyon ng farm',
@@ -53,6 +52,7 @@ const settings: TranslationDict = {
     'settings.saved_banner': 'Na-save Lahat ng Pagbabago',
     'settings.footer': 'HarvestPro NZ · v9.9.0 · © 2026 HarvestPro. Ginawa para sa mga taniman sa NZ.',
     'settings.locked_by_hr': 'HR lang ang makakapagbago nito',
+    'settings.harvest.shift_end_by_person': 'Walang oras ng pagtatapos ng shift: natatapos ang bawat team at runner kapag nag-clock out sila.',
 };
 
 export default settings;

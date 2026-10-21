@@ -25,7 +25,7 @@ const logistics: TranslationDict = {
     'logistics.events.row_blocked': 'Naharang ang hanay',
     'logistics.events.alert': 'Alerto mula sa senior runner',
     'logistics.events.empty': 'Walang bagong kaganapan',
-    'logistics.full_view': 'Buksan ang buong logistics →',
+    'logistics.operations': 'Operasyon',
 };
 
 export default logistics;

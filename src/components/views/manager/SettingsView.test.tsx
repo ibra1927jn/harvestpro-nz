@@ -266,10 +266,20 @@ describe('SettingsView', () => {
     });
 
     // ── Issue 6: Responsive layout ───────────────────────────────
-    it('uses responsive grid wrapper for settings sections', () => {
+    it('lays the sections out as a masonry (CSS columns), so a short card keeps its own height', () => {
         const { container } = render(<SettingsView />);
-        // El grid md:grid-cols-2 lg:grid-cols-3 debe estar en el DOM
-        const grid = container.querySelector('.grid.grid-cols-1');
-        expect(grid).toBeTruthy();
+        // Antes era un grid: cada fila se estiraba a la tarjeta más alta y
+        // «Detalles del huerto» (tres líneas) medía lo que «Cosecha».
+        const masonry = container.querySelector('.columns-1');
+        expect(masonry).toBeTruthy();
+        expect(masonry?.className).toContain('lg:columns-3');
+        expect(container.querySelector('.grid.grid-cols-1.md\\:grid-cols-2')).toBeNull();
+    });
+
+    it('no shift end time: only the planned start, with the explanation', () => {
+        render(<SettingsView />);
+        expect(screen.getByLabelText('Shift Start')).toBeTruthy();
+        expect(screen.queryByLabelText('Shift End')).toBeNull();
+        expect(screen.getByText(/There is no shift end time/)).toBeTruthy();
     });
 });

@@ -11,7 +11,6 @@ const dashboard: TranslationDict = {
     'dashboard.pickers': 'पिकर',
     'dashboard.daily_target': 'दैनिक लक्ष्य',
     'dashboard.complete': 'पूरा',
-    'dashboard.remaining': 'शेष',
     'dashboard.export': 'निर्यात',
     'dashboard.live_map': 'लाइव नक्शा',
     'dashboard.broadcast': 'प्रसारण',
@@ -40,7 +39,6 @@ const dashboard: TranslationDict = {
     'dashboard.velocity.tooltip_target_pct': 'लक्ष्य का {pct}%',
     'dashboard.velocity.tap_for_details': 'विवरण के लिए टैप करें',
     'dashboard.velocity.tap_bar_details': 'विवरण के लिए बार टैप करें',
-    'dashboard.overtime': 'ओवरटाइम',
     'dashboard.kpi.bins_per_hour': 'बि/घं',
     'dashboard.kpi.nzd': 'NZD',
     'dashboard.wage.subtitle': 'न्यूनतम वेतन टॉप-अप की कमी',
@@ -77,6 +75,10 @@ const dashboard: TranslationDict = {
     'dashboard.team_leaders.picker_count': '{n} पिकर',
     'dashboard.team_leaders.empty': 'कोई टीम लीडर तय नहीं।',
     'dashboard.team_leaders.manage': 'टीमें प्रबंधित करें',
+    'dashboard.eta_at_pace': 'इस गति से: {time}',
+    'dashboard.pace_now': 'गति: {n} बाल्टियाँ/घंटा',
+    'dashboard.remaining_to_goal': 'लक्ष्य तक {n} बाल्टियाँ बाकी',
+    'dashboard.velocity.since': '{start} से',
 };
 
 export default dashboard;

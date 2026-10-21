@@ -24,7 +24,6 @@ const settings: TranslationDict = {
     'settings.harvest.daily_target': 'दैनिक लक्ष्य (टन)',
     'settings.harvest.shift_hours': 'शिफ़्ट घंटे',
     'settings.harvest.shift_start': 'शिफ़्ट शुरू',
-    'settings.harvest.shift_end': 'शिफ़्ट ख़त्म',
     'settings.harvest.min_warning': '${rate}/बाल्टी पर ${wage}/घंटा के लिए न्यूनतम = {floor} बा/घं',
     'settings.orchard.title': 'बाग की जानकारी',
     'settings.orchard.subtitle': 'फ़ार्म जानकारी',
@@ -53,6 +52,7 @@ const settings: TranslationDict = {
     'settings.saved_banner': 'सभी बदलाव सहेजे गए',
     'settings.footer': 'HarvestPro NZ · v9.9.0 · © 2026 HarvestPro. NZ बागों के लिए बना।',
     'settings.locked_by_hr': 'केवल HR इसे बदल सकता है',
+    'settings.harvest.shift_end_by_person': 'शिफ्ट खत्म होने का कोई तय समय नहीं है: हर टीम और रनर तब खत्म करते हैं जब वे क्लॉक-आउट करते हैं।',
 };
 
 export default settings;

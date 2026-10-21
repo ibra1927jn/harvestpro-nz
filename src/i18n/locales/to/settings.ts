@@ -24,7 +24,6 @@ const settings: TranslationDict = {
     'settings.harvest.daily_target': 'Taumuʻa ʻAho (toni)',
     'settings.harvest.shift_hours': 'HOUA NGĀUE',
     'settings.harvest.shift_start': 'Kamataʻanga',
-    'settings.harvest.shift_end': 'Ngataʻanga',
     'settings.harvest.min_warning': 'Ke aʻu ki he ${wage}/houa ʻi he ${rate}/pakete = {floor} p/houa',
     'settings.orchard.title': 'Fakaikiiki Ngoue',
     'settings.orchard.subtitle': 'Fakamatala ngoue',
@@ -53,6 +52,7 @@ const settings: TranslationDict = {
     'settings.saved_banner': 'Kuo Tauhi Liliu Kotoa',
     'settings.footer': 'HarvestPro NZ · v9.9.0 · © 2026 HarvestPro. Ngaohi ki he ngoue ʻa NZ.',
     'settings.locked_by_hr': 'Ko e HR pē ʻe lava ʻo liliu',
+    'settings.harvest.shift_end_by_person': 'ʻOku ʻikai ha taimi ngataʻanga ʻo e sifí: ʻoku ngata ʻa e timi mo e tangata lele kotoa ʻi heʻenau lesisita atu.',
 };
 
 export default settings;
