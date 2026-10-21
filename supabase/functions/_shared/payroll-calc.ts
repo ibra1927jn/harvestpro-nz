@@ -201,7 +201,10 @@ export async function computePayroll(
             .gte('scanned_at', toNZBoundary(start_date, '00:00:00'))
             // Hasta el final del día siguiente al rango (turno que cruza la medianoche)
             .lt('scanned_at', toNZBoundary(addDays(end_date, 2), '00:00:00'))
-        return q.order('id').range(from, to)
+        // Orden por (scanned_at, id): el índice de scanned_at ya da el orden y cada
+        // página no reordena la semana entera (con order('id') cada página
+        // ordenaba ~70.000 filas en disco: 150 ms × 70 páginas; ahora ~45 ms)
+        return q.order('scanned_at').order('id').range(from, to)
     })
     const attendance = await fetchAllRows((from, to) => {
         const q = supabase
