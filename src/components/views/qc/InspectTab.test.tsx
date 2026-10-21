@@ -70,16 +70,25 @@ describe('InspectTab', () => {
     vi.useRealTimers();
   });
 
-  it('renders grade buttons', () => {
+  it('renders the four final-grade buttons with the picker-inspection labels', () => {
     render(<InspectTab {...defaultProps} />);
-    expect(screen.getByText('Grade A')).toBeTruthy();
-    expect(screen.getByText('Grade B')).toBeTruthy();
-    expect(screen.getByText('Grade C')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Grade A (Good)' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Grade B (Acceptable)' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Grade C (Needs correcting)' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Grade Reject (Severe)' })).toBeTruthy();
+    // Las calidades de fruta (exportación / nacional / proceso) son de la cubeta, no de aquí
+    expect(screen.queryByText('Export')).toBeNull();
+    expect(screen.queryByText('Domestic')).toBeNull();
   });
 
-  it('renders Reject grade option', () => {
+  it('renders the six criteria with three states each', () => {
     render(<InspectTab {...defaultProps} />);
-    expect(screen.getByText('Reject')).toBeTruthy();
+    for (const label of ['Ladder use', 'Tree damage', 'Fruit on the ground', 'Bucket fill', 'Size', 'Damaged fruit']) {
+      const group = screen.getByRole('group', { name: label });
+      expect(within(group).getByRole('button', { name: /Good/ })).toBeTruthy();
+      expect(within(group).getByRole('button', { name: /So-so/ })).toBeTruthy();
+      expect(within(group).getByRole('button', { name: /Bad/ })).toBeTruthy();
+    }
   });
 
   it('renders distribution bar', () => {
@@ -92,16 +101,102 @@ describe('InspectTab', () => {
     expect(screen.getByText('Total: 18')).toBeTruthy();
   });
 
-  it('calls onGrade when grade button is clicked with selected picker', () => {
+  it('calls onGrade when grade button is clicked with selected picker (no criteria: grade only)', () => {
     render(<InspectTab {...defaultProps} selectedPicker={crew[0]} />);
-    fireEvent.click(screen.getByText('Grade A'));
-    expect(defaultProps.onGrade).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Grade A (Good)' }));
+    expect(defaultProps.onGrade).toHaveBeenCalledWith('A', null, expect.objectContaining({
+      criteria: null, score: null, rowNumber: 1, informed: null, comfortable: null, wellbeingNotes: null,
+    }));
   });
 
   it('disables grades when submitting', () => {
     render(<InspectTab {...defaultProps} isSubmitting={true} selectedPicker={crew[0]} />);
-    const gradeA = screen.getByText('Grade A').closest('button');
-    expect(gradeA?.hasAttribute('disabled')).toBe(true);
+    const gradeA = screen.getByRole('button', { name: 'Grade A (Good)' });
+    expect(gradeA.hasAttribute('disabled')).toBe(true);
+  });
+
+  describe('criteria', () => {
+    const mark = (criterion: string, state: 'Good' | 'So-so' | 'Bad') =>
+      fireEvent.click(within(screen.getByRole('group', { name: criterion })).getByRole('button', { name: new RegExp(`^${state}$`) }));
+    const answer = (question: RegExp, value: 'Yes' | 'No' | 'No answer') =>
+      fireEvent.click(within(screen.getByRole('group', { name: question })).getByRole('button', { name: value }));
+
+    it('criteria buttons are disabled until a picker is selected', () => {
+      render(<InspectTab {...defaultProps} />);
+      const group = screen.getByRole('group', { name: 'Ladder use' });
+      expect(within(group).getByRole('button', { name: /Good/ }).hasAttribute('disabled')).toBe(true);
+    });
+
+    it('suggests the computed grade live and pre-marks the final grade button', () => {
+      render(<InspectTab {...defaultProps} selectedPicker={crew[0]} />);
+      expect(screen.getByText(/No criteria checked/)).toBeTruthy();
+      mark('Ladder use', 'Good');
+      expect(screen.getByText('Suggested: Grade A (Good) · 100/100')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Grade A (Good)' }).getAttribute('aria-pressed')).toBe('true');
+      mark('Size', 'So-so');
+      expect(screen.getByText('Suggested: Grade B (Acceptable) · 75/100')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Grade B (Acceptable)' }).getAttribute('aria-pressed')).toBe('true');
+      expect(screen.getByRole('button', { name: 'Grade A (Good)' }).getAttribute('aria-pressed')).toBe('false');
+      mark('Ladder use', 'Bad');
+      expect(screen.getByText('Suggested: Grade Reject (Severe) · 0/100')).toBeTruthy();
+      expect(screen.getByText('2/6 checked')).toBeTruthy();
+    });
+
+    it('tapping the same state again unmarks the criterion', () => {
+      render(<InspectTab {...defaultProps} selectedPicker={crew[0]} />);
+      mark('Size', 'Bad');
+      expect(screen.getByText('1/6 checked')).toBeTruthy();
+      mark('Size', 'Bad');
+      expect(screen.getByText('0/6 checked')).toBeTruthy();
+      expect(screen.getByText(/No criteria checked/)).toBeTruthy();
+    });
+
+    it('saves criteria, score, row and the wellbeing answers with the tapped grade', async () => {
+      const onGrade = vi.fn().mockResolvedValue(true);
+      render(<InspectTab {...defaultProps} selectedPicker={{ ...crew[0], current_row: 12 }} onGrade={onGrade} />);
+      mark('Ladder use', 'Good');
+      mark('Tree damage', 'Good');
+      mark('Fruit on the ground', 'So-so');
+      mark('Bucket fill', 'Good');
+      mark('Size', 'Good');
+      mark('Damaged fruit', 'Good');
+      answer(/know what and how to pick/, 'No');
+      answer(/comfortable in the team/, 'Yes');
+      fireEvent.change(screen.getByLabelText('Wellbeing comment'), { target: { value: '  Needs a variety briefing ' } });
+      // La sugerida es B; el inspector la cambia a C antes de guardar
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Grade C (Needs correcting)' }));
+      });
+      expect(onGrade).toHaveBeenCalledWith('C', null, {
+        criteria: { ladder: 'ok', tree_damage: 'ok', fruit_on_ground: 'warn', bucket_fill: 'ok', size: 'ok', damaged_fruit: 'ok' },
+        score: 92,
+        rowNumber: 12,
+        informed: false,
+        comfortable: true,
+        wellbeingNotes: 'Needs a variety briefing',
+      });
+      // Tras guardar, todo vuelve a vacío para la siguiente persona
+      expect(screen.getByText('0/6 checked')).toBeTruthy();
+      expect((screen.getByLabelText('Wellbeing comment') as HTMLInputElement).value).toBe('');
+    });
+
+    it('keeps what was marked when the save fails', async () => {
+      const onGrade = vi.fn().mockResolvedValue(false);
+      render(<InspectTab {...defaultProps} selectedPicker={crew[0]} onGrade={onGrade} />);
+      mark('Size', 'Bad');
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Grade C (Needs correcting)' }));
+      });
+      expect(screen.getByText('1/6 checked')).toBeTruthy();
+    });
+
+    it('clears the marks when the inspector switches to another picker', () => {
+      const { rerender } = render(<InspectTab {...defaultProps} selectedPicker={crew[0]} />);
+      mark('Size', 'Bad');
+      expect(screen.getByText('1/6 checked')).toBeTruthy();
+      rerender(<InspectTab {...defaultProps} selectedPicker={crew[1]} />);
+      expect(screen.getByText('0/6 checked')).toBeTruthy();
+    });
   });
 
   describe('picker selection', () => {
@@ -206,7 +301,13 @@ describe('InspectTab', () => {
   describe('turbo mode', () => {
     const turboOn = () => fireEvent.click(screen.getByRole('switch', { name: 'Toggle turbo mode' }));
 
-    it('advances to the next picker not yet inspected after saving', async () => {
+    const markAll = () => {
+      for (const label of ['Ladder use', 'Tree damage', 'Fruit on the ground', 'Bucket fill', 'Size', 'Damaged fruit']) {
+        fireEvent.click(within(screen.getByRole('group', { name: label })).getByRole('button', { name: /^Good$/ }));
+      }
+    };
+
+    it('advances to the next picker not yet inspected after saving with all 6 criteria marked', async () => {
       vi.useFakeTimers();
       const setSelectedPicker = vi.fn();
       const onGrade = vi.fn().mockResolvedValue(true);
@@ -220,8 +321,9 @@ describe('InspectTab', () => {
         />,
       );
       turboOn();
+      markAll();
       await act(async () => {
-        fireEvent.click(screen.getByText('Grade A'));
+        fireEvent.click(screen.getByRole('button', { name: 'Grade A (Good)' }));
       });
       expect(onGrade).toHaveBeenCalled();
       await act(async () => {
@@ -229,6 +331,25 @@ describe('InspectTab', () => {
       });
       // Bob ya está inspeccionado: salta a Charlie
       expect(setSelectedPicker).toHaveBeenCalledWith(crew[2]);
+    });
+
+    it('does not advance when the save had fewer than 6 criteria marked', async () => {
+      vi.useFakeTimers();
+      const setSelectedPicker = vi.fn();
+      const onGrade = vi.fn().mockResolvedValue(true);
+      render(
+        <InspectTab {...defaultProps} selectedPicker={crew[0]} setSelectedPicker={setSelectedPicker} onGrade={onGrade} />,
+      );
+      turboOn();
+      fireEvent.click(within(screen.getByRole('group', { name: 'Size' })).getByRole('button', { name: /^Good$/ }));
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Grade A (Good)' }));
+      });
+      expect(onGrade).toHaveBeenCalled();
+      await act(async () => {
+        vi.advanceTimersByTime(400);
+      });
+      expect(setSelectedPicker).not.toHaveBeenCalled();
     });
 
     it('tapping the selected picker cancels the pending auto-advance', async () => {
@@ -239,8 +360,9 @@ describe('InspectTab', () => {
         <InspectTab {...defaultProps} selectedPicker={crew[0]} setSelectedPicker={setSelectedPicker} onGrade={onGrade} />,
       );
       turboOn();
+      markAll();
       await act(async () => {
-        fireEvent.click(screen.getByText('Grade A'));
+        fireEvent.click(screen.getByRole('button', { name: 'Grade A (Good)' }));
       });
       fireEvent.click(screen.getByRole('button', { name: /Alice/ }));
       expect(setSelectedPicker).toHaveBeenLastCalledWith(null);
@@ -258,8 +380,9 @@ describe('InspectTab', () => {
         <InspectTab {...defaultProps} selectedPicker={crew[0]} setSelectedPicker={setSelectedPicker} onGrade={onGrade} />,
       );
       turboOn();
+      markAll();
       await act(async () => {
-        fireEvent.click(screen.getByText('Grade A'));
+        fireEvent.click(screen.getByRole('button', { name: 'Grade A (Good)' }));
       });
       await act(async () => {
         vi.advanceTimersByTime(400);

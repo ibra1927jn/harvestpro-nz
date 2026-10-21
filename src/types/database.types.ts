@@ -1286,34 +1286,52 @@ export type Database = {
       }
       qc_inspections: {
         Row: {
+          comfortable: boolean | null
           created_at: string | null
+          criteria: Json | null
           grade: string
           id: string
+          informed: boolean | null
           inspector_id: string
           notes: string | null
           orchard_id: string
           photo_url: string | null
           picker_id: string
+          row_number: number | null
+          score: number | null
+          wellbeing_notes: string | null
         }
         Insert: {
+          comfortable?: boolean | null
           created_at?: string | null
+          criteria?: Json | null
           grade: string
           id?: string
+          informed?: boolean | null
           inspector_id: string
           notes?: string | null
           orchard_id: string
           photo_url?: string | null
           picker_id: string
+          row_number?: number | null
+          score?: number | null
+          wellbeing_notes?: string | null
         }
         Update: {
+          comfortable?: boolean | null
           created_at?: string | null
+          criteria?: Json | null
           grade?: string
           id?: string
+          informed?: boolean | null
           inspector_id?: string
           notes?: string | null
           orchard_id?: string
           photo_url?: string | null
           picker_id?: string
+          row_number?: number | null
+          score?: number | null
+          wellbeing_notes?: string | null
         }
         Relationships: [
           {

@@ -89,12 +89,12 @@ export default function QualityControl() {
                         )}
                         {activeTab === 'history' && (
                             <ComponentErrorBoundary componentName="Inspection History">
-                                <HistoryTab inspections={qc.inspections} crew={qc.crew} />
+                                <HistoryTab inspections={qc.inspections} crew={qc.crew} canViewWellbeing={qc.canViewWellbeing} />
                             </ComponentErrorBoundary>
                         )}
                         {activeTab === 'stats' && (
                             <ComponentErrorBoundary componentName="Quality Stats">
-                                <StatsTab distribution={qc.distribution} />
+                                <StatsTab distribution={qc.distribution} inspections={qc.inspections} />
                             </ComponentErrorBoundary>
                         )}
                         {activeTab === 'trends' && qc.orchardId && (

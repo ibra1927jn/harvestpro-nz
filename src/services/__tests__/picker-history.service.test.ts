@@ -19,8 +19,9 @@ import { pickerHistoryService } from '../picker-history.service';
 
 // Access private methods for testing pure logic
 const service = pickerHistoryService as unknown as {
-    computeQuality: (inspections: Array<{ quality_grade: string | null }>) => {
+    computeQuality: (inspections: Array<{ quality_grade: string | null; criteria?: unknown }>) => {
         total: number; gradeA: number; gradeB: number; gradeC: number; reject: number; score: number;
+        flaggedCriteria: Array<{ key: string; warn: number; bad: number; total: number }>;
     };
     computeRiskBadges: (
         attendance: Array<{ date: string; status: string }>,
@@ -84,6 +85,28 @@ describe('pickerHistoryService', () => {
             ]);
             expect(result.total).toBe(2);
             expect(result.gradeA).toBe(1);
+        });
+
+        it('flaggedCriteria is empty when inspections carry no criteria (previous format / null)', () => {
+            const result = service.computeQuality([
+                { quality_grade: 'B' },
+                { quality_grade: 'C', criteria: null },
+                { quality_grade: 'A', criteria: 'garbage' },
+            ]);
+            expect(result.flaggedCriteria).toEqual([]);
+            expect(result.score).toBe(70);
+        });
+
+        it('flaggedCriteria aggregates warn/bad per criterion, worst first, ok ones left out', () => {
+            const result = service.computeQuality([
+                { quality_grade: 'C', criteria: { ladder: 'ok', size: 'warn', damaged_fruit: 'bad' } },
+                { quality_grade: 'B', criteria: { size: 'warn', bucket_fill: 'ok' } },
+                { quality_grade: 'A', criteria: null },
+            ]);
+            expect(result.flaggedCriteria).toEqual([
+                { key: 'size', warn: 2, bad: 0, total: 2 },
+                { key: 'damaged_fruit', warn: 0, bad: 1, total: 1 },
+            ]);
         });
     });
 

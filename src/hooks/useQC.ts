@@ -6,17 +6,21 @@
  */
 import { announce } from '@/services/announcer';
 import { useState, useCallback } from 'react';
-import { qcService, QCInspection, GradeDistribution } from '@/services/qc.service';
+import { qcService, QCInspection, GradeDistribution, InspectionDetails } from '@/services/qc.service';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { useAuth } from '@/context/AuthContext';
 import { Picker } from '@/types';
 import { logger } from '@/utils/logger';
 import { supabase } from '@/services/supabase';
 import { useTranslation } from '@/i18n';
-import { gradeLabel } from '@/components/views/qc/gradeLabel';
+import { gradeLongLabel } from '@/components/views/qc/gradeLabel';
 import { todayNZST } from '@/utils/nzst';
+import { Role } from '@/types';
 
 type QualityGrade = 'A' | 'B' | 'C' | 'reject';
+
+/** Quién ve las respuestas de bienestar (informado / a gusto): nunca el perfil público */
+const WELLBEING_ROLES: ReadonlySet<string> = new Set([Role.TEAM_LEADER, Role.MANAGER, Role.HR_ADMIN, Role.ADMIN]);
 
 export interface UseQCResult {
   inspections: QCInspection[];
@@ -29,9 +33,12 @@ export interface UseQCResult {
   gradeError: string | null;
   crew: Picker[];
   orchardId: string | undefined;
+  /** El usuario puede ver las respuestas de bienestar de las inspecciones */
+  canViewWellbeing: boolean;
   setSelectedPicker: (picker: Picker | null) => void;
   setNotes: (notes: string) => void;
-  handleGrade: (grade: QualityGrade, photoBlob?: Blob | null) => Promise<boolean>;
+  /** Guarda la inspección: nota + (opcional) criterios, puntuación, fila y bienestar */
+  handleGrade: (grade: QualityGrade, photoBlob?: Blob | null, details?: InspectionDetails) => Promise<boolean>;
   loadInspections: () => Promise<void>;
 }
 
@@ -75,7 +82,7 @@ export function useQC(): UseQCResult {
   }, [orchardId]);
 
   const handleGrade = useCallback(
-    async (grade: QualityGrade, photoBlob?: Blob | null): Promise<boolean> => {
+    async (grade: QualityGrade, photoBlob?: Blob | null, details?: InspectionDetails): Promise<boolean> => {
       if (!selectedPicker || !orchardId || !appUser?.id) return false;
       setIsSubmitting(true);
       setGradeError(null);
@@ -111,11 +118,14 @@ export function useQC(): UseQCResult {
         grade,
         notes: notes.trim() || undefined,
         photoUrl,
+        ...details,
+        // La fila es la del picker en ese momento, salvo que la pantalla diga otra
+        rowNumber: details?.rowNumber ?? (selectedPicker.current_row > 0 ? selectedPicker.current_row : null),
       });
 
       if (result) {
         setLastGrade({ grade, picker: selectedPicker.name });
-        announce(t('qc.sr_logged', { grade: gradeLabel(t, grade), name: selectedPicker.name }));
+        announce(t('qc.sr_logged', { grade: gradeLongLabel(t, grade), name: selectedPicker.name }));
         setNotes('');
         await loadInspections();
         setTimeout(() => setLastGrade(null), 3000);
@@ -143,6 +153,7 @@ export function useQC(): UseQCResult {
     gradeError,
     crew,
     orchardId,
+    canViewWellbeing: !!appUser?.role && WELLBEING_ROLES.has(appUser.role),
     setSelectedPicker,
     setNotes,
     handleGrade,
