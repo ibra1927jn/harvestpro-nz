@@ -210,7 +210,8 @@ class Device {
   async fetchOrchardData({ catchUp = false } = {}) {
     const sb = this.sb;
     const o = this.orchard_id;
-    const useDelta = !!this.lastSyncAt && this.crewCount > 0 && this.bucketCount > 0;
+    // app optimizada: delta también antes de la primera cubeta del día (bucketsLoaded)
+    const useDelta = !!this.lastSyncAt && this.crewCount > 0 && (this.bucketCount > 0 || (OPT && this.bucketsLoaded));
     // app optimizada: al desbloquear (catchUp) no vuelve a pedir huerto, ajustes ni bloques
     const light = OPT && catchUp && useDelta;
     if (!light) {
@@ -225,7 +226,9 @@ class Device {
     const bucketSel = '*';
     let bucketsPromise;
     if (useDelta) {
-      const since = new Date(Date.parse(this.lastSyncAt) - 120000).toISOString();
+      // margen de 2 min de la app (DELTA_SAFETY_MS) en tiempo virtual: con el
+      // reloj acelerado, 2 min reales serían 2 h de cubetas repetidas
+      const since = new Date(Date.parse(this.lastSyncAt) - 120000 / SPEED).toISOString();
       pq = pq.gte('updated_at', since);
       if (OPT) {
         // delta paginado: no se pierde nada si el móvil estuvo dormido más de 1000 cubetas
@@ -259,6 +262,7 @@ class Device {
     this.bucketCount = useDelta ? this.bucketCount + buckets.length : buckets.length;
     if (!useDelta && this.bucketCount === 0) this.bucketCount = 0;
     this.lastSyncAt = nowIso;
+    this.bucketsLoaded = true;
 
     await sb.from('daily_attendance').select('picker_id, orchard_id, check_in, orchards(name)').eq('date', NZ_DATE).is('check_out', null).is('deleted_at', null).neq('orchard_id', o);
     if (!light) {
@@ -271,7 +275,8 @@ class Device {
       this.blocksLoaded = true;
     }
     await sb.from('row_assignments').select('id, row_number, side, assigned_pickers, completion_percentage, team_leader_id').eq('orchard_id', o).eq('status', 'active').is('deleted_at', null);
-    await sb.from('bins').select('*').eq('orchard_id', o);
+    if (OPT) await sb.from('bins').select('id, bin_code, status, variety, filled_at, deleted_at').eq('orchard_id', o).is('deleted_at', null);
+    else await sb.from('bins').select('*').eq('orchard_id', o);
   }
 
   subscribeRealtime() {
@@ -645,7 +650,7 @@ async function teamLeaderDay(d) {
       await d.touch();
       const today = NZ_DATE;
       const { error } = await sb.functions.invoke('manage-attendance', {
-        body: { action: 'correct', attendance_id: att, break_start: new Date(Date.now() - 30 * 60000).toISOString(), break_minutes: 30, reason: 'Meal break' },
+        body: { action: 'correct', attendance_id: att, break_start: new Date(Date.now() - (30 * 60000) / SPEED).toISOString(), break_minutes: 30, reason: 'Meal break' },
       });
       if (error) metrics.event('break_failed', { role: d.role, message: String(error.message).slice(0, 160) });
       await reloadAttendance();
@@ -737,7 +742,8 @@ async function runnerDay(d) {
         .select('id, updated_at')
         .single();
       if (!error && data) state.transportPending.set(id, { orchard_id: d.orchard_id, updated_at: data.updated_at, created: clock.minute() });
-      await d.sb.from('broadcasts').insert({ id: randomUUID(), orchard_id: d.orchard_id, sender_id: d.id, title: 'Bins needed', content: `Empty bin needed at ${zone}`, priority: 'normal', target_roles: ['logistics'] });
+      // la app optimizada ya no manda el aviso (los runners no pueden: RLS)
+      if (!OPT) await d.sb.from('broadcasts').insert({ id: randomUUID(), orchard_id: d.orchard_id, sender_id: d.id, title: 'Bins needed', content: `Empty bin needed at ${zone}`, priority: 'normal', target_roles: ['logistics'] });
     });
   }
   for (const t of ['09:15', '13:20']) scheduleAt(parseHHMM(t) + rnd(0, 30), () => d.chatSession(rnd(3, 6)));
@@ -791,7 +797,7 @@ async function managerDay(d) {
     await Promise.all([
       sb.from('hr_documents').select('id, title, expires_at').eq('document_type', 'work_visa').is('deleted_at', null).gte('expires_at', NZ_DATE).lte('expires_at', daysAgo(-30)).limit(5),
       sb.from('qc_inspections').select('grade').gte('created_at', NZ_MIDNIGHT).limit(200),
-      sb.from('transport_requests').select('id, created_at').eq('status', 'pending').lte('created_at', new Date(Date.now() - 30 * 60000).toISOString()).limit(3),
+      sb.from('transport_requests').select('id, created_at').eq('status', 'pending').lte('created_at', new Date(Date.now() - (30 * 60000) / SPEED).toISOString()).limit(3),
     ]);
   };
   const dashboard = async () => {

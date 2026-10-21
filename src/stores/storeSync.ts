@@ -91,6 +91,12 @@ export async function hydrateFromDexie(set: StoreSetter): Promise<void> {
 
 /* ── Fetch Orchard Data (Delta/Full Sync) ── */
 
+/**
+ * Huerto y día cuyas cubetas ya están en memoria en esta sesión (no se guarda
+ * en el navegador: tras recargar la app hay que volver a bajarlas).
+ */
+let bucketsLoadedKey: string | null = null;
+
 export async function fetchOrchardData(
   get: StoreGetter,
   set: StoreSetter,
@@ -106,6 +112,7 @@ export async function fetchOrchardData(
     todayNZ: today,
     crewCount: state.crew.length,
     bucketCount: state.bucketRecords.length,
+    bucketsLoaded: bucketsLoadedKey === `${orchardId ?? state.orchard?.id ?? ''}|${today}`,
   });
 
   // Al desbloquear el móvil (catchUp) solo se pide lo que cambia durante el día:
@@ -129,6 +136,7 @@ export async function fetchOrchardData(
 
   try {
     await loadCrewAndBuckets({ state, set, orchardKey, today, startOfDayNZ, useDelta, lastSync, now });
+    bucketsLoadedKey = `${orchardKey}|${today}`;
   } catch (syncError) {
     logger.warn('[Sync] Delta/full sync failed — falling back to simple fetch:', syncError);
     const [pickersRes, bucketsRes] = await Promise.all([

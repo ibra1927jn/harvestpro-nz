@@ -25,7 +25,7 @@ LANGUAGE sql IMMUTABLE AS $$ SELECT overlay(overlay(md5('loadsim:' || label) pla
 CREATE OR REPLACE FUNCTION loadsim.nz(d date, t interval) RETURNS timestamptz
 LANGUAGE sql IMMUTABLE AS $$ SELECT ((d + t)::timestamp AT TIME ZONE 'Pacific/Auckland') $$;
 
-CREATE OR REPLACE FUNCTION loadsim.gen_day(d date, attendance_rate numeric DEFAULT 0.92, close_day boolean DEFAULT true)
+CREATE OR REPLACE FUNCTION loadsim.gen_day(d date, attendance_rate numeric DEFAULT 0.92, close_day boolean DEFAULT true, audit_per_scan boolean DEFAULT true)
 RETURNS jsonb
 LANGUAGE plpgsql AS $$
 DECLARE
@@ -96,7 +96,10 @@ BEGIN
   ON CONFLICT DO NOTHING;
   GET DIAGNOSTICS n_bk = ROW_COUNT;
 
-  -- Auditoría: una entrada por cubeta escaneada (bucket.scanned vía submit-audit-log)
+  -- Auditoría: una entrada por cubeta escaneada (bucket.scanned vía submit-audit-log).
+  -- La app optimizada ya no la manda (audit_per_scan = false).
+  n_audit := 0;
+  IF audit_per_scan THEN
   INSERT INTO public.audit_logs (user_id, user_email, action, table_name, record_id, new_values, created_at)
   SELECT b.scanned_by, NULL, 'CUSTOM', 'bucket', b.id,
          jsonb_build_object('event', 'bucket.scanned', 'event_type', 'bucket.scanned', 'severity', 'info',
@@ -108,6 +111,7 @@ BEGIN
     AND b.orchard_id IN (SELECT id FROM public.orchards WHERE code LIKE 'SIM%')
     AND NOT EXISTS (SELECT 1 FROM public.audit_logs a WHERE a.record_id = b.id AND a.table_name = 'bucket');
   GET DIAGNOSTICS n_audit = ROW_COUNT;
+  END IF;
 
   -- Asignaciones de fila: 2 por TL al día, terminadas
   INSERT INTO public.row_assignments (orchard_id, season_id, block_row_id, row_number, side, assigned_pickers,
