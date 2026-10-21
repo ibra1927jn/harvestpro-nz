@@ -63,6 +63,13 @@ const qc: TranslationDict = {
     'qc.modal.reject': 'WHAKAKĀHORE',
     'qc.modal.bin_dump': 'Maka te bin',
     'qc.modal.cancel_scan': 'Whakakore matawai',
+    // Paso 1: lista de pickers (deseleccionar, fichados primero, ver todos)
+    'qc.id_n': 'ID {id}',
+    'qc.inspected_today': 'Kua arotakehia i tēnei rā',
+    'qc.not_checked_in': 'Kāore anō kia uru',
+    'qc.show_all_n': 'Whakaatu katoa ({n})',
+    'qc.show_present_only': 'Ngā mea kua uru anake',
+    'qc.deselect': 'Whakakore kōwhiringa',
 };
 
 export default qc;

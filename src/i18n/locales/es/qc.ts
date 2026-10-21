@@ -63,6 +63,13 @@ const qc: TranslationDict = {
     'qc.modal.reject': 'RECHAZO',
     'qc.modal.bin_dump': 'Tirar el bin',
     'qc.modal.cancel_scan': 'Cancelar escaneo',
+    // Paso 1: lista de pickers (deseleccionar, fichados primero, ver todos)
+    'qc.id_n': 'ID {id}',
+    'qc.inspected_today': 'Ya inspeccionado hoy',
+    'qc.not_checked_in': 'Sin fichar',
+    'qc.show_all_n': 'Ver todos ({n})',
+    'qc.show_present_only': 'Solo fichados',
+    'qc.deselect': 'Quitar selección',
 };
 
 export default qc;

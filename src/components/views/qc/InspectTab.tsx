@@ -4,13 +4,14 @@
  *
  * Contains: Picker search, grade buttons, notes input, today's distribution
  */
-import React, { useMemo } from 'react';
-import { GradeDistribution } from '@/services/qc.service';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { GradeDistribution, QCInspection } from '@/services/qc.service';
 import { Picker } from '@/types';
 import DistributionBar from './DistributionBar';
 import { usePhotoCapture } from '@/hooks/usePhotoCapture';
 import { useTranslation } from '@/i18n';
 import { gradeLabel } from './gradeLabel';
+import { matchesInspectQuery, nextForInspection, orderForInspection } from './inspectList';
 
 type QualityGrade = 'A' | 'B' | 'C' | 'reject';
 
@@ -53,6 +54,8 @@ const GRADE_CONFIG: Record<QualityGrade, GradeConfig> = {
 
 interface InspectTabProps {
     crew: Picker[];
+    /** Inspecciones de hoy: marcan a quién ya se ha inspeccionado */
+    inspections: QCInspection[];
     distribution: GradeDistribution;
     selectedPicker: Picker | null;
     setSelectedPicker: (p: Picker | null) => void;
@@ -63,30 +66,62 @@ interface InspectTabProps {
     /** Fallo al guardar la última inspección */
     gradeError?: string | null;
     onGrade: (grade: QualityGrade, photoBlob?: Blob | null) => Promise<boolean> | void;
-    /** If provided, called after a successful grade to auto-select next */
-    onAutoAdvance?: () => void;
 }
 
+/** Espera antes del avance automático en Turbo: da tiempo a ver el aviso y a cancelarlo */
+const TURBO_ADVANCE_MS = 300;
+
 export default function InspectTab({
-    crew, distribution, selectedPicker, setSelectedPicker,
-    notes, setNotes, isSubmitting, lastGrade, gradeError, onGrade, onAutoAdvance,
+    crew, inspections, distribution, selectedPicker, setSelectedPicker,
+    notes, setNotes, isSubmitting, lastGrade, gradeError, onGrade,
 }: InspectTabProps) {
     const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = React.useState('');
     const [turboMode, setTurboMode] = React.useState(false);
+    const [showAll, setShowAll] = React.useState(false);
     const { capturePhoto, photoBlob, photoPreview, isCapturing, clearPhoto } = usePhotoCapture();
 
-    const filteredPickers = useMemo(() => {
-        if (!searchQuery.trim()) return crew.slice(0, 5);
-        const q = searchQuery.toLowerCase();
-        return crew.filter(p =>
-            p.name.toLowerCase().includes(q) ||
-            p.picker_id.toLowerCase().includes(q)
-        );
-    }, [crew, searchQuery]);
+    // Lista: solo pickers, fichados primero, por fila; con la marca de «ya inspeccionado hoy»
+    const inspectedIds = useMemo(() => new Set(inspections.map(i => i.picker_id)), [inspections]);
+    const ordered = useMemo(() => orderForInspection(crew, inspectedIds), [crew, inspectedIds]);
+    const presentCount = useMemo(() => ordered.filter(e => e.present).length, [ordered]);
+    // Sin búsqueda: los fichados hoy (todos si no hay nadie fichado o si se pidió «ver todos»)
+    const baseList = useMemo(
+        () => (showAll || presentCount === 0 ? ordered : ordered.filter(e => e.present)),
+        [ordered, showAll, presentCount],
+    );
+    const isSearching = searchQuery.trim().length > 0;
+    const visible = useMemo(
+        () => (isSearching ? ordered.filter(e => matchesInspectQuery(e.picker, searchQuery)) : baseList),
+        [isSearching, ordered, searchQuery, baseList],
+    );
+    const hiddenCount = ordered.length - baseList.length;
+    const canToggleAll = !isSearching && presentCount > 0 && presentCount < ordered.length;
+
+    // Avance automático (Turbo): recorre la lista que se ve, saltando a los ya inspeccionados
+    const listRef = useRef(baseList);
+    listRef.current = baseList;
+    const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const cancelAdvance = () => {
+        if (advanceTimer.current) {
+            clearTimeout(advanceTimer.current);
+            advanceTimer.current = null;
+        }
+    };
+    useEffect(() => () => {
+        if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    }, []);
+
+    // Tocar al seleccionado lo deselecciona (y cancela el avance pendiente del Turbo)
+    const togglePicker = (picker: Picker) => {
+        cancelAdvance();
+        setSelectedPicker(selectedPicker?.id === picker.id ? null : picker);
+    };
 
     // Turbo mode: wrap onGrade to add haptic + auto-advance
     const handleTurboGrade = async (grade: QualityGrade) => {
+        if (!selectedPicker) return;
+        const currentId = selectedPicker.id;
         // Haptic feedback
         if (turboMode && navigator.vibrate) {
             navigator.vibrate(50); // short pulse
@@ -95,9 +130,12 @@ export default function InspectTab({
         // Si no se guardó, se queda en el mismo picker (y la foto) para reintentar
         if (saved === false) return;
         clearPhoto();
-        if (turboMode && onAutoAdvance) {
-            // Small delay so the success toast renders before advancing
-            setTimeout(() => onAutoAdvance(), 300);
+        if (turboMode) {
+            cancelAdvance();
+            advanceTimer.current = setTimeout(() => {
+                advanceTimer.current = null;
+                setSelectedPicker(nextForInspection(listRef.current, currentId));
+            }, TURBO_ADVANCE_MS);
         }
     };
 
@@ -163,39 +201,82 @@ export default function InspectTab({
                         />
                     </div>
 
-                    <div className="space-y-1.5 max-h-48 overflow-y-auto no-scrollbar">
-                        {filteredPickers.map(picker => (
-                            <button
-                                key={picker.id}
-                                onClick={() => setSelectedPicker(picker)}
-                                className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-left transition-all duration-300 ${selectedPicker?.id === picker.id
-                                    ? 'bg-orange-50 border border-orange-200/60 shadow-[0_4px_12px_rgb(249,115,22,0.05)]'
-                                    : 'border border-transparent hover:bg-slate-50'
-                                    }`}
-                            >
-                                <div className="size-10 bg-slate-100 rounded-xl flex items-center justify-center text-xs font-black text-slate-500 uppercase">
-                                    {picker.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                    <div className="space-y-1.5 max-h-72 overflow-y-auto no-scrollbar" role="list">
+                        {visible.map(({ picker, present, inspected }) => {
+                            const isSelected = selectedPicker?.id === picker.id;
+                            return (
+                                <div
+                                    key={picker.id}
+                                    role="listitem"
+                                    className={`flex items-center gap-1 rounded-2xl transition-all duration-300 ${isSelected
+                                        ? 'bg-orange-50 border border-orange-200/60 shadow-[0_4px_12px_rgb(249,115,22,0.05)]'
+                                        : 'border border-transparent hover:bg-slate-50'
+                                        }`}
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => togglePicker(picker)}
+                                        aria-pressed={isSelected}
+                                        className="flex-1 min-w-0 flex items-center gap-4 px-4 py-3 min-h-[56px] rounded-2xl text-left"
+                                    >
+                                        <div className={`size-10 rounded-xl flex items-center justify-center text-xs font-black uppercase ${present ? 'bg-slate-100 text-slate-500' : 'bg-slate-50 text-slate-300'}`}>
+                                            {picker.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className={`text-sm font-extrabold truncate mb-0.5 ${present ? 'text-slate-800' : 'text-slate-400'}`}>
+                                                {picker.name}
+                                                <span className="ml-2 text-[10px] font-bold text-slate-400 tracking-widest">{t('qc.id_n', { id: picker.picker_id })}</span>
+                                            </p>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white px-2 py-0.5 rounded-md border border-slate-100">
+                                                    {t('runner.row_n', { n: picker.current_row })}
+                                                </span>
+                                                <span className="text-[10px] font-bold text-primary uppercase tracking-widest bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10">
+                                                    {t('qc.bkt_n', { n: picker.total_buckets_today })}
+                                                </span>
+                                                {inspected && (
+                                                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-700 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                                                        <span aria-hidden="true" className="material-symbols-outlined text-[12px]">task_alt</span>
+                                                        {t('qc.inspected_today')}
+                                                    </span>
+                                                )}
+                                                {!present && (
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                                                        {t('qc.not_checked_in')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {isSelected && (
+                                            <span aria-hidden="true" className="material-symbols-outlined text-[24px] text-orange-500 drop-shadow-sm">check_circle</span>
+                                        )}
+                                    </button>
+                                    {isSelected && (
+                                        <button
+                                            type="button"
+                                            onClick={() => togglePicker(picker)}
+                                            aria-label={t('qc.deselect')}
+                                            className="size-11 mr-1 shrink-0 flex items-center justify-center rounded-xl text-slate-500 hover:bg-orange-100 hover:text-orange-700 active:scale-95 transition-all"
+                                        >
+                                            <span aria-hidden="true" className="material-symbols-outlined text-[22px]">close</span>
+                                        </button>
+                                    )}
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-extrabold text-slate-800 truncate mb-0.5">{picker.name}</p>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white px-2 py-0.5 rounded-md border border-slate-100">
-                                            {t('runner.row_n', { n: picker.current_row })}
-                                        </span>
-                                        <span className="text-[10px] font-bold text-primary uppercase tracking-widest bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10">
-                                            {t('qc.bkt_n', { n: picker.total_buckets_today })}
-                                        </span>
-                                    </div>
-                                </div>
-                                {selectedPicker?.id === picker.id && (
-                                    <span aria-hidden="true" className="material-symbols-outlined text-[24px] text-orange-500 drop-shadow-sm">check_circle</span>
-                                )}
-                            </button>
-                        ))}
-                        {filteredPickers.length === 0 && (
+                            );
+                        })}
+                        {visible.length === 0 && (
                             <p className="text-[11px] font-bold text-slate-400 text-center py-6 uppercase tracking-widest">{t('qc.no_pickers')}</p>
                         )}
                     </div>
+                    {canToggleAll && (
+                        <button
+                            type="button"
+                            onClick={() => setShowAll(v => !v)}
+                            className="w-full min-h-[44px] px-4 py-2.5 text-[11px] uppercase tracking-widest font-bold text-slate-600 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all active:scale-[0.98]"
+                        >
+                            {showAll ? t('qc.show_present_only') : t('qc.show_all_n', { n: hiddenCount })}
+                        </button>
+                    )}
                 </div>
             </div>
 

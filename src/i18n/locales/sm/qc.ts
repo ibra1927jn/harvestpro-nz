@@ -63,6 +63,13 @@ const qc: TranslationDict = {
     'qc.modal.reject': 'TEENA',
     'qc.modal.bin_dump': 'Lafoai bin',
     'qc.modal.cancel_scan': 'Fa\'aleaoga sikena',
+    // Paso 1: lista de pickers (deseleccionar, fichados primero, ver todos)
+    'qc.id_n': 'ID {id}',
+    'qc.inspected_today': 'Ua siakiina i le aso',
+    'qc.not_checked_in': 'E le\'i saini i totonu',
+    'qc.show_all_n': 'Fa\'aali uma ({n})',
+    'qc.show_present_only': 'Na\'o i latou ua saini',
+    'qc.deselect': 'Aveese le filifiliga',
 };
 
 export default qc;

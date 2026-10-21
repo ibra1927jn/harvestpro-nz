@@ -63,6 +63,13 @@ const qc: TranslationDict = {
     'qc.modal.reject': 'SIʻAKI',
     'qc.modal.bin_dump': 'Lī ʻa e bin',
     'qc.modal.cancel_scan': 'Tukuange sikeni',
+    // Paso 1: lista de pickers (deseleccionar, fichados primero, ver todos)
+    'qc.id_n': 'ID {id}',
+    'qc.inspected_today': 'Kuo sivi he ʻaho ni',
+    'qc.not_checked_in': 'Teʻeki hū mai',
+    'qc.show_all_n': 'Fakahā kotoa ({n})',
+    'qc.show_present_only': 'Ko e kau hū mai pē',
+    'qc.deselect': 'Toʻo e fili',
 };
 
 export default qc;

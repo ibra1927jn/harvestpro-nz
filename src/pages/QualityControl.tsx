@@ -74,6 +74,7 @@ export default function QualityControl() {
                             <ComponentErrorBoundary componentName="Inspect">
                                 <InspectTab
                                     crew={qc.crew}
+                                    inspections={qc.inspections}
                                     distribution={qc.distribution}
                                     selectedPicker={qc.selectedPicker}
                                     setSelectedPicker={qc.setSelectedPicker}
@@ -83,13 +84,6 @@ export default function QualityControl() {
                                     lastGrade={qc.lastGrade}
                                     gradeError={qc.gradeError}
                                     onGrade={qc.handleGrade}
-                                    onAutoAdvance={() => {
-                                        if (qc.selectedPicker && qc.crew.length > 0) {
-                                            const currentIndex = qc.crew.findIndex(p => p.id === qc.selectedPicker!.id);
-                                            const nextIndex = (currentIndex + 1) % qc.crew.length;
-                                            qc.setSelectedPicker(qc.crew[nextIndex]);
-                                        }
-                                    }}
                                 />
                             </ComponentErrorBoundary>
                         )}
