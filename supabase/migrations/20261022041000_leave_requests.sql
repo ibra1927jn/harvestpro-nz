@@ -71,12 +71,16 @@ ALTER TABLE public.leave_requests ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.leave_requests FROM anon;
 GRANT SELECT, INSERT, UPDATE ON public.leave_requests TO authenticated;
 
--- Lectura: miembros del huerto; RRHH, nómina y admin de toda la empresa
+-- Lectura: miembros activos del huerto; RRHH, nómina y admin de toda la empresa
+-- (get_my_orchard_id no mira is_active; is_role sí: una cuenta dada de baja no lee)
 DROP POLICY IF EXISTS "Read leave requests" ON public.leave_requests;
 CREATE POLICY "Read leave requests" ON public.leave_requests
     FOR SELECT TO authenticated
     USING (
-        orchard_id = (SELECT public.get_my_orchard_id())
+        (
+            orchard_id = (SELECT public.get_my_orchard_id())
+            AND (SELECT public.is_role(ARRAY['manager', 'team_leader', 'runner', 'qc_inspector', 'logistics']))
+        )
         OR (SELECT public.is_role(ARRAY['hr_admin', 'payroll_admin', 'admin']))
     );
 

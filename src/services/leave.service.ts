@@ -40,7 +40,11 @@ export function leaveCoversDate(leave: Pick<LeaveRequest, 'start_date' | 'end_da
     return leave.start_date <= ymd && ymd <= leave.end_date;
 }
 
-/** Personas con una ausencia aprobada que cubre la fecha dada (→ on_leave) */
+/**
+ * Personas con una ausencia aprobada que cubre la fecha dada (→ on_leave en RRHH).
+ * TODO (fuera de alcance de la revisión 21-10 #18): quitar a estas personas del
+ * pase de lista del team leader (AttendanceView) y del plan del día del manager.
+ */
 export function onLeaveOn(leaves: ReadonlyArray<LeaveRequest>, ymd: string): Set<string> {
     const out = new Set<string>();
     for (const l of leaves) {
