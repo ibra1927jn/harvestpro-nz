@@ -24,23 +24,35 @@ describe('contractRepository2', () => {
         fromSpy = vi.spyOn(supabase, 'from').mockReturnValue(mockChain({ data: [], error: null }) as never);
     });
 
-    describe('getPending', () => {
-        it('returns pending contracts', async () => {
-            const contracts = [{ id: 'c1', status: 'draft' }];
-            fromSpy.mockReturnValue(mockChain({ data: contracts, error: null }) as never);
-            const result = await contractRepository2.getPending();
+    describe('listOpen', () => {
+        it('returns draft, active and expiring contracts, paged with a stable order', async () => {
+            const contracts = [{ id: 'c1', employee_id: 'e1', status: 'draft', end_date: null }];
+            const chain = mockChain({ data: contracts, error: null });
+            fromSpy.mockReturnValue(chain as never);
+            const result = await contractRepository2.listOpen();
             expect(result).toEqual(contracts);
             expect(fromSpy).toHaveBeenCalledWith('contracts');
+            expect(chain.in).toHaveBeenCalledWith('status', ['draft', 'active', 'expiring']);
+            expect(chain.order).toHaveBeenCalledWith('id');
+            expect(chain.range).toHaveBeenCalledWith(0, 999);
         });
 
         it('filters by orchardId', async () => {
-            const result = await contractRepository2.getPending('orch-1');
+            const chain = mockChain({ data: [], error: null });
+            fromSpy.mockReturnValue(chain as never);
+            const result = await contractRepository2.listOpen('orch-1');
             expect(result).toEqual([]);
+            expect(chain.eq).toHaveBeenCalledWith('orchard_id', 'orch-1');
         });
 
         it('returns empty on null data', async () => {
             fromSpy.mockReturnValue(mockChain({ data: null, error: null }) as never);
-            expect(await contractRepository2.getPending()).toEqual([]);
+            expect(await contractRepository2.listOpen()).toEqual([]);
+        });
+
+        it('throws on error', async () => {
+            fromSpy.mockReturnValue(mockChain({ data: null, error: { message: 'rls' } }) as never);
+            await expect(contractRepository2.listOpen()).rejects.toBeTruthy();
         });
     });
 

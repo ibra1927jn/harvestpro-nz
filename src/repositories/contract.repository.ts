@@ -4,17 +4,31 @@
 import { supabase } from '@/services/supabase';
 import { todayNZST } from '@/utils/nzst';
 import { fetchInChunks } from '@/utils/fetchInChunks';
+import { fetchAllRows } from '@/utils/fetchAllRows';
+
+export interface OpenContractRow {
+    id: string;
+    employee_id: string;
+    status: string;
+    end_date: string | null;
+}
 
 export const contractRepository2 = {
-    /** Get pending/draft contracts */
-    async getPending(orchardId?: string) {
-        let query = supabase
-            .from('contracts')
-            .select('id, status')
-            .in('status', ['draft', 'expiring']);
-        if (orchardId) query = query.eq('orchard_id', orchardId);
-        const { data } = await query;
-        return data || [];
+    /**
+     * Contratos abiertos (borrador, activo o caducando) para el resumen de
+     * RRHH: de ahí salen los pendientes (borradores, caducando y activos sin
+     * copia firmada). Por páginas: una empresa grande pasa de 1000 contratos.
+     */
+    async listOpen(orchardId?: string): Promise<OpenContractRow[]> {
+        return fetchAllRows<OpenContractRow>((from, to) => {
+            let query = supabase
+                .from('contracts')
+                .select('id, employee_id, status, end_date')
+                .in('status', ['draft', 'active', 'expiring'])
+                .is('deleted_at', null);
+            if (orchardId) query = query.eq('orchard_id', orchardId);
+            return query.order('id').range(from, to);
+        });
     },
 
     /** Get all contracts with full details (ordered by status + end_date) */

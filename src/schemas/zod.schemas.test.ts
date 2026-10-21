@@ -12,6 +12,10 @@ import {
     HarvestSettingsSchema,
     QcCriteriaSchema,
     QcInspectionInsertSchema,
+    LeaveRequestSchema,
+    NewLeaveRequestSchema,
+    LEAVE_TYPES,
+    LEAVE_STATUSES,
     safeParse,
     safeParseArray,
 } from './zod.schemas';
@@ -424,5 +428,43 @@ describe('QcInspectionInsertSchema', () => {
         const r = QcCriteriaSchema.safeParse({ ladder: 'bad', bogus: 'ok' });
         expect(r.success).toBe(true);
         if (r.success) expect(r.data).toEqual({ ladder: 'bad' });
+    });
+});
+
+// ─── Leave requests (RRHH: ausencias y permisos) ────────────────────────────
+
+describe('leave request schemas', () => {
+    const U1 = '11111111-1111-4111-8111-111111111111';
+    const U2 = '22222222-2222-4222-8222-222222222222';
+    const base = { orchard_id: U1, picker_id: U2, type: 'annual', start_date: '2026-10-20', end_date: '2026-10-22' };
+
+    it('domains match the DB check constraints', () => {
+        expect(LEAVE_TYPES).toEqual(['annual', 'sick', 'bereavement', 'family_violence', 'unpaid', 'day_off', 'other']);
+        expect(LEAVE_STATUSES).toEqual(['requested', 'approved', 'rejected', 'cancelled']);
+    });
+
+    it('NewLeaveRequestSchema: defaults and trimming', () => {
+        const r = NewLeaveRequestSchema.safeParse({ ...base, reason: '  late flight  ' });
+        expect(r.success).toBe(true);
+        if (r.success) expect(r.data).toEqual({ ...base, half_day: false, reason: 'late flight', requested_by: null, status: 'requested' });
+    });
+
+    it('NewLeaveRequestSchema: end before start, half day over several days, bad dates and ids', () => {
+        expect(safeParse(NewLeaveRequestSchema, { ...base, end_date: '2026-10-19' })).toEqual({ success: false, error: 'end_date: End date must be on or after the start date' });
+        expect(safeParse(NewLeaveRequestSchema, { ...base, half_day: true })).toEqual({ success: false, error: 'half_day: A half day is a single day' });
+        expect(NewLeaveRequestSchema.safeParse({ ...base, half_day: true, end_date: '2026-10-20' }).success).toBe(true);
+        expect(NewLeaveRequestSchema.safeParse({ ...base, start_date: '20/10/2026' }).success).toBe(false);
+        expect(NewLeaveRequestSchema.safeParse({ ...base, picker_id: 'p1' }).success).toBe(false);
+        expect(NewLeaveRequestSchema.safeParse({ ...base, type: 'holiday' }).success).toBe(false);
+        expect(NewLeaveRequestSchema.safeParse({ ...base, reason: 'x'.repeat(501) }).success).toBe(false);
+    });
+
+    it('LeaveRequestSchema: a DB row parses, null defaults fill in, bad status fails', () => {
+        const row = { id: U1, ...base, status: 'approved', created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-01T00:00:00Z' };
+        const r = LeaveRequestSchema.safeParse(row);
+        expect(r.success).toBe(true);
+        if (r.success) expect(r.data).toMatchObject({ half_day: false, reason: null, requested_by: null, decided_by: null, decided_at: null, decision_note: null });
+        expect(LeaveRequestSchema.safeParse({ ...row, status: 'pending' }).success).toBe(false);
+        expect(safeParseArray(LeaveRequestSchema, [row, { id: 'nope' }])).toHaveLength(1);
     });
 });

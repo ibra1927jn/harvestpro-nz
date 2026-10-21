@@ -181,6 +181,37 @@ describe('FilterBar', () => {
         render(<FilterBar {...defaultProps} searchValue="Maria" />);
         expect(screen.getByText('"Maria"')).toBeTruthy();
     });
+
+    describe('options with label and count (fixed domain)', () => {
+        const filters = [{
+            key: 'status', label: 'Status', options: [
+                { value: 'active', count: 12 },
+                { value: 'on_leave', count: 0 },
+                { value: 'custom', label: 'Custom label', count: 3 },
+            ],
+        }];
+
+        it('shows every option of the domain with its count, 0 greyed out but selectable', () => {
+            const onFilterChange = vi.fn();
+            render(<FilterBar {...defaultProps} filters={filters} onFilterChange={onFilterChange} />);
+            fireEvent.click(screen.getByText('Status'));
+            expect(screen.getByText('(12)')).toBeTruthy();
+            const empty = screen.getByText('On leave').closest('button')!;
+            expect(empty.className).toContain('text-text-muted');
+            expect(empty.getAttribute('data-count')).toBe('0');
+            fireEvent.click(empty);
+            expect(onFilterChange).toHaveBeenCalledWith('status', 'on_leave');
+        });
+
+        it('uses the custom label in the dropdown, the button and the active pill', () => {
+            render(<FilterBar {...defaultProps} filters={filters} activeFilters={{ status: 'custom' }} />);
+            // Botón del filtro + píldora de filtros activos
+            expect(screen.getAllByText('Custom label').length).toBe(2);
+            fireEvent.click(screen.getAllByText('Custom label')[0]);
+            expect(screen.getAllByText('Custom label').length).toBe(3);
+            expect(screen.getByText('(3)')).toBeTruthy();
+        });
+    });
 });
 
 // ── PageHeader ──────────────────────────────────────

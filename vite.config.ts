@@ -86,6 +86,16 @@ export default defineConfig(() => {
             // configurados: no gastar ~200 KB de datos en la instalación del SW
             'assets/vendor-sentry-*.js',
             'assets/vendor-analytics-*.js',
+            // RRHH es trabajo de oficina con conexión (escrituras directas, sin cola
+            // offline): sus pantallas no se descargan al instalar la PWA en el móvil
+            // de campo; se cachean la primera vez que se abren (CacheFirst abajo)
+            'assets/HHRR-*.js',
+            'assets/EmployeesTab-*.js',
+            'assets/ContractsTab-*.js',
+            'assets/PayrollTab-*.js',
+            'assets/DocumentsTab-*.js',
+            'assets/CalendarTab-*.js',
+            'assets/SeasonalPlanningTab-*.js',
           ],
           runtimeCaching: [
             {
@@ -100,12 +110,14 @@ export default defineConfig(() => {
             {
               // Chunks con hash excluidos del precache: inmutables → CacheFirst
               urlPattern: ({ url, sameOrigin }) =>
-                sameOrigin && /^\/assets\/vendor-(sentry|analytics)-[\w-]+\.js$/.test(url.pathname),
+                sameOrigin &&
+                /^\/assets\/(vendor-(sentry|analytics)|HHRR|EmployeesTab|ContractsTab|PayrollTab|DocumentsTab|CalendarTab|SeasonalPlanningTab)-[\w-]+\.js$/.test(url.pathname),
               handler: 'CacheFirst',
               options: {
                 cacheName: 'deferred-vendor-chunks',
                 cacheableResponse: { statuses: [200] },
-                expiration: { maxEntries: 6, maxAgeSeconds: 60 * 60 * 24 * 90 },
+                // 2 vendor + 7 de RRHH (y una versión anterior de cada uno tras un deploy)
+                expiration: { maxEntries: 18, maxAgeSeconds: 60 * 60 * 24 * 90 },
               },
             },
             {

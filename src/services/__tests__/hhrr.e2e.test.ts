@@ -58,7 +58,17 @@ vi.mock('@/repositories/user.repository', () => ({
   },
 }));
 
-const mockGetPending = vi.fn().mockResolvedValue([{ id: 'c1', employee_id: 'u1' }]);
+// Contratos abiertos de la empresa: c1 activo sin copia firmada → 1 pendiente
+const mockListOpen = vi.fn().mockResolvedValue([{ id: 'c1', employee_id: 'u1', status: 'active', end_date: '2026-12-31' }]);
+const mockListPersonDocuments = vi.fn().mockResolvedValue([]);
+
+vi.mock('@/repositories/hr-documents.repository', () => ({
+  hrDocumentsRepository: {
+    listPersonDocuments: (...a: unknown[]) => mockListPersonDocuments(...a),
+    listExpiringCompany: vi.fn().mockResolvedValue([]),
+  },
+  HR_DOCUMENT_TYPE_LABELS: {},
+}));
 const mockGetAllContracts = vi
   .fn()
   .mockResolvedValue([
@@ -103,7 +113,7 @@ const mockGetExpiredButActive = vi
 
 vi.mock('@/repositories/contract.repository', () => ({
   contractRepository2: {
-    getPending: (...a: unknown[]) => mockGetPending(...a),
+    listOpen: (...a: unknown[]) => mockListOpen(...a),
     getAll: (...a: unknown[]) => mockGetAllContracts(...a),
     getByEmployeeIds: (...a: unknown[]) => mockGetByEmployeeIds(...a),
     getExpiringSoon: (...a: unknown[]) => mockGetExpiringSoon(...a),
@@ -179,6 +189,14 @@ describe('hhrr.service — E2E deep tests', () => {
       expect(summary.complianceAlerts).toBeGreaterThan(0);
     });
 
+    it('an active contract with its signed copy on file is not pending', async () => {
+      mockListPersonDocuments.mockResolvedValueOnce([
+        { id: 'd1', picker_id: 'u1', user_id: null, document_type: 'employment_agreement', expires_at: '2026-12-31', contract_id: 'c1', storage_path: 'o1/x.pdf' },
+      ]);
+      const summary = await fetchHRSummary('o1');
+      expect(summary.pendingContracts).toBe(0);
+    });
+
     it('calculates payroll with the unified rules (unpaid break, daily top-up)', async () => {
       const summary = await fetchHRSummary('o1');
       // u1: 8 h − 0.5 descanso = 7.5 h → 179.63 (10 cubetas × 7 = 70 + complemento)
@@ -220,9 +238,20 @@ describe('hhrr.service — E2E deep tests', () => {
       const employees = await fetchEmployees('o1');
       expect(employees.length).toBe(2);
       expect(employees[0].full_name).toBe('Alice');
-      expect(employees[0].status).toBe('active');
+      // Contrato activo pero sin copia firmada → alta pendiente
+      expect(employees[0].status).toBe('pending');
+      expect(employees[0].missing_items).toContain('signed_copy');
       expect(employees[0].contract_type).toBe('seasonal');
       expect(employees[0].hourly_rate).toBe(25);
+    });
+
+    it('is active once the signed agreement is on file', async () => {
+      mockListPersonDocuments.mockResolvedValueOnce([
+        { id: 'd1', picker_id: 'u1', user_id: null, document_type: 'employment_agreement', expires_at: '2026-12-31', contract_id: 'c1', storage_path: 'o1/x.pdf' },
+      ]);
+      const employees = await fetchEmployees('o1');
+      expect(employees[0].status).toBe('active');
+      expect(employees[0].contract_document?.id).toBe('d1');
     });
 
     it('maps terminated status for inactive users', async () => {
