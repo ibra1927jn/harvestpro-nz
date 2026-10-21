@@ -44,6 +44,12 @@ const orchardMap: TranslationDict = {
     'orchardMap.list.status.active': 'Aktibo',
     'orchardMap.list.status.idle': 'Idle',
     'orchardMap.blockTitle': 'Block {letter} — {variety}',
+    // Vista del team leader: equipo de cada fila (OrchardMapView / RowCard)
+    'orchardMap.team.mine': 'Aking team',
+    'orchardMap.team.other': 'Team ni {name}',
+    'orchardMap.team.other_unknown': 'Ibang team',
+    'orchardMap.team.legend_mine': 'Mga hanay ng aking team',
+    'orchardMap.team.legend_other': 'Ibang mga team',
 };
 
 export default orchardMap;

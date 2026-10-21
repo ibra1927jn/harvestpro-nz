@@ -15,6 +15,7 @@ import React from 'react';
 import { Picker, BucketRecord } from '@/types';
 import { useOrchardMap } from '@/hooks/useOrchardMap';
 import { getVarietyStyle } from '@/utils/orchardMapUtils';
+import { rowTeamHighlight } from '@/services/harvestMetrics/rowTeams';
 import { ProgressRing, BlockCard, RowCard } from './orchard-map';
 import { useTranslation } from '@/i18n';
 
@@ -23,6 +24,12 @@ interface OrchardMapViewProps {
     bucketRecords: BucketRecord[];
     targetBucketsPerRow?: number;
     onRowClick?: (rowNum: number) => void;
+    /**
+     * Vista del team leader: resalta las filas donde está SU equipo y deja en
+     * gris (con el nombre del team leader) las de los otros equipos.
+     * Sin la prop (manager) el mapa no cambia.
+     */
+    highlightTeamLeaderId?: string;
 }
 
 export default function OrchardMapView({
@@ -30,6 +37,7 @@ export default function OrchardMapView({
     bucketRecords,
     targetBucketsPerRow = 50,
     onRowClick,
+    highlightTeamLeaderId,
 }: OrchardMapViewProps) {
     const map = useOrchardMap(crew, bucketRecords, targetBucketsPerRow);
     const { t } = useTranslation();
@@ -61,6 +69,20 @@ export default function OrchardMapView({
                     {t('orchardMap.live')}
                 </div>
             </div>
+
+            {/* ═══ LEYENDA DE EQUIPOS (vista del team leader) ═══ */}
+            {highlightTeamLeaderId && (
+                <div className="flex items-center gap-4 px-2 text-xs text-text-muted" data-testid="team-legend">
+                    <span className="flex items-center gap-1.5">
+                        <span className="w-4 h-2.5 rounded-sm bg-indigo-500" />
+                        {t('orchardMap.team.legend_mine')}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                        <span className="w-4 h-2.5 rounded-sm bg-slate-400" />
+                        {t('orchardMap.team.legend_other')}
+                    </span>
+                </div>
+            )}
 
             {/* ═══ BREADCRUMB ═══ */}
             {map.selectedBlock && (
@@ -166,6 +188,9 @@ export default function OrchardMapView({
                                     index={i}
                                     rowAssignments={map.rowAssignments}
                                     onRowClick={onRowClick}
+                                    teamHighlight={highlightTeamLeaderId
+                                        ? rowTeamHighlight(highlightTeamLeaderId, rd.rowNum, rd.pickers, map.rowAssignments, crew)
+                                        : null}
                                 />
                             ))}
                         </div>

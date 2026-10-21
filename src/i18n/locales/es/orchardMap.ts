@@ -49,6 +49,12 @@ const orchardMap: TranslationDict = {
     'orchardMap.list.status.idle': 'Inactivo',
     // Título de tarjeta de bloque con letra y variedad
     'orchardMap.blockTitle': 'Bloque {letter} — {variety}',
+    // Vista del team leader: equipo de cada fila (OrchardMapView / RowCard)
+    'orchardMap.team.mine': 'Mi equipo',
+    'orchardMap.team.other': 'Equipo de {name}',
+    'orchardMap.team.other_unknown': 'Otro equipo',
+    'orchardMap.team.legend_mine': 'Filas de mi equipo',
+    'orchardMap.team.legend_other': 'Otros equipos',
 };
 
 export default orchardMap;

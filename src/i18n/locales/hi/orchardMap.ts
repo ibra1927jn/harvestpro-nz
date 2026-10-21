@@ -44,6 +44,12 @@ const orchardMap: TranslationDict = {
     'orchardMap.list.status.active': 'सक्रिय',
     'orchardMap.list.status.idle': 'निष्क्रिय',
     'orchardMap.blockTitle': 'ब्लॉक {letter} — {variety}',
+    // Vista del team leader: equipo de cada fila (OrchardMapView / RowCard)
+    'orchardMap.team.mine': 'मेरी टीम',
+    'orchardMap.team.other': '{name} की टीम',
+    'orchardMap.team.other_unknown': 'दूसरी टीम',
+    'orchardMap.team.legend_mine': 'मेरी टीम की पंक्तियाँ',
+    'orchardMap.team.legend_other': 'अन्य टीमें',
 };
 
 export default orchardMap;
