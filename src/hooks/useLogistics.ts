@@ -14,6 +14,9 @@ import {
 } from '@/services/logistics-dept.service';
 import { logger } from '@/utils/logger';
 
+/** Espera para juntar varios cambios de realtime en una recarga */
+export const LOGISTICS_REFRESH_DEBOUNCE_MS = 2000;
+
 export interface UseLogisticsResult {
     summary: LogisticsSummary;
     tractors: Tractor[];
@@ -59,24 +62,39 @@ export function useLogistics(): UseLogisticsResult {
     useEffect(() => {
         reload();
 
-        // Supabase Realtime — auto-refresh on transport_requests & fleet_vehicles changes
+        // Realtime: los cambios que llegan seguidos (asignar, completar, varias
+        // peticiones a la vez) se juntan en una sola recarga a los 2 s. Antes
+        // cada evento lanzaba 2 consultas más el resumen de 3.
+        let pending = { requests: false, fleet: false };
+        let timer: ReturnType<typeof setTimeout> | null = null;
+        const flush = () => {
+            timer = null;
+            const want = pending;
+            pending = { requests: false, fleet: false };
+            Promise.all([
+                want.requests ? fetchTransportRequests() : null,
+                want.fleet ? fetchFleet() : null,
+                fetchLogisticsSummary(),
+            ]).then(([reqs, fleet, sum]) => {
+                if (reqs) setRequests(reqs);
+                if (fleet) setTractors(fleet);
+                setSummary(sum);
+            }).catch(err => logger.warn('[Logistics] Realtime refresh failed:', err));
+        };
+        const schedule = (what: 'requests' | 'fleet') => {
+            pending[what] = true;
+            if (!timer) timer = setTimeout(flush, LOGISTICS_REFRESH_DEBOUNCE_MS);
+        };
         const channel = supabase
             .channel('logistics-realtime')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'transport_requests' }, () => {
-                Promise.all([fetchTransportRequests(), fetchLogisticsSummary()]).then(([reqs, sum]) => {
-                    setRequests(reqs);
-                    setSummary(sum);
-                });
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'fleet_vehicles' }, () => {
-                Promise.all([fetchFleet(), fetchLogisticsSummary()]).then(([fleet, sum]) => {
-                    setTractors(fleet);
-                    setSummary(sum);
-                });
-            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'transport_requests' }, () => schedule('requests'))
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'fleet_vehicles' }, () => schedule('fleet'))
             .subscribe();
 
-        return () => { supabase.removeChannel(channel); };
+        return () => {
+            if (timer) clearTimeout(timer);
+            supabase.removeChannel(channel);
+        };
     }, [reload]);
 
     return { summary, tractors, bins, requests, history, isLoading, reload };

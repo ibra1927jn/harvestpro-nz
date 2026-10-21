@@ -94,7 +94,8 @@ export async function hydrateFromDexie(set: StoreSetter): Promise<void> {
 export async function fetchOrchardData(
   get: StoreGetter,
   set: StoreSetter,
-  orchardId?: string | null
+  orchardId?: string | null,
+  opts: { catchUp?: boolean } = {}
 ): Promise<{ id: string; name?: string; total_rows?: number } | null> {
   const state = get();
   const lastSync = state.lastSyncAt;
@@ -107,9 +108,19 @@ export async function fetchOrchardData(
     bucketCount: state.bucketRecords.length,
   });
 
-  const activeOrchard = await loadActiveOrchard(orchardId ?? state.orchard?.id);
-  const settings = activeOrchard ? await storeSyncRepository.getSettings(activeOrchard.id) : null;
-  set({ orchard: activeOrchard, settings: settings || state.settings });
+  // Al desbloquear el móvil (catchUp) solo se pide lo que cambia durante el día:
+  // huerto, ajustes de pago y bloques/filas ya están en memoria. En el campo el
+  // teléfono se bloquea y desbloquea decenas de veces al día y cada vez se
+  // repetían 11 consultas (prueba de carga 2026-10-21).
+  const light = !!opts.catchUp && useDelta && !!state.orchard?.id && !orchardId;
+  let activeOrchard: ActiveOrchard;
+  if (light) {
+    activeOrchard = state.orchard as ActiveOrchard;
+  } else {
+    activeOrchard = await loadActiveOrchard(orchardId ?? state.orchard?.id);
+    const settings = activeOrchard ? await storeSyncRepository.getSettings(activeOrchard.id) : null;
+    set({ orchard: activeOrchard, settings: settings || state.settings });
+  }
 
   // Medianoche NZ real (desfase vigente a medianoche: el día del cambio de
   // hora no es el de ahora), independiente del timezone del dispositivo
@@ -133,7 +144,7 @@ export async function fetchOrchardData(
 
   if (activeOrchard?.id) {
     await loadShiftsElsewhere(set, activeOrchard.id, today);
-    await get().fetchBlocks(activeOrchard.id);
+    if (!light) await get().fetchBlocks(activeOrchard.id);
     await loadRowAssignments(get, set, activeOrchard.id);
     await loadBins(set, activeOrchard.id);
   } else if (get().rowAssignments.length > 0) {
@@ -172,23 +183,28 @@ async function loadCrewAndBuckets(p: {
 }): Promise<void> {
   const { state, set, orchardKey, today, startOfDayNZ, useDelta, lastSync, now } = p;
   let pickersQuery = storeSyncRepository.getPickersQuery(orchardKey, today, { onlyStaff: !useDelta });
-  let bucketsQuery = storeSyncRepository.getBucketRecordsQuery(orchardKey, startOfDayNZ);
 
   if (useDelta) {
     const safeSyncDate = deltaSinceISO(lastSync!);
     pickersQuery = pickersQuery.gte('updated_at', safeSyncDate);
-    bucketsQuery = bucketsQuery.gte('updated_at', safeSyncDate);
     logger.info(`[Sync] Delta mode: fetching changes since ${safeSyncDate}`);
   } else {
     pickersQuery = pickersQuery.is('deleted_at', null);
-    bucketsQuery = bucketsQuery.is('deleted_at', null);
     logger.info('[Sync] Full mode: downloading all active records');
   }
 
-  // Carga completa por páginas: un día con mucha cuadrilla pasa de las 1000
-  // filas que devuelve PostgREST por petición.
+  // Por páginas, también el delta: PostgREST devuelve como mucho 1000 filas por
+  // petición. Un móvil que estuvo bloqueado una hora en un huerto que hace
+  // ~400 cubetas/h pedía un delta de más de 1000 y el resto se perdía sin aviso
+  // (prueba de carga 2026-10-21).
   const bucketsPromise = useDelta
-    ? bucketsQuery
+    ? fetchAllRows<BucketRecord>((from, to) =>
+        storeSyncRepository
+          .getBucketRecordsQuery(orchardKey, startOfDayNZ)
+          .gte('updated_at', deltaSinceISO(lastSync!))
+          .order('id')
+          .range(from, to)
+      ).then(data => ({ data, error: null }))
     : fetchAllRows<BucketRecord>((from, to) =>
         storeSyncRepository
           .getBucketRecordsQuery(orchardKey, startOfDayNZ)

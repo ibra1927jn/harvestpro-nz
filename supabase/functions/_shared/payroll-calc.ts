@@ -6,6 +6,7 @@
  */
 import { payForRange, pieceRateFor, isNZPublicHoliday, PAY_RULES, type PayDay, type PickerRangePay } from './pay-rules.ts'
 import { fetchAllRows } from './fetch-all-rows.ts'
+import { fetchInChunks } from './fetch-in-chunks.ts'
 
 // deno-lint-ignore no-explicit-any
 type SupabaseLike = any
@@ -285,9 +286,10 @@ export async function computePayroll(
     const rows = (orchard_id ? onlyOrchardShare(allRows, orchard_id) : allRows).sort((a, b) => b.buckets - a.buckets)
     const pickerIds = rows.map(r => r.pickerId)
 
-    const { data: names } = pickerIds.length
-        ? await supabase.from('pickers').select('id, name').in('id', pickerIds)
-        : { data: [] as { id: string; name: string }[] }
+    // Por trozos: con ~250 personas en la URL Kong respondía 414 y la nómina
+    // salía sin nombres (prueba de carga 2026-10-21)
+    const names = await fetchInChunks<{ id: string; name: string }>(pickerIds, (chunk, from, to) =>
+        supabase.from('pickers').select('id, name').in('id', chunk).order('id').range(from, to))
     const nameById = new Map<string, string>((names ?? []).map((n: { id: string; name: string }) => [n.id, n.name]))
 
     // 4. Desglose por picker

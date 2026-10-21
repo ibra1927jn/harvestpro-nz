@@ -65,6 +65,9 @@ async function computeDayOfPeople(pickerIds: string[], date: string, minWage: nu
   return byPicker;
 }
 
+/** Hojas por llamada en «Aprobar todas» (el servidor admite hasta 500) */
+export const TIMESHEET_BATCH_SIZE = 200;
+
 export const payrollService = {
   /**
    * Calcular nómina usando Edge Function (servidor)
@@ -190,6 +193,37 @@ export const payrollService = {
     // 📊 PostHog: Track timesheet approval
     analytics.trackTimesheetAction('approve', attendanceId);
     return data!;
+  },
+
+  /**
+   * Aprobar varias hojas de una vez («Aprobar todas»): una llamada por lote.
+   * Cada una se aprueba en el servidor igual que sola; vuelve cuáles salieron.
+   */
+  async approveTimesheets(
+    items: { id: string; updated_at?: string }[]
+  ): Promise<{ approved: { id: string; updated_at?: string }[]; failed: { id: string; reason: string }[] }> {
+    const approved: { id: string; updated_at?: string }[] = [];
+    const failed: { id: string; reason: string }[] = [];
+    for (let i = 0; i < items.length; i += TIMESHEET_BATCH_SIZE) {
+      const chunk = items.slice(i, i + TIMESHEET_BATCH_SIZE);
+      const { data, error } = await edgeFunctionsRepository.invoke<{
+        success: boolean;
+        approved: number;
+        results: { attendance_id: string; status: 'approved' | 'conflict' | 'error'; updated_at?: string; reason?: string }[];
+      }>('approve-timesheet', {
+        items: chunk.map(it => ({ attendance_id: it.id, current_updated_at: it.updated_at })),
+      });
+      if (error || !data) {
+        failed.push(...chunk.map(it => ({ id: it.id, reason: error?.message ?? 'no response' })));
+        continue;
+      }
+      for (const r of data.results) {
+        if (r.status === 'approved') approved.push({ id: r.attendance_id, updated_at: r.updated_at });
+        else failed.push({ id: r.attendance_id, reason: r.reason ?? r.status });
+      }
+    }
+    analytics.trackTimesheetAction('approve', `batch:${approved.length}`);
+    return { approved, failed };
   },
 
   /**

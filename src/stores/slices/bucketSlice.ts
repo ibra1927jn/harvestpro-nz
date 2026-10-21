@@ -7,7 +7,6 @@
 import { StateCreator } from 'zustand';
 // supabase import removed — direct inserts eliminated, Dexie is sole sync path
 import { offlineService } from '@/services/offline.service';
-import { auditService } from '@/services/audit.service';
 import { analytics } from '@/config/analytics';
 import { logger } from '@/utils/logger';
 import { toNZST } from '@/utils/nzst';
@@ -68,22 +67,12 @@ export const createBucketSlice: StateCreator<
             lastScanTime: Date.now(),
         }));
 
-        // 🔍 Audit log the scan
-        auditService.logAudit(
-            'bucket.scanned',
-            `Bucket scanned for picker ${bucketData.picker_id}`,
-            {
-                severity: 'info',
-                userId: get().currentUser?.id,
-                orchardId: bucketData.orchard_id,
-                entityType: 'bucket',
-                entityId: newBucket.id,
-                details: {
-                    quality_grade: bucketData.quality_grade,
-                    picker_id: bucketData.picker_id,
-                }
-            }
-        );
+        // Sin entrada de auditoría por cubeta: cada escaneo ya queda en el
+        // servidor con quién lo escaneó (scanned_by), cuándo (scanned_at,
+        // created_at) y, si hubo algo raro, en rejected_scans. La auditoría por
+        // cubeta duplicaba la tabla más grande (audit_logs crecía al mismo
+        // ritmo que bucket_records) y añadía una llamada a submit-audit-log
+        // cada 5 s por móvil (prueba de carga 2026-10-21).
 
         // 📊 PostHog: Track bucket scan event
         analytics.trackBucketScanned(bucketData.picker_id, bucketData.quality_grade);

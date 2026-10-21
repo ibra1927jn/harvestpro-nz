@@ -68,6 +68,31 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
     };
 
     const pending = timesheets.filter(ts => !ts.is_verified && !ts.is_rejected);
+    // «Aprobar todas»: solo las hojas cerradas (con salida); una por una eran
+    // cientos de clics al día con una cuadrilla grande
+    const completePending = pending.filter(ts => !!ts.check_out);
+    const [isApprovingAll, setIsApprovingAll] = useState(false);
+    const handleApproveAll = async () => {
+        if (completePending.length === 0 || isApprovingAll) return;
+        if (!window.confirm(t('pay.ts.approve_all_confirm', { count: completePending.length }))) return;
+        setIsApprovingAll(true);
+        try {
+            const { approved, failed } = await payrollService.approveTimesheets(
+                completePending.map(ts => ({ id: ts.id, updated_at: ts.updated_at }))
+            );
+            const byId = new Map(approved.map(a => [a.id, a.updated_at]));
+            setTimesheets(prev => prev.map(ts => byId.has(ts.id)
+                ? { ...ts, is_verified: true, is_rejected: false, verified_by: 'current_user', updated_at: byId.get(ts.id) ?? ts.updated_at }
+                : ts));
+            if (approved.length > 0) showToast(t('pay.ts.approved_all', { count: approved.length }));
+            if (failed.length > 0) showToast(t('pay.ts.approve_all_failed', { count: failed.length }), 'error');
+        } catch (err) {
+            logger.error('[Payroll] Failed to approve all timesheets:', err);
+            showToast(t('pay.ts.approve_all_failed', { count: completePending.length }), 'error');
+        } finally {
+            setIsApprovingAll(false);
+        }
+    };
     const approved = timesheets.filter(ts => ts.is_verified);
     const rejected = timesheets.filter(ts => ts.is_rejected);
 
@@ -84,7 +109,18 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-50"></div>
                 <div className="flex items-center justify-between mb-5">
                     <h3 className="font-extrabold text-slate-800 text-lg tracking-tight">{t('pay.ts.pending_approval')}</h3>
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-orange-50 text-orange-600 border border-orange-100 uppercase tracking-widest">{t('pay.ts.pending_count', { n: pending.length })}</span>
+                    <div className="flex items-center gap-2">
+                        {completePending.length > 1 && (
+                            <button
+                                onClick={handleApproveAll}
+                                disabled={isApprovingAll}
+                                className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-emerald-600 text-white uppercase tracking-widest hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                            >
+                                {t('pay.ts.approve_all', { count: completePending.length })}
+                            </button>
+                        )}
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-orange-50 text-orange-600 border border-orange-100 uppercase tracking-widest">{t('pay.ts.pending_count', { n: pending.length })}</span>
+                    </div>
                 </div>
                 {isLoading ? (
                     <div className="text-center py-8 text-text-muted">

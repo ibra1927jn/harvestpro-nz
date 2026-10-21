@@ -3,6 +3,7 @@
  */
 import { supabase } from '@/services/supabase';
 import { todayNZST } from '@/utils/nzst';
+import { fetchInChunks } from '@/utils/fetchInChunks';
 
 export const contractRepository2 = {
     /** Get pending/draft contracts */
@@ -59,14 +60,24 @@ export const contractRepository2 = {
     /** Get contracts by employee IDs (for enrichment) */
     async getByEmployeeIds(employeeIds: string[]) {
         if (employeeIds.length === 0) return [];
-        const { data } = await supabase
-            .from('contracts')
-            .select('id, employee_id, type, status, start_date, end_date, hourly_rate, updated_at')
-            .in('employee_id', employeeIds)
-            .in('status', ['active', 'expiring'])
-            .is('deleted_at', null)
-            .order('start_date', { ascending: false });
-        return data || [];
+        // Por trozos: con toda la plantilla en la URL el servidor daba 414 y
+        // todos salían sin contrato
+        try {
+            const rows = await fetchInChunks(employeeIds, (ids, from, to) =>
+                supabase
+                    .from('contracts')
+                    .select('id, employee_id, type, status, start_date, end_date, hourly_rate, updated_at')
+                    .in('employee_id', ids)
+                    .in('status', ['active', 'expiring'])
+                    .is('deleted_at', null)
+                    .order('start_date', { ascending: false })
+                    .order('id')
+                    .range(from, to),
+            );
+            return rows.sort((a, b) => String(b.start_date).localeCompare(String(a.start_date)));
+        } catch {
+            return [];
+        }
     },
 
     /** Nuevo contrato (RRHH). Lanza el error para que la pantalla lo diga. */

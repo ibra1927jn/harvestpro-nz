@@ -13,7 +13,7 @@ import { onLocalDbChange } from '@/services/dbChanges';
 import { feedbackService } from '@/services/feedback.service';
 import { nowNZST } from '@/utils/nzst';
 import { logger } from '@/utils/logger';
-import { Role, type Bin, type Picker } from '@/types/app.types';
+import { type Bin, type Picker } from '@/types/app.types';
 import { createTransportRequest } from '@/services/logistics-dept.service';
 import { binService, bucketsInBin } from '@/services/bin.service';
 import { MAX_BUCKETS_PER_BIN } from '@/types/app.types';
@@ -172,16 +172,14 @@ export function useRunnerData(): UseRunnerDataResult {
         notes: 'Empty bins requested from runner app',
       });
       setToast({ message: t('runner.toast.bin_request_sent', { zone: zoneLabel }), type: 'success' });
-      // Aviso a Logística y manager; si no sale, la petición sigue en la cola
-      sendBroadcast('Bins needed', `${currentUser.name || 'A runner'} needs empty bins at ${zone}`, 'high', [
-        Role.LOGISTICS,
-        Role.MANAGER,
-      ]).catch(() => undefined);
+      // Logística la ve al momento por realtime (transport_requests). Ya no se
+      // manda además un aviso: los avisos son solo de manager/admin (RLS) y el
+      // del runner fallaba siempre con 403 (prueba de carga 2026-10-21).
     } catch (e) {
       logger.error('[Runner] Refill request failed:', e);
       setToast({ message: t('runner.toast.bin_request_failed'), type: 'error' });
     }
-  }, [orchard?.id, orchard?.name, currentUser?.id, currentUser?.name, crew, sendBroadcast, t]);
+  }, [orchard?.id, orchard?.name, currentUser?.id, currentUser?.name, crew, t]);
 
   // Fila del picker: la que tiene asignada en el mapa, o su fila actual
   const rowAssignments = useHarvestStore(s => s.rowAssignments);

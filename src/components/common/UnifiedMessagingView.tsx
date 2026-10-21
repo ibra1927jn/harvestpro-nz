@@ -15,6 +15,9 @@ import ChatWindow from './messaging/ChatWindow';
 import NewChatModal from './messaging/NewChatModal';
 import { useTranslation } from '@/i18n';
 
+/** Sondeo de la barra lateral: solo red de seguridad, los cambios llegan por realtime */
+const SIDEBAR_POLL_MS = 60_000;
+
 const UnifiedMessagingView = () => {
   const { t } = useTranslation();
   const { appUser } = useAuth();
@@ -101,7 +104,9 @@ const UnifiedMessagingView = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChat?.id, loadConversation]);
 
-  // ── Sidebar real-time refresh (Safe polling without race conditions) ──
+  // ── Sidebar: red de seguridad por si se pierde algún evento de realtime ──
+  // (los mensajes nuevos y los contadores ya llegan por realtime; antes se
+  // sondeaba cada 15 s con 5-6 consultas por vuelta)
   useEffect(() => {
     let isMounted = true;
     let timerId: ReturnType<typeof setTimeout>;
@@ -116,11 +121,11 @@ const UnifiedMessagingView = () => {
         }
       }
       if (isMounted) {
-        timerId = setTimeout(poll, 15000);
+        timerId = setTimeout(poll, SIDEBAR_POLL_MS);
       }
     };
 
-    timerId = setTimeout(poll, 15000);
+    timerId = setTimeout(poll, SIDEBAR_POLL_MS);
     return () => {
       isMounted = false;
       clearTimeout(timerId);

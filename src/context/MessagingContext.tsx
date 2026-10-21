@@ -105,9 +105,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
         );
 
         if (!data) throw new Error('Send failed');
-
-        // Update Conversation updated_at
-        await messagingRepository.updateConversationTimestamp(conversationId);
+        // conversations.updated_at lo pone el trigger trg_touch_conversation_on_message
 
         return data;
       } else {

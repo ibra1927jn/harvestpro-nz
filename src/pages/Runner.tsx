@@ -92,7 +92,7 @@ const Runner = () => {
                     pendingUploads={runner.pendingUploads}
                     rejectedScans={runner.rejectedScans}
                     inventory={runner.inventory}
-                    onBroadcast={runner.handleBroadcast}
+                    onOpenNotifications={() => setActiveTab('messaging')}
                     onRequestRefill={runner.handleRequestRefill}
                     selectedBinId={runner.selectedBinId}
                   />
@@ -107,9 +107,7 @@ const Runner = () => {
                 <ComponentErrorBoundary componentName="Warehouse">
                   <WarehouseView
                     inventory={runner.inventory}
-                    onTransportRequest={() =>
-                      runner.handleBroadcast('Warehouse is full. Pickup needed.')
-                    }
+                    onTransportRequest={runner.handleRequestRefill}
                   />
                 </ComponentErrorBoundary>
               )}

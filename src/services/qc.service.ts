@@ -9,6 +9,7 @@ import { syncService } from './sync.service';
 import type { QCInspectionPayload } from './sync-processors/types';
 import { todayNZST, toNZST } from '@/utils/nzst';
 import { qcRepository } from '@/repositories/qc.repository';
+import { distributionOf } from './qcDistribution';
 
 export interface QCInspection {
     id: string;
@@ -97,18 +98,7 @@ export const qcService = {
         orchardId: string,
         date?: string
     ): Promise<GradeDistribution> {
-        const inspections = await this.getInspections(orchardId, date);
-
-        const dist: GradeDistribution = { A: 0, B: 0, C: 0, reject: 0, total: 0 };
-
-        for (const insp of inspections) {
-            if (insp.grade in dist) {
-                dist[insp.grade as keyof Omit<GradeDistribution, 'total'>]++;
-            }
-            dist.total++;
-        }
-
-        return dist;
+        return distributionOf(await this.getInspections(orchardId, date));
     },
 
     /**

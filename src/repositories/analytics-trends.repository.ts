@@ -47,14 +47,20 @@ export const analyticsTrendsRepository = {
 
     /** Get bucket records for a date range grouped by row */
     async getBucketsByRowInRange(orchardId: string, startDate: string, endDate: string) {
-        const { data, error } = await supabase
-            .from('bucket_records')
-            .select('row_number, picker_id, scanned_at')
-            .eq('orchard_id', orchardId)
-            .gte('scanned_at', `${startDate}T00:00:00`)
-            .lte('scanned_at', `${endDate}T23:59:59`);
-        if (error) throw error;
-        return data || [];
+        // Paginado (un solo día de huerto pasa de las 1000 filas que corta
+        // PostgREST: el mapa de calor salía con un tercio de las cubetas) y con
+        // la medianoche NZ (antes 'T00:00:00' se leía como UTC: 13 h de desfase).
+        // Prueba de carga 2026-10-21.
+        return fetchAllRows<{ row_number: number; picker_id: string; scanned_at: string }>((from, to) =>
+            supabase
+                .from('bucket_records')
+                .select('row_number, picker_id, scanned_at')
+                .eq('orchard_id', orchardId)
+                .is('deleted_at', null)
+                .gte('scanned_at', nzMidnight(startDate))
+                .lte('scanned_at', nzEndOfDay(endDate))
+                .order('id')
+                .range(from, to));
     },
 
     /** Get day closures for a date range */

@@ -278,9 +278,14 @@ describe('Payroll Service', () => {
                     };
                 } else {
                     // Second call: pickers
+                    // fetchPickerNames va por trozos y paginado: .in().order().range()
                     return {
                         select: () => ({
-                            in: () => Promise.resolve(pickersResponse),
+                            in: () => ({
+                                order: () => ({
+                                    range: () => Promise.resolve(pickersResponse),
+                                }),
+                            }),
                         }),
                     };
                 }

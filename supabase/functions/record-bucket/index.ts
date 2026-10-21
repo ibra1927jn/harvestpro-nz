@@ -141,6 +141,11 @@ serve(async (req) => {
             const reports: Report[] = []
             const serverNow = Date.now()
             const clientNow = typeof body.client_now === 'number' ? body.client_now : null
+            // 1.ª pasada: validar y resolver tarjetas; las filas buenas se insertan
+            // juntas (1 viaje a la BD en vez de 1 por cubeta). Si el lote falla
+            // entero (trigger de día/semana cerrados, dos cubetas en el mismo
+            // milisegundo…) se vuelve al camino de una en una de siempre.
+            const ready: { row: Record<string, unknown> & { id: string; scanned_at: string }; pickerId: string; time: ReturnType<typeof checkScanTime> }[] = []
             for (const raw of scans) {
                 const scanId = typeof (raw as { id?: unknown })?.id === 'string' ? (raw as { id: string }).id : null
                 const r = (raw ?? {}) as Record<string, unknown>
@@ -180,23 +185,58 @@ serve(async (req) => {
                         scanned_by: s.scanned_by ?? user.id,
                         scanned_at: time.scannedAt,
                     }
-                    const outcome = await insertScan(supabase, row)
-                    if (outcome.status !== 'saved') {
-                        if (outcome.status === 'rejected') report('rejected', outcome.reason ?? 'Rejected', pickerId)
-                        results.push({ id: s.id, ...outcome })
-                        continue
-                    }
-                    if (time.verdict === 'flag') {
-                        report('flagged', time.reason, pickerId, time.scannedAt)
-                        results.push({ id: s.id, status: 'saved', flag: time.reason })
-                    } else {
-                        results.push({ id: s.id, status: 'saved' })
-                    }
+                    ready.push({ row, pickerId, time })
                 } catch (e) {
                     const msg = e instanceof Error ? e.message : String(e)
                     const transient = msg.startsWith('Badge lookup failed')
                     if (!transient) report('rejected', msg, resolvedPicker)
                     results.push({ id: scanId, status: transient ? 'retry' : 'rejected', reason: msg })
+                }
+            }
+            // 2.ª pasada: inserción en bloque, idempotente por id
+            let bulkSaved: Set<string> | null = null
+            if (ready.length > 1) {
+                const { data, error } = await supabase
+                    .from('bucket_records')
+                    .upsert(ready.map(x => x.row), { onConflict: 'id', ignoreDuplicates: true })
+                    .select('id')
+                if (!error) bulkSaved = new Set(((data ?? []) as { id: string }[]).map(d => d.id))
+            }
+            for (const { row, pickerId, time } of ready) {
+                // En bloque: lo que no volvió ya existía (reenvío) → duplicate
+                const outcome: InsertOutcome = bulkSaved
+                    ? { status: bulkSaved.has(row.id) ? 'saved' : 'duplicate' }
+                    : await insertScan(supabase, row)
+                if (outcome.status !== 'saved') {
+                    if (outcome.status === 'rejected') {
+                        const r = (scans.find(x => (x as { id?: string })?.id === row.id) ?? {}) as Record<string, unknown>
+                        reports.push({
+                            id: row.id,
+                            picker_code: String(r.picker_id ?? '?').slice(0, 100),
+                            picker_id: pickerId,
+                            scanned_at: row.scanned_at,
+                            quality_grade: typeof row.quality_grade === 'string' ? row.quality_grade : null,
+                            kind: 'rejected',
+                            reason: outcome.reason ?? 'Rejected',
+                        })
+                    }
+                    results.push({ id: row.id, ...outcome })
+                    continue
+                }
+                if (time.verdict === 'flag') {
+                    const r = (scans.find(x => (x as { id?: string })?.id === row.id) ?? {}) as Record<string, unknown>
+                    reports.push({
+                        id: row.id,
+                        picker_code: String(r.picker_id ?? '?').slice(0, 100),
+                        picker_id: pickerId,
+                        scanned_at: time.scannedAt,
+                        quality_grade: typeof row.quality_grade === 'string' ? row.quality_grade : null,
+                        kind: 'flagged',
+                        reason: time.reason,
+                    })
+                    results.push({ id: row.id, status: 'saved', flag: time.reason })
+                } else {
+                    results.push({ id: row.id, status: 'saved' })
                 }
             }
             await reportScans(supabase, reports)

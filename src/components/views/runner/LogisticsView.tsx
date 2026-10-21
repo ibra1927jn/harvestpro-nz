@@ -16,7 +16,8 @@ interface LogisticsViewProps {
     raw?: { status: string; sunExposureStart?: number }[];
     [key: string]: unknown;
   };
-  onBroadcast?: (message: string) => void;
+  /** Campana: abre avisos y mensajes (los runners no pueden mandar avisos: solo manager/admin) */
+  onOpenNotifications?: () => void;
   /** Pide bins vacíos a Logística (crea la petición de transporte) */
   onRequestRefill?: () => void;
   selectedBinId?: string;
@@ -27,7 +28,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
   pendingUploads = 0,
   rejectedScans = [],
   inventory,
-  onBroadcast,
+  onOpenNotifications,
   onRequestRefill,
   selectedBinId,
 }) => {
@@ -80,8 +81,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
 
   // El aviso de éxito o error lo da quien crea la petición (useRunnerData)
   const handleRefillRequest = () => {
-    if (onRequestRefill) onRequestRefill();
-    else onBroadcast?.('Runner needs empty bins');
+    onRequestRefill?.();
   };
 
   return (
@@ -99,7 +99,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
           </div>
           <div className="flex items-center gap-3">
             <button aria-label={t('settings.notifications')}
-              onClick={() => onBroadcast?.('Notification center requested')}
+              onClick={() => onOpenNotifications?.()}
               className="relative flex items-center justify-center rounded-2xl size-11 bg-white/80 border border-white/60 shadow-sm text-slate-500 hover:text-primary transition-colors hover:shadow-md"
             >
               <span aria-hidden="true" className="material-symbols-outlined text-[22px]">notifications</span>

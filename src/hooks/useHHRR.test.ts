@@ -6,10 +6,12 @@ import { renderHook, waitFor } from '@testing-library/react';
 
 // vi.mock factories must NOT reference top-level const variables (hoisting)
 vi.mock('@/services/hhrr.service', () => ({
-    fetchHRSummary: vi.fn().mockResolvedValue({ activeWorkers: 10, pendingContracts: 2, payrollThisWeek: 5000, complianceAlerts: 1 }),
-    fetchEmployees: vi.fn().mockResolvedValue([{ id: 'e1', name: 'Alice' }]),
-    fetchPayroll: vi.fn().mockResolvedValue({ total: 5000 }),
-    fetchComplianceAlerts: vi.fn().mockResolvedValue([{ id: 'a1', message: 'Contract expiring' }]),
+    loadHRDashboard: vi.fn().mockResolvedValue({
+        summary: { activeWorkers: 10, pendingContracts: 2, payrollThisWeek: 5000, complianceAlerts: 1 },
+        employees: [{ id: 'e1', name: 'Alice' }],
+        payroll: { total: 5000 },
+        alerts: [{ id: 'a1', message: 'Contract expiring' }],
+    }),
 }));
 
 vi.mock('@/utils/logger', () => ({
