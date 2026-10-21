@@ -61,7 +61,6 @@ const hr: TranslationDict = {
     'hr.contracts.terminated': 'Kuo fakangata ʻa e aleapau ʻa {name}',
     'hr.contracts.created': 'Kuo faʻu ha aleapau maʻa {name}',
     'hr.contracts.no_orchard': 'ʻIkai ha ngoue ʻa e tokotaha ni',
-    'hr.contracts.need_renewal': '{n} aleapau ke fakafoʻou ʻi he ʻaho ʻe 30',
     'hr.contracts.review_pending': 'Vakai ki he ngaahi aleapau ʻoku tatali',
     'hr.contracts.search': 'Kumi aleapau...',
     'hr.contracts.end_saved': 'Kuo tauhi ʻa e ʻaho ngata',
@@ -102,6 +101,21 @@ const hr: TranslationDict = {
     'hr.plan.projected': 'Lau Tomuʻa Vakai',
     'hr.plan.if_none_renewed': 'Kapau ʻe ʻikai fakafoʻou ha aleapau',
     'hr.plan.now': 'Ni',
+    // Copia firmada del contrato (revisión 21-10, #17)
+    'hr.contracts.pending_banner': '{n} aleapau ʻoku tatali: ke fakafoʻou pe ʻikai ha tatau fakamoʻoni',
+    'hr.contracts.signed_pdf_optional': 'Aleapau fakamoʻoni (PDF, fili pē)',
+    'hr.contracts.pdf_only': 'Ko e faile PDF pē ʻoku tali',
+    'hr.contracts.pdf_too_big': 'ʻOku lahi ange ʻa e PDF ʻi he {mb} MB',
+    'hr.contracts.signed_copy': 'ʻOku tauhi ʻa e tatau fakamoʻoni',
+    'hr.contracts.no_signed_copy': 'ʻIkai ha tatau fakamoʻoni',
+    'hr.contracts.upload_signed': 'ʻOhake ʻa e fakamoʻoni',
+    'hr.contracts.view_pdf': 'Vakai ki he PDF',
+    'hr.contracts.signed_uploaded': 'Kuo ʻohake ʻa e aleapau fakamoʻoni ʻa {name}',
+    'hr.contracts.created_no_copy': 'Kuo faʻu ha aleapau maʻa {name} — {reason}',
+    'hr.contracts.renewed_no_copy': 'Kuo fakafoʻou ʻa e aleapau ʻa {name} ki he {date} — {reason}',
+    'hr.contracts.open_failed': 'Naʻe ʻikai lava ke fakaava ʻa e PDF',
+    'hr.contracts.renew_until': 'Fakafoʻou ki he',
+    'hr.contracts.confirm_renew': 'Fakapapauʻi ʻa e fakafoʻou',
 };
 
 export default hr;

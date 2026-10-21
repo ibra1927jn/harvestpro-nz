@@ -61,7 +61,6 @@ const hr: TranslationDict = {
     'hr.contracts.terminated': 'Contract terminated for {name}',
     'hr.contracts.created': 'Contract created for {name}',
     'hr.contracts.no_orchard': 'No orchard for this person',
-    'hr.contracts.need_renewal': '{n} contracts need renewal within 30 days',
     'hr.contracts.review_pending': 'Please review pending contracts',
     'hr.contracts.search': 'Search contracts...',
     'hr.contracts.end_saved': 'End date saved',
@@ -102,6 +101,21 @@ const hr: TranslationDict = {
     'hr.plan.projected': 'Projected Headcount',
     'hr.plan.if_none_renewed': 'If no contracts are renewed',
     'hr.plan.now': 'Now',
+    // Copia firmada del contrato (revisión 21-10, #17)
+    'hr.contracts.pending_banner': '{n} contracts pending: renewal due or signed copy missing',
+    'hr.contracts.signed_pdf_optional': 'Signed contract (PDF, optional)',
+    'hr.contracts.pdf_only': 'Only PDF files are accepted',
+    'hr.contracts.pdf_too_big': 'The PDF is larger than {mb} MB',
+    'hr.contracts.signed_copy': 'Signed copy on file',
+    'hr.contracts.no_signed_copy': 'No signed copy',
+    'hr.contracts.upload_signed': 'Upload signed',
+    'hr.contracts.view_pdf': 'View PDF',
+    'hr.contracts.signed_uploaded': 'Signed contract uploaded for {name}',
+    'hr.contracts.created_no_copy': 'Contract created for {name} — {reason}',
+    'hr.contracts.renewed_no_copy': 'Contract renewed for {name} until {date} — {reason}',
+    'hr.contracts.open_failed': 'Couldn\'t open the PDF',
+    'hr.contracts.renew_until': 'Renew until',
+    'hr.contracts.confirm_renew': 'Confirm renewal',
 };
 
 export default hr;

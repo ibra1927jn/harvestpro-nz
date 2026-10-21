@@ -61,7 +61,6 @@ const hr: TranslationDict = {
     'hr.contracts.terminated': '{name} का अनुबंध समाप्त',
     'hr.contracts.created': '{name} के लिए अनुबंध बनाया',
     'hr.contracts.no_orchard': 'इस व्यक्ति का कोई बाग़ नहीं',
-    'hr.contracts.need_renewal': '{n} अनुबंधों का 30 दिनों में नवीनीकरण ज़रूरी',
     'hr.contracts.review_pending': 'कृपया लंबित अनुबंध देखें',
     'hr.contracts.search': 'अनुबंध खोजें...',
     'hr.contracts.end_saved': 'समाप्ति तिथि सहेजी गई',
@@ -102,6 +101,21 @@ const hr: TranslationDict = {
     'hr.plan.projected': 'अनुमानित संख्या',
     'hr.plan.if_none_renewed': 'यदि कोई अनुबंध नवीनीकृत नहीं होता',
     'hr.plan.now': 'अभी',
+    // Copia firmada del contrato (revisión 21-10, #17)
+    'hr.contracts.pending_banner': '{n} अनुबंध लंबित: नवीनीकरण बाकी या हस्ताक्षरित प्रति नहीं',
+    'hr.contracts.signed_pdf_optional': 'हस्ताक्षरित अनुबंध (PDF, वैकल्पिक)',
+    'hr.contracts.pdf_only': 'केवल PDF फ़ाइलें स्वीकार हैं',
+    'hr.contracts.pdf_too_big': 'PDF {mb} MB से बड़ा है',
+    'hr.contracts.signed_copy': 'हस्ताक्षरित प्रति दर्ज है',
+    'hr.contracts.no_signed_copy': 'हस्ताक्षरित प्रति नहीं',
+    'hr.contracts.upload_signed': 'हस्ताक्षरित अपलोड करें',
+    'hr.contracts.view_pdf': 'PDF देखें',
+    'hr.contracts.signed_uploaded': '{name} का हस्ताक्षरित अनुबंध अपलोड हुआ',
+    'hr.contracts.created_no_copy': '{name} के लिए अनुबंध बनाया — {reason}',
+    'hr.contracts.renewed_no_copy': '{name} का अनुबंध {date} तक नवीनीकृत — {reason}',
+    'hr.contracts.open_failed': 'PDF नहीं खुल सका',
+    'hr.contracts.renew_until': 'इस तारीख तक नवीनीकृत करें',
+    'hr.contracts.confirm_renew': 'नवीनीकरण की पुष्टि करें',
 };
 
 export default hr;

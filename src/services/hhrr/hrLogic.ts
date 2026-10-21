@@ -36,6 +36,15 @@ export interface VisaDoc {
   expires_at: string | null;
 }
 
+/** Documento de RRHH de una persona (hr_documents, versión ligera) */
+export interface PersonDoc extends VisaDoc {
+  id: string;
+  document_type: string;
+  /** Contrato del que es copia firmada (employment_agreement) */
+  contract_id: string | null;
+  storage_path: string;
+}
+
 /** Visado: el documento "Work Visa" más reciente; sin documento = not_recorded */
 export function latestVisaFor(personId: string, visas: VisaDoc[]): VisaDoc | undefined {
   return visas
@@ -48,16 +57,55 @@ export function visaStatusOf(visa: VisaDoc | undefined, todayNZ: string): Employ
   return visa.expires_at && visa.expires_at < todayNZ ? 'expired' : 'work_visa';
 }
 
-/** Ficha de empleado a partir de la persona, su contrato vigente y su visado */
+/**
+ * Copia firmada de un contrato: documento employment_agreement enlazado por
+ * contract_id que cubre la fecha de fin del contrato. Al subirla se le pone
+ * expires_at = end_date; si luego el contrato se renueva (fin más lejano) la
+ * copia antigua deja de cubrirlo y hace falta el PDF nuevo. Si hay varias,
+ * la de fecha más lejana.
+ */
+export function signedCopyOf(
+  contract: { id: string; end_date: string | null } | undefined,
+  docs: PersonDoc[]
+): PersonDoc | undefined {
+  if (!contract) return undefined;
+  return docs
+    .filter(d => d.document_type === 'employment_agreement' && d.contract_id === contract.id)
+    .filter(d => !contract.end_date || !d.expires_at || d.expires_at >= contract.end_date)
+    .sort((a, b) => (b.expires_at ?? '9999').localeCompare(a.expires_at ?? '9999'))[0];
+}
+
+/**
+ * Contratos pendientes de RRHH: los borradores y los que caducan, más los
+ * activos sin copia firmada (la ley exige tener copia del acuerdo de empleo).
+ */
+export function pendingContractIds(
+  contracts: { id: string; status: string; end_date: string | null }[],
+  docs: PersonDoc[]
+): string[] {
+  return contracts
+    .filter(c => c.status === 'draft' || c.status === 'expiring' || (c.status === 'active' && !signedCopyOf(c, docs)))
+    .map(c => c.id);
+}
+
+/** Datos de contexto que la ficha no saca de la persona ni del contrato */
+export interface EmployeeContext {
+  /** Documentos de toda la empresa (visados, copias firmadas, certificados…) */
+  documents?: PersonDoc[];
+}
+
+/** Ficha de empleado a partir de la persona, su contrato vigente y sus documentos */
 export function buildEmployee(
   person: StaffPerson,
   contracts: ActiveContractRow[],
   visas: VisaDoc[],
   todayNZ: string,
-  nowISO: string
+  nowISO: string,
+  ctx: EmployeeContext = {}
 ): Employee {
   const contract = contracts.find(c => c.employee_id === person.id);
   const visa = latestVisaFor(person.id, visas);
+  const signed = signedCopyOf(contract, ctx.documents ?? []);
   return {
     id: person.id,
     full_name: person.full_name,
@@ -72,6 +120,7 @@ export function buildEmployee(
     visa_expiry: visa?.expires_at ?? undefined,
     contract_id: contract?.id,
     contract_updated_at: contract?.updated_at ?? undefined,
+    contract_document: signed ? { id: signed.id, storage_path: signed.storage_path } : undefined,
     source: person.source,
     hire_date: person.created_at || nowISO,
     orchard_id: person.orchard_id,

@@ -25,6 +25,8 @@ import {
   contractExpiryAlerts,
   documentExpiryAlerts,
   expiredContractAlerts,
+  pendingContractIds,
+  type PersonDoc,
   type WeekPayRow,
 } from './hhrr/hrLogic';
 
@@ -33,10 +35,25 @@ export type { Employee, PayrollEntry, ComplianceAlert, HRSummary } from './hhrr/
 
 // ── Service Functions ──────────────────────────
 
+/** Documentos de toda la empresa (ligeros); si falla, la ficha sale sin ellos */
+async function loadPersonDocuments(): Promise<PersonDoc[]> {
+  try {
+    return await hrDocumentsRepository.listPersonDocuments();
+  } catch (error) {
+    logger.warn('[HHRR] Could not load HR documents:', error);
+    return [];
+  }
+}
+
 export async function fetchHRSummary(orchardId?: string): Promise<HRSummary> {
   try {
     const activeWorkers = await userRepository2.getActiveCount(orchardId);
-    const pending = await contractRepository2.getPending(orchardId);
+    // Pendientes: borradores, caducando y activos sin copia firmada del acuerdo
+    const [openContracts, documents] = await Promise.all([
+      contractRepository2.listOpen(orchardId),
+      loadPersonDocuments(),
+    ]);
+    const pending = pendingContractIds(openContracts, documents);
     const alerts = await fetchComplianceAlerts(orchardId);
 
     // Mismo total que la pantalla de Nómina (empresa, todos los huertos);
@@ -72,13 +89,14 @@ export async function fetchHRSummary(orchardId?: string): Promise<HRSummary> {
 export async function fetchEmployees(_orchardId?: string): Promise<Employee[]> {
   try {
     const staff = await userRepository2.getStaff();
-    const [contracts, visas] = await Promise.all([
+    const [contracts, documents] = await Promise.all([
       contractRepository2.getByEmployeeIds(staff.map(s => s.id)),
-      hrDocumentsRepository.listWorkVisas().catch(() => []),
+      loadPersonDocuments(),
     ]);
+    const visas = documents.filter(d => d.document_type === 'work_visa');
     const today = todayNZST();
     const nowISO = new Date().toISOString();
-    return staff.map(person => buildEmployee(person, contracts, visas, today, nowISO));
+    return staff.map(person => buildEmployee(person, contracts, visas, today, nowISO, { documents }));
   } catch (error) {
     logger.error('[HHRR] Error fetching employees:', error);
     return [];
@@ -98,11 +116,46 @@ export async function saveNewContract(contract: {
   hourly_rate: number;
   notes?: string | null;
   created_by?: string | null;
-}): Promise<void> {
+}): Promise<{ id: string }> {
   if (contract.hourly_rate < PAY_RULES.minWageFloor) {
     throw new Error(`Hourly rate cannot be below the NZ minimum wage ($${PAY_RULES.minWageFloor}/h)`);
   }
-  await contractRepository2.insertOne({ ...contract, end_date: contract.end_date || null, status: 'active' });
+  const created: { id: string } = await contractRepository2.insertOne({ ...contract, end_date: contract.end_date || null, status: 'active' });
+  return { id: created.id };
+}
+
+/**
+ * Copia firmada del contrato (PDF, máx. 10 MB) al almacén privado hr-documents,
+ * enlazada al contrato por contract_id y con la misma fecha de fin.
+ */
+export async function uploadSignedContract(
+  file: File,
+  meta: {
+    employee: Pick<Employee, 'id' | 'full_name' | 'source'>;
+    contractId: string;
+    orchardId: string;
+    endDate?: string | null;
+    uploadedBy?: string | null;
+  }
+): Promise<void> {
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  if (!isPdf) throw new Error('The signed contract must be a PDF file');
+  const office = meta.employee.source === 'office';
+  await hrDocumentsRepository.upload(file, {
+    orchardId: meta.orchardId,
+    pickerId: office ? null : meta.employee.id,
+    userId: office ? meta.employee.id : null,
+    documentType: 'employment_agreement',
+    title: `Employment agreement — ${meta.employee.full_name}`,
+    expiresAt: meta.endDate || null,
+    uploadedBy: meta.uploadedBy ?? null,
+    contractId: meta.contractId,
+  });
+}
+
+/** URL firmada (5 min) para ver un documento del almacén privado hr-documents */
+export async function signedDocumentUrl(storagePath: string): Promise<string> {
+  return hrDocumentsRepository.getSignedUrl(storagePath);
 }
 
 /** Cambiar un contrato existente (renovar, terminar, tarifa, fecha fin) por su id */

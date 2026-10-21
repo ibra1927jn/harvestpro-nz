@@ -10,7 +10,10 @@ import {
   documentExpirySeverity,
   expiredContractAlerts,
   latestVisaFor,
+  pendingContractIds,
+  signedCopyOf,
   visaStatusOf,
+  type PersonDoc,
   type StaffPerson,
 } from './hrLogic';
 
@@ -73,6 +76,62 @@ describe('employees', () => {
     expect(e.hourly_rate).toBe(NZ_MINIMUM_WAGE_2026);
     expect(e.contract_start).toBe(NOW);
     expect(e.contract_end).toBeUndefined();
+  });
+
+  it('attaches the signed copy of the current contract (employment_agreement linked by contract_id)', () => {
+    const contract = { id: 'c1', employee_id: 'p1', type: 'seasonal', start_date: '2026-01-01', end_date: '2027-01-01', hourly_rate: 25, updated_at: null };
+    const docs = [
+      doc({ id: 'd-other', contract_id: 'c9' }),
+      doc({ id: 'd-visa', document_type: 'work_visa', contract_id: null }),
+      doc({ id: 'd-signed', contract_id: 'c1', storage_path: 'o1/employment_agreement/1-x.pdf' }),
+    ];
+    const e = buildEmployee(person(), [contract], [], '2026-10-13', NOW, { documents: docs });
+    expect(e.contract_document).toEqual({ id: 'd-signed', storage_path: 'o1/employment_agreement/1-x.pdf' });
+    expect(buildEmployee(person(), [contract], [], '2026-10-13', NOW).contract_document).toBeUndefined();
+  });
+});
+
+const doc = (over: Partial<PersonDoc> = {}): PersonDoc => ({
+  id: 'd1',
+  picker_id: 'p1',
+  user_id: null,
+  document_type: 'employment_agreement',
+  expires_at: null,
+  contract_id: 'c1',
+  storage_path: 'o1/employment_agreement/d1.pdf',
+  ...over,
+});
+
+describe('signed copy of the agreement', () => {
+  it('must be linked to the contract and cover its end date; the latest one wins', () => {
+    const c = { id: 'c1', end_date: '2027-01-01' };
+    expect(signedCopyOf(c, [doc({ contract_id: null })])).toBeUndefined();
+    expect(signedCopyOf(c, [doc({ document_type: 'passport' })])).toBeUndefined();
+    // Copia de la temporada pasada: el contrato se renovó y hace falta el PDF nuevo
+    expect(signedCopyOf(c, [doc({ expires_at: '2026-06-30' })])).toBeUndefined();
+    expect(signedCopyOf(c, [doc({ expires_at: '2027-01-01' })])?.id).toBe('d1');
+    expect(signedCopyOf(c, [doc({ id: 'old', expires_at: '2027-01-01' }), doc({ id: 'new', expires_at: '2028-01-01' })])?.id).toBe('new');
+    expect(signedCopyOf(c, [doc({ id: 'open', expires_at: null })])?.id).toBe('open');
+    expect(signedCopyOf({ id: 'c1', end_date: null }, [doc({ expires_at: '2026-06-30' })])?.id).toBe('d1');
+    expect(signedCopyOf(undefined, [doc()])).toBeUndefined();
+  });
+
+  it('pending contracts: drafts, expiring, and active ones without a signed copy', () => {
+    const out = pendingContractIds(
+      [
+        { id: 'draft', status: 'draft', end_date: null },
+        { id: 'expiring', status: 'expiring', end_date: '2026-11-01' },
+        { id: 'signed', status: 'active', end_date: '2027-01-01' },
+        { id: 'unsigned', status: 'active', end_date: '2027-01-01' },
+        { id: 'stale', status: 'active', end_date: '2027-01-01' },
+        { id: 'terminated', status: 'terminated', end_date: null },
+      ],
+      [
+        doc({ contract_id: 'signed', expires_at: '2027-01-01' }),
+        doc({ contract_id: 'stale', expires_at: '2026-01-01' }),
+      ]
+    );
+    expect(out).toEqual(['draft', 'expiring', 'unsigned', 'stale']);
   });
 });
 

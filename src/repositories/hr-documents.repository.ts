@@ -4,6 +4,7 @@
  */
 import { supabase } from '@/services/supabase';
 import { addDaysYMD, todayNZST } from '@/utils/nzst';
+import { fetchAllRows } from '@/utils/fetchAllRows';
 
 export type HRDocumentType =
   | 'employment_agreement'
@@ -31,10 +32,20 @@ export interface HRDocumentRow {
   uploaded_by: string | null;
   uploaded_at: string;
   deleted_at: string | null;
+  /** Contrato del que es copia firmada (employment_agreement); null = documento suelto */
+  contract_id: string | null;
 }
 
+/** Lo que RRHH necesita de cada documento para la ficha (sin título ni notas) */
+export type PersonDocumentRow = Pick<
+  HRDocumentRow,
+  'id' | 'picker_id' | 'user_id' | 'document_type' | 'expires_at' | 'contract_id' | 'storage_path'
+>;
+
 const BUCKET = 'hr-documents';
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+/** Tamaño máximo de un documento de RRHH (10 MB); la pantalla lo comprueba antes de subir */
+export const HR_DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+const MAX_FILE_SIZE_BYTES = HR_DOCUMENT_MAX_BYTES;
 
 export const hrDocumentsRepository = {
   /** List non-deleted docs for an orchard, newest first. */
@@ -84,6 +95,8 @@ export const hrDocumentsRepository = {
       expiresAt?: string | null;
       notes?: string | null;
       uploadedBy?: string | null;
+      /** Copia firmada de este contrato (document_type employment_agreement) */
+      contractId?: string | null;
     },
   ): Promise<HRDocumentRow> {
     if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -113,6 +126,7 @@ export const hrDocumentsRepository = {
         expires_at: meta.expiresAt ?? null,
         notes: meta.notes ?? null,
         uploaded_by: meta.uploadedBy ?? null,
+        contract_id: meta.contractId ?? null,
       })
       .select()
       .single();
@@ -146,15 +160,19 @@ export const hrDocumentsRepository = {
     return data.signedUrl;
   },
 
-  /** Visados de trabajo de toda la empresa (para el estado de visado en RRHH) */
-  async listWorkVisas(): Promise<Pick<HRDocumentRow, 'id' | 'picker_id' | 'user_id' | 'expires_at'>[]> {
-    const { data, error } = await supabase
+  /**
+   * Documentos de toda la empresa, versión ligera, para la ficha de RRHH:
+   * visado (estado), copia firmada del contrato (contract_id) y el resto de
+   * documentos obligatorios. Con 450 personas y varios documentos por cabeza
+   * pasa de 1000 filas: se lee por páginas con orden estable.
+   */
+  async listPersonDocuments(): Promise<PersonDocumentRow[]> {
+    return fetchAllRows<PersonDocumentRow>((from, to) => supabase
       .from('hr_documents')
-      .select('id, picker_id, user_id, expires_at')
-      .eq('document_type', 'work_visa')
-      .is('deleted_at', null);
-    if (error) throw error;
-    return data || [];
+      .select('id, picker_id, user_id, document_type, expires_at, contract_id, storage_path')
+      .is('deleted_at', null)
+      .order('id')
+      .range(from, to));
   },
 
   /** Documentos de toda la empresa caducados o que caducan en N días */

@@ -58,7 +58,17 @@ vi.mock('@/repositories/user.repository', () => ({
   },
 }));
 
-const mockGetPending = vi.fn().mockResolvedValue([{ id: 'c1', employee_id: 'u1' }]);
+// Contratos abiertos de la empresa: c1 activo sin copia firmada → 1 pendiente
+const mockListOpen = vi.fn().mockResolvedValue([{ id: 'c1', employee_id: 'u1', status: 'active', end_date: '2026-12-31' }]);
+const mockListPersonDocuments = vi.fn().mockResolvedValue([]);
+
+vi.mock('@/repositories/hr-documents.repository', () => ({
+  hrDocumentsRepository: {
+    listPersonDocuments: (...a: unknown[]) => mockListPersonDocuments(...a),
+    listExpiringCompany: vi.fn().mockResolvedValue([]),
+  },
+  HR_DOCUMENT_TYPE_LABELS: {},
+}));
 const mockGetAllContracts = vi
   .fn()
   .mockResolvedValue([
@@ -103,7 +113,7 @@ const mockGetExpiredButActive = vi
 
 vi.mock('@/repositories/contract.repository', () => ({
   contractRepository2: {
-    getPending: (...a: unknown[]) => mockGetPending(...a),
+    listOpen: (...a: unknown[]) => mockListOpen(...a),
     getAll: (...a: unknown[]) => mockGetAllContracts(...a),
     getByEmployeeIds: (...a: unknown[]) => mockGetByEmployeeIds(...a),
     getExpiringSoon: (...a: unknown[]) => mockGetExpiringSoon(...a),
@@ -177,6 +187,14 @@ describe('hhrr.service — E2E deep tests', () => {
       expect(summary.pendingContracts).toBe(1);
       expect(summary.payrollThisWeek).toBeGreaterThan(0);
       expect(summary.complianceAlerts).toBeGreaterThan(0);
+    });
+
+    it('an active contract with its signed copy on file is not pending', async () => {
+      mockListPersonDocuments.mockResolvedValueOnce([
+        { id: 'd1', picker_id: 'u1', user_id: null, document_type: 'employment_agreement', expires_at: '2026-12-31', contract_id: 'c1', storage_path: 'o1/x.pdf' },
+      ]);
+      const summary = await fetchHRSummary('o1');
+      expect(summary.pendingContracts).toBe(0);
     });
 
     it('calculates payroll with the unified rules (unpaid break, daily top-up)', async () => {

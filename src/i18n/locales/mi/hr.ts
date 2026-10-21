@@ -61,7 +61,6 @@ const hr: TranslationDict = {
     'hr.contracts.terminated': 'Kua whakamutua te kirimana o {name}',
     'hr.contracts.created': 'Kua hangaia he kirimana mō {name}',
     'hr.contracts.no_orchard': 'Kāore he māra mō tēnei tangata',
-    'hr.contracts.need_renewal': '{n} kirimana me whakahou i roto i ngā rā 30',
     'hr.contracts.review_pending': 'Tirohia ngā kirimana tārewa',
     'hr.contracts.search': 'Rapu kirimana...',
     'hr.contracts.end_saved': 'Kua tiakina te rā mutunga',
@@ -102,6 +101,21 @@ const hr: TranslationDict = {
     'hr.plan.projected': 'Matapae Kaimahi',
     'hr.plan.if_none_renewed': 'Mēnā kāore he kirimana e whakahoutia',
     'hr.plan.now': 'Ināianei',
+    // Copia firmada del contrato (revisión 21-10, #17)
+    'hr.contracts.pending_banner': '{n} kirimana e tārewa ana: me whakahou, kāore rānei he kape hainatia',
+    'hr.contracts.signed_pdf_optional': 'Kirimana hainatia (PDF, kōwhiringa)',
+    'hr.contracts.pdf_only': 'Ko ngā kōnae PDF anake e whakaaetia ana',
+    'hr.contracts.pdf_too_big': 'He nui ake te PDF i te {mb} MB',
+    'hr.contracts.signed_copy': 'Kei te pūranga te kape hainatia',
+    'hr.contracts.no_signed_copy': 'Kāore he kape hainatia',
+    'hr.contracts.upload_signed': 'Tukuake te mea hainatia',
+    'hr.contracts.view_pdf': 'Tirohia te PDF',
+    'hr.contracts.signed_uploaded': 'Kua tukuake te kirimana hainatia mō {name}',
+    'hr.contracts.created_no_copy': 'Kua hangaia he kirimana mō {name} — {reason}',
+    'hr.contracts.renewed_no_copy': 'Kua whakahoutia te kirimana o {name} tae noa ki {date} — {reason}',
+    'hr.contracts.open_failed': 'Kāore i taea te whakatuwhera i te PDF',
+    'hr.contracts.renew_until': 'Whakahou tae noa ki',
+    'hr.contracts.confirm_renew': 'Whakaū te whakahou',
 };
 
 export default hr;

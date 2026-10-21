@@ -1715,6 +1715,83 @@ export type Database = {
           },
         ]
       }
+      // Añadido a mano (sin generador): 20260418000000_hr_documents + 20261022040000_hr_contract_document
+      hr_documents: {
+        Row: {
+          contract_id: string | null
+          deleted_at: string | null
+          document_type: string
+          expires_at: string | null
+          file_size_bytes: number | null
+          id: string
+          mime_type: string | null
+          notes: string | null
+          orchard_id: string
+          picker_id: string | null
+          storage_path: string
+          title: string
+          uploaded_at: string
+          uploaded_by: string | null
+          user_id: string | null
+        }
+        Insert: {
+          contract_id?: string | null
+          deleted_at?: string | null
+          document_type: string
+          expires_at?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          orchard_id: string
+          picker_id?: string | null
+          storage_path: string
+          title: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          contract_id?: string | null
+          deleted_at?: string | null
+          document_type?: string
+          expires_at?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          orchard_id?: string
+          picker_id?: string | null
+          storage_path?: string
+          title?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_documents_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_documents_orchard_id_fkey"
+            columns: ["orchard_id"]
+            isOneToOne: false
+            referencedRelation: "orchards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_documents_picker_id_fkey"
+            columns: ["picker_id"]
+            isOneToOne: false
+            referencedRelation: "pickers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       pickers_performance_today: {

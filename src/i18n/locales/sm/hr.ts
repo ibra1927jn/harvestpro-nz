@@ -61,7 +61,6 @@ const hr: TranslationDict = {
     'hr.contracts.terminated': 'Ua faamuta le konekarate a {name}',
     'hr.contracts.created': 'Ua faia se konekarate mo {name}',
     'hr.contracts.no_orchard': 'Leai se faatoʻaga mo lenei tagata',
-    'hr.contracts.need_renewal': '{n} konekarate e tatau ona faafou i totonu o aso 30',
     'hr.contracts.review_pending': 'Toe iloilo konekarate o faatali',
     'hr.contracts.search': 'Suʻe konekarate...',
     'hr.contracts.end_saved': 'Ua teu le aso e muta ai',
@@ -102,6 +101,21 @@ const hr: TranslationDict = {
     'hr.plan.projected': 'Numera Faʻatatau',
     'hr.plan.if_none_renewed': 'Afai e leai se konekarate e faafou',
     'hr.plan.now': 'Nei',
+    // Copia firmada del contrato (revisión 21-10, #17)
+    'hr.contracts.pending_banner': '{n} konekarate o loo faatali: e tatau ona faafou pe leai se kopi sainia',
+    'hr.contracts.signed_pdf_optional': 'Konekarate sainia (PDF, filifili)',
+    'hr.contracts.pdf_only': 'E na o faila PDF e talia',
+    'hr.contracts.pdf_too_big': 'E sili atu le PDF i le {mb} MB',
+    'hr.contracts.signed_copy': 'Ua teuina le kopi sainia',
+    'hr.contracts.no_signed_copy': 'Leai se kopi sainia',
+    'hr.contracts.upload_signed': 'Tuʻuina atu le sainia',
+    'hr.contracts.view_pdf': 'Vaai le PDF',
+    'hr.contracts.signed_uploaded': 'Ua tuʻuina atu le konekarate sainia a {name}',
+    'hr.contracts.created_no_copy': 'Ua faia se konekarate mo {name} — {reason}',
+    'hr.contracts.renewed_no_copy': 'Ua toe faafou le konekarate a {name} seʻia oʻo {date} — {reason}',
+    'hr.contracts.open_failed': 'Le mafai ona tatala le PDF',
+    'hr.contracts.renew_until': 'Faafou seʻia oʻo',
+    'hr.contracts.confirm_renew': 'Faamaonia le faafouina',
 };
 
 export default hr;

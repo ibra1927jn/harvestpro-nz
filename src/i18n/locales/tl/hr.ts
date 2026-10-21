@@ -61,7 +61,6 @@ const hr: TranslationDict = {
     'hr.contracts.terminated': 'Tinapos ang kontrata ni {name}',
     'hr.contracts.created': 'Nagawa ang kontrata para kay {name}',
     'hr.contracts.no_orchard': 'Walang orchard ang taong ito',
-    'hr.contracts.need_renewal': '{n} kontrata ang kailangang i-renew sa loob ng 30 araw',
     'hr.contracts.review_pending': 'Pakisuri ang mga nakabinbing kontrata',
     'hr.contracts.search': 'Maghanap ng kontrata...',
     'hr.contracts.end_saved': 'Na-save ang petsa ng pagtatapos',
@@ -102,6 +101,21 @@ const hr: TranslationDict = {
     'hr.plan.projected': 'Inaasahang Bilang',
     'hr.plan.if_none_renewed': 'Kung walang kontratang mare-renew',
     'hr.plan.now': 'Ngayon',
+    // Copia firmada del contrato (revisión 21-10, #17)
+    'hr.contracts.pending_banner': '{n} kontrata ang nakabinbin: kailangang i-renew o walang pirmadong kopya',
+    'hr.contracts.signed_pdf_optional': 'Pirmadong kontrata (PDF, opsyonal)',
+    'hr.contracts.pdf_only': 'PDF na file lang ang tinatanggap',
+    'hr.contracts.pdf_too_big': 'Mas malaki ang PDF sa {mb} MB',
+    'hr.contracts.signed_copy': 'Nakatala ang pirmadong kopya',
+    'hr.contracts.no_signed_copy': 'Walang pirmadong kopya',
+    'hr.contracts.upload_signed': 'I-upload ang pirmado',
+    'hr.contracts.view_pdf': 'Tingnan ang PDF',
+    'hr.contracts.signed_uploaded': 'Na-upload ang pirmadong kontrata ni {name}',
+    'hr.contracts.created_no_copy': 'Nagawa ang kontrata para kay {name} — {reason}',
+    'hr.contracts.renewed_no_copy': 'Na-renew ang kontrata ni {name} hanggang {date} — {reason}',
+    'hr.contracts.open_failed': 'Hindi mabuksan ang PDF',
+    'hr.contracts.renew_until': 'I-renew hanggang',
+    'hr.contracts.confirm_renew': 'Kumpirmahin ang renewal',
 };
 
 export default hr;

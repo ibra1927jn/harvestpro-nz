@@ -18,6 +18,8 @@ export interface Employee {
   /** Contrato vigente (si tiene) */
   contract_id?: string;
   contract_updated_at?: string;
+  /** Copia firmada del contrato vigente (hr_documents employment_agreement con contract_id) */
+  contract_document?: { id: string; storage_path: string };
   /** staff = plantilla (pickers, TL, runners); office = cuenta de oficina */
   source?: 'staff' | 'office';
   phone?: string;
