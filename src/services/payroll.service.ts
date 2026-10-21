@@ -25,6 +25,7 @@ import {
   type DayTopUp,
 } from './payroll/timesheetLogic';
 import { payRatesRepository } from '@/repositories/pay-rates.repository';
+import { fetchAllRows } from '@/utils/fetchAllRows';
 
 // Tipos en payroll/payroll.types.ts; se re-exportan para no cambiar los imports
 export type { PickerBreakdown, PayrollResult, TimesheetEntry, DailyTimesheetRecord } from './payroll/payroll.types';
@@ -274,13 +275,19 @@ export const payrollService = {
     const startISO = nzMidnight(targetDate);
     const endISO = nzEndOfDay(targetDate);
 
-    const { data: bucketRecords } = await supabase
-      .from('bucket_records')
-      .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
-      .eq('orchard_id', orchardId)
-      .is('deleted_at', null)
-      .gte('scanned_at', startISO)
-      .lte('scanned_at', endISO);
+    // Paginado: un huerto hace ~3.000 cubetas al día y PostgREST corta en 1000
+    // (la hoja del día pagaba sobre un tercio de las cubetas; prueba de carga 2026-10-21)
+    const bucketRecords = await fetchAllRows<DayBucket>((from, to) =>
+      supabase
+        .from('bucket_records')
+        .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
+        .eq('orchard_id', orchardId)
+        .is('deleted_at', null)
+        .gte('scanned_at', startISO)
+        .lte('scanned_at', endISO)
+        .order('id')
+        .range(from, to)
+    ).catch(() => [] as DayBucket[]);
 
     // 3. Obtener settings (piece_rate, min_wage_rate) y precios por variedad
     const { data: settings } = await supabase

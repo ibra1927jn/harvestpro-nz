@@ -139,14 +139,16 @@ export async function fetchOrchardData(
     bucketsLoadedKey = `${orchardKey}|${today}`;
   } catch (syncError) {
     logger.warn('[Sync] Delta/full sync failed — falling back to simple fetch:', syncError);
-    const [pickersRes, bucketsRes] = await Promise.all([
+    const [pickersRes, bucketsData] = await Promise.all([
       storeSyncRepository.getPickersQuery(orchardKey, today),
-      storeSyncRepository.getBucketRecordsQuery(orchardKey, startOfDayNZ),
+      fetchAllRows<BucketRecord>((from, to) =>
+        storeSyncRepository.getBucketRecordsQuery(orchardKey, startOfDayNZ).order('id').range(from, to)
+      ).catch(() => [] as BucketRecord[]),
     ]);
     const crewWithAttendance = pickersRes.data?.map(mapPickerWithAttendance) || [];
-    set({ crew: crewWithAttendance, bucketRecords: bucketsRes.data || [], lastSyncAt: null });
+    set({ crew: crewWithAttendance, bucketRecords: bucketsData, lastSyncAt: null });
     logger.info(
-      `[Sync] Fallback load: ${crewWithAttendance.length} pickers, ${(bucketsRes.data || []).length} buckets`
+      `[Sync] Fallback load: ${crewWithAttendance.length} pickers, ${bucketsData.length} buckets`
     );
   }
 

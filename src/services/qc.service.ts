@@ -7,7 +7,7 @@
 import { logger } from '@/utils/logger';
 import { syncService } from './sync.service';
 import type { QCInspectionPayload } from './sync-processors/types';
-import { todayNZST, toNZST } from '@/utils/nzst';
+import { todayNZST, nzMidnight, nzEndOfDay } from '@/utils/nzst';
 import { qcRepository } from '@/repositories/qc.repository';
 import { distributionOf } from './qcDistribution';
 
@@ -77,10 +77,9 @@ export const qcService = {
     ): Promise<QCInspection[]> {
         // 🔧 L31: Use NZST for date boundaries (prevents missing morning inspections)
         const targetDate = date || todayNZST();
-        const startOfDayNZ = new Date(`${targetDate}T00:00:00`);
-        const endOfDayNZ = new Date(`${targetDate}T23:59:59`);
-        const startISO = toNZST(startOfDayNZ);
-        const endISO = toNZST(endOfDayNZ);
+        // Día NZ real, sea cual sea la zona horaria del móvil
+        const startISO = nzMidnight(targetDate);
+        const endISO = nzEndOfDay(targetDate);
 
         try {
             const data = await qcRepository.getByOrchardAndDateRange(orchardId, startISO, endISO);

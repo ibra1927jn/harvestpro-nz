@@ -140,6 +140,7 @@ export const analyticsTrendsRepository = {
                 .lt('scanned_at', utcToStr)
                 .is('deleted_at', null)
                 .order('scanned_at')
+                .order('id') // desempate estable entre páginas (horas repetidas)
                 .range(from, to);
 
             if (error) throw error;
