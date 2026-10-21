@@ -78,7 +78,7 @@ describe('qcService', () => {
       });
 
       expect(syncService.addToQueue).toHaveBeenCalledWith('QC_INSPECTION', expect.any(Object));
-      expect(result?.id).toBe('pending-sync');
+      expect(result?.id).toMatch(/^pending-/);
 
       // Restore
       Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });

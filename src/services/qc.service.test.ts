@@ -48,7 +48,7 @@ describe('qcService.logInspection', () => {
 
         const res = await qcService.logInspection(baseParams);
         expect(queueSpy).toHaveBeenCalled();
-        expect((res as { id: string })?.id).toBe('pending-sync');
+        expect((res as { id: string })?.id).toMatch(/^pending-/);
     });
 
     it('queue a sync cuando navigator.onLine es false', async () => {

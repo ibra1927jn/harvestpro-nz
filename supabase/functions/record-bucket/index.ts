@@ -217,7 +217,9 @@ serve(async (req) => {
             // (40P01) se reintenta una vez; si no, se va al camino de una en una,
             // que también reintenta los choques. Todo es idempotente por id.
             let bulkSaved: Set<string> | null = null
-            const uniqueRows = [...new Map(ready.map(x => [x.row.id, x.row])).values()]
+            const firstById = new Map<string, typeof ready[number]['row']>()
+            for (const x of ready) if (!firstById.has(x.row.id)) firstById.set(x.row.id, x.row)
+            const uniqueRows = [...firstById.values()]
                 .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
             if (uniqueRows.length > 1) {
                 for (let attempt = 0; attempt < 2 && !bulkSaved; attempt++) {

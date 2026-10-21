@@ -59,7 +59,8 @@ export const qcService = {
             if (error.message?.includes('Failed to fetch') || error.message?.includes('Network') || !navigator.onLine) {
                 await syncService.addToQueue('QC_INSPECTION', payload as QCInspectionPayload);
                 logger.warn('[QCService] Inspection queued for offline sync');
-                return { ...payload, id: 'pending-sync', created_at: new Date().toISOString() } as QCInspection;
+                // id propio por inspección: varias en cola no pueden compartir clave en la lista
+                return { ...payload, id: `pending-${crypto.randomUUID()}`, created_at: new Date().toISOString() } as QCInspection;
             }
             logger.error('[QCService] Failed to log inspection:', error.message);
             return null;

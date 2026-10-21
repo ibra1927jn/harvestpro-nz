@@ -124,7 +124,7 @@ export function useQC(): UseQCResult {
         setNotes('');
         // Se añade la inspección guardada sin volver a bajar todas las del día
         // (antes, cada nota recargaba la lista dos veces)
-        setInspections(prev => [result, ...prev.filter(i => i.id !== result.id || i.id === 'pending-sync')]);
+        setInspections(prev => [result, ...prev.filter(i => i.id !== result.id)]);
         setTimeout(() => setLastGrade(null), 3000);
       } else {
         // Antes no se avisaba y parecía guardado
