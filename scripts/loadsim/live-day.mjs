@@ -321,7 +321,9 @@ class Device {
           onMsg('chat_messages')(payload);
           if (payload?.new?.sender_id !== this.id) {
             // cada mensaje ajeno => my_unread_counts en cada móvil que lo recibe
-            this.sb.rpc('my_unread_counts').then(() => {});
+            // (app optimizada: los de 2 s se juntan en una consulta)
+            if (OPT) this.debouncedUnread();
+            else this.sb.rpc('my_unread_counts').then(() => {});
           }
         })
         .subscribe();
@@ -333,11 +335,11 @@ class Device {
       const f = {};
       lg.on('postgres_changes', { event: '*', schema: 'public', table: 'transport_requests', ...f }, p => {
         onMsg('transport_requests')(p);
-        this.onLogisticsEvent();
+        this.onLogisticsEvent('transport_requests');
       })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'fleet_vehicles', ...f }, p => {
           onMsg('fleet_vehicles')(p);
-          this.onLogisticsEvent();
+          this.onLogisticsEvent('fleet_vehicles');
         })
         .subscribe();
       this.channels.push(lg);
@@ -363,7 +365,7 @@ class Device {
     this._unreadT = setTimeout(() => {
       this._unreadT = null;
       this.sb.rpc('my_unread_counts').then(() => {});
-    }, (10 * SEC) / SPEED);
+    }, (2 * SEC) / SPEED);
   }
 
   // Pantalla bloqueada / desbloqueada (useHarvestStore visibilitychange)
@@ -718,6 +720,12 @@ async function scanningForOrchard(orchardId) {
       totalPerHour = present.reduce(a => a + rnd(3.5, 6.5), 0);
       continue;
     }
+    // la cuadrilla crece mientras los TL fichan: el ritmo total se recalcula
+    const nowPresent = state.presentByOrchard.get(orchardId) || [];
+    if (nowPresent.length !== present.length) {
+      present = nowPresent;
+      totalPerHour = present.reduce(a => a + rnd(3.5, 6.5), 0);
+    }
     const meanGapMs = (3600 * SEC) / totalPerHour;
     await clock.sleepV(expo(meanGapMs));
     if (inBreak) continue;
@@ -919,7 +927,33 @@ async function payrollDay(d) {
     for (const o of orchardIds) {
       const r = await sb.from('daily_attendance').select('id, picker_id, date, check_in, check_out, break_start, break_minutes, verified_by, rejected_at, rejection_reason, orchard_id, updated_at').eq('orchard_id', o).eq('date', date);
       const rows = (r.data || []).filter(x => x.check_out && !x.verified_by);
-      await sb.from('pickers').select('id, name, picker_id').in('id', rows.map(x => x.picker_id).slice(0, 300));
+      const ids = [...new Set((r.data || []).map(x => x.picker_id))];
+      // fetchTimesheets también calcula el día de esas personas (computeDayOfPeople →
+      // fetchDayOfPeople): fichajes + cubetas por ids. Actual: un IN sin paginar;
+      // optimizada: por trozos de 100 y paginado.
+      const dayStart = nzMidnightISO(date);
+      const dayEnd = new Date(Date.parse(dayStart) + 86400000).toISOString();
+      if (OPT) {
+        for (let i = 0; i < ids.length; i += 100) {
+          const chunk = ids.slice(i, i + 100);
+          await Promise.all([
+            fetchAll((f, t) => sb.from('daily_attendance').select('id, picker_id, orchard_id, check_in, check_out, break_start, break_minutes').in('picker_id', chunk).eq('date', date).is('deleted_at', null).order('id').range(f, t)),
+            fetchAll((f, t) => sb.from('bucket_records').select('picker_id, orchard_id, variety, scanned_at, quality_grade').in('picker_id', chunk).is('deleted_at', null).gte('scanned_at', dayStart).lte('scanned_at', dayEnd).order('id').range(f, t)),
+          ]);
+        }
+        for (let i = 0; i < ids.length; i += 100) await sb.from('pickers').select('id, name').in('id', ids.slice(i, i + 100)).order('id').range(0, 999);
+      } else {
+        const [a, b] = await Promise.all([
+          sb.from('daily_attendance').select('id, picker_id, orchard_id, check_in, check_out, break_start, break_minutes').in('picker_id', ids).eq('date', date).is('deleted_at', null),
+          sb.from('bucket_records').select('picker_id, orchard_id, variety, scanned_at, quality_grade').in('picker_id', ids).is('deleted_at', null).gte('scanned_at', dayStart).lte('scanned_at', dayEnd),
+        ]);
+        if (b.data?.length === 1000) {
+          state.truncatedQueries++;
+          metrics.event('truncated', { role: 'payroll_admin', what: 'fetchDayOfPeople buckets (1000 rows)' });
+        }
+        void a;
+        await sb.from('pickers').select('id, name').in('id', ids);
+      }
       if (OPT) {
         // optimizado: aprobación por lotes (1 llamada por huerto y día)
         if (rows.length) {
@@ -1017,16 +1051,32 @@ async function logisticsDay(d) {
     const vids = [...new Set((hist.data || []).map(x => x.assigned_vehicle).filter(Boolean))];
     if (vids.length) await sb.from('fleet_vehicles').select('id, name, driver_name').in('id', vids);
   };
-  let reloadQueued = false;
-  d.onLogisticsEvent = () => {
-    if (OPT) {
-      if (reloadQueued) return;
-      reloadQueued = true;
-      setTimeout(() => {
-        reloadQueued = false;
-        d.reload().catch(() => {});
-      }, (2 * SEC) / SPEED);
-    } else d.reload().catch(() => {});
+  // Lo que hace useLogistics.ts al llegar un evento de realtime
+  const summary = () => Promise.all([
+    sb.from('bins').select('status'),
+    sb.from('fleet_vehicles').select('status'),
+    sb.from('transport_requests').select('status').in('status', ['pending', 'assigned']),
+  ]);
+  const requests = () => sb.from('transport_requests').select('*').in('status', ['pending', 'assigned', 'in_progress']);
+  const fleet = () => sb.from('fleet_vehicles').select('*').order('name');
+  let pendingKinds = { requests: false, fleet: false };
+  let flushTimer = null;
+  d.onLogisticsEvent = (table = 'transport_requests') => {
+    const kind = table === 'fleet_vehicles' ? 'fleet' : 'requests';
+    if (!OPT) {
+      // app actual: por cada evento, la lista afectada + el resumen (4 consultas)
+      Promise.all([kind === 'fleet' ? fleet() : requests(), summary()]).catch(() => {});
+      return;
+    }
+    // app optimizada: se juntan los eventos de 2 s en una recarga
+    pendingKinds[kind] = true;
+    if (flushTimer) return;
+    flushTimer = setTimeout(() => {
+      flushTimer = null;
+      const want = pendingKinds;
+      pendingKinds = { requests: false, fleet: false };
+      Promise.all([want.requests ? requests() : null, want.fleet ? fleet() : null, summary()]).catch(() => {});
+    }, (2 * SEC) / SPEED);
   };
   await d.bootstrap();
   await d.reload();
