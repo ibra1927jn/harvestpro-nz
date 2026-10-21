@@ -116,6 +116,13 @@ const hr: TranslationDict = {
     'hr.contracts.open_failed': 'Kāore i taea te whakatuwhera i te PDF',
     'hr.contracts.renew_until': 'Whakahou tae noa ki',
     'hr.contracts.confirm_renew': 'Whakaū te whakahou',
+    // Semáforo de alta completa (revisión 21-10, #16)
+    'hr.missing.contract': 'Kāore he kirimana hohe',
+    'hr.missing.signed_copy': 'Kei te ngaro te whakaaetanga hainatia',
+    'hr.missing.visa': 'Kua pau te uruwhenua, kāore rānei i rēhitatia',
+    'hr.missing.tax_declaration': 'Kei te ngaro te whakapuakanga tāke (IR330)',
+    'hr.missing.health_safety_cert': 'Kāore he tiwhikete haumaru, kua pau rānei',
+    'hr.missing.none': 'Kua oti te whakaurunga',
 };
 
 export default hr;

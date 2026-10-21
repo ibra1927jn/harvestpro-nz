@@ -21,11 +21,12 @@ vi.mock('@/context/AuthContext', () => ({
 }));
 
 vi.mock('@/components/ui/FilterBar', () => ({
-    default: ({ searchPlaceholder, searchValue, onSearchChange }: any) => (
+    default: ({ searchPlaceholder, searchValue, onSearchChange, filters }: any) => (
         <input
             data-testid="filter-bar"
             placeholder={searchPlaceholder}
             value={searchValue || ''}
+            data-filters={JSON.stringify(filters)}
             onChange={(e: any) => onSearchChange(e.target.value)}
         />
     ),
@@ -81,6 +82,17 @@ describe('ContractsTab', () => {
     it('renders filter bar', () => {
         render(<ContractsTab {...defaultProps} />);
         expect(screen.getByTestId('filter-bar')).toBeTruthy();
+    });
+
+    it('filters offer the whole contract-type and status domains with counts', () => {
+        render(<ContractsTab {...defaultProps} />);
+        const filters = JSON.parse(screen.getByTestId('filter-bar').getAttribute('data-filters')!);
+        expect(filters[0].options).toEqual([
+            { value: 'permanent', count: 1 }, { value: 'seasonal', count: 1 }, { value: 'casual', count: 1 },
+        ]);
+        expect(filters[1].options).toEqual([
+            { value: 'active', count: 2 }, { value: 'on_leave', count: 0 }, { value: 'pending', count: 0 }, { value: 'terminated', count: 1 },
+        ]);
     });
 
     it('shows Renew button for active contracts', () => {

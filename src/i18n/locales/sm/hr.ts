@@ -116,6 +116,13 @@ const hr: TranslationDict = {
     'hr.contracts.open_failed': 'Le mafai ona tatala le PDF',
     'hr.contracts.renew_until': 'Faafou seʻia oʻo',
     'hr.contracts.confirm_renew': 'Faamaonia le faafouina',
+    // Semáforo de alta completa (revisión 21-10, #16)
+    'hr.missing.contract': 'Leai se konekarate o loo galue',
+    'hr.missing.signed_copy': 'E leai le maliliega sainia',
+    'hr.missing.visa': 'Ua muta le visa pe e leʻi faamauina',
+    'hr.missing.tax_declaration': 'E leai le taʻutinoga o lafoga (IR330)',
+    'hr.missing.health_safety_cert': 'E leai pe ua muta le tusipasi o le saogalemu',
+    'hr.missing.none': 'Ua maeʻa le faʻatulagaga',
 };
 
 export default hr;

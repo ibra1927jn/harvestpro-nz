@@ -116,6 +116,13 @@ const hr: TranslationDict = {
     'hr.contracts.open_failed': 'PDF नहीं खुल सका',
     'hr.contracts.renew_until': 'इस तारीख तक नवीनीकृत करें',
     'hr.contracts.confirm_renew': 'नवीनीकरण की पुष्टि करें',
+    // Semáforo de alta completa (revisión 21-10, #16)
+    'hr.missing.contract': 'कोई सक्रिय अनुबंध नहीं',
+    'hr.missing.signed_copy': 'हस्ताक्षरित समझौता नहीं है',
+    'hr.missing.visa': 'वीज़ा समाप्त या दर्ज नहीं',
+    'hr.missing.tax_declaration': 'कर घोषणा (IR330) नहीं है',
+    'hr.missing.health_safety_cert': 'सुरक्षा प्रमाणपत्र नहीं या समाप्त',
+    'hr.missing.none': 'भर्ती पूरी',
 };
 
 export default hr;

@@ -238,9 +238,20 @@ describe('hhrr.service — E2E deep tests', () => {
       const employees = await fetchEmployees('o1');
       expect(employees.length).toBe(2);
       expect(employees[0].full_name).toBe('Alice');
-      expect(employees[0].status).toBe('active');
+      // Contrato activo pero sin copia firmada → alta pendiente
+      expect(employees[0].status).toBe('pending');
+      expect(employees[0].missing_items).toContain('signed_copy');
       expect(employees[0].contract_type).toBe('seasonal');
       expect(employees[0].hourly_rate).toBe(25);
+    });
+
+    it('is active once the signed agreement is on file', async () => {
+      mockListPersonDocuments.mockResolvedValueOnce([
+        { id: 'd1', picker_id: 'u1', user_id: null, document_type: 'employment_agreement', expires_at: '2026-12-31', contract_id: 'c1', storage_path: 'o1/x.pdf' },
+      ]);
+      const employees = await fetchEmployees('o1');
+      expect(employees[0].status).toBe('active');
+      expect(employees[0].contract_document?.id).toBe('d1');
     });
 
     it('maps terminated status for inactive users', async () => {

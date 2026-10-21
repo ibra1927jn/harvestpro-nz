@@ -116,6 +116,13 @@ const hr: TranslationDict = {
     'hr.contracts.open_failed': 'Hindi mabuksan ang PDF',
     'hr.contracts.renew_until': 'I-renew hanggang',
     'hr.contracts.confirm_renew': 'Kumpirmahin ang renewal',
+    // Semáforo de alta completa (revisión 21-10, #16)
+    'hr.missing.contract': 'Walang aktibong kontrata',
+    'hr.missing.signed_copy': 'Walang pirmadong kasunduan',
+    'hr.missing.visa': 'Expired o hindi nakatala ang visa',
+    'hr.missing.tax_declaration': 'Walang tax declaration (IR330)',
+    'hr.missing.health_safety_cert': 'Walang o expired na H&S certificate',
+    'hr.missing.none': 'Kumpleto ang onboarding',
 };
 
 export default hr;

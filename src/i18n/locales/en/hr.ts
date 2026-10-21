@@ -116,6 +116,13 @@ const hr: TranslationDict = {
     'hr.contracts.open_failed': 'Couldn\'t open the PDF',
     'hr.contracts.renew_until': 'Renew until',
     'hr.contracts.confirm_renew': 'Confirm renewal',
+    // Semáforo de alta completa (revisión 21-10, #16)
+    'hr.missing.contract': 'No active contract',
+    'hr.missing.signed_copy': 'Signed agreement missing',
+    'hr.missing.visa': 'Visa expired or not recorded',
+    'hr.missing.tax_declaration': 'Tax declaration (IR330) missing',
+    'hr.missing.health_safety_cert': 'H&S certificate missing or expired',
+    'hr.missing.none': 'Onboarding complete',
 };
 
 export default hr;

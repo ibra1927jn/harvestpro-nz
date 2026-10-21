@@ -10,6 +10,7 @@ import { useHarvestStore } from '@/stores/useHarvestStore';
 import { useAuth } from '@/context/AuthContext';
 import { PAY_RULES } from '@/services/harvestMetrics';
 import { HR_DOCUMENT_MAX_BYTES } from '@/repositories/hr-documents.repository';
+import { CONTRACT_TYPES, EMPLOYEE_STATUSES, domainOptions } from '@/services/hhrr/hrLogic';
 import FilterBar from '@/components/ui/FilterBar';
 import InlineEdit from '@/components/ui/InlineEdit';
 import { formatNZDate } from '@/utils/nzFormat';
@@ -58,9 +59,10 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
     const storeOrchardId = useHarvestStore(s => s.orchard?.id);
     const { appUser } = useAuth();
 
+    // Dominio completo de cada filtro con su recuento (las de 0 salen en gris)
     const filterOptions = useMemo(() => ({
-        types: [...new Set(employees.map(e => e.contract_type))].sort(),
-        statuses: [...new Set(employees.map(e => e.status))].sort(),
+        types: domainOptions(CONTRACT_TYPES, employees.map(e => e.contract_type)),
+        statuses: domainOptions(EMPLOYEE_STATUSES, employees.map(e => e.status)),
     }), [employees]);
 
     const filteredEmployees = useMemo(() => employees.filter(emp => {
