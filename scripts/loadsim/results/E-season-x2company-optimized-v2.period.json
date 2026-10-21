@@ -1,0 +1,299 @@
+{
+  "label": "x2-after-paycache",
+  "date": "2026-10-21",
+  "counts": {
+    "buckets": 1375426,
+    "attendance": 35407,
+    "audit": 40626,
+    "chat": 19687,
+    "days": 78
+  },
+  "dbMB": 701,
+  "sizes": [
+    {
+      "table": "bucket_records",
+      "rows": 1357309,
+      "MB": 578.4,
+      "indexMB": 313.9
+    },
+    {
+      "table": "audit_logs",
+      "rows": 39114,
+      "MB": 51.3,
+      "indexMB": 5.9
+    },
+    {
+      "table": "chat_messages",
+      "rows": 19672,
+      "MB": 21.4,
+      "indexMB": 3.3
+    },
+    {
+      "table": "daily_attendance",
+      "rows": 34919,
+      "MB": 12.9,
+      "indexMB": 4.9
+    },
+    {
+      "table": "qc_inspections",
+      "rows": 23810,
+      "MB": 6.7,
+      "indexMB": 4
+    },
+    {
+      "table": "pay_weeks",
+      "rows": 0,
+      "MB": 5.1,
+      "indexMB": 0
+    },
+    {
+      "table": "row_assignments",
+      "rows": 3696,
+      "MB": 2.3,
+      "indexMB": 0.4
+    },
+    {
+      "table": "transport_requests",
+      "rows": 6930,
+      "MB": 2.1,
+      "indexMB": 0.7
+    },
+    {
+      "table": "conversations",
+      "rows": 7,
+      "MB": 1.2,
+      "indexMB": 0.2
+    },
+    {
+      "table": "pickers",
+      "rows": 522,
+      "MB": 0.4,
+      "indexMB": 0.2
+    },
+    {
+      "table": "broadcasts",
+      "rows": 924,
+      "MB": 0.3,
+      "indexMB": 0.1
+    },
+    {
+      "table": "contracts",
+      "rows": 504,
+      "MB": 0.3,
+      "indexMB": 0.2
+    }
+  ],
+  "results": [
+    {
+      "op": "calculate-payroll (last week, company)",
+      "variant": "current",
+      "ok": true,
+      "ms": 225,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 2067,
+      "kbInGzip": 181,
+      "note": {
+        "people": 522,
+        "withoutName": 0,
+        "total": 770368.54
+      }
+    },
+    {
+      "op": "calculate-payroll (this week, company)",
+      "variant": "current",
+      "ok": true,
+      "ms": 3545,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 1197,
+      "kbInGzip": 104,
+      "note": {
+        "people": 521
+      }
+    },
+    {
+      "op": "weekly report (manager, 7 days)",
+      "variant": "current",
+      "ok": true,
+      "ms": 2115,
+      "requests": 19,
+      "errors": 0,
+      "kbIn": 3421,
+      "kbInGzip": 315,
+      "note": {
+        "buckets": 17114,
+        "attendance": 445
+      }
+    },
+    {
+      "op": "day sheet: buckets of the day (orchard)",
+      "variant": "current",
+      "ok": true,
+      "ms": 136,
+      "requests": 2,
+      "errors": 0,
+      "kbIn": 197,
+      "kbInGzip": 15,
+      "note": {
+        "people": 77,
+        "got": 1000,
+        "real": 3092,
+        "status": 200
+      }
+    },
+    {
+      "op": "day sheet: buckets of the day (orchard)",
+      "variant": "optimized",
+      "ok": true,
+      "ms": 178,
+      "requests": 5,
+      "errors": 0,
+      "kbIn": 600,
+      "kbInGzip": 53,
+      "note": {
+        "people": 77,
+        "got": 3092
+      }
+    },
+    {
+      "op": "HR employees: contracts IN (all staff)",
+      "variant": "current",
+      "ok": true,
+      "ms": 49,
+      "requests": 3,
+      "errors": 1,
+      "kbIn": 27,
+      "kbInGzip": 13,
+      "note": {
+        "ids": 535,
+        "status": 414,
+        "got": null
+      }
+    },
+    {
+      "op": "HR employees: contracts by chunks",
+      "variant": "optimized",
+      "ok": true,
+      "ms": 90,
+      "requests": 8,
+      "errors": 0,
+      "kbIn": 155,
+      "kbInGzip": 37,
+      "note": {
+        "ids": 535,
+        "got": 508
+      }
+    },
+    {
+      "op": "cold start runner: today buckets + crew",
+      "variant": "current",
+      "ok": true,
+      "ms": 265,
+      "requests": 5,
+      "errors": 0,
+      "kbIn": 1795,
+      "kbInGzip": 201,
+      "note": {
+        "crew": 522,
+        "buckets": 3086
+      }
+    },
+    {
+      "op": "chat list: last messages (all rows)",
+      "variant": "current",
+      "ok": true,
+      "ms": 32,
+      "requests": 2,
+      "errors": 0,
+      "kbIn": 140,
+      "kbInGzip": 12,
+      "note": {
+        "conversations": 2,
+        "rows": 1000,
+        "truncated": true
+      }
+    },
+    {
+      "op": "chat list: last_messages RPC",
+      "variant": "optimized",
+      "ok": true,
+      "ms": 22,
+      "requests": 2,
+      "errors": 0,
+      "kbIn": 1,
+      "kbInGzip": 1,
+      "note": {
+        "rows": 2
+      }
+    },
+    {
+      "op": "open orchard chat (asc, no limit)",
+      "variant": "current",
+      "ok": true,
+      "ms": 168,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 516,
+      "kbInGzip": 39,
+      "note": {
+        "total": 3142,
+        "got": 1000,
+        "newestShown": false
+      }
+    },
+    {
+      "op": "open orchard chat (latest 300)",
+      "variant": "optimized",
+      "ok": true,
+      "ms": 13,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 150,
+      "kbInGzip": 12,
+      "note": {
+        "got": 300
+      }
+    },
+    {
+      "op": "manager dashboard: 7-day bleed",
+      "variant": "current",
+      "ok": true,
+      "ms": 1905,
+      "requests": 19,
+      "errors": 0,
+      "kbIn": 1806,
+      "kbInGzip": 245,
+      "note": {
+        "attendance": 449,
+        "buckets": 17015
+      }
+    },
+    {
+      "op": "payroll: unclosed shifts 30d (company)",
+      "variant": "current",
+      "ok": true,
+      "ms": 8,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "rows": 0
+      }
+    },
+    {
+      "op": "admin: audit log (100)",
+      "variant": "current",
+      "ok": true,
+      "ms": 33,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 60,
+      "kbInGzip": 7,
+      "note": {
+        "rows": 100
+      }
+    }
+  ]
+}
