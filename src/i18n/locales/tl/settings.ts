@@ -53,6 +53,7 @@ const settings: TranslationDict = {
     'settings.saved_banner': 'Na-save Lahat ng Pagbabago',
     'settings.footer': 'HarvestPro NZ · v9.9.0 · © 2026 HarvestPro. Ginawa para sa mga taniman sa NZ.',
     'settings.locked_by_hr': 'HR lang ang makakapagbago nito',
+    'settings.harvest.shift_end_by_person': 'Walang oras ng pagtatapos ng shift: natatapos ang bawat team at runner kapag nag-clock out sila.',
 };
 
 export default settings;

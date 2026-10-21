@@ -18,10 +18,11 @@ export interface SettingsFormData {
     min_buckets_per_hour: number;
     target_tons: number;
     variety: string;
-    /** Hora de inicio de turno (formato HH:MM, 24h) */
+    /**
+     * Hora prevista de inicio de turno (HH:MM, 24h). No hay hora de fin: cada
+     * equipo y runner termina cuando ficha su salida (decisión del dueño 2026-10-21).
+     */
     shift_start_time: string;
-    /** Hora de fin de turno (formato HH:MM, 24h) */
-    shift_end_time: string;
 }
 
 export interface ComplianceToggles {
@@ -38,8 +39,21 @@ export interface OrchardOption {
     varieties?: string;
 }
 
+/** Variedades distintas de las filas del huerto (block_rows), en orden alfabético */
+export function varietiesOfRows(blocks: ReadonlyArray<{ rowVarieties: Record<number, string> }>): string[] {
+    const names = new Set<string>();
+    for (const b of blocks) {
+        for (const v of Object.values(b.rowVarieties)) {
+            const name = (v ?? '').trim();
+            if (name && name !== 'Desconocida') names.add(name);
+        }
+    }
+    return [...names].sort((a, b) => a.localeCompare(b));
+}
+
 export function useSettings() {
     const { orchard, settings, currentUser } = useHarvestStore();
+    const orchardBlocks = useHarvestStore(s => s.orchardBlocks);
     const orchardId = orchard?.id;
 
     // Form data
@@ -50,7 +64,6 @@ export function useSettings() {
         target_tons: settings?.target_tons ?? 40,
         variety: settings?.variety ?? 'Cherry',
         shift_start_time: settings?.shift_start_time ?? '07:00',
-        shift_end_time: settings?.shift_end_time ?? '17:00',
     });
 
     const [compliance, setCompliance] = useState<ComplianceToggles>({
@@ -64,7 +77,15 @@ export function useSettings() {
     const [availableOrchards, setAvailableOrchards] = useState<OrchardOption[]>(
         orchard ? [{ id: orchard.id, name: orchard.name ?? 'Orchard', total_rows: orchard.total_rows }] : []
     );
-    const [orchardVarieties, setOrchardVarieties] = useState<string>('—');
+    // Variedades del huerto: las de sus filas (block_rows), no orchards.crop_type
+    // (un solo texto, vacío en la mayoría de huertos: salía «—» con filas de
+    // Royal Gala y Braeburn). Si el huerto no tiene filas cargadas, el crop_type.
+    const orchardVarieties = useMemo(() => {
+        const fromRows = varietiesOfRows(orchardBlocks);
+        if (fromRows.length > 0) return fromRows.join(', ');
+        const found = availableOrchards.find(o => o.id === orchardId);
+        return found?.varieties ?? '—';
+    }, [orchardBlocks, availableOrchards, orchardId]);
 
     // Notification state
     const [notifEnabled, setNotifEnabled] = useState(() => notificationService.getPrefs().enabled);
@@ -99,7 +120,6 @@ export function useSettings() {
                 target_tons: settings.target_tons,
                 variety: settings.variety ?? 'Cherry',
                 shift_start_time: settings.shift_start_time ?? '07:00',
-                shift_end_time: settings.shift_end_time ?? '17:00',
             });
         }
     }, [settings]);
@@ -141,13 +161,6 @@ export function useSettings() {
         void loadOrchards();
         return () => { cancelled = true; };
     }, []);
-
-    // Actualizar variedades cuando cambia el huerto seleccionado
-    useEffect(() => {
-        if (!orchardId) return;
-        const found = availableOrchards.find(o => o.id === orchardId);
-        setOrchardVarieties(found?.varieties ?? '—');
-    }, [orchardId, availableOrchards]);
 
     const handleChange = useCallback((field: keyof SettingsFormData, value: string | number) => {
         setFormData(prev => {
@@ -202,7 +215,6 @@ export function useSettings() {
         if (selected.varieties) {
             setFormData(prev => ({ ...prev, variety: selected.varieties as string }));
         }
-        setOrchardVarieties(selected.varieties ?? '—');
         setHasChanges(true);
         setSaveStatus('idle');
     }, [availableOrchards]);
@@ -220,7 +232,6 @@ export function useSettings() {
                 target_tons: Number(formData.target_tons),
                 variety: formData.variety,
                 shift_start_time: formData.shift_start_time,
-                shift_end_time: formData.shift_end_time,
             };
             const result = await settingsService.updateHarvestSettings(orchardId, payload);
             if (!result.ok) {

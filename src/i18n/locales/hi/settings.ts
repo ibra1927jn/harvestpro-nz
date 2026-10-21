@@ -53,6 +53,7 @@ const settings: TranslationDict = {
     'settings.saved_banner': 'सभी बदलाव सहेजे गए',
     'settings.footer': 'HarvestPro NZ · v9.9.0 · © 2026 HarvestPro. NZ बागों के लिए बना।',
     'settings.locked_by_hr': 'केवल HR इसे बदल सकता है',
+    'settings.harvest.shift_end_by_person': 'शिफ्ट खत्म होने का कोई तय समय नहीं है: हर टीम और रनर तब खत्म करते हैं जब वे क्लॉक-आउट करते हैं।',
 };
 
 export default settings;

@@ -53,6 +53,7 @@ const settings: TranslationDict = {
     'settings.saved_banner': 'Kuo Tauhi Liliu Kotoa',
     'settings.footer': 'HarvestPro NZ · v9.9.0 · © 2026 HarvestPro. Ngaohi ki he ngoue ʻa NZ.',
     'settings.locked_by_hr': 'Ko e HR pē ʻe lava ʻo liliu',
+    'settings.harvest.shift_end_by_person': 'ʻOku ʻikai ha taimi ngataʻanga ʻo e sifí: ʻoku ngata ʻa e timi mo e tangata lele kotoa ʻi heʻenau lesisita atu.',
 };
 
 export default settings;

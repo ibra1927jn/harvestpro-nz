@@ -59,6 +59,7 @@ const settings: TranslationDict = {
     'settings.saved_banner': 'All Changes Saved',
     'settings.footer': 'HarvestPro NZ · v9.9.0 · © 2026 HarvestPro. Built for NZ Orchards.',
     'settings.locked_by_hr': 'Only HR can modify this value',
+    'settings.harvest.shift_end_by_person': 'There is no shift end time: each team and runner finishes when they clock out.',
 };
 
 export default settings;

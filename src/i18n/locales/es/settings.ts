@@ -59,6 +59,7 @@ const settings: TranslationDict = {
     'settings.saved_banner': 'Todos los Cambios Guardados',
     'settings.footer': 'HarvestPro NZ · v9.9.0 · © 2026 HarvestPro. Diseñado para Huertos NZ.',
     'settings.locked_by_hr': 'Solo RRHH puede modificar este valor',
+    'settings.harvest.shift_end_by_person': 'No hay hora de fin de turno: cada equipo y cada runner terminan cuando fichan su salida.',
 };
 
 export default settings;

@@ -53,6 +53,7 @@ const settings: TranslationDict = {
     'settings.saved_banner': 'Ua Fa\'asaoina Suiga Uma',
     'settings.footer': 'HarvestPro NZ · v9.9.0 · © 2026 HarvestPro. Faia mo fa\'ato\'aga a NZ.',
     'settings.locked_by_hr': 'Na\'o HR e mafai ona sui',
+    'settings.harvest.shift_end_by_person': 'E leai se taimi e uma ai le sifi: e uma le tīma ma le tagata tamoʻe pe a latou saini ese.',
 };
 
 export default settings;
