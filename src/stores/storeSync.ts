@@ -97,6 +97,10 @@ export async function hydrateFromDexie(set: StoreSetter): Promise<void> {
  */
 let bucketsLoadedKey: string | null = null;
 
+/** Cada cuánto, como mucho, se vuelven a pedir los bins al desbloquear el móvil */
+export const BINS_REFRESH_MS = 5 * 60_000;
+let binsLoadedAt = 0;
+
 export async function fetchOrchardData(
   get: StoreGetter,
   set: StoreSetter,
@@ -156,7 +160,13 @@ export async function fetchOrchardData(
     await loadShiftsElsewhere(set, activeOrchard.id, today);
     if (!light) await get().fetchBlocks(activeOrchard.id);
     await loadRowAssignments(get, set, activeOrchard.id);
-    await loadBins(set, activeOrchard.id);
+    // Bins: al desbloquear solo si hace más de BINS_REFRESH_MS (los bins no
+    // llegan por realtime y cambian poco; era la consulta que más datos bajaba
+    // de cada team leader en la prueba de carga de temporada)
+    if (!light || Date.now() - binsLoadedAt > BINS_REFRESH_MS) {
+      await loadBins(set, activeOrchard.id);
+      binsLoadedAt = Date.now();
+    }
   } else if (get().rowAssignments.length > 0) {
     logger.info(`[Store] Using ${get().rowAssignments.length} persisted row assignments`);
   }

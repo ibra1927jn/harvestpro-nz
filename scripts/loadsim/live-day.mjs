@@ -283,8 +283,13 @@ class Device {
       this.blocksLoaded = true;
     }
     await sb.from('row_assignments').select('id, row_number, side, assigned_pickers, completion_percentage, team_leader_id').eq('orchard_id', o).eq('status', 'active').is('deleted_at', null);
-    if (OPT) await sb.from('bins').select('id, bin_code, status, variety, filled_at, deleted_at').eq('orchard_id', o).is('deleted_at', null);
-    else await sb.from('bins').select('*').eq('orchard_id', o);
+    if (OPT) {
+      // app optimizada: al desbloquear, bins solo si hace más de 5 min (virtuales)
+      if (!light || clock.minute() - (this.binsAt || -1e9) > 5) {
+        await sb.from('bins').select('id, bin_code, status, variety, filled_at, deleted_at').eq('orchard_id', o).is('deleted_at', null);
+        this.binsAt = clock.minute();
+      }
+    } else await sb.from('bins').select('*').eq('orchard_id', o);
   }
 
   subscribeRealtime() {
