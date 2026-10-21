@@ -2,42 +2,48 @@
   "label": "C-week-current",
   "date": "2026-10-21",
   "counts": {
-    "buckets": 43824,
-    "attendance": 1342,
-    "audit": 47242,
-    "chat": 690,
+    "buckets": 50988,
+    "attendance": 1344,
+    "audit": 54478,
+    "chat": 818,
     "days": 6
   },
-  "dbMB": 71,
+  "dbMB": 79,
   "sizes": [
     {
       "table": "audit_logs",
-      "rows": 43341,
-      "MB": 29.4,
-      "indexMB": 8.4
+      "rows": 53159,
+      "MB": 34.7,
+      "indexMB": 10.2
     },
     {
       "table": "bucket_records",
-      "rows": 41978,
-      "MB": 20.2,
-      "indexMB": 11.7
+      "rows": 50927,
+      "MB": 23.6,
+      "indexMB": 14.1
     },
     {
       "table": "daily_attendance",
-      "rows": 1342,
+      "rows": 1344,
       "MB": 1,
       "indexMB": 0.5
     },
     {
       "table": "chat_messages",
-      "rows": 681,
+      "rows": 808,
       "MB": 0.7,
       "indexMB": 0.1
     },
     {
       "table": "qc_inspections",
-      "rows": 889,
+      "rows": 874,
       "MB": 0.4,
+      "indexMB": 0.2
+    },
+    {
+      "table": "pickers",
+      "rows": 261,
+      "MB": 0.3,
       "indexMB": 0.2
     },
     {
@@ -45,12 +51,6 @@
       "rows": 4,
       "MB": 0.3,
       "indexMB": 0.1
-    },
-    {
-      "table": "pickers",
-      "rows": 261,
-      "MB": 0.3,
-      "indexMB": 0.2
     },
     {
       "table": "transport_requests",
@@ -88,7 +88,7 @@
       "op": "calculate-payroll (last week, company)",
       "variant": "current",
       "ok": false,
-      "ms": 21366,
+      "ms": 8095,
       "requests": 1,
       "errors": 1,
       "kbIn": 0,
@@ -99,7 +99,7 @@
       "op": "calculate-payroll (this week, company)",
       "variant": "current",
       "ok": false,
-      "ms": 10960,
+      "ms": 13068,
       "requests": 1,
       "errors": 1,
       "kbIn": 0,
@@ -110,11 +110,11 @@
       "op": "weekly report (manager, 7 days)",
       "variant": "current",
       "ok": true,
-      "ms": 28606,
+      "ms": 33932,
       "requests": 9,
       "errors": 0,
       "kbIn": 1504,
-      "kbInGzip": 137,
+      "kbInGzip": 136,
       "note": {
         "buckets": 7514,
         "attendance": 206
@@ -124,15 +124,15 @@
       "op": "day sheet: buckets of the day (orchard)",
       "variant": "current",
       "ok": true,
-      "ms": 606,
+      "ms": 842,
       "requests": 2,
       "errors": 0,
       "kbIn": 196,
       "kbInGzip": 14,
       "note": {
-        "people": 80,
+        "people": 77,
         "got": 1000,
-        "real": 3208,
+        "real": 3066,
         "status": 200
       }
     },
@@ -140,21 +140,21 @@
       "op": "day sheet: buckets of the day (orchard)",
       "variant": "optimized",
       "ok": true,
-      "ms": 6004,
+      "ms": 7605,
       "requests": 5,
       "errors": 0,
-      "kbIn": 622,
-      "kbInGzip": 56,
+      "kbIn": 595,
+      "kbInGzip": 53,
       "note": {
-        "people": 80,
-        "got": 3208
+        "people": 77,
+        "got": 3066
       }
     },
     {
       "op": "HR employees: contracts IN (all staff)",
       "variant": "current",
       "ok": true,
-      "ms": 226,
+      "ms": 214,
       "requests": 3,
       "errors": 1,
       "kbIn": 14,
@@ -169,7 +169,7 @@
       "op": "HR employees: contracts by chunks",
       "variant": "optimized",
       "ok": true,
-      "ms": 348,
+      "ms": 346,
       "requests": 5,
       "errors": 0,
       "kbIn": 79,
@@ -183,14 +183,14 @@
       "op": "cold start runner: today buckets + crew",
       "variant": "current",
       "ok": true,
-      "ms": 518,
-      "requests": 2,
+      "ms": 3466,
+      "requests": 5,
       "errors": 0,
-      "kbIn": 468,
-      "kbInGzip": 52,
+      "kbIn": 1660,
+      "kbInGzip": 190,
       "note": {
         "crew": 261,
-        "buckets": 652
+        "buckets": 3061
       }
     },
     {
@@ -200,11 +200,11 @@
       "ms": 17,
       "requests": 2,
       "errors": 0,
-      "kbIn": 39,
-      "kbInGzip": 4,
+      "kbIn": 45,
+      "kbInGzip": 5,
       "note": {
         "conversations": 2,
-        "rows": 271,
+        "rows": 318,
         "truncated": false
       }
     },
@@ -212,7 +212,7 @@
       "op": "chat list: last_messages RPC",
       "variant": "optimized",
       "ok": false,
-      "ms": 12,
+      "ms": 15,
       "requests": 2,
       "errors": 1,
       "kbIn": 1,
@@ -223,14 +223,14 @@
       "op": "open orchard chat (asc, no limit)",
       "variant": "current",
       "ok": true,
-      "ms": 133,
+      "ms": 131,
       "requests": 1,
       "errors": 0,
-      "kbIn": 105,
-      "kbInGzip": 9,
+      "kbIn": 132,
+      "kbInGzip": 11,
       "note": {
-        "total": 219,
-        "got": 219,
+        "total": 266,
+        "got": 266,
         "newestShown": true
       }
     },
@@ -238,34 +238,31 @@
       "op": "open orchard chat (latest 300)",
       "variant": "optimized",
       "ok": true,
-      "ms": 11,
+      "ms": 12,
       "requests": 1,
       "errors": 0,
-      "kbIn": 105,
-      "kbInGzip": 9,
+      "kbIn": 132,
+      "kbInGzip": 11,
       "note": {
-        "got": 219
+        "got": 266
       }
     },
     {
       "op": "manager dashboard: 7-day bleed",
       "variant": "current",
-      "ok": true,
-      "ms": 95720,
-      "requests": 16,
-      "errors": 0,
-      "kbIn": 1561,
-      "kbInGzip": 216,
-      "note": {
-        "attendance": 446,
-        "buckets": 14546
-      }
+      "ok": false,
+      "ms": 9891,
+      "requests": 4,
+      "errors": 1,
+      "kbIn": 284,
+      "kbInGzip": 40,
+      "note": "canceling statement due to statement timeout"
     },
     {
       "op": "payroll: unclosed shifts 30d (company)",
       "variant": "current",
       "ok": true,
-      "ms": 35,
+      "ms": 10,
       "requests": 1,
       "errors": 0,
       "kbIn": 0,
@@ -278,7 +275,7 @@
       "op": "admin: audit log (100)",
       "variant": "current",
       "ok": true,
-      "ms": 99,
+      "ms": 117,
       "requests": 1,
       "errors": 0,
       "kbIn": 127,
@@ -291,7 +288,7 @@
       "op": "close-pay-week 2026-10-12",
       "variant": "current",
       "ok": false,
-      "ms": 33011,
+      "ms": 8370,
       "requests": 1,
       "errors": 1,
       "kbIn": 0,
