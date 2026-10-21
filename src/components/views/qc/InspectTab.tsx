@@ -269,13 +269,7 @@ export default function InspectTab({
             )}
 
             {/* Step 1: Picker Selection */}
-            <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden">
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-50"></div>
-                
-                <div className="px-5 py-4 border-b border-slate-100/50">
-                    <h2 className="text-sm font-extrabold text-slate-800 tracking-tight">{t('qc.step1')}</h2>
-                </div>
-                
+            <Card title={t('qc.step1')}>
                 <div className="p-5 space-y-4">
                     <div className="relative">
                         <span aria-hidden="true" className="material-symbols-outlined text-[20px] text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
@@ -366,7 +360,7 @@ export default function InspectTab({
                         </button>
                     )}
                 </div>
-            </div>
+            </Card>
 
             {/* Step 2: los seis criterios */}
             <Card
@@ -465,11 +459,7 @@ export default function InspectTab({
             </Card>
 
             {/* Step 4: Notes (optional) */}
-            <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden">
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-50"></div>
-                <div className="px-5 py-4 border-b border-slate-100/50">
-                    <h2 className="text-sm font-extrabold text-slate-800 tracking-tight">{t('qc.step4_details')} <span className="font-normal text-slate-400 text-xs ml-1">{t('qc.optional')}</span></h2>
-                </div>
+            <Card title={<>{t('qc.step4_details')} <span className="font-normal text-slate-400 text-xs ml-1">{t('qc.optional')}</span></>}>
                 <div className="p-5 space-y-4">
                     <textarea
                         value={notes}
@@ -508,7 +498,7 @@ export default function InspectTab({
                         </div>
                     )}
                 </div>
-            </div>
+            </Card>
 
             {/* Step 5: nota final (la sugerida viene marcada; tocar una guarda) */}
             <Card
