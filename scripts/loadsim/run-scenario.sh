@@ -2,6 +2,7 @@
 # Un escenario completo: servidor de la variante + N días de histórico + el día
 # de hoy en vivo + operaciones de oficina con ese volumen.
 # Uso: scripts/loadsim/run-scenario.sh <nombre> <dias_historico> <current|optimized> [--chaos] [--speed N]
+# Tamaño de la empresa: LOADSIM_COMPANY="huertos tls runners pickers_por_tl" (por defecto "3 4 3 20")
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 NAME=$1; DAYS=$2; VARIANT=$3; shift 3
@@ -15,7 +16,8 @@ while [ $# -gt 0 ]; do
 done
 OUT=scripts/loadsim/results/${NAME}-${VARIANT}${CHAOS:+-chaos}
 echo "== $NAME ($DAYS días de histórico, $VARIANT${CHAOS:+, caos}) $(date +%H:%M)"
-scripts/loadsim/use-variant.sh "$VARIANT" >/dev/null 2>&1
+# shellcheck disable=SC2086
+scripts/loadsim/use-variant.sh "$VARIANT" ${LOADSIM_COMPANY:-} >/dev/null 2>&1
 t0=$(date +%s)
 if [ "$DAYS" -gt 0 ]; then LOADSIM_VARIANT=$VARIANT scripts/loadsim/history.sh "$DAYS" > "$OUT.history.log" 2>&1; fi
 echo "   histórico: $(( $(date +%s) - t0 ))s"

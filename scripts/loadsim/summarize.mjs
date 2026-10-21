@@ -16,54 +16,63 @@ const devices = { team_leader: 12, runner: 9, qc_inspector: 3, manager: 3, payro
 const read = f => (fs.existsSync(path.join(DIR, f)) ? JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')) : null);
 const mb = x => (x / 1048576).toFixed(1);
 
+const LABELS = Object.fromEntries(SCEN.map(([k, l]) => [k, l]));
+const files = fs
+  .readdirSync(DIR)
+  .filter(f => f.endsWith('.json') && !f.endsWith('.partial.json') && !f.endsWith('.period.json') && f !== 'summary.json')
+  .sort();
 const rows = [];
-for (const [key, label, days] of SCEN) {
-  for (const v of ['current', 'optimized']) {
-    const live = read(`${key}-${v}.json`);
-    const per = read(`${key}-${v}.period.json`);
-    if (!live && !per) continue;
-    const r = { scenario: label, key, variant: v, historyDays: days };
-    if (live) {
-      r.live = {
-        calls: live.total.calls,
-        errors: live.total.errors,
-        gzMB: +mb(live.total.gzIn),
-        rawMB: +mb(live.total.bytesIn),
-        upMB: +mb(live.total.bytesOut),
-        realtimeMsgs: live.rtTotal.msgs,
-        lagP50: live.realtimeLagMs.p50,
-        lagP95: live.realtimeLagMs.p95,
-        dbGrowthMB: +mb(live.db.growthBytes),
-        scans: live.integrity.scansCreated,
-        lost: live.integrity.scansLost,
-        dupes: live.integrity.duplicateRowsInDb,
-        truncated: live.integrity.truncatedQueries,
-        openShifts: live.integrity.openShiftsAtEnd,
-        perDeviceGzMB: Object.fromEntries(Object.entries(live.byRole).map(([k, x]) => [k, +(x.gzIn / 1048576 / (devices[k] || 1)).toFixed(2)])),
-        errorsBy: live.endpoints.filter(e => e.errors).map(e => `${e.role} ${e.label}: ${e.errors}/${e.calls} ${JSON.stringify(e.status)}`),
-        slowest: [...live.endpoints].sort((a, b) => b.p95 - a.p95).slice(0, 6).map(e => `${e.role} ${e.label} p95=${e.p95}ms (n=${e.calls})`),
-        dbCpuAvg: live.docker?.db?.cpuAvg,
-        edgeCpuAvg: live.docker?.edge_runtime?.cpuAvg,
-        topSql: (live.topSql || []).slice(0, 5).map(q => `${q.total_ms}ms/${q.calls} ${q.query.slice(0, 90)}`),
-      };
-    }
-    if (per) {
-      r.period = { dbMB: per.dbMB, counts: per.counts, ops: per.results.map(o => ({ op: o.op, variant: o.variant, ok: o.ok, ms: o.ms, req: o.requests, err: o.errors, kbGz: o.kbInGzip, note: o.note })) };
-    }
-    rows.push(r);
+for (const f of files) {
+  const base = f.replace(/\.json$/, '');
+  const m = base.match(/^(.*?)-(current|optimized)(-chaos)?$/);
+  if (!m) continue;
+  const [, key, v, chaos] = m;
+  const live = read(f);
+  const per = read(`${base}.period.json`);
+  const scenKey = Object.keys(LABELS).find(k => key.startsWith(k)) || key;
+  const r = { scenario: (LABELS[scenKey] || key) + (key !== scenKey ? ` (${key.slice(scenKey.length + 1)})` : '') + (chaos ? ' + caos' : ''), key: base, variant: v, speed: live?.meta?.speed };
+  if (live) {
+    r.live = {
+      calls: live.total.calls,
+      errors: live.total.errors,
+      gzMB: +mb(live.total.gzIn),
+      rawMB: +mb(live.total.bytesIn),
+      upMB: +mb(live.total.bytesOut),
+      realtimeMsgs: live.rtTotal.msgs,
+      lagP50: live.realtimeLagMs.p50,
+      lagP95: live.realtimeLagMs.p95,
+      dbGrowthMB: +mb(live.db.growthBytes),
+      scans: live.integrity.scansCreated,
+      lost: live.integrity.scansLost,
+      dupes: live.integrity.duplicateRowsInDb,
+      truncated: live.integrity.truncatedQueries,
+      openShifts: live.integrity.openShiftsAtEnd,
+      devices: live.meta.devices,
+      perDeviceGzMB: Object.fromEntries(Object.entries(live.byRole).map(([k, x]) => [k, +(x.gzIn / 1048576 / ((live.meta.devicesByRole || devices)[k] || 1)).toFixed(2)])),
+      errorsBy: live.endpoints.filter(e => e.errors).map(e => `${e.role} ${e.label}: ${e.errors}/${e.calls} ${JSON.stringify(e.status)}`),
+      events: live.eventCounts,
+      dbCpuAvg: live.docker?.db?.cpuAvg,
+      edgeCpuAvg: live.docker?.edge_runtime?.cpuAvg,
+    };
   }
+  if (per) {
+    r.period = { dbMB: per.dbMB, counts: per.counts, ops: per.results.map(o => ({ op: o.op, variant: o.variant, ok: o.ok, ms: o.ms, req: o.requests, err: o.errors, kbGz: o.kbInGzip, note: o.note })) };
+  }
+  rows.push(r);
 }
+const order = k => SCEN.findIndex(([s]) => k.startsWith(s));
+rows.sort((a, b) => order(a.key) - order(b.key) || a.key.localeCompare(b.key));
 
 fs.writeFileSync(path.join(DIR, 'summary.json'), JSON.stringify(rows, null, 2));
 
 const out = [];
 out.push('# Loadsim — resumen\n');
-out.push('| Escenario | Variante | Peticiones | Errores | Bajada gz MB | Subida MB | Realtime msgs | Lag p50/p95 ms | Crec. BD MB/día | Cubetas | Perdidas | Duplicadas | Truncadas |');
-out.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+out.push('| Escenario | Variante | ×vel | Peticiones | Errores | Bajada gz MB | Subida MB | Realtime msgs | Lag p50/p95 ms | Crec. BD MB/día | Cubetas | Perdidas | Duplicadas | Truncadas |');
+out.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
 for (const r of rows) {
   if (!r.live) continue;
   const l = r.live;
-  out.push(`| ${r.scenario} | ${r.variant} | ${l.calls} | ${l.errors} | ${l.gzMB} | ${l.upMB} | ${l.realtimeMsgs} | ${l.lagP50}/${l.lagP95} | ${l.dbGrowthMB} | ${l.scans} | ${l.lost} | ${l.dupes} | ${l.truncated} |`);
+  out.push(`| ${r.scenario} | ${r.variant} | ${r.speed} | ${l.calls} | ${l.errors} | ${l.gzMB} | ${l.upMB} | ${l.realtimeMsgs} | ${l.lagP50}/${l.lagP95} | ${l.dbGrowthMB} | ${l.scans} | ${l.lost} | ${l.dupes} | ${l.truncated} |`);
 }
 out.push('\n## Operaciones de oficina con el volumen acumulado\n');
 for (const r of rows) {

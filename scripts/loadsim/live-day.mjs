@@ -1194,7 +1194,16 @@ async function main() {
 
   const lag = [...state.realtimeLag].sort((a, b) => a - b);
   const result = {
-    meta: { date: NZ_DATE, speed: SPEED, variant: VARIANT, chaos: CHAOS, devices: devices.length, realSeconds: Math.round((Date.now() - realStart) / 1000) },
+    meta: {
+      date: NZ_DATE,
+      speed: SPEED,
+      variant: VARIANT,
+      chaos: CHAOS,
+      devices: devices.length,
+      devicesByRole: devices.reduce((a, d) => ((a[d.role] = (a[d.role] || 0) + 1), a), {}),
+      pickers: [...state.pickersByOrchard.values()].reduce((a, l) => a + l.length, 0),
+      realSeconds: Math.round((Date.now() - realStart) / 1000),
+    },
     integrity: {
       scansCreated: state.scansCreated,
       scansAcked: state.scansAcked,
