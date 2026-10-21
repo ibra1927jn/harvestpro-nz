@@ -147,13 +147,5 @@ describe('TasksView', () => {
   });
 });
 
-describe('ProfileView', () => {
-  it('renders user profile', async () => {
-    const { default: ProfileView } = await import('./ProfileView');
-    const { container } = render(<ProfileView />);
-    expect(container.firstChild).toBeDefined();
-  });
-});
-
 // LogisticsView receives bucketRecords as direct prop — skip smoke test
 

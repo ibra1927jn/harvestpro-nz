@@ -45,6 +45,7 @@ import {
 } from './auth/authActions';
 import { useAuthLifecycle } from './auth/useAuthLifecycle';
 import { useSessionKeepAlive } from './auth/useSessionKeepAlive';
+import { usePreferredLocale } from './auth/usePreferredLocale';
 import { AuthModals } from './auth/AuthModals';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -189,6 +190,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useAuthLifecycle({ isAuthenticatedRef, loadUserData, signOut, updateAuthState });
   useSessionKeepAlive();
+  // Idioma guardado en la cuenta («Mi cuenta»): se aplica una vez al cargar el perfil
+  usePreferredLocale(state.appUser?.id, state.appUser?.preferred_locale);
 
   const contextValue: AuthContextType = {
     ...state,

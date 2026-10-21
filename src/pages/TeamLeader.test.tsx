@@ -50,9 +50,6 @@ vi.mock('../components/views/team-leader/TeamView', () => ({
 vi.mock('../components/views/team-leader/TasksView', () => ({
   default: () => <div>Tasks View</div>,
 }));
-vi.mock('../components/views/team-leader/ProfileView', () => ({
-  default: () => <div>Profile View</div>,
-}));
 vi.mock('../components/views/team-leader/MessagingView', () => ({
   default: () => <div>Messaging View</div>,
 }));
@@ -71,8 +68,14 @@ vi.mock('@/components/common/NotificationPanel', () => ({
 vi.mock('@/components/ui/ThemeToggle', () => ({
   default: () => <div>Theme</div>,
 }));
+// «Mi cuenta» sustituye a la maqueta ProfileView del team leader (revisión 2026-10-21, #10)
+vi.mock('@/hooks/useAvatarUrl', () => ({ useAvatarSignedUrl: () => null, useUserAvatarUrl: () => null }));
+vi.mock('@/components/common/account/AccountSheet', () => ({
+  default: () => <div role="dialog" aria-label="My account">Account</div>,
+}));
 
 import TeamLeader from './TeamLeader';
+import { fireEvent } from '@testing-library/react';
 
 describe('TeamLeader Page', () => {
   it('renders the header with Team Leader title', () => {
@@ -92,5 +95,13 @@ describe('TeamLeader Page', () => {
     expect(screen.getByText('Map')).toBeTruthy();
     expect(screen.getByText('Timesheet')).toBeTruthy();
     expect(screen.getByText('Chat')).toBeTruthy();
+  });
+
+  it('has no profile tab any more: the avatar opens My account', async () => {
+    render(<TeamLeader />);
+    expect(screen.queryByText('Profile View')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Open profile settings' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Open my account' }));
+    expect(await screen.findByRole('dialog', { name: 'My account' })).toBeTruthy();
   });
 });
