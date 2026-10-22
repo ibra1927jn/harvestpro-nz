@@ -3,6 +3,9 @@
  */
 import { supabase } from '@/services/supabase';
 import { fetchAllRows } from '@/utils/fetchAllRows';
+import { todayNZST } from '@/utils/nzst';
+import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
+import { pieceRateOn, type DailyPieceRate } from '@/services/harvestMetrics/pay';
 
 export const storeSyncRepository = {
     /** Get first orchard */
@@ -16,20 +19,21 @@ export const storeSyncRepository = {
         const { data } = await supabase
             .from('harvest_settings').select('*').eq('orchard_id', orchardId).maybeSingle();
         if (!data) return data;
-        // Precios por variedad: los de este huerto y los de la empresa. Si no se
-        // pueden leer, se paga a piece_rate (como antes).
-        let rates: { id: string; orchard_id: string | null; variety: string; piece_rate: number }[] | null = null;
+        // Precios por cubeta que valen HOY (piece_rates): el general y el de cada
+        // variedad. piece_rate pasa a ser el general de hoy (lo que enseñan el TL,
+        // el runner y el perfil del picker). Si no se pueden leer, el guardado.
+        const today = todayNZST();
+        let rates: DailyPieceRate[] = [];
         try {
-            ({ data: rates } = await supabase
-                .from('variety_rates')
-                .select('id, orchard_id, variety, piece_rate')
-                .or(`orchard_id.eq.${orchardId},orchard_id.is.null`));
+            rates = await pieceRatesRepository.loadRange(today, today, orchardId);
         } catch {
-            rates = null;
+            rates = [];
         }
+        const stored = Number(data.piece_rate ?? 0);
         return {
             ...data,
-            variety_rates: (rates ?? []).map(r => ({ ...r, piece_rate: Number(r.piece_rate) })),
+            piece_rate: pieceRateOn(rates, orchardId, null, today, stored),
+            piece_rates: rates,
         };
     },
 

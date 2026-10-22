@@ -4,6 +4,8 @@ import { bucketsInBin } from '@/services/bin.service';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import type { RejectedScan } from '@/hooks/useRunnerData';
 import { useTranslation } from '@/i18n';
+import { useTodayPieceRate } from '@/hooks/useTodayPieceRate';
+import { formatNZD } from '@/utils/nzFormat';
 
 interface LogisticsViewProps {
   onScan: (type?: 'BIN' | 'BUCKET') => void;
@@ -32,6 +34,8 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
   selectedBinId,
 }) => {
   const { t } = useTranslation();
+  // Precio general de hoy del huerto (realtime de piece_rates: sin recargar)
+  const { rate: pieceRateToday } = useTodayPieceRate();
   const buckets = useHarvestStore(state => state.buckets);
   const bucketRecords = useHarvestStore(state => state.bucketRecords);
   // Cubetas en el bin activo (móvil + servidor, sin duplicar)
@@ -95,6 +99,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
           <div>
             <h1 className="text-2xl font-black bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent tracking-tight">{t('runner.hub.title')}</h1>
             <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">{t('runner.hub.subtitle')}</p>
+            <p className="text-[11px] font-semibold text-slate-500 mt-0.5" data-testid="runner-price-today">{t('runner.price_today', { price: formatNZD(pieceRateToday) })}</p>
           </div>
           <div className="flex items-center gap-3">
             <button aria-label={t('settings.notifications')}

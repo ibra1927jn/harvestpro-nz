@@ -162,6 +162,7 @@ const runner: TranslationDict = {
     'runner.myts.needs_network': 'Necesitas conexión para enviar la solicitud. Vuelve a intentarlo cuando tengas red.',
     'runner.warehouse.pickup_sent': 'Recogida solicitada: {n} bin(s) llenos en el almacén',
     'runner.warehouse.pickup_failed': 'No se pudo enviar la solicitud de recogida. Inténtalo de nuevo.',
+    'runner.price_today': 'Precio por cubeta hoy: {price}',
 };
 
 export default runner;

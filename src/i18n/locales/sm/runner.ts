@@ -162,6 +162,7 @@ const runner: TranslationDict = {
     'runner.myts.needs_network': 'E manaʻomia se fesoʻotaʻiga e lafo ai le talosaga. Toe taumafai pe a toe maua le fesoʻotaʻiga.',
     'runner.warehouse.pickup_sent': 'Ua talosagaina le aveina o {n} pusa tumu i le faleteuoloa',
     'runner.warehouse.pickup_failed': 'E leʻi mafai ona lafo le talosaga e ave ai. Toe taumafai.',
+    'runner.price_today': 'Tau i le pakete aso nei: {price}',
 };
 
 export default runner;

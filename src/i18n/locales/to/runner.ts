@@ -162,6 +162,7 @@ const runner: TranslationDict = {
     'runner.myts.needs_network': 'ʻOku fiemaʻu ha fehokotaki ke fakahū ʻa e kole. Toe feinga ʻi he taimi ʻe toe maʻu ai ʻa e fehokotaki.',
     'runner.warehouse.pickup_sent': 'Kuo kole ke ʻave ʻa e puha fonu ʻe {n} ʻi he fale tukuʻanga koloa',
     'runner.warehouse.pickup_failed': 'Naʻe ʻikai lava ke fakahū ʻa e kole ʻave. Toe feinga.',
+    'runner.price_today': 'Totongi ki he pakete ʻaho ni: {price}',
 };
 
 export default runner;

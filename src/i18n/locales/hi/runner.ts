@@ -162,6 +162,7 @@ const runner: TranslationDict = {
     'runner.myts.needs_network': 'अनुरोध भेजने के लिए कनेक्शन चाहिए। नेटवर्क वापस आने पर फिर कोशिश करें।',
     'runner.warehouse.pickup_sent': 'गोदाम में {n} भरे बिन उठाने का अनुरोध भेजा गया',
     'runner.warehouse.pickup_failed': 'उठाने का अनुरोध नहीं भेजा जा सका — फिर कोशिश करें',
+    'runner.price_today': 'आज प्रति बकेट दाम: {price}',
 };
 
 export default runner;
