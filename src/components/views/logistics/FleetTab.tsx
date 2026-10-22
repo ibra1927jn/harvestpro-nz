@@ -112,10 +112,14 @@ const FleetTab: React.FC<FleetTabProps> = ({ tractors, onUpdateTractor, readOnly
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-3">
                                     <div className={`size-10 rounded-lg ${s.bg} flex items-center justify-center`}>
-                                        <span aria-hidden="true" className={`material-symbols-outlined ${s.text}`}>agriculture</span>
+                                        <span aria-hidden="true" className={`material-symbols-outlined ${s.text}`}>{tractor.type === 'forklift' ? 'forklift' : tractor.type === 'truck' ? 'local_shipping' : 'agriculture'}</span>
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-text-primary text-sm">{tractor.name}</h4>
+                                        <h4 className="font-bold text-text-primary text-sm">
+                                            {tractor.name}
+                                            {/* Tipo de vehículo: decide si quien lo lleva es driver o forklift (runners en el huerto) */}
+                                            <span className="ml-2 text-[10px] font-bold uppercase text-text-muted">{t(`runner.now.vehicle_${tractor.type}`)}</span>
+                                        </h4>
                                         <p className="text-xs text-text-secondary flex items-center gap-1">
                                             <InlineEdit
                                                 value={tractor.driver_name}

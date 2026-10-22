@@ -130,6 +130,8 @@ const shared: TranslationDict = {
     'ui.loading_app': 'Loading application',
     'ui.otp_digit': 'OTP digit {n}',
     'ui.loading': 'Loading',
+    'nav.runners_now': 'Runners',
+    'nav.my_timesheet': 'My hours',
 };
 
 export default shared;

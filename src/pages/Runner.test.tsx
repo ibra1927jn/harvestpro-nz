@@ -90,8 +90,8 @@ vi.mock('@/components/ui/Toast', () => ({
 vi.mock('../components/common/SyncStatusMonitor', () => ({
   default: () => <div>Sync Monitor</div>,
 }));
-vi.mock('@/components/views/manager/TimesheetEditor', () => ({
-  default: () => <div>Timesheet Editor</div>,
+vi.mock('../components/views/runner/MyTimesheetView', () => ({
+  default: () => <div>My Timesheet View</div>,
 }));
 vi.mock('@/components/ui/ComponentErrorBoundary', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
