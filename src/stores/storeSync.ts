@@ -377,7 +377,7 @@ export function setupRealtimeSubscriptions(
           recentQcInspections: [
             payload.new as Record<string, unknown>,
             ...state.recentQcInspections,
-          ].slice(0, 10),
+          ].slice(0, 50),
         }));
       }
     )

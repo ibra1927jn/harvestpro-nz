@@ -16,12 +16,10 @@ import { supabase } from '@/services/supabase';
 import { useTranslation } from '@/i18n';
 import { gradeLongLabel } from '@/components/views/qc/gradeLabel';
 import { todayNZST } from '@/utils/nzst';
-import { Role } from '@/types';
+import { canViewWellbeing } from '@/services/qcAlerts';
 
 type QualityGrade = 'A' | 'B' | 'C' | 'reject';
 
-/** Quién ve las respuestas de bienestar (informado / a gusto): nunca el perfil público */
-const WELLBEING_ROLES: ReadonlySet<string> = new Set([Role.TEAM_LEADER, Role.MANAGER, Role.HR_ADMIN, Role.ADMIN]);
 
 export interface UseQCResult {
   inspections: QCInspection[];
@@ -160,7 +158,7 @@ export function useQC(): UseQCResult {
     gradeError,
     crew,
     orchardId,
-    canViewWellbeing: !!appUser?.role && WELLBEING_ROLES.has(appUser.role),
+    canViewWellbeing: canViewWellbeing(appUser?.role),
     setSelectedPicker,
     setNotes,
     handleGrade,

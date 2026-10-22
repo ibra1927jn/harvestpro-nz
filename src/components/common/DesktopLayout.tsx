@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useAvatarSignedUrl } from '@/hooks/useAvatarUrl';
 import UserAvatar from './account/UserAvatar';
 import { LazyAccountSheet as AccountSheet } from './account/lazyAccountSheet';
-import { useMessaging } from '@/context/MessagingContext';
+import { useNotificationBadge } from '@/hooks/useNotificationBadge';
 import { useNavigate } from 'react-router-dom';
 import NotificationPanel from './NotificationPanel';
 import ThemeToggle from '@/components/ui/ThemeToggle';
@@ -58,7 +58,8 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
     const { appUser, signOut } = useAuth();
     // Nombres de las secciones en el idioma de la app
     navItems = navItems.map(i => (i.labelKey ? { ...i, label: t(i.labelKey) } : i));
-    const { unreadCount } = useMessaging();
+    // Campana: chat sin leer + avisos (calidad, avisos del huerto) sin ver
+    const unreadCount = useNotificationBadge();
     const navigate = useNavigate();
     // Persiste el estado del sidebar en localStorage para que no se resetee al navegar entre páginas
     const [collapsed, setCollapsed] = useState(() => {
