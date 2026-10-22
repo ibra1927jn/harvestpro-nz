@@ -46,6 +46,22 @@ const settings2: TranslationDict = {
     'wage.save': 'I-save ang Rate',
     'wage.save_failed': 'Hindi na-save',
     'wage.footer': 'Huling sync: {date} · Naitatala ang bawat pagbabago kasama ang user, oras at luma/bagong halaga.',
+    'pieceRates.title': 'Presyo bawat bucket — ngayon ({date})',
+    'pieceRates.hint': 'Nagbabago lang ang bayad mula ngayon; ang mga naunang araw ay may sariling presyo pa rin.',
+    'pieceRates.general': 'Pangkalahatang presyo (taniman)',
+    'pieceRates.general_hint': 'Ang mga variety na walang sariling presyo ay binabayaran dito.',
+    'pieceRates.varieties': 'Ayon sa variety',
+    'pieceRates.yesterday': 'kahapon {price}',
+    'pieceRates.uses_general': 'gamit ang pangkalahatan',
+    'pieceRates.saved': '{name}: {price} bawat bucket mula ngayon',
+    'pieceRates.cleared': '{name}: inalis ang pagbabago ngayon',
+    'pieceRates.invalid': 'Di-wastong presyo para sa {name}',
+    'pieceRates.save_failed': 'Hindi na-save ang presyo',
+    'pieceRates.history': 'Mga pagbabago sa nakaraang 14 na araw',
+    'pieceRates.history_empty': 'Walang pagbabago ng presyo sa nakaraang 14 na araw.',
+    'pieceRates.price_aria': 'Presyo bawat bucket ngayon: {name}',
+    'pieceRates.clear': 'I-undo ngayon',
+    'pieceRates.none': 'Walang variety sa mga hanay ng taniman na ito.',
 };
 
 export default settings2;

@@ -46,6 +46,22 @@ const settings2: TranslationDict = {
     'wage.save': 'Guardar tarifa',
     'wage.save_failed': 'No se pudo guardar',
     'wage.footer': 'Última sincronización: {date} · Todos los cambios quedan auditados con usuario, hora y valores anterior/nuevo.',
+    'pieceRates.title': 'Precio por cubeta — hoy ({date})',
+    'pieceRates.hint': 'Solo cambia el pago desde hoy; los días anteriores conservan su precio.',
+    'pieceRates.general': 'Precio general (huerto)',
+    'pieceRates.general_hint': 'Las variedades sin precio propio se pagan a este.',
+    'pieceRates.varieties': 'Por variedad',
+    'pieceRates.yesterday': 'ayer {price}',
+    'pieceRates.uses_general': 'usa el general',
+    'pieceRates.saved': '{name}: {price} por cubeta desde hoy',
+    'pieceRates.cleared': '{name}: cambio de hoy quitado',
+    'pieceRates.invalid': 'Precio no válido para {name}',
+    'pieceRates.save_failed': 'No se pudo guardar el precio',
+    'pieceRates.history': 'Cambios de los últimos 14 días',
+    'pieceRates.history_empty': 'Sin cambios de precio en los últimos 14 días.',
+    'pieceRates.price_aria': 'Precio por cubeta hoy: {name}',
+    'pieceRates.clear': 'Deshacer hoy',
+    'pieceRates.none': 'No hay variedades en las filas de este huerto.',
 };
 
 export default settings2;

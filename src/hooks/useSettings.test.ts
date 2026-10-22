@@ -41,7 +41,8 @@ describe('useSettings — form defaults', () => {
         min_wage_rate: 23.95,
         min_buckets_per_hour: 8,
         target_tons: 40,
-        variety: 'Cherry',
+        // Sin valor por defecto: antes «Cherry» acababa guardado en huertos de manzanas (B5)
+        variety: '',
     };
 
     it('has correct default piece rate', () => {
@@ -56,8 +57,8 @@ describe('useSettings — form defaults', () => {
         expect(defaults.target_tons).toBe(40);
     });
 
-    it('has correct default variety', () => {
-        expect(defaults.variety).toBe('Cherry');
+    it('has no default variety', () => {
+        expect(defaults.variety).toBe('');
     });
 });
 

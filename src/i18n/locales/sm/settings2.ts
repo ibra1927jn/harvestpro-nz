@@ -46,6 +46,22 @@ const settings2: TranslationDict = {
     'wage.save': 'Teu Totogi',
     'wage.save_failed': 'Ua le manuia le teu',
     'wage.footer': 'Faatasi mulimuli: {date} · O suiga uma e faamauina ma le tagata, taimi ma tau tuai/fou.',
+    'pieceRates.title': 'Tau i le pakete — aso nei ({date})',
+    'pieceRates.hint': 'E suia le totogi mai i le aso nei; o aso ua mavae e tumau o latou tau.',
+    'pieceRates.general': 'Tau lautele (togālaau)',
+    'pieceRates.general_hint': 'O ituaiga e leai so latou tau e totogi i lenei.',
+    'pieceRates.varieties': 'I le ituaiga',
+    'pieceRates.yesterday': 'ananafi {price}',
+    'pieceRates.uses_general': 'faaaoga le lautele',
+    'pieceRates.saved': '{name}: {price} i le pakete mai i le aso nei',
+    'pieceRates.cleared': '{name}: ua aveese le suiga o le aso nei',
+    'pieceRates.invalid': 'Tau le saʻo mo {name}',
+    'pieceRates.save_failed': 'Le mafai ona teu le tau',
+    'pieceRates.history': 'Suiga i aso e 14 ua mavae',
+    'pieceRates.history_empty': 'Leai ni suiga o tau i aso e 14 ua mavae.',
+    'pieceRates.price_aria': 'Tau i le pakete aso nei: {name}',
+    'pieceRates.clear': 'Toe faaleaoga le aso nei',
+    'pieceRates.none': 'Leai ni ituaiga i laina o lenei togālaau.',
 };
 
 export default settings2;

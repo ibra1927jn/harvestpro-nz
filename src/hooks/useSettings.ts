@@ -13,10 +13,16 @@ import { PAY_RULES } from '@/services/harvestMetrics/pay';
 const WAGE_EDIT_ROLES = new Set(['admin', 'hr_admin']);
 
 export interface SettingsFormData {
+    /**
+     * Precio general de HOY (solo lectura en el formulario: se cambia en
+     * «Precio por cubeta — hoy», que escribe piece_rates). Sirve para el
+     * objetivo mínimo de cubetas/hora.
+     */
     piece_rate: number;
     min_wage_rate: number;
     min_buckets_per_hour: number;
     target_tons: number;
+    /** Variedad guardada (no se edita aquí ni se escribe al guardar: fallo B5) */
     variety: string;
     /**
      * Hora prevista de inicio de turno (HH:MM, 24h). No hay hora de fin: cada
@@ -62,7 +68,7 @@ export function useSettings() {
         min_wage_rate: settings?.min_wage_rate ?? PAY_RULES.minWageFloor,
         min_buckets_per_hour: settings?.min_buckets_per_hour ?? 8,
         target_tons: settings?.target_tons ?? 40,
-        variety: settings?.variety ?? 'Cherry',
+        variety: settings?.variety ?? '',
         shift_start_time: settings?.shift_start_time ?? '07:00',
     });
 
@@ -118,7 +124,7 @@ export function useSettings() {
                 min_wage_rate: settings.min_wage_rate,
                 min_buckets_per_hour: Math.max(settings.min_buckets_per_hour, Math.ceil(settings.min_wage_rate / settings.piece_rate)),
                 target_tons: settings.target_tons,
-                variety: settings.variety ?? 'Cherry',
+                variety: settings.variety ?? '',
                 shift_start_time: settings.shift_start_time ?? '07:00',
             });
         }
@@ -191,6 +197,24 @@ export function useSettings() {
         setSaveStatus('idle');
     }, []);
 
+    /**
+     * Precio general de hoy (lo avisa el editor de precios al cargar o guardar).
+     * Ya está guardado: no marca cambios pendientes; sí recalcula el objetivo
+     * mínimo de cubetas/hora si estaba en el mínimo legal.
+     */
+    const setGeneralRate = useCallback((rate: number) => {
+        setFormData(prev => {
+            if (Number(prev.piece_rate) === rate) return prev;
+            const oldFloor = Number(prev.piece_rate) > 0 ? Math.ceil(Number(prev.min_wage_rate) / Number(prev.piece_rate)) : 1;
+            const newFloor = rate > 0 ? Math.ceil(Number(prev.min_wage_rate) / rate) : 1;
+            return {
+                ...prev,
+                piece_rate: rate,
+                min_buckets_per_hour: prev.min_buckets_per_hour <= oldFloor ? newFloor : prev.min_buckets_per_hour,
+            };
+        });
+    }, []);
+
     /** Cambia el huerto activo y auto-rellena Total Rows y Variety */
     const handleOrchardSelect = useCallback((id: string) => {
         const selected = availableOrchards.find(o => o.id === id);
@@ -225,12 +249,13 @@ export function useSettings() {
         setSaveStatus('idle');
         setSaveError(null);
         try {
+            // Sin piece_rate (el precio de hoy se guarda en «Precio por cubeta — hoy»,
+            // tabla piece_rates) y sin variety: antes escribía «Cherry» por defecto
+            // en huertos de manzanas (auditoría 23-10, B5)
             const payload = {
-                piece_rate: Number(formData.piece_rate),
                 min_wage_rate: Number(formData.min_wage_rate),
                 min_buckets_per_hour: Number(formData.min_buckets_per_hour),
                 target_tons: Number(formData.target_tons),
-                variety: formData.variety,
                 shift_start_time: formData.shift_start_time,
             };
             const result = await settingsService.updateHarvestSettings(orchardId, payload);
@@ -280,7 +305,7 @@ export function useSettings() {
         // Context
         orchard, currentUser, initials,
         // Form
-        formData, handleChange,
+        formData, handleChange, setGeneralRate,
         compliance, setCompliance,
         // Permissions & compliance floor
         canEditMinWage,

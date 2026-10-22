@@ -46,6 +46,22 @@ const settings2: TranslationDict = {
     'wage.save': 'दर सहेजें',
     'wage.save_failed': 'सहेजना विफल',
     'wage.footer': 'अंतिम सिंक: {date} · हर बदलाव उपयोगकर्ता, समय और पुराने/नए मान के साथ ऑडिट होता है।',
+    'pieceRates.title': 'प्रति बकेट दाम — आज ({date})',
+    'pieceRates.hint': 'भुगतान केवल आज से बदलता है; पिछले दिन अपना दाम रखते हैं।',
+    'pieceRates.general': 'सामान्य दाम (बाग)',
+    'pieceRates.general_hint': 'जिन किस्मों का अपना दाम नहीं है, उन्हें इसी दाम पर भुगतान होता है।',
+    'pieceRates.varieties': 'किस्म के अनुसार',
+    'pieceRates.yesterday': 'कल {price}',
+    'pieceRates.uses_general': 'सामान्य दाम',
+    'pieceRates.saved': '{name}: आज से {price} प्रति बकेट',
+    'pieceRates.cleared': '{name}: आज का बदलाव हटाया गया',
+    'pieceRates.invalid': '{name} के लिए अमान्य दाम',
+    'pieceRates.save_failed': 'दाम सहेजा नहीं जा सका',
+    'pieceRates.history': 'पिछले 14 दिनों के बदलाव',
+    'pieceRates.history_empty': 'पिछले 14 दिनों में दाम में कोई बदलाव नहीं।',
+    'pieceRates.price_aria': 'आज प्रति बकेट दाम: {name}',
+    'pieceRates.clear': 'आज का बदलाव हटाएँ',
+    'pieceRates.none': 'इस बाग की पंक्तियों में कोई किस्म नहीं मिली।',
 };
 
 export default settings2;

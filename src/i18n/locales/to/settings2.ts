@@ -46,6 +46,22 @@ const settings2: TranslationDict = {
     'wage.save': 'Tauhi Totongi',
     'wage.save_failed': 'Naʻe ʻikai lava ʻo tauhi',
     'wage.footer': 'Fakahoko fakamuimui: {date} · ʻOku lēkooti ʻa e liliu kotoa mo e tokotaha, taimi mo e mahuʻinga motuʻa/foʻou.',
+    'pieceRates.title': 'Totongi ki he pakete — ʻaho ni ({date})',
+    'pieceRates.hint': 'ʻOku liliu pē ʻa e vāhenga mei he ʻaho ni; ʻoku tauhi ʻe he ngaahi ʻaho kimuʻa honau totongi.',
+    'pieceRates.general': 'Totongi fakalūkufua (ngoue)',
+    'pieceRates.general_hint': 'Ko e ngaahi faʻahinga ʻoku ʻikai ha nau totongi ʻoku totongi ʻaki ʻeni.',
+    'pieceRates.varieties': 'ʻI he faʻahinga',
+    'pieceRates.yesterday': 'ʻaneafi {price}',
+    'pieceRates.uses_general': 'ngāueʻaki ʻa e fakalūkufua',
+    'pieceRates.saved': '{name}: {price} ki he pakete mei he ʻaho ni',
+    'pieceRates.cleared': '{name}: kuo toʻo ʻa e liliu ʻo e ʻaho ni',
+    'pieceRates.invalid': 'Totongi hala ki he {name}',
+    'pieceRates.save_failed': 'ʻIkai lava ʻo tauhi ʻa e totongi',
+    'pieceRates.history': 'Ngaahi liliu ʻi he ʻaho ʻe 14 kuo hili',
+    'pieceRates.history_empty': 'ʻIkai ha liliu totongi ʻi he ʻaho ʻe 14 kuo hili.',
+    'pieceRates.price_aria': 'Totongi ki he pakete ʻaho ni: {name}',
+    'pieceRates.clear': 'Toe foki ʻa e ʻaho ni',
+    'pieceRates.none': 'ʻIkai ha faʻahinga ʻi he ngaahi laine ʻo e ngoue ni.',
 };
 
 export default settings2;

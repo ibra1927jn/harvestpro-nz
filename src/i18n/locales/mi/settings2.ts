@@ -46,6 +46,22 @@ const settings2: TranslationDict = {
     'wage.save': 'Tiaki Utu',
     'wage.save_failed': 'I rahua te tiaki',
     'wage.footer': 'Tukutahi whakamutunga: {date} · Ka tuhia ia panonitanga me te kaiwhakamahi, te wā me ngā uara tawhito/hou.',
+    'pieceRates.title': 'Utu mō ia pākete — tēnei rā ({date})',
+    'pieceRates.hint': 'Ka huri te utu mai i tēnei rā anake; ka mau tonu ngā rā o mua i ō rātou utu.',
+    'pieceRates.general': 'Utu whānui (māra)',
+    'pieceRates.general_hint': 'Ko ngā momo kāore he utu motuhake ka utua ki tēnei.',
+    'pieceRates.varieties': 'Mā te momo',
+    'pieceRates.yesterday': 'inanahi {price}',
+    'pieceRates.uses_general': 'ka whakamahi i te whānui',
+    'pieceRates.saved': '{name}: {price} ia pākete mai i tēnei rā',
+    'pieceRates.cleared': '{name}: kua tangohia te panoni o tēnei rā',
+    'pieceRates.invalid': 'He utu hē mō {name}',
+    'pieceRates.save_failed': 'Kāore i taea te tiaki i te utu',
+    'pieceRates.history': 'Ngā panoni o ngā rā 14 kua hipa',
+    'pieceRates.history_empty': 'Kāore he panoni utu i ngā rā 14 kua hipa.',
+    'pieceRates.price_aria': 'Utu ia pākete tēnei rā: {name}',
+    'pieceRates.clear': 'Wetewete i tēnei rā',
+    'pieceRates.none': 'Kāore he momo i kitea i ngā rārangi o tēnei māra.',
 };
 
 export default settings2;
