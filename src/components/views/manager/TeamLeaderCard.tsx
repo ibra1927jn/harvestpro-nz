@@ -5,6 +5,7 @@ import UserAvatar from '@/components/common/account/UserAvatar';
 import { logger } from '@/utils/logger';
 import { useTranslation } from '@/i18n';
 import { ElsewhereBadge } from '@/components/common/ElsewhereBadge';
+import type { LeaveRequest } from '@/services/leave.service';
 
 interface TeamLeaderCardProps {
     leader: Picker;
@@ -13,9 +14,11 @@ interface TeamLeaderCardProps {
     settings: HarvestSettings | null;
     staggerIndex?: number;
     onRemoveUser?: (userId: string) => Promise<void>;
+    /** Ausencia aprobada de hoy por persona (Equipos: «De permiso») */
+    leaveToday?: ReadonlyMap<string, LeaveRequest>;
 }
 
-const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectUser, settings, staggerIndex = 0, onRemoveUser }) => {
+const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectUser, settings, staggerIndex = 0, onRemoveUser, leaveToday }) => {
     const { t } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
     const [unlinking, setUnlinking] = useState<string | null>(null);
@@ -187,6 +190,11 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-text-main text-sm truncate">{member.name}</p>
                                         {member.elsewhere && <div className="mt-0.5 max-w-full overflow-hidden"><ElsewhereBadge person={member} /></div>}
+                                        {leaveToday?.get(member.id) && !(member.check_in && !member.check_out) && (
+                                            <span data-testid={`team-on-leave-${member.id}`} className="mt-0.5 inline-flex text-[10px] font-bold uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                                                {t('comms.on_leave_type', { type: t(`leave.type.${leaveToday.get(member.id)!.type}`) })}
+                                            </span>
+                                        )}
                                         <div className="flex justify-between items-center mt-0.5">
                                             <div className="flex items-center gap-1.5">
                                                 <span className="text-[10px] text-slate-400 font-mono">{member.picker_id || '---'}</span>

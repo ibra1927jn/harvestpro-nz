@@ -33,32 +33,16 @@ export interface NewLeaveInput {
     status?: LeaveStatus;
 }
 
-/* ── Lógica pura ─────────────────────────────── */
-
-/** ¿La ausencia cubre esa fecha (YYYY-MM-DD)? */
-export function leaveCoversDate(leave: Pick<LeaveRequest, 'start_date' | 'end_date'>, ymd: string): boolean {
-    return leave.start_date <= ymd && ymd <= leave.end_date;
-}
-
-/**
- * Personas con una ausencia aprobada que cubre la fecha dada (→ on_leave en RRHH).
- * TODO (fuera de alcance de la revisión 21-10 #18): quitar a estas personas del
- * pase de lista del team leader (AttendanceView) y del plan del día del manager.
- */
-export function onLeaveOn(leaves: ReadonlyArray<LeaveRequest>, ymd: string): Set<string> {
-    const out = new Set<string>();
-    for (const l of leaves) {
-        if (l.status === 'approved' && leaveCoversDate(l, ymd)) out.add(l.picker_id);
-    }
-    return out;
-}
-
-/** Días naturales de la ausencia (medio día = 0,5) */
-export function leaveDays(leave: Pick<LeaveRequest, 'start_date' | 'end_date' | 'half_day'>): number {
-    if (leave.half_day) return 0.5;
-    const ms = Date.parse(`${leave.end_date}T00:00:00Z`) - Date.parse(`${leave.start_date}T00:00:00Z`);
-    return Math.round(ms / 86400000) + 1;
-}
+/* ── Lógica pura (leaveLogic.ts) ─────────────── */
+export {
+    leaveCoversDate,
+    onLeaveOn,
+    leaveByPickerOn,
+    isNetworkFailure,
+    leaveDays,
+    type QueuedLeaveRequest,
+} from './leaveLogic';
+import { isNetworkFailure, type QueuedLeaveRequest } from './leaveLogic';
 
 /* ── Servicio ────────────────────────────────── */
 
@@ -113,6 +97,66 @@ export const leaveService = {
         if (!parsed.success) throw new Error(parsed.error);
         const row = await leaveRepository.insert(parsed.data);
         return parseOne(row);
+    },
+
+    /** Lo que pidió esta persona (team leader) desde una fecha */
+    async listRequestedBy(userId: string, sinceYmd: string): Promise<LeaveRequest[]> {
+        const rows = await leaveRepository.listRequestedBy(userId, sinceYmd);
+        return safeParseArray(LeaveRequestSchema, rows);
+    },
+
+    /**
+     * El team leader pide una ausencia para alguien de su equipo (siempre
+     * «requested»: la decide RRHH). Sin red va a la cola (LEAVE_REQUEST) y se sube
+     * sola al volver la conexión; el id lo pone el móvil para no duplicarla.
+     */
+    async requestOfflineFirst(input: Omit<NewLeaveInput, 'status' | 'requestedBy'> & { requestedBy: string }): Promise<
+        { state: 'saved'; leave: LeaveRequest } | { state: 'queued'; queued: QueuedLeaveRequest }
+    > {
+        const candidate: NewLeaveRequest = {
+            id: crypto.randomUUID(),
+            orchard_id: input.orchardId,
+            picker_id: input.pickerId,
+            type: input.type,
+            start_date: input.startDate,
+            end_date: input.halfDay ? input.startDate : input.endDate,
+            half_day: input.halfDay ?? false,
+            reason: input.reason?.trim() || null,
+            requested_by: input.requestedBy,
+            status: 'requested',
+        };
+        const parsed = safeParse(NewLeaveRequestSchema, candidate);
+        if (!parsed.success) throw new Error(parsed.error);
+        const online = typeof navigator === 'undefined' || navigator.onLine !== false;
+        try {
+            if (!online) throw new Error('Offline');
+            const row = await leaveRepository.insert(parsed.data);
+            return { state: 'saved', leave: parseOne(row) };
+        } catch (e) {
+            if (!isNetworkFailure(e, online)) throw e;
+            const queued: QueuedLeaveRequest = {
+                id: parsed.data.id ?? candidate.id!,
+                picker_id: parsed.data.picker_id,
+                type: parsed.data.type,
+                start_date: parsed.data.start_date,
+                end_date: parsed.data.end_date,
+                half_day: parsed.data.half_day,
+                reason: parsed.data.reason,
+                requested_by: input.requestedBy,
+            };
+            const { syncService } = await import('./sync.service');
+            await syncService.addToQueue('LEAVE_REQUEST', { ...queued, orchard_id: parsed.data.orchard_id });
+            return { state: 'queued', queued };
+        }
+    },
+
+    /** Peticiones de ausencia que siguen en la cola de este móvil */
+    async listQueued(): Promise<QueuedLeaveRequest[]> {
+        const { syncService } = await import('./sync.service');
+        const queue = await syncService.getQueue();
+        return queue
+            .filter(item => item.type === 'LEAVE_REQUEST')
+            .map(item => item.payload as unknown as QueuedLeaveRequest);
     },
 
     approve: (id: string, decidedBy: string | null, note?: string | null) => decide(id, 'approved', decidedBy, note),

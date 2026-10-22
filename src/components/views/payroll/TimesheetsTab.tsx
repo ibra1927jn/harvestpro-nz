@@ -7,6 +7,8 @@ import { payrollService } from '@/services/payroll.service';
 import { logger } from '@/utils/logger';
 import { nzClock } from './payrollTabsLogic';
 import { useTranslation } from '@/i18n';
+import { useLeaveOnDay } from '@/hooks/useLeave';
+import { useHarvestStore } from '@/stores/useHarvestStore';
 
 /* ── Timesheets Tab ── */
 export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) => {
@@ -14,6 +16,23 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
     const [isLoading, setIsLoading] = useState(true);
     const { t } = useTranslation();
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    // Ausencias aprobadas de hoy: se marcan (el pago de la ausencia lo hace el programa de nóminas)
+    const leaveToday = useLeaveOnDay(orchardId);
+    const crew = useHarvestStore(s => s.crew);
+    const leaveBadge = (pickerId: string) => {
+        const leave = leaveToday.get(pickerId);
+        return leave ? (
+            <span data-testid={`ts-on-leave-${pickerId}`} className="ml-2 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+                {t('comms.on_leave_type', { type: t(`leave.type.${leave.type}`) })}
+            </span>
+        ) : null;
+    };
+    const onLeaveNames = [...leaveToday.values()].map(l => ({
+        id: l.picker_id,
+        type: l.type,
+        halfDay: l.half_day,
+        name: (Array.isArray(crew) ? crew : []).find(p => p.id === l.picker_id)?.name || timesheets.find(ts => ts.picker_id === l.picker_id)?.picker_name || '—',
+    }));
 
     const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         setToast({ message, type });
@@ -105,6 +124,19 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                 </div>
             )}
 
+            {onLeaveNames.length > 0 && (
+                <div data-testid="ts-on-leave-today" className="bg-amber-50/80 border border-amber-200/60 rounded-2xl px-5 py-3">
+                    <p className="text-sm font-extrabold text-amber-900 flex items-center gap-2">
+                        <span aria-hidden="true" className="material-symbols-outlined text-[18px]">event_busy</span>
+                        {t('comms.ts_on_leave_title', { n: onLeaveNames.length })}
+                    </p>
+                    <p className="text-xs text-amber-800 mt-1">
+                        {onLeaveNames.map(p => `${p.name} (${t(`leave.type.${p.type}`)}${p.halfDay ? ` · ${t('hr.agenda.half_day')}` : ''})`).join(', ')}
+                    </p>
+                    <p className="text-[11px] text-amber-700/80 mt-1">{t('comms.ts_on_leave_hint')}</p>
+                </div>
+            )}
+
             <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 relative overflow-hidden">
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-50"></div>
                 <div className="flex items-center justify-between mb-5">
@@ -137,7 +169,7 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                         {pending.map(ts => (
                             <div key={ts.id} className="group relative bg-white/60 backdrop-blur-sm rounded-2xl p-5 border border-white hover:bg-white hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300">
                                 <div className="flex items-center justify-between mb-3">
-                                    <h4 className="font-bold text-slate-800 text-sm tracking-tight">{ts.picker_name}</h4>
+                                    <h4 className="font-bold text-slate-800 text-sm tracking-tight">{ts.picker_name}{leaveBadge(ts.picker_id)}</h4>
                                     <div className="flex items-baseline gap-1 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
                                         <span className="text-sm font-black text-slate-700">{ts.hours_worked.toFixed(1)}</span>
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('pay.ts.hrs')}</span>
@@ -170,7 +202,7 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                         {approved.map(ts => (
                             <div key={ts.id} className="rounded-2xl p-4 border border-emerald-100/50 bg-emerald-50/40">
                                 <div className="flex items-center justify-between mb-2">
-                                    <h4 className="font-bold text-slate-800 text-sm tracking-tight">{ts.picker_name}</h4>
+                                    <h4 className="font-bold text-slate-800 text-sm tracking-tight">{ts.picker_name}{leaveBadge(ts.picker_id)}</h4>
                                     <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-100/50 text-emerald-600 uppercase tracking-widest border border-emerald-100">
                                         <span aria-hidden="true" className="material-symbols-outlined text-[14px]">check</span> {t('pay.ts.verified')}
                                     </span>
@@ -195,7 +227,7 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                         {rejected.map(ts => (
                             <div key={ts.id} className="rounded-2xl p-4 border border-red-100/50 bg-red-50/40">
                                 <div className="flex items-center justify-between mb-2">
-                                    <h4 className="font-bold text-slate-800 text-sm tracking-tight">{ts.picker_name}</h4>
+                                    <h4 className="font-bold text-slate-800 text-sm tracking-tight">{ts.picker_name}{leaveBadge(ts.picker_id)}</h4>
                                     <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-100/50 text-red-600 uppercase tracking-widest border border-red-100">
                                         <span aria-hidden="true" className="material-symbols-outlined text-[14px]">close</span> {t('status.rejected')}
                                     </span>

@@ -12,6 +12,7 @@ import RunnersSection from './teams/RunnersSection';
 import EmptyState from '@/components/ui/EmptyState';
 import { selectStaff, selectTeamLeaders, selectRunners, selectTeamOf, selectUnassigned } from '@/services/harvestMetrics/roster';
 import { useTranslation } from '@/i18n';
+import { useLeaveOnDay } from '@/hooks/useLeave';
 
 interface TeamsViewProps {
     crew: Picker[];
@@ -35,6 +36,8 @@ const TeamsView: React.FC<TeamsViewProps> = ({
     const [search, setSearch] = useState('');
     const [isAddTeamLeaderModalOpen, setIsAddTeamLeaderModalOpen] = useState(false);
     const [showImportCSV, setShowImportCSV] = useState(false);
+    // Ausencias aprobadas de hoy: «De permiso (tipo)» en cada persona
+    const leaveToday = useLeaveOnDay(orchardId);
 
     const handleImportComplete = useCallback((_count: number) => {
         setShowImportCSV(false);
@@ -114,6 +117,7 @@ const TeamsView: React.FC<TeamsViewProps> = ({
                                             settings={settings}
                                             staggerIndex={idx}
                                             onRemoveUser={onRemoveUser}
+                                            leaveToday={leaveToday}
                                         />
                                     ))}
                                 </div>

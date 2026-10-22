@@ -59,6 +59,13 @@ export const queryKeys = {
             ['pickers', 'team', teamLeaderId, orchardId] as const,
     },
 
+    // Ausencias (leave_requests)
+    leave: {
+        all: ['leave'] as const,
+        onDay: (orchardId: string, ymd: string) => ['leave', 'day', orchardId, ymd] as const,
+        requestedBy: (userId: string) => ['leave', 'requested-by', userId] as const,
+    },
+
     // Timesheets
     timesheets: {
         all: ['timesheets'] as const,

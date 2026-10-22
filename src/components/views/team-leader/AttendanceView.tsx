@@ -7,6 +7,10 @@ import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/ui/Toast';
 import { useTranslation } from '@/i18n';
 import { formatNZDate, formatNZTime } from '@/utils/nzFormat';
+import { useState, useMemo } from 'react';
+import { useLeaveOnDay, useMyLeaveRequests } from '@/hooks/useLeave';
+import RequestLeaveModal from './RequestLeaveModal';
+import { MyLeaveRequests } from './MyLeaveRequests';
 
 interface Picker {
     id: string;
@@ -28,6 +32,15 @@ const AttendanceView = () => {
     const { toast, showToast, hideToast } = useToast();
     // Tocar el nombre abre el cajón de perfil (el mismo que el manager); el fichaje va en su botón
     const openPickerProfile = useHarvestStore(s => s.openPickerProfile);
+    // Ausencias aprobadas de hoy: «De permiso», no cuenta como ausente ni se le ofrece fichar
+    const leaveToday = useLeaveOnDay(appUser?.orchard_id ?? undefined);
+    const myLeave = useMyLeaveRequests(appUser?.id);
+    const [leaveFor, setLeaveFor] = useState<Picker | null>(null);
+    const onLeaveCount = useMemo(
+        () => mergedList.filter(i => !i.isPresent && leaveToday.has(i.id)).length,
+        [mergedList, leaveToday],
+    );
+    const names = useMemo(() => new Map(mergedList.map(i => [i.id, i.name])), [mergedList]);
 
     const noSignal = (key: 'tl.attendance.no_signal_check_in' | 'tl.attendance.no_signal_check_out') =>
         typeof navigator !== 'undefined' && navigator.onLine === false ? t(key) : null;
@@ -69,25 +82,33 @@ const AttendanceView = () => {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                     <div className="bg-green-50 p-3 rounded-2xl border border-green-100 flex flex-col items-center">
                         <span className="text-2xl font-black text-green-600">{stats.present}</span>
                         <span className="text-xs font-bold text-green-700 uppercase">{t('tl.attendance.present')}</span>
                     </div>
                     <div className="bg-slate-100 p-3 rounded-2xl border border-slate-200 flex flex-col items-center">
-                        <span className="text-2xl font-black text-slate-500">{stats.absent}</span>
+                        <span className="text-2xl font-black text-slate-500">{stats.absent - onLeaveCount}</span>
                         <span className="text-xs font-bold text-slate-500 uppercase">{t('tl.attendance.absent')}</span>
+                    </div>
+                    <div className="bg-amber-50 p-3 rounded-2xl border border-amber-100 flex flex-col items-center" data-testid="on-leave-count">
+                        <span className="text-2xl font-black text-amber-600">{onLeaveCount}</span>
+                        <span className="text-xs font-bold text-amber-700 uppercase text-center">{t('comms.on_leave')}</span>
                     </div>
                 </div>
             </div>
 
             {/* List */}
             <div className="px-4 mt-6 space-y-3">
-                {mergedList.map(item => (
+                {mergedList.map(item => {
+                    const leave = !item.isPresent ? leaveToday.get(item.id) : undefined;
+                    return (
                     <div
                         key={item.id}
+                        data-testid={`roll-${item.id}`}
                         className={`p-4 rounded-xl border flex flex-wrap gap-3 items-center justify-between transition-all ${item.isPresent
                             ? 'bg-white border-green-200 shadow-sm'
+                            : leave ? 'bg-amber-50 border-amber-200'
                             : 'bg-slate-100 border-transparent opacity-80'
                             }`}
                     >
@@ -105,6 +126,11 @@ const AttendanceView = () => {
                                 <span className={`block font-bold text-base ${item.isPresent ? 'text-slate-900' : 'text-slate-500'}`}>
                                     {item.name}
                                 </span>
+                                {leave && (
+                                    <span className="block text-xs font-bold text-amber-700" data-testid={`on-leave-${item.id}`}>
+                                        {t('comms.on_leave_type', { type: t(`leave.type.${leave.type}`) })}
+                                    </span>
+                                )}
                                 <span className="block text-xs font-semibold text-slate-400">
                                     {item.attendanceRecord?.check_in
                                         ? t('tl.attendance.in_at', { time: formatNZTime(item.attendanceRecord.check_in) })
@@ -122,7 +148,16 @@ const AttendanceView = () => {
                         </button>
 
                         {/* Action Button */}
-                        <div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setLeaveFor(item)}
+                                aria-label={t('comms.leave_request_for', { name: item.name })}
+                                title={t('comms.leave_request_for', { name: item.name })}
+                                className="size-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-blue-600 hover:border-blue-200 flex items-center justify-center"
+                            >
+                                <span aria-hidden="true" className="material-symbols-outlined text-lg">event_busy</span>
+                            </button>
                             {processing === item.id || (item.attendanceRecord?.id && processing === item.attendanceRecord.id) ? (
                                 <span aria-hidden="true" className="material-symbols-outlined animate-spin text-slate-400">progress_activity</span>
                             ) : item.isPresent ? (
@@ -133,7 +168,7 @@ const AttendanceView = () => {
                                 >
                                     {t('tl.attendance.check_out')}
                                 </button>
-                            ) : (
+                            ) : leave ? null : (
                                 <button
                                     aria-label={t('tl.attendance.check_in_name', { name: item.name })}
                                     onClick={() => handleCheckIn(item)}
@@ -145,7 +180,8 @@ const AttendanceView = () => {
                             )}
                         </div>
                     </div>
-                ))}
+                    );
+                })}
 
                 {mergedList.length === 0 && !loading && (
                     <div className="text-center py-12 text-slate-400">
@@ -153,7 +189,25 @@ const AttendanceView = () => {
                         <p>{t('tl.attendance.empty')}</p>
                     </div>
                 )}
+
+                <MyLeaveRequests items={myLeave.items} names={names} />
             </div>
+
+            {leaveFor && appUser?.orchard_id && (
+                <RequestLeaveModal
+                    picker={{ id: leaveFor.id, name: leaveFor.name }}
+                    orchardId={appUser.orchard_id}
+                    requestedBy={appUser.id}
+                    onClose={() => setLeaveFor(null)}
+                    onDone={state => {
+                        const name = leaveFor.name;
+                        setLeaveFor(null);
+                        showToast(t(state === 'queued' ? 'comms.leave_queued' : 'comms.leave_sent', { name }), state === 'queued' ? 'info' : 'success');
+                        myLeave.refetch();
+                    }}
+                    onError={message => showToast(message, 'error')}
+                />
+            )}
         </div>
     );
 };
