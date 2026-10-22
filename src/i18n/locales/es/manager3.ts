@@ -72,6 +72,24 @@ const manager3: TranslationDict = {
     'dayset.min_rate': 'Ritmo mínimo',
     'dayset.bkt_per_hr': 'cub./h',
     'dayset.save': 'Guardar ajustes',
+    // Editor de fichajes: selección múltiple y corrección en lote (#9)
+    'tse.team_only': 'Solo se muestran los fichajes de tu equipo.',
+    'tse.select_of': 'Seleccionar el fichaje de {name}',
+    'tse.batch.select_all': 'Seleccionar todos los fichajes',
+    'tse.batch.select_flagged': 'Seleccionar con aviso ({n})',
+    'tse.batch.selected': '{n} seleccionados',
+    'tse.batch.title': 'Corregir {n} fichajes',
+    'tse.batch.hint': 'Deja un campo vacío para no tocar ese dato en cada fichaje. Un solo motivo para todos.',
+    'tse.batch.reason_placeholder': 'Motivo de todas las correcciones *',
+    'tse.batch.clear': 'Quitar selección',
+    'tse.batch.apply': 'Aplicar a {n}',
+    'tse.batch.offline': 'Sin conexión: las correcciones en lote van directas al servidor y no se encolan. Inténtalo cuando vuelva la cobertura.',
+    'tse.batch.done': 'Corregidos {n} fichajes',
+    'tse.batch.partial': '{ok} corregidos, {failed} con error (siguen seleccionados)',
+    // Estado de revisión de nómina en el editor de fichajes
+    'tse.review.approved': 'Aprobada por nómina',
+    'tse.review.rejected': 'Rechazada: {reason}',
+    'tse.review.rejected_no_reason': 'Rechazada por nómina',
 };
 
 export default manager3;

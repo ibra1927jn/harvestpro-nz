@@ -2,7 +2,7 @@
  * TimesheetRow — una fila del editor de hojas de horas (ver o corregir).
  */
 import { todayNZST } from '@/utils/nzst';
-import { AttendanceRow, CorrectionForm, formatTime, calculateHours, isAbnormal, isMealBreakMissing } from './timesheet-utils';
+import { AttendanceRow, CorrectionForm, formatTime, calculateHours, isAbnormal, isMealBreakMissing, reviewStatusOf } from './timesheet-utils';
 import { statusLabel } from '@/i18n/statusLabel';
 import { useTranslation } from '@/i18n';
 
@@ -15,27 +15,61 @@ interface TimesheetRowProps {
   onStartEdit: (record: AttendanceRow) => void;
   onCancel: () => void;
   onSave: (record: AttendanceRow) => void;
+  /** Selección múltiple para corregir en lote (casilla al principio de la fila) */
+  selected?: boolean;
+  onToggleSelect?: (record: AttendanceRow) => void;
 }
 
 export default function TimesheetRow({
   record, isEditing, form, saving, onChangeForm, onStartEdit, onCancel, onSave,
+  selected = false, onToggleSelect,
 }: TimesheetRowProps) {
   const { t } = useTranslation();
   const hours = calculateHours(record);
   const unclosed = !!record.check_in && !record.check_out && record.date < todayNZST();
   const abnormal = isAbnormal(hours);
   const breakMissing = isMealBreakMissing(record);
+  const review = reviewStatusOf(record);
 
   return (
     <tr
-      className={`border-t border-border-light ${abnormal ? 'bg-red-50' : ''} ${isEditing ? 'bg-amber-50' : ''}`}
+      className={`border-t border-border-light ${abnormal ? 'bg-red-50' : ''} ${isEditing || selected ? 'bg-amber-50' : ''}`}
     >
+      {/* Casilla de selección (lote) */}
+      {onToggleSelect && (
+        <td className="pl-4 pr-1 py-3">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelect(record)}
+            disabled={saving}
+            aria-label={t('tse.select_of', { name: record.picker?.name ?? '' })}
+            className="size-4 accent-amber-600"
+          />
+        </td>
+      )}
+
       {/* Picker Name */}
       <td className="px-4 py-3">
         <div className="font-medium text-text-main">
           {record.picker?.name || t('common.unknown')}
         </div>
         <div className="text-xs text-text-muted">{record.picker?.picker_id}</div>
+        {/* Lo que decidió Nómina / el manager sobre esta hoja (antes el TL no lo veía) */}
+        {review === 'approved' && (
+          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+            <span aria-hidden="true" className="material-symbols-outlined text-sm">verified</span>
+            {t('tse.review.approved')}
+          </span>
+        )}
+        {review === 'rejected' && (
+          <span className="mt-1 flex items-start gap-1 rounded-lg bg-red-50 border border-red-200 px-2 py-0.5 text-[11px] font-semibold text-red-700">
+            <span aria-hidden="true" className="material-symbols-outlined text-sm">block</span>
+            {record.rejection_reason
+              ? t('tse.review.rejected', { reason: record.rejection_reason })
+              : t('tse.review.rejected_no_reason')}
+          </span>
+        )}
       </td>
 
       {/* Check-In */}

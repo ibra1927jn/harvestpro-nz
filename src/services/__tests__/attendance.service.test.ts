@@ -225,6 +225,69 @@ describe('attendanceService', () => {
             ).rejects.toThrow('RLS violation');
         });
     });
+
+    // ═══════════════════════════════
+    // correctAttendanceBatch — via Edge Function (correct_batch)
+    // ═══════════════════════════════
+    describe('correctAttendanceBatch', () => {
+        const response = {
+            success: false, total: 2, succeeded: 1, failed: 1,
+            results: [
+                { index: 0, attendance_id: 'att-1', success: true },
+                { index: 1, attendance_id: 'att-2', success: false, error: 'Not allowed to correct this timesheet' },
+            ],
+        };
+
+        it('sends every item with only the fields that have a value, one reason for the batch', async () => {
+            mockInvoke.mockResolvedValue({ data: response, error: null });
+
+            const result = await attendanceService.correctAttendanceBatch(
+                [
+                    { attendance_id: 'att-1', check_out: '2026-10-21T03:30:00.000Z', break_start: undefined },
+                    { attendance_id: 'att-2', check_in: '2026-10-20T18:00:00.000Z', break_start: null },
+                ],
+                'Everyone forgot to check out',
+                'tl-1'
+            );
+
+            expect(mockInvoke).toHaveBeenCalledWith('manage-attendance', {
+                action: 'correct_batch',
+                items: [
+                    { attendance_id: 'att-1', check_out: '2026-10-21T03:30:00.000Z' },
+                    { attendance_id: 'att-2', check_in: '2026-10-20T18:00:00.000Z', break_start: null },
+                ],
+                reason: 'Everyone forgot to check out',
+                admin_id: 'tl-1',
+            });
+            // Resultados por fichaje: el que falla no tira el lote
+            expect(result.succeeded).toBe(1);
+            expect(result.failed).toBe(1);
+            expect(result.results[1].error).toContain('Not allowed');
+        });
+
+        it('does not call the server for an empty batch and refuses more than 200 items', async () => {
+            mockInvoke.mockClear();
+            const empty = await attendanceService.correctAttendanceBatch([], 'Nothing', 'tl-1');
+            expect(empty.total).toBe(0);
+            expect(mockInvoke).not.toHaveBeenCalled();
+
+            const tooMany = Array.from({ length: 201 }, (_, i) => ({ attendance_id: `att-${i}` }));
+            await expect(attendanceService.correctAttendanceBatch(tooMany, 'Bulk fix', 'tl-1')).rejects.toThrow('At most 200');
+            expect(mockInvoke).not.toHaveBeenCalled();
+        });
+
+        it('throws on Edge Function error and on a malformed response', async () => {
+            mockInvoke.mockResolvedValue({ data: null, error: { message: 'Function unavailable' } });
+            await expect(
+                attendanceService.correctAttendanceBatch([{ attendance_id: 'att-1', check_out: 'x' }], 'Reason here', 'tl-1')
+            ).rejects.toThrow('Function unavailable');
+
+            mockInvoke.mockResolvedValue({ data: { nope: true }, error: null });
+            await expect(
+                attendanceService.correctAttendanceBatch([{ attendance_id: 'att-1', check_out: 'x' }], 'Reason here', 'tl-1')
+            ).rejects.toThrow('Invalid correctAttendanceBatch response');
+        });
+    });
 });
 
 

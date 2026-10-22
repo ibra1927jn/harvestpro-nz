@@ -129,3 +129,46 @@ describe('RowCard', () => {
         expect(screen.getByText('R5').closest('button')).toBeDisabled();
     });
 });
+
+// #8: realce de equipos en la vista del team leader (sin la prop, nada cambia)
+describe('RowCard team highlight (team leader map)', () => {
+    const rd = {
+        rowNum: 8, variety: 'Lapin', buckets: 10, progress: 0.2, pickers: [], rowTarget: 50, binsPerHour: null,
+    };
+    const base = { rd, index: 0, rowAssignments: [] };
+
+    it('renders no team badge without the prop (manager view unchanged)', () => {
+        render(<RowCard {...base} />);
+        expect(screen.queryByText('My team')).toBeNull();
+        expect(screen.getByText('R8').closest('button')!.getAttribute('data-team')).toBeNull();
+    });
+
+    it("marks my team's row with the team leader colour and a badge", () => {
+        render(<RowCard {...base} teamHighlight={{ kind: 'mine' }} />);
+        const btn = screen.getByText('R8').closest('button')!;
+        expect(screen.getByText('My team')).toBeTruthy();
+        expect(btn.getAttribute('data-team')).toBe('mine');
+        expect(btn.className).toContain('ring-indigo-500');
+        expect(btn.className).not.toContain('grayscale');
+    });
+
+    it("greys out another team's row and names its team leader", () => {
+        render(<RowCard {...base} teamHighlight={{ kind: 'other', leaderNames: ['Hemi'] }} />);
+        const btn = screen.getByText('R8').closest('button')!;
+        expect(screen.getByText('Team of Hemi')).toBeTruthy();
+        expect(btn.getAttribute('data-team')).toBe('other');
+        expect(btn.className).toContain('grayscale');
+    });
+
+    it('falls back to a generic label when the other team leader is not in the crew', () => {
+        render(<RowCard {...base} teamHighlight={{ kind: 'other', leaderNames: [] }} />);
+        expect(screen.getByText('Another team')).toBeTruthy();
+    });
+
+    it('stays clickable for other teams (the TL can still open the row)', () => {
+        const onRowClick = vi.fn();
+        render(<RowCard {...base} teamHighlight={{ kind: 'other', leaderNames: ['Hemi'] }} onRowClick={onRowClick} />);
+        fireEvent.click(screen.getByText('R8').closest('button')!);
+        expect(onRowClick).toHaveBeenCalledWith(8);
+    });
+});

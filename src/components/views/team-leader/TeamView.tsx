@@ -1,11 +1,8 @@
-import { activateOnKey } from '@/utils/pressable';
 import React, { useState, useMemo } from 'react';
 import { useHarvestStore as useHarvest } from '@/stores/useHarvestStore';
-import { Picker } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { selectTeamOf, isPresentToday } from '@/services/harvestMetrics/roster';
 import AddPickerModal from '../../modals/AddPickerModal';
-import PickerDetailsModal from '../../modals/PickerDetailsModal';
 import { ElsewhereBadge } from '@/components/common/ElsewhereBadge';
 import { useTranslation } from '@/i18n';
 
@@ -15,12 +12,13 @@ const TeamView = () => {
         crew,
         addPicker,
         updatePicker,
+        // Perfil de la persona: el mismo cajón que usa el manager (Hoy / Historial / Calidad)
+        openPickerProfile,
     } = useHarvest();
     // Usuario que ha iniciado sesión (store.currentUser no se rellena nunca)
     const { appUser } = useAuth();
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [selectedPicker, setSelectedPicker] = useState<Picker | null>(null);
     const [showInactive, setShowInactive] = useState(false);
 
     // Filter Logic - GLOBAL ROSTER
@@ -90,22 +88,28 @@ const TeamView = () => {
                     </div>
                 ) : (
                     displayedCrew.map(picker => (
+                        // Toda la tarjeta abre el perfil al tocarla; el botón del nombre es la
+                        // vía accesible (teclado / TalkBack). La tarjeta lleva un input dentro
+                        // (arnés), por eso no es ella el botón.
                         <div
                             key={picker.id}
-                            onClick={() => setSelectedPicker(picker)}
-                            tabIndex={0}
-                            onKeyDown={activateOnKey(() => setSelectedPicker(picker))}
+                            onClick={() => openPickerProfile(picker.id)}
                             className={`bg-white/80 backdrop-blur-md rounded-2xl p-5 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden group hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:bg-white cursor-pointer transition-all duration-300 active:scale-[0.99] ${picker.status === 'inactive' ? 'opacity-60 grayscale' : ''}`}
                         >
                             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-50"></div>
                             <div className="flex justify-between items-start mb-4">
-                                <div className="flex items-center gap-4">
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); openPickerProfile(picker.id); }}
+                                    aria-label={t('tl.picker.open_profile', { name: picker.name })}
+                                    className="flex items-center gap-4 text-left rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                >
                                     <div className="size-12 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center font-black text-slate-400 text-base overflow-hidden border border-slate-200/60 shadow-inner">
                                         {picker.avatar || (picker.name || '??').substring(0, 2).toUpperCase()}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-1.5">
-                                            <h3 className="text-slate-800 font-extrabold text-base tracking-tight flex items-center gap-1.5 flex-wrap">{picker.name}<ElsewhereBadge person={picker} /></h3>
+                                            <span className="text-slate-800 font-extrabold text-base tracking-tight flex items-center gap-1.5 flex-wrap">{picker.name}<ElsewhereBadge person={picker} /></span>
                                             {(picker.total_buckets_today || 0) > 20 &&
                                                 <span aria-hidden="true" className="material-symbols-outlined text-amber-500 text-[16px] fill-current">star</span>
                                             }
@@ -126,7 +130,7 @@ const TeamView = () => {
                                             )}
                                         </div>
                                     </div>
-                                </div>
+                                </button>
                                 <div className="text-right flex flex-col items-end gap-1.5">
                                     <div>
                                         <span className="block text-2xl font-black text-slate-800 leading-none tracking-tight">{picker.total_buckets_today || 0}</span>
@@ -190,15 +194,6 @@ const TeamView = () => {
                 <AddPickerModal
                     onClose={() => setIsAddModalOpen(false)}
                     onAdd={addPicker}
-                />
-            )}
-
-            {selectedPicker && (
-                <PickerDetailsModal
-                    picker={selectedPicker}
-                    onClose={() => setSelectedPicker(null)}
-                    onUpdate={updatePicker}
-                    allCrew={displayedCrew}
                 />
             )}
         </div>

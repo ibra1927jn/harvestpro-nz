@@ -7,8 +7,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 
-vi.mock('@/stores/useHarvestStore', () => ({
-  useHarvestStore: () => ({
+// El mock respeta el selector (useHarvestStore(s => s.x)) y la forma sin selector
+vi.mock('@/stores/useHarvestStore', () => {
+  const state = {
+    openPickerProfile: vi.fn(),
     currentUser: { id: 'u1', full_name: 'Test Leader', role: 'team_leader', orchard_id: 'o1' },
     crew: [
       {
@@ -33,8 +35,11 @@ vi.mock('@/stores/useHarvestStore', () => ({
     removePicker: vi.fn(),
     updatePicker: vi.fn(),
     fetchCrew: vi.fn(),
-  }),
-}));
+  };
+  return {
+    useHarvestStore: (selector?: (st: typeof state) => unknown) => (selector ? selector(state) : state),
+  };
+});
 
 vi.mock('@/hooks/useHarvestMetrics', () => ({
   useHarvestMetrics: () => ({ perPicker: [{ pickerId: 'p1', earned: 150 }, { pickerId: 'p2', earned: 50 }] }),
@@ -81,9 +86,6 @@ vi.mock('@/context/MessagingContext', () => ({
 
 vi.mock('../../modals/AddPickerModal', () => ({
   default: () => <div data-testid="add-picker-modal" />,
-}));
-vi.mock('../../modals/PickerDetailsModal', () => ({
-  default: () => <div data-testid="picker-details-modal" />,
 }));
 
 describe('TeamView OmniCore', () => {

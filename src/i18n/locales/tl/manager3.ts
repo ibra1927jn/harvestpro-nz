@@ -72,6 +72,24 @@ const manager3: TranslationDict = {
     'dayset.min_rate': 'Min Rate',
     'dayset.bkt_per_hr': 'bkt/hr',
     'dayset.save': 'I-save ang Settings',
+    // Editor de fichajes: selección múltiple y corrección en lote (#9)
+    'tse.team_only': 'Ipinapakita lang ang mga timesheet ng iyong team.',
+    'tse.select_of': 'Piliin ang timesheet ni {name}',
+    'tse.batch.select_all': 'Piliin ang lahat ng timesheet',
+    'tse.batch.select_flagged': 'Piliin ang may babala ({n})',
+    'tse.batch.selected': '{n} ang napili',
+    'tse.batch.title': 'Itama ang {n} timesheet',
+    'tse.batch.hint': 'Iwanang blangko ang field para manatili ang sariling halaga ng bawat timesheet. Isang dahilan para sa lahat.',
+    'tse.batch.reason_placeholder': 'Dahilan ng lahat ng pagtatama *',
+    'tse.batch.clear': 'Alisin ang pagpili',
+    'tse.batch.apply': 'Ilapat sa {n}',
+    'tse.batch.offline': 'Walang koneksyon: ang mga batch na pagtatama ay direktang ipinapadala sa server at hindi inilalagay sa pila. Subukan ulit kapag online ka na.',
+    'tse.batch.done': 'Naitama ang {n} timesheet',
+    'tse.batch.partial': '{ok} naitama, {failed} nabigo (napili pa rin)',
+    // Estado de revisión de nómina en el editor de fichajes
+    'tse.review.approved': 'Inaprubahan ng payroll',
+    'tse.review.rejected': 'Tinanggihan: {reason}',
+    'tse.review.rejected_no_reason': 'Tinanggihan ng payroll',
 };
 
 export default manager3;

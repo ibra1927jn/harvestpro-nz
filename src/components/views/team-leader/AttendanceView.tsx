@@ -2,6 +2,7 @@ import { announce } from '@/services/announcer';
 import { logger } from '@/utils/logger';
 import { useAuth } from '../../../context/AuthContext';
 import { useAttendance } from '../../../hooks/useAttendance';
+import { useHarvestStore } from '@/stores/useHarvestStore';
 import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/ui/Toast';
 import { useTranslation } from '@/i18n';
@@ -25,6 +26,8 @@ const AttendanceView = () => {
         checkOut
     } = useAttendance(appUser ?? undefined);
     const { toast, showToast, hideToast } = useToast();
+    // Tocar el nombre abre el cajón de perfil (el mismo que el manager); el fichaje va en su botón
+    const openPickerProfile = useHarvestStore(s => s.openPickerProfile);
 
     const noSignal = (key: 'tl.attendance.no_signal_check_in' | 'tl.attendance.no_signal_check_out') =>
         typeof navigator !== 'undefined' && navigator.onLine === false ? t(key) : null;
@@ -88,30 +91,35 @@ const AttendanceView = () => {
                             : 'bg-slate-100 border-transparent opacity-80'
                             }`}
                     >
-                        <div className="flex items-center gap-4 min-w-0">
+                        <button
+                            type="button"
+                            onClick={() => openPickerProfile(item.id)}
+                            aria-label={t('tl.picker.open_profile', { name: item.name })}
+                            className="flex items-center gap-4 min-w-0 text-left rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        >
                             <div className={`size-12 shrink-0 rounded-full flex items-center justify-center text-sm font-bold border ${item.isPresent ? 'bg-green-100 text-green-700 border-green-200' : 'bg-slate-200 text-slate-500 border-slate-300'
                                 }`}>
                                 {item.avatar || (item.name ? item.name.substring(0, 2).toUpperCase() : '??')}
                             </div>
-                            <div>
-                                <h3 className={`font-bold text-base ${item.isPresent ? 'text-slate-900' : 'text-slate-500'}`}>
+                            <span className="block">
+                                <span className={`block font-bold text-base ${item.isPresent ? 'text-slate-900' : 'text-slate-500'}`}>
                                     {item.name}
-                                </h3>
-                                <p className="text-xs font-semibold text-slate-400">
+                                </span>
+                                <span className="block text-xs font-semibold text-slate-400">
                                     {item.attendanceRecord?.check_in
                                         ? t('tl.attendance.in_at', { time: formatNZTime(item.attendanceRecord.check_in) })
                                         : t('tl.attendance.not_checked_in')
                                     }
-                                </p>
+                                </span>
                                 {item.breakMissing && (
-                                    <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-amber-700" title={t('tl.attendance.break_missing_hint')}>
+                                    <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-amber-700" title={t('tl.attendance.break_missing_hint')}>
                                         <span aria-hidden="true" className="material-symbols-outlined text-sm">warning</span>
                                         {t('tl.attendance.break_missing')}
                                         <span className="sr-only">. {t('tl.attendance.break_missing_hint')}</span>
-                                    </p>
+                                    </span>
                                 )}
-                            </div>
-                        </div>
+                            </span>
+                        </button>
 
                         {/* Action Button */}
                         <div>

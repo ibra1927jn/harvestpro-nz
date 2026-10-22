@@ -53,9 +53,6 @@ const teamLeader: TranslationDict = {
     'tl.profile.switching_disabled': 'Kua whakawetohia te huri',
     'tl.profile.offline_mode': 'Aratau tuimotu',
     'tl.profile.end_of_day': 'Pūrongo mutunga rā',
-    'tl.tasks.map_title': 'Mahere kawe',
-    'tl.tasks.min_target': 'Whāinga iti',
-    'tl.tasks.bkts_hr': 'pkt/hāora',
     'tl.tasks.my_rows': 'Ngā rārangi o tōku rōpū',
     'tl.tasks.active_rows': 'Rārangi hohe',
     'tl.tasks.assign': 'Tohaina',
@@ -77,6 +74,8 @@ const teamLeader: TranslationDict = {
     'tl.team.harness_no': 'Nama tātua',
     'tl.team.assign_placeholder': 'Tohaina...',
     'tl.team.add_picker': 'Tāpiri Kaikohi',
+    // Cajón de perfil de persona (Inicio, Equipo y Pase de lista)
+    'tl.picker.open_profile': 'Whakatuwhera te kōtaha o {name}',
 };
 
 export default teamLeader;

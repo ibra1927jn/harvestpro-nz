@@ -53,9 +53,6 @@ const teamLeader: TranslationDict = {
     'tl.profile.switching_disabled': 'Ua tapuni le sui',
     'tl.profile.offline_mode': 'Faiga offline',
     'tl.profile.end_of_day': 'Lipoti o le fa\'ai\'uga o le aso',
-    'tl.tasks.map_title': 'Fa\'afanua felauaiga',
-    'tl.tasks.min_target': 'Sini maualalo',
-    'tl.tasks.bkts_hr': 'pkt/itula',
     'tl.tasks.my_rows': 'Laina a la\'u vaega',
     'tl.tasks.active_rows': 'Laina galue',
     'tl.tasks.assign': 'Tofi',
@@ -77,6 +74,8 @@ const teamLeader: TranslationDict = {
     'tl.team.harness_no': 'Numera fusi',
     'tl.team.assign_placeholder': 'Tofi...',
     'tl.team.add_picker': 'Fa\'aopoopo Tagata',
+    // Cajón de perfil de persona (Inicio, Equipo y Pase de lista)
+    'tl.picker.open_profile': 'Tatala le fa\'amatalaga o {name}',
 };
 
 export default teamLeader;

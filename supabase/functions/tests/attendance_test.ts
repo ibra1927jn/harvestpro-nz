@@ -9,6 +9,8 @@
  *   se cierra el tramo abierto en el anterior (la gente rota).
  * - Una corrección que la base de datos no aplica (p. ej. el propio fichaje)
  *   no puede responder "success" ni dejar auditoría.
+ * - Alcance de las correcciones: el team leader solo corrige a SU equipo
+ *   (pickers.team_leader_id); el manager, el huerto entero.
  */
 import { assert, assertEquals, assertNotEquals } from 'https://deno.land/std@0.168.0/testing/asserts.ts'
 import {
@@ -25,7 +27,9 @@ Deno.test({ name: 'manage-attendance and approve-timesheet', ...testOpts, fn: as
         const leaderT = await makeUser('team_leader', { orchardId: orchardT })
         const managerT = await makeUser('manager', { orchardId: orchardT })
         const leaderU = await makeUser('team_leader', { orchardId: orchardU })
+        // `picker` es del equipo de leaderT; `other` no tiene equipo
         const picker = await makePicker(orchardT)
+        must(await service.from('pickers').update({ team_leader_id: leaderT.id }).eq('id', picker.id), 'picker.team')
         const other = await makePicker(orchardT)
         const today = nzToday()
 
@@ -135,6 +139,116 @@ Deno.test({ name: 'manage-attendance and approve-timesheet', ...testOpts, fn: as
                 body: { action: 'correct', attendance_id: shiftT, check_out: nzTime(today, '20:00'), reason: 'not my orchard', admin_id: leaderU.id },
             })
             assertEquals(r.status, 400, show(r))
+            const { data } = must(await service.from('daily_attendance').select('check_out').eq('id', shiftT).single(), 'row')
+            assertEquals(new Date(data!.check_out).toISOString(), nzTime(today, '15:30'))
+        })
+
+        type BatchResult = {
+            success: boolean; total: number; succeeded: number; failed: number
+            results: { index: number; attendance_id: string; success: boolean; error?: string }[]
+        }
+        let notMine = ''
+        await t.step('correct_batch: the same correction on N timesheets, one audit row each, per-item errors do not abort the batch', async () => {
+            // Dos fichajes de ayer en el huerto T, sin salida: uno de MI equipo y uno
+            // de alguien sin equipo (el TL puede coger a gente sin equipo)
+            const yesterday = addDays(today, -1)
+            const p2 = await makePicker(orchardT)
+            const { data: rows } = must(await service.from('daily_attendance').insert([
+                { picker_id: picker.id, orchard_id: orchardT, date: yesterday, check_in: nzTime(yesterday, '07:00'), status: 'present' },
+                { picker_id: p2.id, orchard_id: orchardT, date: yesterday, check_in: nzTime(yesterday, '07:10'), status: 'present' },
+            ]).select('id'), 'batch rows')
+            const [a, b] = rows!.map(r => r.id as string)
+            // El tercero es el fichaje del propio team leader: se rechaza (fila sin tocar)
+            const { data: own } = must(await service.from('daily_attendance').insert({
+                picker_id: leaderT.id, orchard_id: orchardT, date: yesterday,
+                check_in: nzTime(yesterday, '06:00'), status: 'present',
+            }).select('id').single(), 'own batch row')
+            // El cuarto es de alguien del huerto de OTRO equipo: fuera del alcance del TL
+            const leaderT2 = await makeUser('team_leader', { orchardId: orchardT, login: false })
+            const rival = await makePicker(orchardT)
+            must(await service.from('pickers').update({ team_leader_id: leaderT2.id }).eq('id', rival.id), 'rival.team')
+            const { data: foreign } = must(await service.from('daily_attendance').insert({
+                picker_id: rival.id, orchard_id: orchardT, date: yesterday,
+                check_in: nzTime(yesterday, '07:30'), status: 'present',
+            }).select('id').single(), 'not-my-team row')
+            notMine = foreign!.id
+
+            const r = await call<BatchResult>('manage-attendance', {
+                token: leaderT.token,
+                body: {
+                    action: 'correct_batch',
+                    reason: 'Everyone forgot to check out',
+                    items: [
+                        { attendance_id: a, check_out: nzTime(yesterday, '16:30'), break_start: nzTime(yesterday, '12:00') },
+                        { attendance_id: b, check_out: nzTime(yesterday, '16:30'), break_start: nzTime(yesterday, '12:00') },
+                        { attendance_id: own!.id, check_out: nzTime(yesterday, '18:00') },
+                        { attendance_id: notMine, check_out: nzTime(yesterday, '16:30') },
+                    ],
+                },
+            })
+            assertEquals(r.status, 200, show(r))
+            assertEquals(r.json.total, 4)
+            assertEquals(r.json.succeeded, 2)
+            assertEquals(r.json.failed, 2)
+            assertEquals(r.json.success, false)
+            assertEquals(r.json.results.map(x => x.success), [true, true, false, false])
+            assertEquals(r.json.results[2].attendance_id, own!.id)
+            assertEquals(r.json.results[3].attendance_id, notMine)
+            assert(String(r.json.results[3].error).includes('own team'), show(r))
+            // El de otro equipo no cambia
+            const { data: foreignRow } = must(await service.from('daily_attendance').select('check_out').eq('id', notMine).single(), 'foreign')
+            assertEquals(foreignRow!.check_out, null)
+
+            // Las dos filas corregidas: salida, descanso, horas (9.5 h − 0.5 h) y quién corrigió
+            const { data: fixed } = must(await service.from('daily_attendance')
+                .select('id, check_out, break_start, hours_worked, corrected_by, correction_reason').in('id', [a, b]), 'fixed')
+            assertEquals(fixed!.length, 2)
+            for (const row of fixed!) {
+                assertEquals(new Date(row.check_out).toISOString(), nzTime(yesterday, '16:30'))
+                assertNotEquals(row.break_start, null)
+                assertEquals(row.corrected_by, leaderT.id)
+                assertEquals(row.correction_reason, 'Everyone forgot to check out')
+            }
+            // 07:00–16:30 = 9.5 h menos el descanso de 30 min anotado
+            assertEquals(Number(fixed!.find(x => x.id === a)!.hours_worked), 9)
+            // El fichaje propio no cambia y no deja auditoría
+            const { data: ownRow } = must(await service.from('daily_attendance').select('check_out').eq('id', own!.id).single(), 'own')
+            assertEquals(ownRow!.check_out, null)
+            const { data: audit } = must(await service.from('audit_logs').select('record_id, user_id, new_values')
+                .in('record_id', [a, b, own!.id, notMine]).eq('new_values->>event', 'timesheet_correction'), 'audit')
+            assertEquals(audit!.map(x => x.record_id).sort(), [a, b].sort())
+            assertEquals(audit!.every(x => x.user_id === leaderT.id && x.new_values.reason === 'Everyone forgot to check out'), true)
+        })
+
+        await t.step('correct: another team\'s timesheet is out of the team leader\'s scope (403); the manager corrects the whole orchard', async () => {
+            const yesterday = addDays(today, -1)
+            const tl = await call('manage-attendance', {
+                token: leaderT.token,
+                body: { action: 'correct', attendance_id: notMine, check_out: nzTime(yesterday, '16:30'), reason: 'Not my team but same orchard' },
+            })
+            assertEquals(tl.status, 403, show(tl))
+            const { data: still } = must(await service.from('daily_attendance').select('check_out').eq('id', notMine).single(), 'still')
+            assertEquals(still!.check_out, null)
+
+            const mgr = await call('manage-attendance', {
+                token: managerT.token,
+                body: { action: 'correct', attendance_id: notMine, check_out: nzTime(yesterday, '16:30'), reason: 'Manager fixes the whole orchard' },
+            })
+            assertEquals(mgr.status, 200, show(mgr))
+            const { data: fixed } = must(await service.from('daily_attendance').select('check_out, corrected_by').eq('id', notMine).single(), 'fixed')
+            assertEquals(new Date(fixed!.check_out).toISOString(), nzTime(yesterday, '16:30'))
+            assertEquals(fixed!.corrected_by, managerT.id)
+        })
+
+        await t.step('correct_batch: validation (empty batch, short reason) → 400 without touching anything', async () => {
+            const empty = await call('manage-attendance', {
+                token: leaderT.token, body: { action: 'correct_batch', reason: 'Nothing here', items: [] },
+            })
+            assertEquals(empty.status, 400, show(empty))
+            const short = await call('manage-attendance', {
+                token: leaderT.token, body: { action: 'correct_batch', reason: 'x', items: [{ attendance_id: shiftT, check_out: nzTime(today, '20:00') }] },
+            })
+            assertEquals(short.status, 400, show(short))
             const { data } = must(await service.from('daily_attendance').select('check_out').eq('id', shiftT).single(), 'row')
             assertEquals(new Date(data!.check_out).toISOString(), nzTime(today, '15:30'))
         })
