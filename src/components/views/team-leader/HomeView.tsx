@@ -1,5 +1,6 @@
 import { buttonLike } from '@/utils/pressable';
-import { useMemo } from 'react';
+import { useMemo, useState, Suspense } from 'react';
+import { LazyAccountSheet as AccountSheet } from '@/components/common/account/lazyAccountSheet';
 import { useHarvestStore as useHarvest } from '@/stores/useHarvestStore';
 import { useAuth } from '@/context/AuthContext';
 import { useHarvestMetrics } from '@/hooks/useHarvestMetrics';
@@ -10,7 +11,9 @@ import { formatNZD, formatNZDate } from '@/utils/nzFormat';
 
 const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
     const { t } = useTranslation();
-    const { stats, crew: orchardCrew, settings } = useHarvest();
+    // El avatar abre «Mi cuenta» (antes llevaba a la pestaña 'profile', que ya no existe: pantalla en blanco)
+    const [accountOpen, setAccountOpen] = useState(false);
+    const { stats, crew: orchardCrew, settings, openPickerProfile } = useHarvest();
     const { appUser } = useAuth();
     const currentUser = appUser ? { name: appUser.full_name, id: appUser.id } : null;
 
@@ -54,7 +57,7 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
             {/* Header Section - Glassmorphic */}
             <div className="sticky top-0 z-30 px-6 pt-12 pb-6 bg-white/70 backdrop-blur-xl border-b border-white/50 shadow-sm">
                 <div className="flex justify-between items-start mb-6">
-                    <div onClick={() => onNavigate && onNavigate('profile')} className="cursor-pointer group">
+                    <div className="group">
                         <h1 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 tracking-tight transition-all duration-300 group-hover:opacity-80">
                             {t('tl.home.greeting', { name: currentUser?.name?.split(' ')[0] || t('panel.role.team_leader') })}
                         </h1>
@@ -63,7 +66,7 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                         </p>
                     </div>
                     <div
-                        {...buttonLike(() => onNavigate?.('profile'), t('tl.home.open_profile'))}
+                        {...buttonLike(() => setAccountOpen(true), t('tl.home.open_profile'))}
                         className="size-12 rounded-full bg-gradient-to-tr from-primary/10 to-primary/5 flex items-center justify-center border border-primary/20 shadow-inner cursor-pointer hover:scale-105 transition-transform duration-300 ring-4 ring-white"
                     >
                         <span className="text-primary font-bold text-sm tracking-wider">
@@ -159,17 +162,22 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                     </div>
 
                     <div className="space-y-3">
+                        {/* Tocar a un picker abre su cajón de perfil (Hoy / Historial / Calidad), igual que en Manager */}
                         {rankedCrew.slice(0, 5).map((picker, idx) => (
-                            <div key={picker.id} 
-                                 className="group bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-white/60 shadow-sm flex items-center justify-between transition-all duration-300 hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5"
-                                 style={{ animationDelay: `${idx * 50}ms` }}
+                            <button
+                                key={picker.id}
+                                type="button"
+                                onClick={() => openPickerProfile(picker.id)}
+                                aria-label={t('tl.picker.open_profile', { name: picker.name })}
+                                className="group w-full text-left bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-white/60 shadow-sm flex items-center justify-between transition-all duration-300 hover:shadow-md hover:border-slate-200 hover:-translate-y-0.5 active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                style={{ animationDelay: `${idx * 50}ms` }}
                             >
                                 <div className="flex items-center gap-4">
                                     <div className="size-12 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-600 font-bold border border-slate-300/50 text-sm shadow-inner group-hover:scale-105 transition-transform duration-300">
                                         {picker.avatar || (picker.name || '??').substring(0, 2).toUpperCase()}
                                     </div>
                                     <div className="flex flex-col">
-                                        <h4 className="font-bold text-slate-800 leading-tight group-hover:text-primary transition-colors">{picker.name}</h4>
+                                        <span className="font-bold text-slate-800 leading-tight group-hover:text-primary transition-colors">{picker.name}</span>
                                         <div className="flex items-center gap-2 mt-1.5">
                                             {/* Row/Bench Status */}
                                             {!picker.orchard_id ? (
@@ -197,11 +205,16 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                                     </span>
                                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">{t('tl.home.buckets')}</span>
                                 </div>
-                            </div>
+                            </button>
                         ))}
                     </div>
                 </section>
             </div>
+            {accountOpen && (
+                <Suspense fallback={null}>
+                    <AccountSheet onClose={() => setAccountOpen(false)} />
+                </Suspense>
+            )}
         </div>
     );
 };

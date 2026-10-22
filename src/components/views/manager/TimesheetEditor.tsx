@@ -1,17 +1,18 @@
 /**
  * Timesheet Editor
  *
- * Admin-only view for correcting past attendance records.
- * Shows daily attendance with inline editing of check-in/out times.
+ * Manager / team leader view for correcting past attendance records.
+ * Shows daily attendance with inline editing of check-in/out times and a
+ * multi-select to apply the same correction to several timesheets at once.
  * All corrections require a reason and create an audit trail.
  *
  * `pickerIds` (team leader): only those people's timesheets are loaded and
- * shown. Without it (manager) the whole orchard is shown. The server applies
- * the same rule (manage-attendance + RLS "Manage attendance").
+ * shown. Without it (manager) the whole orchard is shown.
  */
 
 import { logger } from '@/utils/logger';
 import { useToast } from '@/hooks/useToast';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
 import { attendanceService } from '@/services/attendance.service';
@@ -22,11 +23,14 @@ import {
   AttendanceRow,
   CorrectionForm,
   EMPTY_CORRECTION,
+  buildBatchItems,
   buildCorrectionUpdates,
   correctionFormFor,
+  isFlagged,
   isMealBreakMissing,
 } from './timesheet-utils';
 import TimesheetRow from './TimesheetRow';
+import TimesheetBatchPanel from './TimesheetBatchPanel';
 import DailyTimesheetSummary from './DailyTimesheetSummary';
 import { formatNZDate } from '@/utils/nzFormat';
 import { useTranslation } from '@/i18n';
@@ -40,6 +44,7 @@ interface TimesheetEditorProps {
 export default function TimesheetEditor({ orchardId, pickerIds }: TimesheetEditorProps) {
   const { t } = useTranslation();
   const { appUser } = useAuth();
+  const { isOnline } = useNetworkStatus();
   const [selectedDate, setSelectedDate] = useState(todayNZST());
   // Timesheet completo con produccion y earnings (generado bajo demanda)
   const [dailyTimesheet, setDailyTimesheet] = useState<DailyTimesheetRecord[]>([]);
@@ -50,8 +55,15 @@ export default function TimesheetEditor({ orchardId, pickerIds }: TimesheetEdito
   const [editValues, setEditValues] = useState<CorrectionForm>(EMPTY_CORRECTION);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  // Selección múltiple y formulario del lote
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [batchValues, setBatchValues] = useState<CorrectionForm>(EMPTY_CORRECTION);
+  const [batchSaving, setBatchSaving] = useState(false);
   const { showToast } = useToast();
   const breaksMissing = records.filter(r => isMealBreakMissing(r)).length;
+  const flaggedCount = records.filter(r => isFlagged(r)).length;
+  const selectedRecords = records.filter(r => selectedIds.has(r.id));
+  const allSelected = records.length > 0 && selectedRecords.length === records.length;
 
   // Alcance: clave estable para no recargar si el padre pasa un array nuevo cada render
   const pickerKey = pickerIds ? pickerIds.join(',') : null;
@@ -73,6 +85,11 @@ export default function TimesheetEditor({ orchardId, pickerIds }: TimesheetEdito
         .filter(r => !r.deleted_at)
         .filter(r => !pickerSet || pickerSet.has(r.picker_id));
       setRecords(rows);
+      // La selección no sobrevive a una recarga con filas distintas
+      setSelectedIds(prev => {
+        const ids = new Set(rows.map(r => r.id));
+        return new Set([...prev].filter(id => ids.has(id)));
+      });
     } catch (err) {
       logger.error('Failed to load attendance:', err);
     } finally {
@@ -83,6 +100,60 @@ export default function TimesheetEditor({ orchardId, pickerIds }: TimesheetEdito
   useEffect(() => {
     loadRecords();
   }, [loadRecords]);
+
+  // ========================================
+  // SELECCIÓN MÚLTIPLE / LOTE
+  // ========================================
+
+  const toggleSelect = (record: AttendanceRow) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(record.id)) next.delete(record.id);
+      else next.add(record.id);
+      return next;
+    });
+  };
+
+  const selectAll = (on: boolean) => {
+    setSelectedIds(on ? new Set(records.map(r => r.id)) : new Set());
+  };
+
+  const selectFlagged = () => {
+    setSelectedIds(new Set(records.filter(r => isFlagged(r)).map(r => r.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setBatchValues(EMPTY_CORRECTION);
+  };
+
+  const applyBatch = async () => {
+    if (!appUser?.id || selectedRecords.length === 0) return;
+    if (!batchValues.reason.trim()) {
+      showToast(t('tse.reason_required'), 'warning');
+      return;
+    }
+    const items = buildBatchItems(selectedRecords, batchValues);
+    setBatchSaving(true);
+    try {
+      const result = await attendanceService.correctAttendanceBatch(items, batchValues.reason.trim(), appUser.id);
+      if (result.failed === 0) {
+        setSuccessMsg(t('tse.batch.done', { n: result.succeeded }));
+        setTimeout(() => setSuccessMsg(''), 3000);
+        clearSelection();
+      } else {
+        // Los que fallaron se quedan seleccionados para reintentar o corregir a mano
+        const failedIds = new Set(result.results.filter(r => !r.success).map(r => r.attendance_id));
+        setSelectedIds(failedIds);
+        showToast(t('tse.batch.partial', { ok: result.succeeded, failed: result.failed }), 'warning');
+      }
+      await loadRecords();
+    } catch (err) {
+      showToast(t('tse.error', { error: err instanceof Error ? err.message : t('common.unknown') }), 'error');
+    } finally {
+      setBatchSaving(false);
+    }
+  };
 
   // ========================================
   // EDITING
@@ -140,6 +211,7 @@ export default function TimesheetEditor({ orchardId, pickerIds }: TimesheetEdito
           <div>
             <h2 className="text-lg font-bold text-text-main">{t('timesheet.title')}</h2>
             <p className="text-sm text-text-muted">{t('tse.subtitle')}</p>
+            {pickerSet && <p className="text-xs text-text-muted">{t('tse.team_only')}</p>}
           </div>
         </div>
 
@@ -196,12 +268,52 @@ export default function TimesheetEditor({ orchardId, pickerIds }: TimesheetEdito
         </div>
       )}
 
+      {/* Selección para corregir en lote */}
+      {!loading && records.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <button
+            type="button"
+            onClick={selectFlagged}
+            disabled={flaggedCount === 0 || batchSaving}
+            className="px-3 py-1.5 rounded-lg border border-amber-300 bg-white text-amber-800 font-semibold text-xs hover:bg-amber-50 disabled:opacity-50"
+          >
+            {t('tse.batch.select_flagged', { n: flaggedCount })}
+          </button>
+          {selectedRecords.length > 0 && (
+            <span className="text-xs text-text-muted">{t('tse.batch.selected', { n: selectedRecords.length })}</span>
+          )}
+        </div>
+      )}
+
+      {/* Panel «Corregir N fichajes» */}
+      {!loading && selectedRecords.length > 0 && (
+        <TimesheetBatchPanel
+          count={selectedRecords.length}
+          form={batchValues}
+          saving={batchSaving}
+          isOnline={isOnline}
+          onChangeForm={patch => setBatchValues(v => ({ ...v, ...patch }))}
+          onApply={applyBatch}
+          onClear={clearSelection}
+        />
+      )}
+
       {/* Table */}
       {!loading && records.length > 0 && (
         <div className="bg-white rounded-xl border border-border-light overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50">
               <tr>
+                <th className="pl-4 pr-1 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={e => selectAll(e.target.checked)}
+                    disabled={batchSaving}
+                    aria-label={t('tse.batch.select_all')}
+                    className="size-4 accent-amber-600"
+                  />
+                </th>
                 <th className="text-left px-4 py-3 text-text-sub font-semibold">{t('roles.picker')}</th>
                 <th className="text-left px-4 py-3 text-text-sub font-semibold">{t('tse.check_in')}</th>
                 <th className="text-left px-4 py-3 text-text-sub font-semibold">{t('tse.check_out')}</th>
@@ -218,11 +330,13 @@ export default function TimesheetEditor({ orchardId, pickerIds }: TimesheetEdito
                   record={record}
                   isEditing={editingId === record.id}
                   form={editValues}
-                  saving={saving}
+                  saving={saving || batchSaving}
                   onChangeForm={patch => setEditValues(v => ({ ...v, ...patch }))}
                   onStartEdit={startEdit}
                   onCancel={cancelEdit}
                   onSave={saveCorrection}
+                  selected={selectedIds.has(record.id)}
+                  onToggleSelect={toggleSelect}
                 />
               ))}
             </tbody>
@@ -238,7 +352,7 @@ export default function TimesheetEditor({ orchardId, pickerIds }: TimesheetEdito
               setGeneratingTimesheet(true);
               try {
                 const data = await payrollService.generateDailyTimesheet(orchardId, selectedDate);
-                // Team leader: el resumen del día también solo de su equipo
+                // Mismo alcance que la tabla (el team leader solo ve su equipo)
                 setDailyTimesheet(pickerSet ? data.filter(r => pickerSet.has(r.picker_id)) : data);
               } catch (err) {
                 logger.error('[Timesheet] Failed to generate daily timesheet:', err);

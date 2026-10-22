@@ -21,6 +21,11 @@ export interface AttendanceRow {
     date: string;
     correction_reason?: string;
     corrected_at?: string;
+    /** Revisión de nómina / manager (approve-timesheet) */
+    verified_by?: string | null;
+    verified_at?: string | null;
+    rejected_at?: string | null;
+    rejection_reason?: string | null;
     picker?: {
         id: string;
         name: string;
@@ -154,6 +159,45 @@ export function buildCorrectionUpdates(
         updates.break_start = form.breakStart ? nzTimeToIso(record.date, form.breakStart) : null;
     }
     return updates;
+}
+
+/** Estado de revisión de la hoja: rechazada gana a aprobada; sin revisar = pending */
+export type TimesheetReviewStatus = 'approved' | 'rejected' | 'pending';
+
+export function reviewStatusOf(
+    row: Pick<AttendanceRow, 'verified_by' | 'verified_at' | 'rejected_at'>,
+): TimesheetReviewStatus {
+    if (row.rejected_at) return 'rejected';
+    if (row.verified_by || row.verified_at) return 'approved';
+    return 'pending';
+}
+
+/**
+ * Fila "con aviso": descanso de comida sin anotar o sin hora de salida.
+ * Es lo que selecciona «Seleccionar con aviso» en el editor.
+ */
+export function isFlagged(
+    row: Pick<AttendanceRow, 'check_in' | 'check_out' | 'date' | 'break_start'>,
+    today: string = todayNZST(),
+    now: Date = new Date(),
+): boolean {
+    return !row.check_out || isMealBreakMissing(row, today, now);
+}
+
+/**
+ * Corrección en lote: la misma hora NZ para cada fichaje, convertida al
+ * instante UTC de SU día. Solo van los campos con valor (vacío = no tocar).
+ */
+export function buildBatchItems(
+    records: Pick<AttendanceRow, 'id' | 'date'>[],
+    form: Pick<CorrectionForm, 'checkIn' | 'checkOut' | 'breakStart'>,
+): Array<{ attendance_id: string; check_in?: string; check_out?: string; break_start?: string }> {
+    return records.map(record => ({
+        attendance_id: record.id,
+        ...(form.checkIn ? { check_in: nzTimeToIso(record.date, form.checkIn) } : {}),
+        ...(form.checkOut ? { check_out: nzTimeToIso(record.date, form.checkOut) } : {}),
+        ...(form.breakStart ? { break_start: nzTimeToIso(record.date, form.breakStart) } : {}),
+    }));
 }
 
 /** Totales de la hoja diaria (pie de tabla) */

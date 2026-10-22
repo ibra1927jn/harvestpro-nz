@@ -17,7 +17,7 @@ Deno.test('team leader: own team and people without a team are allowed', () => {
 });
 
 Deno.test('team leader: another team, unknown person or another orchard are refused', () => {
-  assert(attendanceDenialReason(tl, { id: 'p3', team_leader_id: 'tl-2' }, ORCH)?.includes('another team') === true, 'other team');
+  assert(attendanceDenialReason(tl, { id: 'p3', team_leader_id: 'tl-2' }, ORCH)?.includes('own team') === true, 'other team');
   assert(attendanceDenialReason(tl, null, ORCH) !== null, 'unknown person');
   assert(attendanceDenialReason(tl, { id: 'p1', team_leader_id: 'tl-1' }, 'orch-b') !== null, 'other orchard');
 });
@@ -31,6 +31,12 @@ Deno.test('manager: whole own orchard, never another one', () => {
 Deno.test('admin: anywhere; other roles: never', () => {
   assert(attendanceDenialReason(admin, null, 'orch-b') === null, 'admin');
   assert(attendanceDenialReason({ id: 'r', role: 'runner', orchardId: ORCH }, { id: 'p', team_leader_id: null }, ORCH) !== null, 'runner');
+});
+
+Deno.test('nobody but admin touches their own attendance', () => {
+  assert(attendanceDenialReason(tl, null, ORCH, 'tl-1')?.includes('own attendance') === true, 'team leader self');
+  assert(attendanceDenialReason(manager, null, ORCH, 'm-1') !== null, 'manager self');
+  assert(attendanceDenialReason(admin, null, ORCH, 'a-1') === null, 'admin self');
 });
 
 Deno.test('closed day / closed pay week map to 409 with the code first', () => {

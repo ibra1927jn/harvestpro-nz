@@ -16,6 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { selectTeamOf } from '@/services/harvestMetrics/roster';
 import ResponsiveLayout from '@/components/common/ResponsiveLayout';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
+import { PickerDrawer } from '@/components/PickerDrawer';
 import { TEAM_LEADER_NAV_TABS, type TeamLeaderTab } from '@/config/navigation/team-leader.nav';
 import { useTranslation } from '@/i18n';
 
@@ -40,7 +41,7 @@ const TeamLeader = () => {
     const crew = useHarvestStore((state) => state.crew);
     const { appUser } = useAuth();
     // Hojas de horas: el team leader solo ve y corrige los fichajes de SU equipo
-    // (misma regla que Inicio / Equipo / Pase de lista; el servidor también lo exige)
+    // (misma regla que Inicio / Equipo / Pase de lista); el manager ve el huerto entero.
     const teamPickerIds = useMemo(
         () => selectTeamOf(crew ?? [], appUser?.id).map(p => p.id),
         [crew, appUser?.id],
@@ -52,6 +53,7 @@ const TeamLeader = () => {
     const mobileActiveTab = activeTab === 'team' ? 'home' : activeTab;
 
     return (
+        <>
         <ResponsiveLayout
             navItems={TEAM_LEADER_NAV_TABS}
             mobileTabs={TEAM_LEADER_NAV_TABS}
@@ -106,6 +108,9 @@ const TeamLeader = () => {
                 </div>
             </div>
         </ResponsiveLayout>
+        {/* Cajón de perfil de persona (el mismo que el manager): se abre con openPickerProfile(id) */}
+        <PickerDrawer />
+        </>
     );
 };
 

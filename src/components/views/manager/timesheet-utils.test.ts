@@ -10,6 +10,7 @@ vi.mock('@/utils/logger', () => ({
 import {
     formatTimeForInput, formatTime, calculateHours, isAbnormal, nzTimeToIso,
     buildCorrectionUpdates, correctionFormFor, dailyTimesheetTotals, isMealBreakMissing,
+    buildBatchItems, isFlagged,
 } from './timesheet-utils';
 
 describe('timesheet-utils', () => {
@@ -151,6 +152,34 @@ describe('correction form', () => {
     });
 });
 
+describe('batch correction (#9)', () => {
+    it('isFlagged: no check-out or meal break missing on a > 4 h shift', () => {
+        const today = '2026-10-13';
+        const now = new Date('2026-10-13T06:00:00Z'); // 19:00 NZ
+        // Sin salida hoy: con aviso
+        expect(isFlagged({ check_in: '2026-10-12T18:00:00Z', check_out: null, date: today, break_start: null }, today, now)).toBe(true);
+        // 8 h sin descanso anotado: con aviso
+        expect(isFlagged({ check_in: '2026-10-12T18:00:00Z', check_out: '2026-10-13T02:00:00Z', date: today, break_start: null }, today, now)).toBe(true);
+        // 8 h con descanso anotado: sin aviso
+        expect(isFlagged({ check_in: '2026-10-12T18:00:00Z', check_out: '2026-10-13T02:00:00Z', date: today, break_start: '2026-10-12T23:00:00Z' }, today, now)).toBe(false);
+        // Turno corto cerrado: sin aviso
+        expect(isFlagged({ check_in: '2026-10-12T18:00:00Z', check_out: '2026-10-12T21:00:00Z', date: today, break_start: null }, today, now)).toBe(false);
+    });
+
+    it('buildBatchItems: the same NZ time becomes the UTC instant of each timesheet\'s own day; empty fields are left out', () => {
+        const items = buildBatchItems(
+            [{ id: 'a', date: '2026-10-13' }, { id: 'b', date: '2026-06-01' }],
+            { checkIn: '', checkOut: '16:30', breakStart: '12:00' },
+        );
+        expect(items).toEqual([
+            { attendance_id: 'a', check_out: '2026-10-13T03:30:00.000Z', break_start: '2026-10-12T23:00:00.000Z' }, // +13
+            { attendance_id: 'b', check_out: '2026-06-01T04:30:00.000Z', break_start: '2026-06-01T00:00:00.000Z' }, // +12
+        ]);
+        expect(buildBatchItems([{ id: 'a', date: '2026-10-13' }], { checkIn: '', checkOut: '', breakStart: '' }))
+            .toEqual([{ attendance_id: 'a' }]);
+    });
+});
+
 describe('dailyTimesheetTotals', () => {
     it('sums every column and counts people below minimum', () => {
         const row = (h: number, b: number, r: number, p: number, t: number, below: boolean) => ({
@@ -160,5 +189,15 @@ describe('dailyTimesheetTotals', () => {
             hours: 15.5, buckets: 50, rejected: 1, piece: 325, topUp: 114.63, total: 439.63, belowMinimum: 1,
         });
         expect(dailyTimesheetTotals([]).total).toBe(0);
+    });
+});
+
+describe('reviewStatusOf', () => {
+    it('rejected wins over approved; nothing = pending', async () => {
+        const { reviewStatusOf } = await import('./timesheet-utils');
+        expect(reviewStatusOf({ verified_by: 'u', verified_at: 'x', rejected_at: null })).toBe('approved');
+        expect(reviewStatusOf({ verified_by: null, verified_at: null, rejected_at: 'x' })).toBe('rejected');
+        expect(reviewStatusOf({ verified_by: 'u', rejected_at: 'x' })).toBe('rejected');
+        expect(reviewStatusOf({})).toBe('pending');
     });
 });

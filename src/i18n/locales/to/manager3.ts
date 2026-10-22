@@ -72,6 +72,24 @@ const manager3: TranslationDict = {
     'dayset.min_rate': 'Vave Siʻisiʻi',
     'dayset.bkt_per_hr': 'p/houa',
     'dayset.save': 'Tauhi Fokotuʻutuʻu',
+    // Editor de fichajes: selección múltiple y corrección en lote (#9)
+    'tse.team_only': 'Ko e ngaahi pepa houa pē \'o ho\'o timi \'oku \'asi.',
+    'tse.select_of': 'Fili \'a e pepa houa \'a {name}',
+    'tse.batch.select_all': 'Fili \'a e ngaahi pepa houa kotoa',
+    'tse.batch.select_flagged': 'Fili \'a e ngaahi me\'a fakatokanga ({n})',
+    'tse.batch.selected': '{n} kuo fili',
+    'tse.batch.title': 'Fakatonutonu \'a e ngaahi pepa houa \'e {n}',
+    'tse.batch.hint': 'Tuku \'o \'atā ha konga ke tauhi \'a e mahu\'inga \'o e pepa houa taki taha. \'Uhinga pē \'e taha ki he kotoa.',
+    'tse.batch.reason_placeholder': '\'Uhinga \'o e ngaahi fakatonutonu kotoa *',
+    'tse.batch.clear': 'To\'o \'a e fili',
+    'tse.batch.apply': 'Ngāue\'aki ki he {n}',
+    'tse.batch.offline': '\'Ikai ha fehokotaki: \'oku \'alu hangatonu \'a e ngaahi fakatonutonu fakafo\'ituitui ki he seva pea \'ikai tatali. Toe \'ahi\'ahi \'i ho\'o toe hoko atu.',
+    'tse.batch.done': 'Kuo fakatonutonu \'a e ngaahi pepa houa \'e {n}',
+    'tse.batch.partial': '{ok} kuo fakatonutonu, {failed} na\'e \'ikai lava (kei fili pē)',
+    // Estado de revisión de nómina en el editor de fichajes
+    'tse.review.approved': 'Kuo fakangofua \'e he vahenga',
+    'tse.review.rejected': 'Kuo fakafisi: {reason}',
+    'tse.review.rejected_no_reason': 'Kuo fakafisi \'e he vahenga',
 };
 
 export default manager3;

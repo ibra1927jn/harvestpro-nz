@@ -53,9 +53,6 @@ const teamLeader: TranslationDict = {
     'tl.profile.switching_disabled': 'Switching Disabled',
     'tl.profile.offline_mode': 'Offline Mode',
     'tl.profile.end_of_day': 'End of Day Report',
-    'tl.tasks.map_title': 'Logistics Map',
-    'tl.tasks.min_target': 'Min. Target',
-    'tl.tasks.bkts_hr': 'bkts/hr',
     'tl.tasks.my_rows': 'My team\'s rows',
     'tl.tasks.active_rows': 'Active Rows',
     'tl.tasks.assign': 'Assign',
@@ -77,6 +74,8 @@ const teamLeader: TranslationDict = {
     'tl.team.harness_no': 'Harness No.',
     'tl.team.assign_placeholder': 'Assign...',
     'tl.team.add_picker': 'Add New Picker',
+    // Cajón de perfil de persona (Inicio, Equipo y Pase de lista)
+    'tl.picker.open_profile': 'Open {name}\'s profile',
 };
 
 export default teamLeader;

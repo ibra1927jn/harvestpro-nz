@@ -53,9 +53,6 @@ const teamLeader: TranslationDict = {
     'tl.profile.switching_disabled': 'बदलना बंद',
     'tl.profile.offline_mode': 'ऑफ़लाइन मोड',
     'tl.profile.end_of_day': 'दिन के अंत की रिपोर्ट',
-    'tl.tasks.map_title': 'लॉजिस्टिक्स नक्शा',
-    'tl.tasks.min_target': 'न्यूनतम लक्ष्य',
-    'tl.tasks.bkts_hr': 'बा/घं',
     'tl.tasks.my_rows': 'मेरी टीम की पंक्तियाँ',
     'tl.tasks.active_rows': 'सक्रिय पंक्तियाँ',
     'tl.tasks.assign': 'असाइन',
@@ -77,6 +74,8 @@ const teamLeader: TranslationDict = {
     'tl.team.harness_no': 'हार्नेस नं.',
     'tl.team.assign_placeholder': 'असाइन...',
     'tl.team.add_picker': 'नया पिकर जोड़ें',
+    // Cajón de perfil de persona (Inicio, Equipo y Pase de lista)
+    'tl.picker.open_profile': '{name} की प्रोफ़ाइल खोलें',
 };
 
 export default teamLeader;

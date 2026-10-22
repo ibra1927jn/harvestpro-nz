@@ -5,7 +5,9 @@
  */
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
+
+const { editorProps } = vi.hoisted(() => ({ editorProps: { last: null as Record<string, unknown> | null } }));
 
 // ── Mocks ────────────────────────────────────────────
 vi.mock('@/stores/useHarvestStore', () => ({
@@ -13,11 +15,11 @@ vi.mock('@/stores/useHarvestStore', () => ({
     const state = {
       fetchGlobalData: vi.fn(),
       orchard: { id: 'orch-1', name: 'Test Orchard' },
-      // u1 = el team leader con sesión: p1 es de su equipo, p2 de otro, p3 sin equipo
       crew: [
-        { id: 'p1', name: 'Mine', role: 'picker', status: 'active', team_leader_id: 'u1' },
-        { id: 'p2', name: 'Other team', role: 'picker', status: 'active', team_leader_id: 'u2' },
-        { id: 'p3', name: 'No team', role: 'picker', status: 'active', team_leader_id: null },
+        { id: 'p1', name: 'Mine A', role: 'picker', status: 'active', team_leader_id: 'u1' },
+        { id: 'p2', name: 'Mine B', role: 'picker', status: 'active', team_leader_id: 'u1' },
+        { id: 'p3', name: 'Other', role: 'picker', status: 'active', team_leader_id: 'u2' },
+        { id: 'p4', name: 'Gone', role: 'picker', status: 'archived', team_leader_id: 'u1' },
       ],
     };
     return selector(state);
@@ -63,9 +65,14 @@ vi.mock('../components/views/team-leader/AttendanceView', () => ({
   default: () => <div>Attendance View</div>,
 }));
 vi.mock('@/components/views/manager/TimesheetEditor', () => ({
-  default: ({ pickerIds }: { pickerIds?: string[] }) => (
-    <div>Timesheet Editor for {pickerIds ? pickerIds.join(',') : 'whole orchard'}</div>
-  ),
+  default: (props: Record<string, unknown>) => {
+    editorProps.last = props;
+    return <div>Timesheet Editor</div>;
+  },
+}));
+// #7: el cajón de perfil se monta en la página (igual que en Manager)
+vi.mock('@/components/PickerDrawer', () => ({
+  PickerDrawer: () => <div data-testid="picker-drawer" />,
 }));
 vi.mock('@/components/ui/ComponentErrorBoundary', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -96,6 +103,20 @@ describe('TeamLeader Page', () => {
     expect(await screen.findByTestId('home-view')).toBeTruthy();
   });
 
+  it('mounts the picker profile drawer (same component as Manager)', () => {
+    render(<TeamLeader />);
+    expect(screen.getByTestId('picker-drawer')).toBeTruthy();
+  });
+
+  // #9: el team leader solo ve y corrige los fichajes de SU equipo
+  it("scopes the timesheet editor to the team leader's own team", async () => {
+    render(<TeamLeader />);
+    fireEvent.click(screen.getByText('Timesheet'));
+    expect(await screen.findByText('Timesheet Editor')).toBeTruthy();
+    expect(editorProps.last?.orchardId).toBe('orch-1');
+    expect(editorProps.last?.pickerIds).toEqual(['p1', 'p2']);
+  });
+
   it('renders bottom navigation tabs', () => {
     render(<TeamLeader />);
     expect(screen.getByText('Home')).toBeTruthy();
@@ -103,12 +124,6 @@ describe('TeamLeader Page', () => {
     expect(screen.getByText('Map')).toBeTruthy();
     expect(screen.getByText('Timesheet')).toBeTruthy();
     expect(screen.getByText('Chat')).toBeTruthy();
-  });
-
-  it('Timesheet tab: only the team leader\'s own team (A2)', async () => {
-    render(<TeamLeader />);
-    fireEvent.click(screen.getAllByText('Timesheet')[0]);
-    expect(await screen.findByText('Timesheet Editor for p1')).toBeTruthy();
   });
 
   it('has no profile tab any more: the avatar opens My account', async () => {

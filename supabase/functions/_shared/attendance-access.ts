@@ -1,12 +1,13 @@
 /**
- * Quién puede fichar / corregir a quién (manage-attendance; también para
- * correct_batch de #71). Misma regla que la política RLS "Manage attendance"
- * (migración 20261023011000_attendance_team_scope):
+ * Quién puede fichar / corregir a quién: UNA sola regla para check_in,
+ * check_out, correct y correct_batch de manage-attendance. Misma regla que la
+ * política RLS "Manage attendance" (migración 20261023011000_attendance_team_scope):
  *
  * - admin: cualquier persona en cualquier huerto
  * - manager: su huerto
  * - team_leader: su huerto, y la persona es de SU equipo o no tiene equipo
- *   (regla del 16-10: puede coger a gente sin equipo)
+ *   (regla del 16-10: puede coger a gente sin equipo); nunca otro equipo
+ * - nadie salvo admin toca su propio fichaje
  *
  * El servidor lo comprueba antes de escribir para responder 403 con un
  * mensaje claro (RLS solo dejaría la fila sin tocar) y antes de usar la clave
@@ -18,6 +19,8 @@ export interface AttendanceCaller {
     id: string
     role: string
     orchardId: string | null
+    /** Caché persona → fila de pickers (null = no existe) para no repetir la búsqueda en un lote */
+    teamCache?: Map<string, PickerTeam | null>
 }
 
 export interface PickerTeam {
@@ -32,7 +35,12 @@ type Db = { from: (table: string) => any }
 export async function loadAttendanceCaller(db: Db, userId: string): Promise<AttendanceCaller> {
     const { data, error } = await db.from('users').select('role, orchard_id').eq('id', userId).single()
     if (error || !data) throw new AuthError('Account not found', 403)
-    return { id: userId, role: String(data.role ?? ''), orchardId: (data.orchard_id as string | null) ?? null }
+    return {
+        id: userId,
+        role: String(data.role ?? ''),
+        orchardId: (data.orchard_id as string | null) ?? null,
+        teamCache: new Map(),
+    }
 }
 
 /**
@@ -43,8 +51,10 @@ export function attendanceDenialReason(
     caller: AttendanceCaller,
     picker: PickerTeam | null,
     orchardId: string,
+    pickerId?: string,
 ): string | null {
     if (caller.role === 'admin') return null
+    if ((pickerId ?? picker?.id) === caller.id) return 'You cannot change your own attendance'
     if (!caller.orchardId || caller.orchardId !== orchardId) {
         return 'You can only manage attendance in your own orchard'
     }
@@ -52,7 +62,7 @@ export function attendanceDenialReason(
     if (caller.role === 'team_leader') {
         if (!picker) return 'Person not found in this orchard'
         if (picker.team_leader_id === null || picker.team_leader_id === caller.id) return null
-        return 'This person belongs to another team: only their team leader, a manager or HR can change their attendance'
+        return 'You can only change attendance of your own team or of people without a team'
     }
     return 'Not allowed to manage attendance'
 }
@@ -67,15 +77,21 @@ export async function assertCanTouchPicker(
     target: { pickerId: string; orchardId: string },
 ): Promise<void> {
     let picker: PickerTeam | null = null
-    if (caller.role === 'team_leader') {
-        const { data, error } = await db.from('pickers')
-            .select('id, team_leader_id')
-            .eq('id', target.pickerId)
-            .maybeSingle()
-        if (error) throw new Error(`Picker lookup failed: ${error.message}`)
-        picker = (data as PickerTeam | null) ?? null
+    if (caller.role === 'team_leader' && target.pickerId !== caller.id) {
+        const cached = caller.teamCache?.get(target.pickerId)
+        if (cached !== undefined) {
+            picker = cached
+        } else {
+            const { data, error } = await db.from('pickers')
+                .select('id, team_leader_id')
+                .eq('id', target.pickerId)
+                .maybeSingle()
+            if (error) throw new Error(`Picker lookup failed: ${error.message}`)
+            picker = (data as PickerTeam | null) ?? null
+            caller.teamCache?.set(target.pickerId, picker)
+        }
     }
-    const reason = attendanceDenialReason(caller, picker, target.orchardId)
+    const reason = attendanceDenialReason(caller, picker, target.orchardId, target.pickerId)
     if (reason) throw new AuthError(reason, 403)
 }
 
