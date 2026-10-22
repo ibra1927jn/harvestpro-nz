@@ -37,6 +37,7 @@ vi.mock('@/stores/useHarvestStore', () => ({
   useHarvestStore: vi.fn((sel?: (s: Record<string, unknown>) => unknown) => {
     const state = {
       crew: [],
+      bucketRecords: [],
       rows: [],
       orchardBlocks: [],
       orchardMapRows: [],
@@ -78,6 +79,7 @@ vi.mock('@/repositories/edge-functions.repository', () => ({
 }));
 
 vi.mock('@/services/logistics-dept.service', () => ({
+  fetchFleet: vi.fn().mockResolvedValue([]),
   logisticsDeptService: {
     getTransportRequests: vi.fn().mockResolvedValue([]),
     getTractors: vi.fn().mockResolvedValue([]),
@@ -226,18 +228,19 @@ describe('FleetTab', () => {
 // ── Runner Components ────────────────────────────
 
 describe('RunnersView', () => {
+  // «Runners en el huerto» (revisión 2026-10-21, punto 13): ya no lista pickers
   it('renders with title', async () => {
     const mod = await import('@/components/views/runner/RunnersView');
     const RunnersView = mod.default;
     const { container } = render(<RunnersView onBack={vi.fn()} />);
-    expect(container.textContent).toContain('Orchard Crew');
+    expect(container.textContent).toContain('Runners in the orchard');
   });
 
   it('shows empty state when no crew', async () => {
     const mod = await import('@/components/views/runner/RunnersView');
     const RunnersView = mod.default;
     const { container } = render(<RunnersView onBack={vi.fn()} />);
-    expect(container.textContent).toContain('No Active Pickers');
+    expect(container.textContent).toContain('No runners in the orchard');
   });
 
   it('calls onBack when back button clicked', async () => {

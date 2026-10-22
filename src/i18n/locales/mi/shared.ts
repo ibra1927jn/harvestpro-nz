@@ -130,6 +130,8 @@ const shared: TranslationDict = {
     'ui.loading_app': 'E uta ana te taupānga',
     'ui.otp_digit': 'Mati {n}',
     'ui.loading': 'E uta ana',
+    'nav.runners_now': 'Kaioma',
+    'nav.my_timesheet': 'Aku hāora',
 };
 
 export default shared;
