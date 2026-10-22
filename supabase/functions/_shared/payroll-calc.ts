@@ -6,6 +6,7 @@
  */
 import { payForRange, pieceRateFor, isNZPublicHoliday, PAY_RULES, type PayDay, type PickerRangePay } from './pay-rules.ts'
 import { fetchAllRows } from './fetch-all-rows.ts'
+import { fetchInChunks } from './fetch-in-chunks.ts'
 
 // deno-lint-ignore no-explicit-any
 type SupabaseLike = any
@@ -200,7 +201,10 @@ export async function computePayroll(
             .gte('scanned_at', toNZBoundary(start_date, '00:00:00'))
             // Hasta el final del día siguiente al rango (turno que cruza la medianoche)
             .lt('scanned_at', toNZBoundary(addDays(end_date, 2), '00:00:00'))
-        return q.order('id').range(from, to)
+        // Orden por (scanned_at, id): el índice de scanned_at ya da el orden y cada
+        // página no reordena la semana entera (con order('id') cada página
+        // ordenaba ~70.000 filas en disco: 150 ms × 70 páginas; ahora ~45 ms)
+        return q.order('scanned_at').order('id').range(from, to)
     })
     const attendance = await fetchAllRows((from, to) => {
         const q = supabase
@@ -285,9 +289,10 @@ export async function computePayroll(
     const rows = (orchard_id ? onlyOrchardShare(allRows, orchard_id) : allRows).sort((a, b) => b.buckets - a.buckets)
     const pickerIds = rows.map(r => r.pickerId)
 
-    const { data: names } = pickerIds.length
-        ? await supabase.from('pickers').select('id, name').in('id', pickerIds)
-        : { data: [] as { id: string; name: string }[] }
+    // Por trozos: con ~250 personas en la URL Kong respondía 414 y la nómina
+    // salía sin nombres (prueba de carga 2026-10-21)
+    const names = await fetchInChunks<{ id: string; name: string }>(pickerIds, (chunk, from, to) =>
+        supabase.from('pickers').select('id, name').in('id', chunk).order('id').range(from, to))
     const nameById = new Map<string, string>((names ?? []).map((n: { id: string; name: string }) => [n.id, n.name]))
 
     // 4. Desglose por picker

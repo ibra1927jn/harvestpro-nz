@@ -343,6 +343,14 @@ export const TimesheetApprovalSchema = z.object({
 });
 
 // Audit Log Submission
+/** Aprobación en lote (Nómina, «Aprobar todas»): hasta 500 hojas por llamada */
+export const TimesheetBatchApprovalSchema = z.object({
+  items: z.array(z.object({
+    attendance_id: z.string().uuid('attendance_id must be a valid UUID'),
+    current_updated_at: z.string().optional(),
+  })).min(1).max(500),
+});
+
 export const AuditLogEntrySchema = z.object({
   event_type: z.string().min(1),
   severity: z.enum(['info', 'warning', 'error', 'critical']),

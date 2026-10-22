@@ -7,8 +7,10 @@ import {
     checkRateLimit,
     AuthError,
     TimesheetApprovalSchema,
+    TimesheetBatchApprovalSchema,
 } from '../_shared/security.ts'
 import { writeAudit } from '../_shared/audit.ts'
+import { fetchInChunks } from '../_shared/fetch-in-chunks.ts'
 
 /**
  * approve-timesheet — aprobar o rechazar una hoja de horas (con bloqueo optimista)
@@ -31,6 +33,56 @@ serve(async (req) => {
         checkRateLimit(user.id)
 
         const body = await req.json()
+
+        // ── Lote: «Aprobar todas» en Nómina ───────────────────────────
+        // Una llamada por huerto y día en vez de una por persona (con 250
+        // personas eran 250 clics y 250 llamadas al día; prueba de carga
+        // 2026-10-21). Cada hoja pasa por review_timesheet igual que sola
+        // (permisos, semana cerrada) y deja su línea en audit_logs.
+        if (Array.isArray(body?.items)) {
+            const { items } = TimesheetBatchApprovalSchema.parse(body)
+            const ids = items.map(i => i.attendance_id)
+            const currentRows = await fetchInChunks<{ id: string; updated_at: string | null }>(ids, (chunk, from, to) =>
+                supabase.from('daily_attendance').select('id, updated_at').in('id', chunk).order('id').range(from, to))
+            const currentById = new Map(currentRows.map(r => [r.id, r.updated_at]))
+            const results: { attendance_id: string; status: 'approved' | 'conflict' | 'error'; updated_at?: string; reason?: string }[] = []
+            const auditRows: Record<string, unknown>[] = []
+            const now = new Date().toISOString()
+            for (const item of items) {
+                const serverTs = currentById.get(item.attendance_id)
+                if (item.current_updated_at && serverTs && Math.abs(new Date(serverTs).getTime() - new Date(item.current_updated_at).getTime()) > 1000) {
+                    results.push({ attendance_id: item.attendance_id, status: 'conflict', reason: 'MODIFIED_SINCE_LOADED' })
+                    continue
+                }
+                const { data: rows, error } = await supabase.rpc('review_timesheet', {
+                    p_attendance_id: item.attendance_id,
+                    p_decision: 'approve',
+                    p_reason: null,
+                })
+                const updated = (rows as { id: string; updated_at: string }[] | null)?.[0]
+                if (error || !updated) {
+                    results.push({ attendance_id: item.attendance_id, status: 'error', reason: error?.message ?? 'no row returned' })
+                    continue
+                }
+                results.push({ attendance_id: item.attendance_id, status: 'approved', updated_at: updated.updated_at })
+                auditRows.push({
+                    action: 'CUSTOM',
+                    table_name: 'daily_attendance',
+                    record_id: item.attendance_id,
+                    user_id: user.id,
+                    new_values: { event: 'timesheet_approved', verified_by: user.id, batch: true },
+                    created_at: now,
+                })
+            }
+            if (auditRows.length) {
+                const { error: auditErr } = await supabase.from('audit_logs').insert(auditRows)
+                if (auditErr) throw new Error(`Reviews applied but audit trail failed: ${auditErr.message}`)
+            }
+            const approved = results.filter(r => r.status === 'approved').length
+            console.info(`[approve-timesheet] batch: ${approved}/${items.length} approved by ${user.id}`)
+            return jsonResponse({ success: true, approved, results }, origin)
+        }
+
         const { attendance_id, current_updated_at, decision, reason } = TimesheetApprovalSchema.parse(body)
 
         // ── Optimistic Locking Check ─────────────────
