@@ -61,10 +61,12 @@ Deno.test('AttendanceInputSchema accepts a correct_batch with optional fields pe
   assert(parsed.items[2].check_in === undefined, 'untouched fields stay undefined');
 });
 
-Deno.test('AttendanceInputSchema rejects an empty batch, a short reason and bad ids/dates', () => {
+Deno.test('AttendanceInputSchema rejects an empty batch, a short or oversized reason and bad ids/dates', () => {
   const base = { action: 'correct_batch', reason: 'Everyone left at 16:30' };
   assert(!AttendanceInputSchema.safeParse({ ...base, items: [] }).success, 'empty batch must fail');
   assert(!AttendanceInputSchema.safeParse({ ...base, reason: 'x', items: [{ attendance_id: uuid(1) }] }).success, 'short reason must fail');
+  assert(!AttendanceInputSchema.safeParse({ ...base, reason: 'r'.repeat(501), items: [{ attendance_id: uuid(1) }] }).success, 'reason over 500 chars must fail');
+  assert(AttendanceInputSchema.safeParse({ ...base, reason: 'r'.repeat(500), items: [{ attendance_id: uuid(1) }] }).success, 'reason of 500 chars passes');
   assert(!AttendanceInputSchema.safeParse({ ...base, items: [{ attendance_id: 'nope' }] }).success, 'non-uuid id must fail');
   assert(!AttendanceInputSchema.safeParse({ ...base, items: [{ attendance_id: uuid(1), check_out: '16:30' }] }).success, 'HH:MM is not a datetime');
 });

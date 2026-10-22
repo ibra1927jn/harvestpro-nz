@@ -23,7 +23,10 @@ import { writeAudit } from '../_shared/audit.ts'
  *                  (one audit row per timesheet, per-item results, a failing
  *                  item does not abort the batch)
  *
- * Security: Requires admin/manager/team_leader role
+ * Security: Requires admin/manager/team_leader role. Corrections (single and
+ * batch) are scoped: admin anywhere, manager their own orchard, team leader
+ * only people of their own team or without a team (never another team); nobody
+ * corrects their own timesheet (except admin).
  */
 
 // deno-lint-ignore no-explicit-any
@@ -37,18 +40,92 @@ interface CorrectionItem {
 }
 
 /**
- * Aplica UNA corrección (la usan `correct` y `correct_batch`): recalcula las
- * horas pagables, escribe la fila y deja la auditoría. Quien corrige es
- * siempre quien llama. Si RLS deja la fila sin tocar → 403 (no se audita un
- * cambio que no hubo).
+ * Alcance de quien corrige (se carga UNA vez por petición, también para el lote):
+ * - admin: cualquier fichaje.
+ * - manager: los de su huerto.
+ * - team_leader: los de su huerto y de personas de SU equipo
+ *   (pickers.team_leader_id = él) o sin equipo (puede coger a gente sin
+ *   equipo, regla del 16-10). Nunca los de otro equipo.
+ * Nadie (salvo admin) corrige su propio fichaje. El RLS ya impide parte de
+ * esto, pero el alcance de equipo del team leader no está en la BD (la
+ * política «Manage attendance» le deja todo el huerto): se comprueba aquí,
+ * igual que lo filtra el editor. Autocontenido a propósito: no depende de
+ * otros helpers de la función (p. ej. un `assertCanTouchPicker` futuro).
+ */
+interface CorrectionScope {
+    userId: string
+    role: string
+    orchardId: string | null
+    /** Caché picker_id → team_leader_id (solo team_leader; undefined = sin fila en pickers) */
+    teamOf: Map<string, string | null | undefined> | null
+}
+
+async function loadCorrectionScope(supabase: SupabaseLike, userId: string): Promise<CorrectionScope> {
+    const { data: me, error: meErr } = await supabase
+        .from('users')
+        .select('role, orchard_id')
+        .eq('id', userId)
+        .single()
+    if (meErr || !me) throw new Error(`Failed to load caller profile: ${meErr?.message ?? 'not found'}`)
+    return {
+        userId,
+        role: me.role,
+        orchardId: me.orchard_id ?? null,
+        teamOf: me.role === 'team_leader' ? new Map() : null,
+    }
+}
+
+/** Equipo (team_leader_id) de una persona; se cachea para el resto del lote */
+async function teamLeaderOf(supabase: SupabaseLike, scope: CorrectionScope, pickerId: string): Promise<string | null | undefined> {
+    const cache = scope.teamOf!
+    if (cache.has(pickerId)) return cache.get(pickerId)
+    const { data, error } = await supabase
+        .from('pickers')
+        .select('team_leader_id')
+        .eq('id', pickerId)
+        .maybeSingle()
+    if (error) throw new Error(`Failed to load the person's team: ${error.message}`)
+    const leader = data ? (data.team_leader_id ?? null) : undefined
+    cache.set(pickerId, leader)
+    return leader
+}
+
+/** 403 si el fichaje queda fuera del alcance de quien corrige */
+async function assertInScope(
+    supabase: SupabaseLike,
+    scope: CorrectionScope,
+    row: { picker_id: string; orchard_id: string },
+): Promise<void> {
+    if (scope.role === 'admin') return
+    if (row.picker_id === scope.userId) {
+        throw new AuthError('You cannot correct your own timesheet', 403)
+    }
+    if (row.orchard_id !== scope.orchardId) {
+        throw new AuthError('You can only correct timesheets of your own orchard', 403)
+    }
+    if (scope.teamOf) {
+        const leader = await teamLeaderOf(supabase, scope, row.picker_id)
+        // Sin fila en pickers (undefined) o de otro equipo → fuera
+        if (leader === undefined || (leader !== null && leader !== scope.userId)) {
+            throw new AuthError('You can only correct timesheets of your own team', 403)
+        }
+    }
+}
+
+/**
+ * Aplica UNA corrección (la usan `correct` y `correct_batch`): comprueba el
+ * alcance, recalcula las horas pagables, escribe la fila y deja la auditoría.
+ * Quien corrige es siempre quien llama. Si RLS deja la fila sin tocar → 403
+ * (no se audita un cambio que no hubo).
  */
 async function applyCorrection(
     supabase: SupabaseLike,
-    userId: string,
+    scope: CorrectionScope,
     item: CorrectionItem,
     reason: string,
 ): Promise<void> {
     const { attendance_id, check_in, check_out, break_start } = item
+    const userId = scope.userId
 
     // Build update payload. Quien corrige es quien llama: antes se guardaba
     // el admin_id del cuerpo (firmar en nombre de otro).
@@ -62,16 +139,19 @@ async function applyCorrection(
     if (check_out) updatePayload.check_out = check_out
     if (break_start !== undefined) updatePayload.break_start = break_start
 
-    // Recalcular horas pagables con el cálculo único (pay-rules.ts)
+    // Fila actual: para el alcance (huerto / equipo / propio) y para recalcular
+    // las horas pagables con el cálculo único (pay-rules.ts)
     const { data: existing, error: fetchExistingErr } = await supabase
         .from('daily_attendance')
-        .select('check_in, check_out, break_start, break_minutes')
+        .select('picker_id, orchard_id, check_in, check_out, break_start, break_minutes')
         .eq('id', attendance_id)
         .single()
 
-    if (fetchExistingErr) {
-        throw new Error(`Failed to fetch existing attendance for hours recalculation: ${fetchExistingErr.message}`)
+    if (fetchExistingErr || !existing) {
+        throw new Error(`Failed to fetch existing attendance for hours recalculation: ${fetchExistingErr?.message ?? 'not found'}`)
     }
+
+    await assertInScope(supabase, scope, existing)
 
     const ci = check_in || existing?.check_in
     const co = check_out || existing?.check_out
@@ -98,13 +178,18 @@ async function applyCorrection(
         throw new AuthError('Not allowed to correct this timesheet', 403)
     }
 
-    // Audit trail — must succeed for compliance
+    // Audit trail — must succeed for compliance (una fila por fichaje)
     const { error: auditErr } = await writeAudit(supabase, {
         action: 'timesheet_correction',
         table: 'daily_attendance',
         recordId: attendance_id,
         userId,
-        oldValues: existing ?? undefined,
+        oldValues: {
+            check_in: existing.check_in,
+            check_out: existing.check_out,
+            break_start: existing.break_start,
+            break_minutes: existing.break_minutes,
+        },
         newValues: { check_in, check_out, break_start },
         reason,
     })
@@ -298,7 +383,8 @@ serve(async (req) => {
         // ── CORRECT ──────────────────────────────────
         if (input.action === 'correct') {
             const { attendance_id, check_in, check_out, break_start, reason } = input
-            await applyCorrection(supabase, user.id, { attendance_id, check_in, check_out, break_start }, reason)
+            const scope = await loadCorrectionScope(supabase, user.id)
+            await applyCorrection(supabase, scope, { attendance_id, check_in, check_out, break_start }, reason)
             return jsonResponse({ success: true, attendance_id }, origin)
         }
 
@@ -308,6 +394,8 @@ serve(async (req) => {
         // fichaje y los errores de una fila no tiran el lote.
         if (input.action === 'correct_batch') {
             const { items, reason } = input
+            // Alcance (huerto / equipo) una sola vez para todo el lote
+            const scope = await loadCorrectionScope(supabase, user.id)
             const results: Array<{ index: number; attendance_id: string; success: boolean; error?: string }> =
                 new Array(items.length)
 
@@ -316,7 +404,7 @@ serve(async (req) => {
                 await Promise.all(chunk.map(async (item, offset) => {
                     const index = start + offset
                     try {
-                        await applyCorrection(supabase, user.id, item, reason)
+                        await applyCorrection(supabase, scope, item, reason)
                         results[index] = { index, attendance_id: item.attendance_id, success: true }
                     } catch (err) {
                         const message = err instanceof Error ? err.message : String(err)
