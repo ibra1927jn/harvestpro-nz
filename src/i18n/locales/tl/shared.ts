@@ -130,6 +130,8 @@ const shared: TranslationDict = {
     'ui.loading_app': 'Nilo-load ang app',
     'ui.otp_digit': 'Digit {n} ng code',
     'ui.loading': 'Naglo-load',
+    'nav.runners_now': 'Runner',
+    'nav.my_timesheet': 'Aking oras',
 };
 
 export default shared;

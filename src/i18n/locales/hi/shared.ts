@@ -130,6 +130,8 @@ const shared: TranslationDict = {
     'ui.loading_app': 'ऐप लोड हो रहा है',
     'ui.otp_digit': 'कोड अंक {n}',
     'ui.loading': 'लोड हो रहा है',
+    'nav.runners_now': 'रनर',
+    'nav.my_timesheet': 'मेरे घंटे',
 };
 
 export default shared;

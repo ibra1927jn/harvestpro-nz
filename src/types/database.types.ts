@@ -843,6 +843,7 @@ export type Database = {
           updated_at: string | null
           wof_expiry: string | null
           zone: string | null
+          type: string
         }
         Insert: {
           bins_loaded?: number | null
@@ -864,6 +865,7 @@ export type Database = {
           updated_at?: string | null
           wof_expiry?: string | null
           zone?: string | null
+          type?: string
         }
         Update: {
           bins_loaded?: number | null
@@ -885,6 +887,7 @@ export type Database = {
           updated_at?: string | null
           wof_expiry?: string | null
           zone?: string | null
+          type?: string
         }
         Relationships: [
           {

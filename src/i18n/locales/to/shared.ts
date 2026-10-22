@@ -130,6 +130,8 @@ const shared: TranslationDict = {
     'ui.loading_app': 'Hiki ʻa e app',
     'ui.otp_digit': 'Fika {n}',
     'ui.loading': 'Hiki',
+    'nav.runners_now': 'Kau lele',
+    'nav.my_timesheet': 'ʻEku houa',
 };
 
 export default shared;

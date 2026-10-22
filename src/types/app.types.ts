@@ -220,6 +220,8 @@ export interface BucketRecord {
   bucket_count?: number;
   scanned_at?: string; // Added for Manager.tsx compatibility
   row_number?: number;
+  /** Usuario (runner / team leader) que escaneó la cubeta */
+  scanned_by?: string | null;
   // Runtime props from Supabase joins
   created_at?: string;
   picker_name?: string;

@@ -13,9 +13,14 @@ import { logger } from '@/utils/logger';
 import { logisticsRepository } from '@/repositories/logistics.repository';
 
 // ── Types ──────────────────────────────────────
+/** Tipo de vehículo (fleet_vehicles.type); decide el papel del runner que lo lleva */
+export type VehicleType = 'tractor' | 'forklift' | 'truck' | 'ute';
+
 export interface Tractor {
     id: string;
     name: string;
+    /** tractor por defecto (vehículos anteriores a la columna) */
+    type: VehicleType;
     registration?: string;
     zone: string;
     driver_id?: string;
@@ -99,12 +104,19 @@ export async function fetchLogisticsSummary(orchardId?: string): Promise<Logisti
     }
 }
 
+const VEHICLE_TYPES: readonly VehicleType[] = ['tractor', 'forklift', 'truck', 'ute'];
+
+export function vehicleTypeOf(raw: unknown): VehicleType {
+    return typeof raw === 'string' && (VEHICLE_TYPES as readonly string[]).includes(raw) ? raw as VehicleType : 'tractor';
+}
+
 export async function fetchFleet(orchardId?: string): Promise<Tractor[]> {
     try {
         const data = await logisticsRepository.getFleetAll(orchardId);
         return data.map(v => ({
             id: v.id,
             name: v.name,
+            type: vehicleTypeOf(v.type),
             registration: v.registration || undefined,
             zone: v.zone || 'Unassigned',
             driver_id: v.driver_id || undefined,
@@ -203,11 +215,13 @@ export async function fetchTransportHistory(orchardId?: string): Promise<Transpo
 }
 
 export async function createTransportRequest(
-    request: Omit<TransportRequest, 'id' | 'status' | 'created_at'> & { orchard_id: string }
+    request: Omit<TransportRequest, 'id' | 'status' | 'created_at'> & { orchard_id: string; id?: string }
 ): Promise<string> {
     // Id del móvil desde el principio: si la respuesta se pierde y la cola lo
-    // reintenta, el servidor ya la tiene y no se crea una segunda petición
-    return syncService.addToQueue('TRANSPORT', { action: 'create', ...request, id: safeUUID() });
+    // reintenta, el servidor ya la tiene y no se crea una segunda petición.
+    // Quien lo llama puede fijarlo (para pintar la solicitud en pantalla al momento).
+    const id = request.id ?? safeUUID();
+    return syncService.addToQueue('TRANSPORT', { action: 'create', ...request, id });
 }
 
 export async function assignVehicleToRequest(

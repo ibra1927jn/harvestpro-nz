@@ -130,6 +130,8 @@ const shared: TranslationDict = {
     'ui.loading_app': 'Utaina le app',
     'ui.otp_digit': 'Numera {n}',
     'ui.loading': 'Utaina',
+    'nav.runners_now': 'Tamoʻe',
+    'nav.my_timesheet': 'Oʻu itula',
 };
 
 export default shared;
