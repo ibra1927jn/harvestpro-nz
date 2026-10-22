@@ -107,6 +107,23 @@ describe('TimesheetEditor', () => {
         await waitFor(() => expect(mockGetAttendanceByDate).toHaveBeenCalledWith('o1', '2026-03-10'));
     });
 
+    it('pickerIds (team leader): shows only those people\'s timesheets', async () => {
+        mockGetAttendanceByDate.mockResolvedValue(
+            mockRecords.map((r, i) => ({ ...r, picker_id: ['p-team', 'p-other', 'p-team2'][i] })),
+        );
+        render(<TimesheetEditor orchardId="o1" pickerIds={['p-team', 'p-team2']} />);
+        await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+        expect(screen.getByText('Charlie')).toBeTruthy();
+        expect(screen.queryByText('Bob Jones')).toBeNull();
+    });
+
+    it('pickerIds empty (team leader without a team): shows nothing', async () => {
+        mockGetAttendanceByDate.mockResolvedValue(mockRecords.map(r => ({ ...r, picker_id: 'p-x' })));
+        render(<TimesheetEditor orchardId="o1" pickerIds={[]} />);
+        await waitFor(() => expect(mockGetAttendanceByDate).toHaveBeenCalled());
+        expect(screen.queryByText('Alice Smith')).toBeNull();
+    });
+
     it('renders picker names in the table', async () => {
         render(<TimesheetEditor orchardId="o1" />);
         await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());

@@ -11,6 +11,7 @@ import {
 } from '../_shared/security.ts'
 import { shiftHours } from '../_shared/pay-rules.ts'
 import { writeAudit } from '../_shared/audit.ts'
+import { assertCanTouchPicker, loadAttendanceCaller, lockedPeriodError } from '../_shared/attendance-access.ts'
 
 /**
  * manage-attendance — Server-side attendance operations
@@ -20,7 +21,9 @@ import { writeAudit } from '../_shared/audit.ts'
  * - check_out: Record checkout time + paid hours (unpaid 30-min break deducted)
  * - correct:   Admin timesheet correction with audit trail
  *
- * Security: Requires admin/manager/team_leader role
+ * Security: Requires admin/manager/team_leader role. A team leader only
+ * touches people of their own team or without a team; a manager, their
+ * orchard (assertCanTouchPicker, same rule as the RLS policy).
  */
 serve(async (req) => {
     const preflight = handlePreflight(req)
@@ -41,20 +44,25 @@ serve(async (req) => {
         }
 
         const input = AttendanceInputSchema.parse(body)
+        const caller = await loadAttendanceCaller(supabase, user.id)
+        // Clave de servicio: ve la ficha de la persona (equipo) y el turno
+        // abierto en otro huerto, que quien ficha no ve por RLS
+        const admin = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+        )
 
         // ── CHECK IN ─────────────────────────────────
         if (input.action === 'check_in') {
             const { picker_id, orchard_id } = input
 
-            // Solo se ficha en el huerto propio (admin en cualquiera) y nunca a uno mismo.
+            // Solo se ficha en el huerto propio (admin en cualquiera), el team
+            // leader solo a su equipo o a gente sin equipo, y nunca a uno mismo.
             // Se comprueba ANTES de cerrar el tramo de otro huerto con la clave de servicio.
-            const { data: me } = await supabase.from('users').select('role, orchard_id').eq('id', user.id).single()
-            if (me?.role !== 'admin' && me?.orchard_id !== orchard_id) {
-                throw new AuthError('You can only check people in to your own orchard', 403)
-            }
-            if (picker_id === user.id && me?.role !== 'admin') {
+            if (picker_id === user.id && caller.role !== 'admin') {
                 throw new AuthError('You cannot check yourself in', 403)
             }
+            await assertCanTouchPicker(admin, caller, { pickerId: picker_id, orchardId: orchard_id })
 
             // Get today's date in NZST
             const today = new Intl.DateTimeFormat('en-CA', {
@@ -68,10 +76,6 @@ serve(async (req) => {
             // El tramo abierto puede estar en otro huerto que quien ficha no ve por
             // RLS (un team leader solo ve su huerto): se busca y se cierra con la
             // clave de servicio. Antes el alta fallaba con "duplicate key".
-            const admin = createClient(
-                Deno.env.get('SUPABASE_URL') ?? '',
-                Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-            )
             const { data: open } = await admin
                 .from('daily_attendance')
                 .select('id, orchard_id')
@@ -105,7 +109,7 @@ serve(async (req) => {
                     })
                     .eq('id', open.id)
                     .is('check_out', null)
-                if (closeErr) throw new Error(`Failed to close previous shift: ${closeErr.message}`)
+                if (closeErr) throw lockedPeriodError(closeErr.message) ?? new Error(`Failed to close previous shift: ${closeErr.message}`)
                 closedShiftId = open.id
                 await writeAudit(admin, {
                     action: 'shift_auto_closed',
@@ -134,7 +138,7 @@ serve(async (req) => {
                 .select('id')
                 .single()
 
-            if (insertErr) throw new Error(`Failed to create attendance: ${insertErr.message}`)
+            if (insertErr) throw lockedPeriodError(insertErr.message) ?? new Error(`Failed to create attendance: ${insertErr.message}`)
 
             // La presencia queda en daily_attendance; pickers.status no cambia al fichar
 
@@ -157,11 +161,12 @@ serve(async (req) => {
             // Fetch check-in time
             const { data: record, error: fetchErr } = await supabase
                 .from('daily_attendance')
-                .select('id, picker_id, check_in, break_start, break_minutes')
+                .select('id, picker_id, orchard_id, check_in, break_start, break_minutes')
                 .eq('id', attendance_id)
                 .single()
 
             if (fetchErr || !record) throw new Error(`Attendance record not found: ${fetchErr?.message}`)
+            await assertCanTouchPicker(admin, caller, { pickerId: record.picker_id, orchardId: record.orchard_id })
 
             // Horas pagables con el cálculo único (descanso de 30 min no pagado)
             let hoursWorked: number | undefined
@@ -186,7 +191,7 @@ serve(async (req) => {
                 .select('id, picker_id, check_out')
                 .single()
 
-            if (updateErr) throw new Error(`Failed to update attendance: ${updateErr.message}`)
+            if (updateErr) throw lockedPeriodError(updateErr.message) ?? new Error(`Failed to update attendance: ${updateErr.message}`)
 
             // Fichar la salida no da de baja a nadie: pickers.status no cambia
 
@@ -219,13 +224,14 @@ serve(async (req) => {
             // Recalcular horas pagables con el cálculo único (pay-rules.ts)
             const { data: existing, error: fetchExistingErr } = await supabase
                 .from('daily_attendance')
-                .select('check_in, check_out, break_start, break_minutes')
+                .select('picker_id, orchard_id, check_in, check_out, break_start, break_minutes')
                 .eq('id', attendance_id)
                 .single()
 
             if (fetchExistingErr) {
                 throw new Error(`Failed to fetch existing attendance for hours recalculation: ${fetchExistingErr.message}`)
             }
+            await assertCanTouchPicker(admin, caller, { pickerId: existing.picker_id, orchardId: existing.orchard_id })
 
             const ci = check_in || existing?.check_in
             const co = check_out || existing?.check_out
@@ -245,7 +251,7 @@ serve(async (req) => {
                 .eq('id', attendance_id)
                 .select('id')
 
-            if (corrErr) throw new Error(`Failed to apply correction: ${corrErr.message}`)
+            if (corrErr) throw lockedPeriodError(corrErr.message) ?? new Error(`Failed to apply correction: ${corrErr.message}`)
             // RLS puede dejar la fila sin tocar sin dar error (p. ej. el propio
             // fichaje): antes se respondía success y se auditaba un cambio que no hubo
             if (!corrected || corrected.length === 0) {
@@ -258,7 +264,9 @@ serve(async (req) => {
                 table: 'daily_attendance',
                 recordId: attendance_id,
                 userId: user.id,
-                oldValues: existing ?? undefined,
+                oldValues: existing
+                    ? { check_in: existing.check_in, check_out: existing.check_out, break_start: existing.break_start, break_minutes: existing.break_minutes }
+                    : undefined,
                 newValues: { check_in, check_out, break_start },
                 reason,
             })

@@ -4,11 +4,15 @@
  * Admin-only view for correcting past attendance records.
  * Shows daily attendance with inline editing of check-in/out times.
  * All corrections require a reason and create an audit trail.
+ *
+ * `pickerIds` (team leader): only those people's timesheets are loaded and
+ * shown. Without it (manager) the whole orchard is shown. The server applies
+ * the same rule (manage-attendance + RLS "Manage attendance").
  */
 
 import { logger } from '@/utils/logger';
 import { useToast } from '@/hooks/useToast';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
 import { attendanceService } from '@/services/attendance.service';
 import { payrollService, DailyTimesheetRecord } from '@/services/payroll.service';
@@ -29,9 +33,11 @@ import { useTranslation } from '@/i18n';
 
 interface TimesheetEditorProps {
   orchardId: string;
+  /** Solo los fichajes de estas personas (el team leader ve y corrige su equipo) */
+  pickerIds?: string[];
 }
 
-export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
+export default function TimesheetEditor({ orchardId, pickerIds }: TimesheetEditorProps) {
   const { t } = useTranslation();
   const { appUser } = useAuth();
   const [selectedDate, setSelectedDate] = useState(todayNZST());
@@ -46,6 +52,13 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
   const [successMsg, setSuccessMsg] = useState('');
   const { showToast } = useToast();
   const breaksMissing = records.filter(r => isMealBreakMissing(r)).length;
+
+  // Alcance: clave estable para no recargar si el padre pasa un array nuevo cada render
+  const pickerKey = pickerIds ? pickerIds.join(',') : null;
+  const pickerSet = useMemo(
+    () => (pickerKey === null ? null : new Set(pickerKey ? pickerKey.split(',') : [])),
+    [pickerKey],
+  );
   // ========================================
   // DATA LOADING
   // ========================================
@@ -55,14 +68,17 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
     setLoading(true);
     try {
       const data = await attendanceService.getAttendanceByDate(orchardId, selectedDate);
-      // Los fichajes borrados no se muestran ni cuentan
-      setRecords((data as AttendanceRow[]).filter(r => !r.deleted_at));
+      // Los fichajes borrados no se muestran ni cuentan; con pickerIds, solo esas personas
+      const rows = (data as AttendanceRow[])
+        .filter(r => !r.deleted_at)
+        .filter(r => !pickerSet || pickerSet.has(r.picker_id));
+      setRecords(rows);
     } catch (err) {
       logger.error('Failed to load attendance:', err);
     } finally {
       setLoading(false);
     }
-  }, [orchardId, selectedDate]);
+  }, [orchardId, selectedDate, pickerSet]);
 
   useEffect(() => {
     loadRecords();
@@ -222,7 +238,8 @@ export default function TimesheetEditor({ orchardId }: TimesheetEditorProps) {
               setGeneratingTimesheet(true);
               try {
                 const data = await payrollService.generateDailyTimesheet(orchardId, selectedDate);
-                setDailyTimesheet(data);
+                // Team leader: el resumen del día también solo de su equipo
+                setDailyTimesheet(pickerSet ? data.filter(r => pickerSet.has(r.picker_id)) : data);
               } catch (err) {
                 logger.error('[Timesheet] Failed to generate daily timesheet:', err);
                 showToast(t('tse.generate_failed'), 'error');

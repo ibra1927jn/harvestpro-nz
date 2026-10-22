@@ -13,6 +13,12 @@ vi.mock('@/stores/useHarvestStore', () => ({
     const state = {
       fetchGlobalData: vi.fn(),
       orchard: { id: 'orch-1', name: 'Test Orchard' },
+      // u1 = el team leader con sesión: p1 es de su equipo, p2 de otro, p3 sin equipo
+      crew: [
+        { id: 'p1', name: 'Mine', role: 'picker', status: 'active', team_leader_id: 'u1' },
+        { id: 'p2', name: 'Other team', role: 'picker', status: 'active', team_leader_id: 'u2' },
+        { id: 'p3', name: 'No team', role: 'picker', status: 'active', team_leader_id: null },
+      ],
     };
     return selector(state);
   }),
@@ -57,7 +63,9 @@ vi.mock('../components/views/team-leader/AttendanceView', () => ({
   default: () => <div>Attendance View</div>,
 }));
 vi.mock('@/components/views/manager/TimesheetEditor', () => ({
-  default: () => <div>Timesheet Editor</div>,
+  default: ({ pickerIds }: { pickerIds?: string[] }) => (
+    <div>Timesheet Editor for {pickerIds ? pickerIds.join(',') : 'whole orchard'}</div>
+  ),
 }));
 vi.mock('@/components/ui/ComponentErrorBoundary', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -95,6 +103,12 @@ describe('TeamLeader Page', () => {
     expect(screen.getByText('Map')).toBeTruthy();
     expect(screen.getByText('Timesheet')).toBeTruthy();
     expect(screen.getByText('Chat')).toBeTruthy();
+  });
+
+  it('Timesheet tab: only the team leader\'s own team (A2)', async () => {
+    render(<TeamLeader />);
+    fireEvent.click(screen.getAllByText('Timesheet')[0]);
+    expect(await screen.findByText('Timesheet Editor for p1')).toBeTruthy();
   });
 
   it('has no profile tab any more: the avatar opens My account', async () => {

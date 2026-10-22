@@ -10,8 +10,10 @@
  *   teamLeaderNav.config.ts    — Navigation tabs
  *   team-leader/               — View components (lazy-loaded)
  */
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useMemo } from 'react';
 import { useHarvestStore } from '@/stores/useHarvestStore';
+import { useAuth } from '@/context/AuthContext';
+import { selectTeamOf } from '@/services/harvestMetrics/roster';
 import ResponsiveLayout from '@/components/common/ResponsiveLayout';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import { TEAM_LEADER_NAV_TABS, type TeamLeaderTab } from '@/config/navigation/team-leader.nav';
@@ -35,6 +37,14 @@ const TeamLeader = () => {
     const { t } = useTranslation();
     // Los datos del huerto los carga OrchardDataBootstrap (ProtectedRoute)
     const orchard = useHarvestStore((state) => state.orchard);
+    const crew = useHarvestStore((state) => state.crew);
+    const { appUser } = useAuth();
+    // Hojas de horas: el team leader solo ve y corrige los fichajes de SU equipo
+    // (misma regla que Inicio / Equipo / Pase de lista; el servidor también lo exige)
+    const teamPickerIds = useMemo(
+        () => selectTeamOf(crew ?? [], appUser?.id).map(p => p.id),
+        [crew, appUser?.id],
+    );
 
     const [activeTab, setActiveTab] = useState<TeamLeaderTab>('home');
     // BottomNav has 5 tabs; 'team' doesn't appear there — fallback a 'home'.
@@ -83,7 +93,7 @@ const TeamLeader = () => {
                         {activeTab === 'timesheet' && (
                             <ComponentErrorBoundary componentName="Timesheet">
                                 <div className="p-4">
-                                    <TimesheetEditor orchardId={orchard?.id || ''} />
+                                    <TimesheetEditor orchardId={orchard?.id || ''} pickerIds={teamPickerIds} />
                                 </div>
                             </ComponentErrorBoundary>
                         )}
