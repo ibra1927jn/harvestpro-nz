@@ -4,20 +4,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const supabaseMock = vi.hoisted(() => {
-    const state = { attendance: [] as unknown[], managers: [] as unknown[] };
+    const state = { attendance: [] as unknown[], managers: [] as unknown[], me: null as unknown };
     const chain = (rows: () => unknown[]) => {
         const q: Record<string, unknown> = {};
         const self = () => q;
         for (const m of ['select', 'eq', 'is', 'gte', 'lte', 'order']) q[m] = self;
         q.range = (from: number, to: number) => Promise.resolve({ data: rows().slice(from, to + 1), error: null });
+        q.maybeSingle = () => Promise.resolve({ data: rows()[0] ?? null, error: null });
         q.then = (resolve: (v: { data: unknown[]; error: null }) => void) => resolve({ data: rows(), error: null });
         return q;
     };
+    const rowsOf = (table: string): unknown[] => {
+        if (table === 'daily_attendance') return state.attendance;
+        if (table === 'pickers') return state.me ? [state.me] : [];
+        return state.managers;
+    };
     return {
         state,
-        supabase: {
-            from: (table: string) => chain(() => table === 'daily_attendance' ? state.attendance : state.managers),
-        },
+        supabase: { from: (table: string) => chain(() => rowsOf(table)) },
     };
 });
 
@@ -62,6 +66,7 @@ describe('requestCorrection', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         supabaseMock.state.managers = [{ id: 'm1' }, { id: 'm2' }];
+        supabaseMock.state.me = null;
         messaging.getConversations.mockResolvedValue([
             { id: 'conv-m1', type: 'direct', participant_ids: ['u1', 'm1'] },
             { id: 'grp', type: 'group', participant_ids: ['u1', 'm2', 'x'] },
@@ -79,7 +84,21 @@ describe('requestCorrection', () => {
         expect(messaging.sendMessage).toHaveBeenCalledWith('conv-m2', 'u1', 'Corrección');
     });
 
-    it('sin managers no envía nada y devuelve 0', async () => {
+    it('también avisa al team leader de la persona (sin repetir ni incluirse a sí misma)', async () => {
+        supabaseMock.state.me = { team_leader_id: 'tl1' };
+        messaging.createConversation.mockImplementation((_t: string, ids: string[]) =>
+            Promise.resolve({ id: `conv-${ids[1]}`, type: 'direct', participant_ids: ids }));
+        const sent = await myTimesheetService.requestCorrection({ userId: 'u1', orchardId: 'o1', content: 'Corrección' });
+        expect(sent).toBe(3);
+        expect(messaging.sendMessage).toHaveBeenCalledWith('conv-tl1', 'u1', 'Corrección');
+
+        // El team leader que pide su propia corrección no se avisa a sí mismo
+        await expect(myTimesheetService.correctionRecipients('m1', 'o1')).resolves.toEqual(['m2', 'tl1']);
+        supabaseMock.state.me = { team_leader_id: 'm2' };
+        await expect(myTimesheetService.correctionRecipients('u1', 'o1')).resolves.toEqual(['m1', 'm2']);
+    });
+
+    it('sin managers ni team leader no envía nada y devuelve 0', async () => {
         supabaseMock.state.managers = [];
         const sent = await myTimesheetService.requestCorrection({ userId: 'u1', orchardId: 'o1', content: 'x' });
         expect(sent).toBe(0);

@@ -2,7 +2,7 @@
  * Smoke tests for runner views — LogisticsView (265L) and WarehouseView (116L)
  */
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 
 vi.mock('@/stores/useHarvestStore', () => ({
@@ -81,6 +81,7 @@ const warehouseHook = vi.hoisted(() => ({
   myRequests: [] as unknown[],
   loading: false,
   reload: vi.fn(),
+  requestPickup: vi.fn(),
   cancelMine: vi.fn(),
 }));
 vi.mock('@/hooks/useRunnerWarehouse', () => ({ useRunnerWarehouse: () => warehouseHook }));
@@ -88,7 +89,6 @@ vi.mock('@/hooks/useRunnerWarehouse', () => ({ useRunnerWarehouse: () => warehou
 describe('WarehouseView', () => {
   let WarehouseView: React.ComponentType<{
     inventory?: { full_bins: number; empty_bins: number; in_progress: number; total: number };
-    onTransportRequest?: () => void;
   }>;
 
   beforeAll(async () => {
@@ -101,6 +101,14 @@ describe('WarehouseView', () => {
     warehouseHook.myRequests = [];
     warehouseHook.loading = false;
     warehouseHook.cancelMine.mockClear();
+    warehouseHook.requestPickup.mockReset();
+    warehouseHook.requestPickup.mockResolvedValue({ id: 'new', bins_count: 10, status: 'pending' });
+  });
+
+  it('«Solicitar transporte» crea una solicitud real con los bins llenos del huerto', async () => {
+    render(<WarehouseView inventory={{ full_bins: 10, empty_bins: 5, in_progress: 2, total: 17 }} />);
+    fireEvent.click(screen.getByText('Request Transport'));
+    await waitFor(() => expect(warehouseHook.requestPickup).toHaveBeenCalledWith(10));
   });
 
   it('renders warehouse inventory header', () => {

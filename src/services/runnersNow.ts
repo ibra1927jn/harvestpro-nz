@@ -5,8 +5,11 @@
  *   driver    → lleva un tractor / camión / ute activo (fleet_vehicles.driver_id)
  *   forklift  → lleva un forklift activo
  *   on_foot   → su último escaneo de cubeta tiene menos de 10 min: «recogiendo · fila N»
- *   waiting   → fichado, último escaneo entre 10 y 15 min (o sin escaneos aún)
- *   idle      → fichado y sin actividad en más de 15 min
+ *   waiting   → fichado, lleva más de 10 min sin escanear: «en espera» (en la fila N)
+ *   idle      → fichado, sin vehículo y sin ningún escaneo hoy: «sin actividad»
+ * (Revisión 2026-10-21, punto 13: «<10 min recogiendo; sin escaneo en 15 min en
+ *  espera; sin vehículo ni escaneo, sin actividad». Entre 10 y 15 min ya no está
+ *  recogiendo, así que cuenta como en espera.)
  *
  * Un runner sin tramo abierto hoy no está «en el huerto», salvo que haya
  * escaneado algo hoy (entonces se enseña con aviso «sin fichar»).
@@ -32,8 +35,8 @@ export interface RunnerNow {
     checkedIn: boolean;
 }
 
+/** Hasta aquí el último escaneo cuenta como «recogiendo»; después, «en espera» */
 export const ON_FOOT_MAX_MINUTES = 10;
-export const WAITING_MAX_MINUTES = 15;
 
 function toMs(ts: string | null | undefined): number | null {
     if (!ts) return null;
@@ -75,9 +78,9 @@ export function runnersNow(params: {
         const vehicle = vehicleByDriver.get(p.id) ?? null;
         let activity: RunnerActivity;
         if (vehicle) activity = vehicle.type === 'forklift' ? 'forklift' : 'driver';
-        else if (minutes !== null && minutes <= ON_FOOT_MAX_MINUTES) activity = 'on_foot';
-        else if (minutes === null || minutes <= WAITING_MAX_MINUTES) activity = 'waiting';
-        else activity = 'idle';
+        else if (minutes === null) activity = 'idle';
+        else if (minutes <= ON_FOOT_MAX_MINUTES) activity = 'on_foot';
+        else activity = 'waiting';
 
         out.push({
             id: p.id,

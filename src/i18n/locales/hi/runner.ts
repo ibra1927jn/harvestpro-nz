@@ -159,6 +159,9 @@ const runner: TranslationDict = {
     'runner.now.detail_vehicle': '{name} · {loaded}/{max} बिन · {zone}',
     'runner.now.detail_row': 'पंक्ति {n} · अंतिम स्कैन {min} मिनट पहले',
     'runner.now.detail_none': 'आज कोई स्कैन नहीं',
+    'runner.myts.needs_network': 'अनुरोध भेजने के लिए कनेक्शन चाहिए। नेटवर्क वापस आने पर फिर कोशिश करें।',
+    'runner.warehouse.pickup_sent': 'गोदाम में {n} भरे बिन उठाने का अनुरोध भेजा गया',
+    'runner.warehouse.pickup_failed': 'उठाने का अनुरोध नहीं भेजा जा सका — फिर कोशिश करें',
 };
 
 export default runner;

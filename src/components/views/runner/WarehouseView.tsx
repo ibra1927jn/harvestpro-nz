@@ -3,6 +3,8 @@
  *
  * Qué enseña (revisión 2026-10-21, punto 12):
  *   - contadores del huerto: bins llenos / vacíos / en curso (sin adornos);
+ *   - «Solicitar transporte» crea una solicitud de transporte real (antes solo
+ *     mandaba un mensaje al chat) que aparece abajo al momento;
  *   - MIS solicitudes de transporte con su estado real (pendiente / asignada /
  *     en curso) y vehículo, con «cancelar» mientras estén pendientes;
  *   - bins por zona, llenos primero, para saber dónde hay que recoger.
@@ -10,12 +12,15 @@
  * «transporte solicitado» que salía con más de 10 bins llenos aunque no hubiera
  * ninguna solicitud.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from '@/i18n';
 import EmptyState from '@/components/ui/EmptyState';
+import Toast from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
 import { useRunnerWarehouse } from '@/hooks/useRunnerWarehouse';
 import type { BinInventory, TransportRequest } from '@/services/logistics-dept.service';
 import { formatNZTime } from '@/utils/nzFormat';
+import { logger } from '@/utils/logger';
 
 interface WarehouseViewProps {
     inventory?: {
@@ -24,7 +29,6 @@ interface WarehouseViewProps {
         in_progress: number;
         total: number;
     };
-    onTransportRequest?: () => void;
 }
 
 const REQUEST_STATUS: Record<TransportRequest['status'], { key: string; className: string; icon: string }> = {
@@ -43,31 +47,48 @@ const BIN_STATUS: Record<BinInventory['status'], { key: string; dot: string }> =
     empty: { key: 'runner.warehouse.bin_empty', dot: 'bg-emerald-500' },
 };
 
-const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportRequest }) => {
+const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory }) => {
     const { t } = useTranslation();
-    const { zones, myRequests, loading, cancelMine } = useRunnerWarehouse();
+    const { zones, myRequests, loading, requestPickup, cancelMine } = useRunnerWarehouse();
+    const { toast, showToast, hideToast } = useToast();
+    const [requesting, setRequesting] = useState(false);
     const fullBins = inventory?.full_bins || 0;
     const emptyBins = inventory?.empty_bins || 0;
     const inProgress = inventory?.in_progress || 0;
 
+    // Solicitud de transporte real (en cola sin red): aparece en «mis solicitudes»
+    const handleRequestPickup = async () => {
+        if (requesting) return;
+        setRequesting(true);
+        try {
+            const request = await requestPickup(fullBins);
+            showToast(t('runner.warehouse.pickup_sent', { n: request.bins_count }), 'success');
+        } catch (e) {
+            logger.error('[Warehouse] pickup request failed', e);
+            showToast(t('runner.warehouse.pickup_failed'), 'error');
+        } finally {
+            setRequesting(false);
+        }
+    };
+
     return (
         <div className="flex flex-col h-full bg-slate-50 relative overflow-hidden">
+            {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
             <header className="flex-none bg-white/80 backdrop-blur-xl z-30 border-b border-slate-100 pt-6">
                 <div className="flex items-center px-6 py-4 justify-between gap-3">
                     <div>
                         <h2 className="text-2xl font-black text-slate-800 tracking-tight leading-tight">{t('runner.warehouse.title')}</h2>
                         <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">{t('runner.warehouse.subtitle')}</p>
                     </div>
-                    {onTransportRequest && (
-                        <button
-                            type="button"
-                            onClick={onTransportRequest}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-wider shadow-md active:scale-95 min-h-[44px]"
-                        >
-                            <span aria-hidden="true" className="material-symbols-outlined text-base">local_shipping</span>
-                            {t('runner.warehouse.request_transport')}
-                        </button>
-                    )}
+                    <button
+                        type="button"
+                        onClick={() => { void handleRequestPickup(); }}
+                        disabled={requesting}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-wider shadow-md active:scale-95 min-h-[44px] disabled:opacity-60"
+                    >
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">local_shipping</span>
+                        {t('runner.warehouse.request_transport')}
+                    </button>
                 </div>
             </header>
 

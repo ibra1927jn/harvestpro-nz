@@ -159,6 +159,9 @@ const runner: TranslationDict = {
     'runner.now.detail_vehicle': '{name} · {loaded}/{max} bin · {zone}',
     'runner.now.detail_row': 'Hanay {n} · huling scan {min} min na ang nakalipas',
     'runner.now.detail_none': 'Walang scan ngayong araw',
+    'runner.myts.needs_network': 'Kailangan ng koneksyon para maipadala ang kahilingan. Subukan ulit kapag may signal na.',
+    'runner.warehouse.pickup_sent': 'Hiniling ang pagkuha ng {n} punong bin sa bodega',
+    'runner.warehouse.pickup_failed': 'Hindi naipadala ang kahilingan sa pagkuha — subukan ulit',
 };
 
 export default runner;

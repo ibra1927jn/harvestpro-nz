@@ -215,11 +215,13 @@ export async function fetchTransportHistory(orchardId?: string): Promise<Transpo
 }
 
 export async function createTransportRequest(
-    request: Omit<TransportRequest, 'id' | 'status' | 'created_at'> & { orchard_id: string }
+    request: Omit<TransportRequest, 'id' | 'status' | 'created_at'> & { orchard_id: string; id?: string }
 ): Promise<string> {
     // Id del móvil desde el principio: si la respuesta se pierde y la cola lo
-    // reintenta, el servidor ya la tiene y no se crea una segunda petición
-    return syncService.addToQueue('TRANSPORT', { action: 'create', ...request, id: safeUUID() });
+    // reintenta, el servidor ya la tiene y no se crea una segunda petición.
+    // Quien lo llama puede fijarlo (para pintar la solicitud en pantalla al momento).
+    const id = request.id ?? safeUUID();
+    return syncService.addToQueue('TRANSPORT', { action: 'create', ...request, id });
 }
 
 export async function assignVehicleToRequest(

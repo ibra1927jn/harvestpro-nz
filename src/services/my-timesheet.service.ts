@@ -3,8 +3,9 @@
  *
  * El runner solo ve sus propios tramos y no los corrige: nadie se corrige a sí
  * mismo (políticas «No self attendance …», 2026-10-13). Lo que puede hacer es
- * PEDIR una corrección, que llega al manager del huerto como mensaje directo y
- * él la aplica desde el editor de fichajes (con motivo y auditoría).
+ * PEDIR una corrección, que llega como mensaje directo a los managers del huerto
+ * y a su team leader (si tiene), que la aplican desde el editor de fichajes
+ * (con motivo y auditoría). Necesita red: la vista avisa si no la hay.
  */
 import { supabase } from '@/services/supabase';
 import { fetchAllRows } from '@/utils/fetchAllRows';
@@ -83,8 +84,25 @@ export const myTimesheetService = {
     },
 
     /**
-     * Pide al manager del huerto que corrija un tramo: mensaje directo (uno por
-     * manager del huerto). Devuelve cuántos managers recibieron el aviso.
+     * Quién recibe la solicitud: los managers activos del huerto y el team leader
+     * de la persona (pickers.team_leader_id, el id de su cuenta), sin repetir ni
+     * incluirse a uno mismo.
+     */
+    async correctionRecipients(userId: string, orchardId: string): Promise<string[]> {
+        const [{ data: managers, error }, { data: me, error: meError }] = await Promise.all([
+            supabase.from('users').select('id').eq('orchard_id', orchardId).eq('role', 'manager').eq('is_active', true),
+            supabase.from('pickers').select('team_leader_id').eq('id', userId).maybeSingle(),
+        ]);
+        if (error) throw error;
+        if (meError) logger.warn('[MyTimesheet] Could not read own team leader', meError);
+        const ids = (managers ?? []).map(m => m.id);
+        if (me?.team_leader_id) ids.push(me.team_leader_id);
+        return [...new Set(ids)].filter(id => id !== userId);
+    },
+
+    /**
+     * Pide que corrijan un tramo: mensaje directo a cada destinatario (managers
+     * del huerto y team leader). Devuelve cuántos recibieron el aviso.
      */
     async requestCorrection(params: {
         userId: string;
@@ -92,26 +110,19 @@ export const myTimesheetService = {
         content: string;
     }): Promise<number> {
         const { userId, orchardId, content } = params;
-        const { data: managers, error } = await supabase
-            .from('users')
-            .select('id')
-            .eq('orchard_id', orchardId)
-            .eq('role', 'manager')
-            .eq('is_active', true);
-        if (error) throw error;
-        const managerIds = (managers ?? []).map(m => m.id).filter(id => id !== userId);
-        if (managerIds.length === 0) return 0;
+        const recipientIds = await myTimesheetService.correctionRecipients(userId, orchardId);
+        if (recipientIds.length === 0) return 0;
 
         const conversations = await messagingRepository.getConversations(userId) as Array<{ id: string; type: string; participant_ids: string[] | null }>;
         let sent = 0;
-        for (const managerId of managerIds) {
+        for (const recipientId of recipientIds) {
             let conversation = conversations.find(c => c.type === 'direct'
                 && (c.participant_ids ?? []).length === 2
-                && (c.participant_ids ?? []).includes(managerId));
+                && (c.participant_ids ?? []).includes(recipientId));
             if (!conversation) {
-                const created = await messagingRepository.createConversation('direct', [userId, managerId], userId) as { id: string; type: string; participant_ids: string[] | null } | null;
+                const created = await messagingRepository.createConversation('direct', [userId, recipientId], userId) as { id: string; type: string; participant_ids: string[] | null } | null;
                 if (!created) {
-                    logger.warn('[MyTimesheet] Could not open a conversation with manager', managerId);
+                    logger.warn('[MyTimesheet] Could not open a conversation with', recipientId);
                     continue;
                 }
                 conversation = created;

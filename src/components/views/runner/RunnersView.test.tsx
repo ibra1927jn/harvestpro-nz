@@ -29,6 +29,7 @@ function crewFixture() {
         { id: 'r1', name: 'Rata Runner', avatar: 'RR', current_row: 0, total_buckets_today: 0, status: 'active', role: 'runner', check_in: NOW_ISO },
         { id: 'r2', name: 'Dani Driver', avatar: 'DD', current_row: 0, total_buckets_today: 0, status: 'active', role: 'bucket_runner', check_in: NOW_ISO },
         { id: 'r3', name: 'Lola Lenta', avatar: 'LL', current_row: 0, total_buckets_today: 0, status: 'active', role: 'runner', check_in: NOW_ISO },
+        { id: 'r4', name: 'Nico Nuevo', avatar: 'NN', current_row: 0, total_buckets_today: 0, status: 'active', role: 'runner', check_in: NOW_ISO },
         { id: 'p1', name: 'Alice Picker', avatar: 'AL', current_row: 3, total_buckets_today: 15, status: 'active', role: 'picker', check_in: NOW_ISO },
         { id: 'p2', name: 'Bob Picker', avatar: 'BO', current_row: 3, total_buckets_today: 8, status: 'active', role: 'picker', check_in: NOW_ISO },
         { id: 'tl', name: 'Team Leader', avatar: 'TL', current_row: 0, total_buckets_today: 0, status: 'active', role: 'team_leader', check_in: NOW_ISO },
@@ -53,22 +54,27 @@ describe('RunnersView', () => {
     it('lista runners (no pickers ni team leaders) con lo que hace cada uno', async () => {
         render(<RunnersView onBack={onBack} />);
         expect(screen.getByText('Runners in the orchard')).toBeTruthy();
+        // Dani conduce el tractor cuando llega la flota (hasta entonces cuenta como sin actividad)
+        await waitFor(() => expect(screen.getByText('Driving')).toBeTruthy());
+        expect(screen.getByText(/Tractor 1 · 4\/8 bins · B/)).toBeTruthy();
+        expect(screen.getByText('Active vehicles')).toBeTruthy();
+
         expect(screen.getAllByText('Rata Runner').length).toBeGreaterThan(0); // lista + celda del mapa
         expect(screen.getByText('Lola Lenta')).toBeTruthy();
+        expect(screen.getByText('Nico Nuevo')).toBeTruthy();
         expect(screen.queryByText('Alice Picker')).toBeNull();
         expect(screen.queryByText('Team Leader')).toBeNull();
+        expect(screen.getByText('4 in the orchard')).toBeTruthy();
 
         // Rata escaneó hace 2 min en la fila 7 → recogiendo
         expect(screen.getByText('Picking up')).toBeTruthy();
         expect(screen.getByText(/Row 7 · last scan 2 min ago/)).toBeTruthy();
-        // Lola lleva 40 min sin escanear → sin actividad
+        // Lola lleva 40 min sin escanear → en espera (en la fila 2)
+        expect(screen.getByText('Waiting')).toBeTruthy();
+        expect(screen.getByText(/Row 2 · last scan 40 min ago/)).toBeTruthy();
+        // Nico está fichado pero no ha escaneado nada hoy → sin actividad
         expect(screen.getByText('No activity')).toBeTruthy();
-
-        // Dani conduce el tractor cuando llega la flota
-        await waitFor(() => expect(screen.getByText('Driving')).toBeTruthy());
-        expect(screen.getByText(/Tractor 1 · 4\/8 bins · B/)).toBeTruthy();
-        expect(screen.getByText('Active vehicles')).toBeTruthy();
-        expect(screen.getByText('3 in the orchard')).toBeTruthy();
+        expect(screen.getByText('No scans yet today')).toBeTruthy();
     });
 
     it('mapa de filas: la fila del runner a pie en verde y los pickers por fila contados', () => {
