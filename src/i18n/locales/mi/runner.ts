@@ -159,6 +159,9 @@ const runner: TranslationDict = {
     'runner.now.detail_vehicle': '{name} · {loaded}/{max} pouaka · {zone}',
     'runner.now.detail_row': 'Rārangi {n} · matawai whakamutunga {min} meneti ki muri',
     'runner.now.detail_none': 'Kāore anō he matawai i tēnei rā',
+    'runner.myts.needs_network': 'Me whai hononga koe hei tuku i te tono. Ngana anō ina hoki mai te hononga.',
+    'runner.warehouse.pickup_sent': 'Kua tonoa te kohi mō {n} pouaka kī i te whare putunga',
+    'runner.warehouse.pickup_failed': 'Kāore i taea te tuku i te tono kohi. Ngana anō.',
 };
 
 export default runner;

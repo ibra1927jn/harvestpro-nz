@@ -2,7 +2,7 @@
  * runnersNow — qué hace cada runner, derivado de fichaje, vehículo y escaneos.
  */
 import { describe, it, expect } from 'vitest';
-import { runnersNow, pickersByRow, ON_FOOT_MAX_MINUTES, WAITING_MAX_MINUTES } from './runnersNow';
+import { runnersNow, pickersByRow, ON_FOOT_MAX_MINUTES } from './runnersNow';
 import type { Picker, BucketRecord } from '@/types';
 import type { Tractor } from '@/services/logistics-dept.service';
 
@@ -54,22 +54,24 @@ describe('runnersNow', () => {
         expect(by.r1.activity).toBe('driver');
         expect(by.r1.vehicle).toMatchObject({ id: 't1', binsLoaded: 3, maxCapacity: 8, zone: 'B' });
         expect(by.r2.activity).toBe('forklift');
-        expect(by.r3.activity).toBe('waiting');
+        // vehículo parado y sin escaneos: sin actividad
+        expect(by.r3.activity).toBe('idle');
         expect(by.r3.vehicle).toBeNull();
     });
 
-    it('a pie: recogiendo si el último escaneo es reciente, en espera, o sin actividad', () => {
-        const crew = [person({ id: 'a', name: 'A' }), person({ id: 'b', name: 'B' }), person({ id: 'c', name: 'C' })];
+    it('a pie: recogiendo si el último escaneo es reciente; en espera si lleva más de 10 min; sin actividad si no escaneó', () => {
+        const crew = [person({ id: 'a', name: 'A' }), person({ id: 'b', name: 'B' }), person({ id: 'c', name: 'C' }), person({ id: 'd', name: 'D' })];
         const bucketRecords = [
             scan('a', 4, 30), scan('a', 7, ON_FOOT_MAX_MINUTES - 1),   // el último manda: fila 7
-            scan('b', 2, WAITING_MAX_MINUTES - 1),
-            scan('c', 9, WAITING_MAX_MINUTES + 5),
+            scan('b', 2, ON_FOOT_MAX_MINUTES + 2),                      // 12 min: ya no recoge
+            scan('c', 9, 40),                                           // 40 min: sigue siendo «en espera», no «sin actividad»
         ];
         const out = runnersNow({ crew, fleet: [], bucketRecords, now: NOW });
         const by = Object.fromEntries(out.map(r => [r.id, r]));
         expect(by.a).toMatchObject({ activity: 'on_foot', row: 7, minutesSinceScan: ON_FOOT_MAX_MINUTES - 1 });
         expect(by.b).toMatchObject({ activity: 'waiting', row: 2 });
-        expect(by.c).toMatchObject({ activity: 'idle', row: 9 });
+        expect(by.c).toMatchObject({ activity: 'waiting', row: 9, minutesSinceScan: 40 });
+        expect(by.d).toMatchObject({ activity: 'idle', row: null, minutesSinceScan: null });
     });
 
     it('runner sin fichar pero con escaneos hoy: aparece marcado como no fichado', () => {
@@ -80,14 +82,14 @@ describe('runnersNow', () => {
     });
 
     it('orden: recogiendo, luego vehículos, luego en espera y sin actividad', () => {
-        const crew = [person({ id: 'idle', name: 'Zed' }), person({ id: 'drv', name: 'Ann' }), person({ id: 'foot', name: 'Max' })];
+        const crew = [person({ id: 'idle', name: 'Zed' }), person({ id: 'wait', name: 'Bea' }), person({ id: 'drv', name: 'Ann' }), person({ id: 'foot', name: 'Max' })];
         const out = runnersNow({
             crew,
             fleet: [vehicle({ id: 't', driver_id: 'drv' })],
-            bucketRecords: [scan('foot', 1, 1), scan('idle', 2, 60)],
+            bucketRecords: [scan('foot', 1, 1), scan('wait', 2, 60)],
             now: NOW,
         });
-        expect(out.map(r => r.id)).toEqual(['foot', 'drv', 'idle']);
+        expect(out.map(r => r.id)).toEqual(['foot', 'drv', 'wait', 'idle']);
     });
 });
 

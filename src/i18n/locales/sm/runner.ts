@@ -159,6 +159,9 @@ const runner: TranslationDict = {
     'runner.now.detail_vehicle': '{name} · {loaded}/{max} pusa · {zone}',
     'runner.now.detail_row': 'Laina {n} · sikena mulimuli {min} minute talu ai',
     'runner.now.detail_none': 'E leai ni sikena i le aso',
+    'runner.myts.needs_network': 'E manaʻomia se fesoʻotaʻiga e lafo ai le talosaga. Toe taumafai pe a toe maua le fesoʻotaʻiga.',
+    'runner.warehouse.pickup_sent': 'Ua talosagaina le aveina o {n} pusa tumu i le faleteuoloa',
+    'runner.warehouse.pickup_failed': 'E leʻi mafai ona lafo le talosaga e ave ai. Toe taumafai.',
 };
 
 export default runner;

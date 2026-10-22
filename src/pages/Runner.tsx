@@ -105,12 +105,8 @@ const Runner = () => {
               )}
               {activeTab === 'warehouse' && (
                 <ComponentErrorBoundary componentName="Warehouse">
-                  <WarehouseView
-                    inventory={runner.inventory}
-                    onTransportRequest={() =>
-                      runner.handleBroadcast('Warehouse is full. Pickup needed.')
-                    }
-                  />
+                  {/* «Solicitar transporte» crea la solicitud desde la propia vista (antes solo un mensaje) */}
+                  <WarehouseView inventory={runner.inventory} />
                 </ComponentErrorBoundary>
               )}
               {activeTab === 'messaging' && (

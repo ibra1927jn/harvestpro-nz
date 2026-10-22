@@ -61,6 +61,23 @@ describe('MyTimesheetView', () => {
         await waitFor(() => expect(screen.getByText('Request sent to the manager')).toBeTruthy());
     });
 
+    it('sin red avisa claro de que hace falta conexión y no manda nada', async () => {
+        const onLine = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+        try {
+            render(<MyTimesheetView />);
+            await waitFor(() => expect(screen.getAllByTestId('my-shift')).toHaveLength(2));
+            fireEvent.click(screen.getAllByText('Ask for a correction')[0]);
+            fireEvent.change(screen.getByPlaceholderText(/clocked out at 15:30/), { target: { value: 'I left at 15:00' } });
+            fireEvent.click(screen.getByText('Send to manager'));
+            await waitFor(() => expect(screen.getByText(/You need a connection to send the request/)).toBeTruthy());
+            expect(svc.requestCorrection).not.toHaveBeenCalled();
+            // El formulario sigue abierto para reintentar con red
+            expect(screen.getByDisplayValue('I left at 15:00')).toBeTruthy();
+        } finally {
+            onLine.mockRestore();
+        }
+    });
+
     it('semana anterior: vuelve a pedir los tramos con otras fechas', async () => {
         render(<MyTimesheetView />);
         await waitFor(() => expect(svc.fetchMyShifts).toHaveBeenCalledTimes(1));

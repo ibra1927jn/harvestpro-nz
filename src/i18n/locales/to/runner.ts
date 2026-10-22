@@ -159,6 +159,9 @@ const runner: TranslationDict = {
     'runner.now.detail_vehicle': '{name} · {loaded}/{max} pini · {zone}',
     'runner.now.detail_row': 'Laine {n} · sikena fakamuimui {min} miniti kuoʻosi',
     'runner.now.detail_none': 'ʻIkai ha sikena he ʻahó ni',
+    'runner.myts.needs_network': 'ʻOku fiemaʻu ha fehokotaki ke fakahū ʻa e kole. Toe feinga ʻi he taimi ʻe toe maʻu ai ʻa e fehokotaki.',
+    'runner.warehouse.pickup_sent': 'Kuo kole ke ʻave ʻa e puha fonu ʻe {n} ʻi he fale tukuʻanga koloa',
+    'runner.warehouse.pickup_failed': 'Naʻe ʻikai lava ke fakahū ʻa e kole ʻave. Toe feinga.',
 };
 
 export default runner;

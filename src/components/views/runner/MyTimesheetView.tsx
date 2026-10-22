@@ -130,6 +130,12 @@ const MyTimesheetView: React.FC = () => {
 
     const sendCorrection = async (text: string) => {
         if (!appUser?.id || !appUser.orchard_id) return;
+        // La solicitud busca al manager y abre el chat en el servidor: sin red no
+        // se puede encolar; se avisa claro y el formulario se queda relleno.
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            showToast(t('runner.myts.needs_network'), 'warning');
+            return;
+        }
         try {
             const sent = await myTimesheetService.requestCorrection({ userId: appUser.id, orchardId: appUser.orchard_id, content: text });
             if (sent > 0) {
@@ -140,7 +146,9 @@ const MyTimesheetView: React.FC = () => {
             }
         } catch (e) {
             logger.error('[MyTimesheet] correction request failed', e);
-            showToast(t('runner.myts.request_failed'), 'error');
+            const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+            if (offline) showToast(t('runner.myts.needs_network'), 'error');
+            else showToast(t('runner.myts.request_failed'), 'error');
         }
     };
 

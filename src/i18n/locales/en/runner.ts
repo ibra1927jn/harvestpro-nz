@@ -159,6 +159,9 @@ const runner: TranslationDict = {
     'runner.now.detail_vehicle': '{name} · {loaded}/{max} bins · {zone}',
     'runner.now.detail_row': 'Row {n} · last scan {min} min ago',
     'runner.now.detail_none': 'No scans yet today',
+    'runner.myts.needs_network': 'You need a connection to send the request. Try again when you are back online.',
+    'runner.warehouse.pickup_sent': 'Pickup requested for {n} full bin(s) at the warehouse',
+    'runner.warehouse.pickup_failed': 'Could not send the pickup request — try again',
 };
 
 export default runner;
