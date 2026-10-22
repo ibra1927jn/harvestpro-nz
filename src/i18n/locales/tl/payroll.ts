@@ -115,6 +115,12 @@ const payroll: TranslationDict = {
     'pay.err.calc': 'Hindi makalkula ang payroll ng linggong ito.',
     'pay.err.close': 'Hindi maisara ang linggo.',
     'pay.err.reopen': 'Hindi mabuksan muli ang linggo.',
+    'pay.ts.open_shift_no_approve': 'Bukas na shift (wala pang check-out): maaaprubahan kapag naisara na',
+    'pay.ts.approve_all_skipped': '{count} bukas na shift ang nilaktawan (wala pang check-out)',
+    'pay.ts.reject_reason_label': 'Dahilan ng pagtanggi',
+    'pay.ts.reject_reason_placeholder': 'Ano ang kailangang ayusin?',
+    'pay.ts.reject_reason_hint': '{n}/{max} karakter (hindi bababa sa 3)',
+    'pay.ts.reject_confirm': 'Tanggihan',
 };
 
 export default payroll;
