@@ -324,11 +324,75 @@ Deno.test({ name: 'manage-attendance and approve-timesheet', ...testOpts, fn: as
                 await service.from('daily_attendance').delete().eq('id', att!.id)
             })
             for (const decision of ['approve', 'reject']) {
-                const r = await call('approve-timesheet', { token: await seededToken('payroll_admin'), body: { attendance_id: att!.id, decision } })
+                const r = await call('approve-timesheet', {
+                    token: await seededToken('payroll_admin'), body: { attendance_id: att!.id, decision, reason: 'Check the hours' },
+                })
                 assertEquals(r.status, 409, `${decision}: ${show(r)}`)
                 assert(r.text.includes('PAY_WEEK_CLOSED'), show(r))
             }
             const { data } = must(await service.from('daily_attendance').select('verified_by, rejected_at').eq('id', att!.id).single(), 'cw')
+            assertEquals(data!.verified_by, null)
+            assertEquals(data!.rejected_at, null)
+        })
+
+        await t.step('team leader: another team\'s person → 403, nothing written (check_in and correct)', async () => {
+            const leaderT2 = await makeUser('team_leader', { orchardId: orchardT })
+            const teamed = await makePicker(orchardT)
+            must(await service.from('pickers').update({ team_leader_id: leaderT2.id }).eq('id', teamed.id), 'assign team')
+            const inR = await call('manage-attendance', {
+                token: leaderT.token, body: { action: 'check_in', picker_id: teamed.id, orchard_id: orchardT },
+            })
+            assertEquals(inR.status, 403, show(inR))
+            assert(inR.text.includes('own team'), show(inR))
+            const { count } = await service.from('daily_attendance').select('id', { count: 'exact', head: true }).eq('picker_id', teamed.id)
+            assertEquals(count, 0)
+
+            const { data: att } = must(await service.from('daily_attendance').insert({
+                picker_id: teamed.id, orchard_id: orchardT, date: today,
+                check_in: nzTime(today, '07:00'), check_out: nzTime(today, '15:00'), status: 'present',
+            }).select('id').single(), 'teamed attendance')
+            const corr = await call('manage-attendance', {
+                token: leaderT.token,
+                body: { action: 'correct', attendance_id: att!.id, check_out: nzTime(today, '18:00'), reason: 'Not my team' },
+            })
+            assertEquals(corr.status, 403, show(corr))
+            const out = await call('manage-attendance', { token: leaderT.token, body: { action: 'check_out', attendance_id: att!.id } })
+            assertEquals(out.status, 403, show(out))
+            const { data } = must(await service.from('daily_attendance').select('check_out').eq('id', att!.id).single(), 'teamed')
+            assertEquals(new Date(data!.check_out).toISOString(), nzTime(today, '15:00'))
+            // Su team leader sí
+            const own = await call('manage-attendance', {
+                token: leaderT2.token,
+                body: { action: 'correct', attendance_id: att!.id, check_out: nzTime(today, '16:00'), reason: 'Left at four' },
+            })
+            assertEquals(own.status, 200, show(own))
+        })
+
+        await t.step('a correction after approval sends the timesheet back to pending', async () => {
+            const { data: before } = must(await service.from('daily_attendance').select('verified_by').eq('id', shiftT).single(), 'b')
+            assertEquals(before!.verified_by, managerT.id)
+            const r = await call('manage-attendance', {
+                token: leaderT.token,
+                body: { action: 'correct', attendance_id: shiftT, check_out: nzTime(today, '15:45'), reason: 'Real check-out time' },
+            })
+            assertEquals(r.status, 200, show(r))
+            const { data } = must(await service.from('daily_attendance').select('verified_by, verified_at').eq('id', shiftT).single(), 'a')
+            assertEquals(data!.verified_by, null)
+            assertEquals(data!.verified_at, null)
+        })
+
+        await t.step('approve-timesheet: an open shift cannot be approved (409); a rejection needs a reason (400)', async () => {
+            const { data: open } = must(await service.from('daily_attendance').insert({
+                picker_id: other.id, orchard_id: orchardT, date: today, check_in: nzTime(today, '07:00'), status: 'present',
+            }).select('id').single(), 'open shift')
+            const r = await call('approve-timesheet', { token: await seededToken('payroll_admin'), body: { attendance_id: open!.id } })
+            assertEquals(r.status, 409, show(r))
+            assert(r.text.includes('SHIFT_OPEN'), show(r))
+            const noReason = await call('approve-timesheet', {
+                token: await seededToken('payroll_admin'), body: { attendance_id: open!.id, decision: 'reject' },
+            })
+            assertEquals(noReason.status, 400, show(noReason))
+            const { data } = must(await service.from('daily_attendance').select('verified_by, rejected_at').eq('id', open!.id).single(), 'open')
             assertEquals(data!.verified_by, null)
             assertEquals(data!.rejected_at, null)
         })

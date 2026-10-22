@@ -115,6 +115,12 @@ const payroll: TranslationDict = {
     'pay.err.calc': 'Ua le mafai ona fuafua totogi o lenei vaiaso.',
     'pay.err.close': 'Ua le mafai ona tapuni le vaiaso.',
     'pay.err.reopen': 'Ua le mafai ona toe tatala le vaiaso.',
+    'pay.ts.open_shift_no_approve': "O loo tatala le galuega (e le'i alu ese): e mafai ona faamaonia pe a tapuni",
+    'pay.ts.approve_all_skipped': "{count} galuega tatala e le'i faamaonia (e le'i alu ese)",
+    'pay.ts.reject_reason_label': 'Mafuaaga o le teena',
+    'pay.ts.reject_reason_placeholder': "O le a le mea e tatau ona faasa'o?",
+    'pay.ts.reject_reason_hint': '{n}/{max} mataitusi (a itiiti ifo 3)',
+    'pay.ts.reject_confirm': 'Teena',
 };
 
 export default payroll;

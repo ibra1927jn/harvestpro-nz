@@ -107,8 +107,8 @@ describe('AuthContext — carga del usuario', () => {
     expect(mocks.getAllOrchards).toHaveBeenCalledTimes(1);
   });
 
-  it('si el huerto se autoasigna en este login, vuelve a pedir la lista', async () => {
-    mocks.getUserProfile.mockResolvedValue({ data: { ...runner, orchard_id: null }, error: null });
+  it('si el huerto se autoasigna en este login (rol de oficina), vuelve a pedir la lista', async () => {
+    mocks.getUserProfile.mockResolvedValue({ data: { ...runner, role: 'manager', orchard_id: null }, error: null });
     mocks.getFirstOrchardId.mockResolvedValue('o1');
     mocks.assignOrchard.mockResolvedValue(undefined);
     // Antes de asignar, RLS no deja ver ninguno; después, sí
