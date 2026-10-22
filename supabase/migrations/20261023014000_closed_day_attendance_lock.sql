@@ -40,9 +40,10 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    -- Columnas de la revisión de nómina: cambiarlas no toca las horas
+    -- Columnas de la revisión de nómina (y las que ponen los triggers
+    -- set_updated_at / bump_version en cada UPDATE): cambiarlas no toca las horas
     v_review_cols text[] := ARRAY['verified_by', 'verified_at', 'rejected_by', 'rejected_at',
-                                  'rejection_reason', 'updated_at'];
+                                  'rejection_reason', 'updated_at', 'version'];
 BEGIN
     IF auth.uid() IS NULL OR public.is_role(ARRAY['admin']) THEN
         IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;

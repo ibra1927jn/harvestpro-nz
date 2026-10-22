@@ -16,9 +16,7 @@ SELECT sec_test.deny(w, 'field role cannot move itself to another orchard',
 FROM unnest(ARRAY['A.team_leader', 'A.runner', 'A.qc_inspector', 'A.logistics']) AS w;
 SELECT sec_test.deny('A.runner', 'field role cannot unlink itself from its orchard',
     $$UPDATE users SET orchard_id = NULL WHERE id = auth.uid()$$);
--- Quien sí mueve al personal de campo: RRHH, y el manager a su huerto
-SELECT sec_test.allow('A.hr_admin', 'HR moves a runner to another orchard',
-    $$UPDATE users SET orchard_id = {B} WHERE id = {A.runner}$$);
+-- Quien sí mueve al personal de campo: el manager a su huerto (y RRHH, 20_people)
 SELECT sec_test.allow('B.manager', 'manager links field staff to own orchard',
     $$UPDATE users SET orchard_id = {B} WHERE id = {A.runner}$$);
 -- Lo demás de la fila propia sigue igual
