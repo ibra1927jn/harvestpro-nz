@@ -195,7 +195,8 @@ describe('MessagingContext', () => {
             });
 
             expect(mocks.sendMessage).toHaveBeenCalledWith('conv-1', 'user-1', 'Hello!', expect.objectContaining({ id: expect.any(String) }));
-            expect(mocks.updateConversationTimestamp).toHaveBeenCalledWith('conv-1');
+            // conversations.updated_at lo pone un trigger: el cliente ya no lo actualiza
+            expect(mocks.updateConversationTimestamp).not.toHaveBeenCalled();
             expect(response).toEqual(mockMsg);
         });
 

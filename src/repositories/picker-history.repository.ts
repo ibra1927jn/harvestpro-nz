@@ -4,6 +4,7 @@
  * Extracts all Supabase queries from picker-history.service.ts
  */
 import { supabase } from '@/services/supabase';
+import { fetchAllRows } from '@/utils/fetchAllRows';
 
 export const pickerHistoryRepository = {
     /** Get picker profile by ID */
@@ -40,13 +41,17 @@ export const pickerHistoryRepository = {
 
     /** Get bucket records for a picker since a given ISO timestamp */
     async getBucketRecordsSince(pickerId: string, sinceIso: string) {
-        const { data } = await supabase
-            .from('bucket_records')
-            .select('*')
-            .eq('picker_id', pickerId)
-            .gte('scanned_at', sinceIso)
-            .order('scanned_at', { ascending: false });
-        return data || [];
+        // Paginado: un picker rápido pasa de 1000 cubetas en 14 días
+        return fetchAllRows((from, to) =>
+            supabase
+                .from('bucket_records')
+                .select('*')
+                .eq('picker_id', pickerId)
+                .gte('scanned_at', sinceIso)
+                .order('scanned_at', { ascending: false })
+                .order('id')
+                .range(from, to)
+        ).catch(() => []);
     },
 
     /** Get quality inspections for a picker since a given ISO timestamp */

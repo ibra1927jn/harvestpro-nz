@@ -91,10 +91,21 @@ export async function hydrateFromDexie(set: StoreSetter): Promise<void> {
 
 /* ── Fetch Orchard Data (Delta/Full Sync) ── */
 
+/**
+ * Huerto y día cuyas cubetas ya están en memoria en esta sesión (no se guarda
+ * en el navegador: tras recargar la app hay que volver a bajarlas).
+ */
+let bucketsLoadedKey: string | null = null;
+
+/** Cada cuánto, como mucho, se vuelven a pedir los bins al desbloquear el móvil */
+export const BINS_REFRESH_MS = 5 * 60_000;
+let binsLoadedAt = 0;
+
 export async function fetchOrchardData(
   get: StoreGetter,
   set: StoreSetter,
-  orchardId?: string | null
+  orchardId?: string | null,
+  opts: { catchUp?: boolean } = {}
 ): Promise<{ id: string; name?: string; total_rows?: number } | null> {
   const state = get();
   const lastSync = state.lastSyncAt;
@@ -105,11 +116,22 @@ export async function fetchOrchardData(
     todayNZ: today,
     crewCount: state.crew.length,
     bucketCount: state.bucketRecords.length,
+    bucketsLoaded: bucketsLoadedKey === `${orchardId ?? state.orchard?.id ?? ''}|${today}`,
   });
 
-  const activeOrchard = await loadActiveOrchard(orchardId ?? state.orchard?.id);
-  const settings = activeOrchard ? await storeSyncRepository.getSettings(activeOrchard.id) : null;
-  set({ orchard: activeOrchard, settings: settings || state.settings });
+  // Al desbloquear el móvil (catchUp) solo se pide lo que cambia durante el día:
+  // huerto, ajustes de pago y bloques/filas ya están en memoria. En el campo el
+  // teléfono se bloquea y desbloquea decenas de veces al día y cada vez se
+  // repetían 11 consultas (prueba de carga 2026-10-21).
+  const light = !!opts.catchUp && useDelta && !!state.orchard?.id && !orchardId;
+  let activeOrchard: ActiveOrchard;
+  if (light) {
+    activeOrchard = state.orchard as ActiveOrchard;
+  } else {
+    activeOrchard = await loadActiveOrchard(orchardId ?? state.orchard?.id);
+    const settings = activeOrchard ? await storeSyncRepository.getSettings(activeOrchard.id) : null;
+    set({ orchard: activeOrchard, settings: settings || state.settings });
+  }
 
   // Medianoche NZ real (desfase vigente a medianoche: el día del cambio de
   // hora no es el de ahora), independiente del timezone del dispositivo
@@ -118,24 +140,33 @@ export async function fetchOrchardData(
 
   try {
     await loadCrewAndBuckets({ state, set, orchardKey, today, startOfDayNZ, useDelta, lastSync, now });
+    bucketsLoadedKey = `${orchardKey}|${today}`;
   } catch (syncError) {
     logger.warn('[Sync] Delta/full sync failed — falling back to simple fetch:', syncError);
-    const [pickersRes, bucketsRes] = await Promise.all([
+    const [pickersRes, bucketsData] = await Promise.all([
       storeSyncRepository.getPickersQuery(orchardKey, today),
-      storeSyncRepository.getBucketRecordsQuery(orchardKey, startOfDayNZ),
+      fetchAllRows<BucketRecord>((from, to) =>
+        storeSyncRepository.getBucketRecordsQuery(orchardKey, startOfDayNZ).order('id').range(from, to)
+      ).catch(() => [] as BucketRecord[]),
     ]);
     const crewWithAttendance = pickersRes.data?.map(mapPickerWithAttendance) || [];
-    set({ crew: crewWithAttendance, bucketRecords: bucketsRes.data || [], lastSyncAt: null });
+    set({ crew: crewWithAttendance, bucketRecords: bucketsData, lastSyncAt: null });
     logger.info(
-      `[Sync] Fallback load: ${crewWithAttendance.length} pickers, ${(bucketsRes.data || []).length} buckets`
+      `[Sync] Fallback load: ${crewWithAttendance.length} pickers, ${bucketsData.length} buckets`
     );
   }
 
   if (activeOrchard?.id) {
     await loadShiftsElsewhere(set, activeOrchard.id, today);
-    await get().fetchBlocks(activeOrchard.id);
+    if (!light) await get().fetchBlocks(activeOrchard.id);
     await loadRowAssignments(get, set, activeOrchard.id);
-    await loadBins(set, activeOrchard.id);
+    // Bins: al desbloquear solo si hace más de BINS_REFRESH_MS (los bins no
+    // llegan por realtime y cambian poco; era la consulta que más datos bajaba
+    // de cada team leader en la prueba de carga de temporada)
+    if (!light || Date.now() - binsLoadedAt > BINS_REFRESH_MS) {
+      await loadBins(set, activeOrchard.id);
+      binsLoadedAt = Date.now();
+    }
   } else if (get().rowAssignments.length > 0) {
     logger.info(`[Store] Using ${get().rowAssignments.length} persisted row assignments`);
   }
@@ -172,23 +203,28 @@ async function loadCrewAndBuckets(p: {
 }): Promise<void> {
   const { state, set, orchardKey, today, startOfDayNZ, useDelta, lastSync, now } = p;
   let pickersQuery = storeSyncRepository.getPickersQuery(orchardKey, today, { onlyStaff: !useDelta });
-  let bucketsQuery = storeSyncRepository.getBucketRecordsQuery(orchardKey, startOfDayNZ);
 
   if (useDelta) {
     const safeSyncDate = deltaSinceISO(lastSync!);
     pickersQuery = pickersQuery.gte('updated_at', safeSyncDate);
-    bucketsQuery = bucketsQuery.gte('updated_at', safeSyncDate);
     logger.info(`[Sync] Delta mode: fetching changes since ${safeSyncDate}`);
   } else {
     pickersQuery = pickersQuery.is('deleted_at', null);
-    bucketsQuery = bucketsQuery.is('deleted_at', null);
     logger.info('[Sync] Full mode: downloading all active records');
   }
 
-  // Carga completa por páginas: un día con mucha cuadrilla pasa de las 1000
-  // filas que devuelve PostgREST por petición.
+  // Por páginas, también el delta: PostgREST devuelve como mucho 1000 filas por
+  // petición. Un móvil que estuvo bloqueado una hora en un huerto que hace
+  // ~400 cubetas/h pedía un delta de más de 1000 y el resto se perdía sin aviso
+  // (prueba de carga 2026-10-21).
   const bucketsPromise = useDelta
-    ? bucketsQuery
+    ? fetchAllRows<BucketRecord>((from, to) =>
+        storeSyncRepository
+          .getBucketRecordsQuery(orchardKey, startOfDayNZ)
+          .gte('updated_at', deltaSinceISO(lastSync!))
+          .order('id')
+          .range(from, to)
+      ).then(data => ({ data, error: null }))
     : fetchAllRows<BucketRecord>((from, to) =>
         storeSyncRepository
           .getBucketRecordsQuery(orchardKey, startOfDayNZ)

@@ -191,6 +191,8 @@ export function useWeeklyReport(): WeeklyReportData {
                                 .is('deleted_at', null)
                                 .gte('scanned_at', nzMidnight(weekStart))
                                 .lte('scanned_at', nzEndOfDay(todayStr))
+                                // (scanned_at, id): el índice ya da el orden, sin reordenar la semana en cada página
+                                .order('scanned_at')
                                 .order('id')
                                 .range(from, to)),
                             fetchAllRows<WeekAttendanceRow>((from, to) => supabase

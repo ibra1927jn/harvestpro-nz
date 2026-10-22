@@ -1,0 +1,468 @@
+{
+  "label": "E-season-optimized",
+  "date": "2026-10-21",
+  "counts": {
+    "buckets": 687545,
+    "attendance": 17676,
+    "audit": 19950,
+    "chat": 10237,
+    "days": 78
+  },
+  "dbMB": 361,
+  "sizes": [
+    {
+      "table": "bucket_records",
+      "rows": 678496,
+      "MB": 291.8,
+      "indexMB": 159.5
+    },
+    {
+      "table": "audit_logs",
+      "rows": 19554,
+      "MB": 25.1,
+      "indexMB": 2.9
+    },
+    {
+      "table": "chat_messages",
+      "rows": 10225,
+      "MB": 9.9,
+      "indexMB": 1.7
+    },
+    {
+      "table": "daily_attendance",
+      "rows": 17450,
+      "MB": 6.5,
+      "indexMB": 2.4
+    },
+    {
+      "table": "qc_inspections",
+      "rows": 11887,
+      "MB": 3.5,
+      "indexMB": 2.1
+    },
+    {
+      "table": "pay_weeks",
+      "rows": 0,
+      "MB": 2.8,
+      "indexMB": 0
+    },
+    {
+      "table": "row_assignments",
+      "rows": 1848,
+      "MB": 1.2,
+      "indexMB": 0.2
+    },
+    {
+      "table": "transport_requests",
+      "rows": 3465,
+      "MB": 1.2,
+      "indexMB": 0.4
+    },
+    {
+      "table": "conversations",
+      "rows": 4,
+      "MB": 0.7,
+      "indexMB": 0.2
+    },
+    {
+      "table": "pickers",
+      "rows": 261,
+      "MB": 0.3,
+      "indexMB": 0.2
+    },
+    {
+      "table": "broadcasts",
+      "rows": 462,
+      "MB": 0.2,
+      "indexMB": 0.1
+    },
+    {
+      "table": "day_closures",
+      "rows": 231,
+      "MB": 0.2,
+      "indexMB": 0.1
+    }
+  ],
+  "results": [
+    {
+      "op": "calculate-payroll (last week, company)",
+      "variant": "current",
+      "ok": true,
+      "ms": 4121,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 1029,
+      "kbInGzip": 88,
+      "note": {
+        "people": 261,
+        "withoutName": 0,
+        "total": 385226
+      }
+    },
+    {
+      "op": "calculate-payroll (this week, company)",
+      "variant": "current",
+      "ok": true,
+      "ms": 1385,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 592,
+      "kbInGzip": 51,
+      "note": {
+        "people": 261
+      }
+    },
+    {
+      "op": "weekly report (manager, 7 days)",
+      "variant": "current",
+      "ok": true,
+      "ms": 1182,
+      "requests": 19,
+      "errors": 0,
+      "kbIn": 3438,
+      "kbInGzip": 317,
+      "note": {
+        "buckets": 17204,
+        "attendance": 446
+      }
+    },
+    {
+      "op": "day sheet: buckets of the day (orchard)",
+      "variant": "current",
+      "ok": true,
+      "ms": 100,
+      "requests": 2,
+      "errors": 0,
+      "kbIn": 197,
+      "kbInGzip": 15,
+      "note": {
+        "people": 77,
+        "got": 1000,
+        "real": 3066,
+        "status": 200
+      }
+    },
+    {
+      "op": "day sheet: buckets of the day (orchard)",
+      "variant": "optimized",
+      "ok": true,
+      "ms": 97,
+      "requests": 5,
+      "errors": 0,
+      "kbIn": 595,
+      "kbInGzip": 53,
+      "note": {
+        "people": 77,
+        "got": 3066
+      }
+    },
+    {
+      "op": "HR employees: contracts IN (all staff)",
+      "variant": "current",
+      "ok": true,
+      "ms": 41,
+      "requests": 3,
+      "errors": 1,
+      "kbIn": 14,
+      "kbInGzip": 7,
+      "note": {
+        "ids": 274,
+        "status": 414,
+        "got": null
+      }
+    },
+    {
+      "op": "HR employees: contracts by chunks",
+      "variant": "optimized",
+      "ok": true,
+      "ms": 44,
+      "requests": 5,
+      "errors": 0,
+      "kbIn": 79,
+      "kbInGzip": 19,
+      "note": {
+        "ids": 274,
+        "got": 256
+      }
+    },
+    {
+      "op": "cold start runner: today buckets + crew",
+      "variant": "current",
+      "ok": true,
+      "ms": 152,
+      "requests": 4,
+      "errors": 0,
+      "kbIn": 1591,
+      "kbInGzip": 178,
+      "note": {
+        "crew": 261,
+        "buckets": 2925
+      }
+    },
+    {
+      "op": "chat list: last messages (all rows)",
+      "variant": "current",
+      "ok": true,
+      "ms": 22,
+      "requests": 2,
+      "errors": 0,
+      "kbIn": 140,
+      "kbInGzip": 12,
+      "note": {
+        "conversations": 2,
+        "rows": 1000,
+        "truncated": true
+      }
+    },
+    {
+      "op": "chat list: last_messages RPC",
+      "variant": "optimized",
+      "ok": true,
+      "ms": 12,
+      "requests": 2,
+      "errors": 0,
+      "kbIn": 1,
+      "kbInGzip": 1,
+      "note": {
+        "rows": 2
+      }
+    },
+    {
+      "op": "open orchard chat (asc, no limit)",
+      "variant": "current",
+      "ok": true,
+      "ms": 173,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 516,
+      "kbInGzip": 39,
+      "note": {
+        "total": 3169,
+        "got": 1000,
+        "newestShown": false
+      }
+    },
+    {
+      "op": "open orchard chat (latest 300)",
+      "variant": "optimized",
+      "ok": true,
+      "ms": 13,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 149,
+      "kbInGzip": 12,
+      "note": {
+        "got": 300
+      }
+    },
+    {
+      "op": "manager dashboard: 7-day bleed",
+      "variant": "current",
+      "ok": true,
+      "ms": 892,
+      "requests": 18,
+      "errors": 0,
+      "kbIn": 1786,
+      "kbInGzip": 243,
+      "note": {
+        "attendance": 445,
+        "buckets": 16827
+      }
+    },
+    {
+      "op": "payroll: unclosed shifts 30d (company)",
+      "variant": "current",
+      "ok": true,
+      "ms": 6,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "rows": 0
+      }
+    },
+    {
+      "op": "admin: audit log (100)",
+      "variant": "current",
+      "ok": true,
+      "ms": 31,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 100,
+      "kbInGzip": 9,
+      "note": {
+        "rows": 100
+      }
+    },
+    {
+      "op": "close-pay-week 2026-07-20",
+      "variant": "current",
+      "ok": true,
+      "ms": 1960,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "status": "ok"
+      }
+    },
+    {
+      "op": "close-pay-week 2026-07-27",
+      "variant": "current",
+      "ok": true,
+      "ms": 4825,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "status": "ok"
+      }
+    },
+    {
+      "op": "close-pay-week 2026-08-03",
+      "variant": "current",
+      "ok": true,
+      "ms": 4716,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "status": "ok"
+      }
+    },
+    {
+      "op": "close-pay-week 2026-08-10",
+      "variant": "current",
+      "ok": true,
+      "ms": 4461,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "status": "ok"
+      }
+    },
+    {
+      "op": "close-pay-week 2026-08-17",
+      "variant": "current",
+      "ok": true,
+      "ms": 4424,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "status": "ok"
+      }
+    },
+    {
+      "op": "close-pay-week 2026-08-24",
+      "variant": "current",
+      "ok": true,
+      "ms": 4240,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "status": "ok"
+      }
+    },
+    {
+      "op": "close-pay-week 2026-08-31",
+      "variant": "current",
+      "ok": true,
+      "ms": 4350,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "status": "ok"
+      }
+    },
+    {
+      "op": "close-pay-week 2026-09-07",
+      "variant": "current",
+      "ok": true,
+      "ms": 4535,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "status": "ok"
+      }
+    },
+    {
+      "op": "close-pay-week 2026-09-14",
+      "variant": "current",
+      "ok": true,
+      "ms": 4720,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "status": "ok"
+      }
+    },
+    {
+      "op": "close-pay-week 2026-09-21",
+      "variant": "current",
+      "ok": true,
+      "ms": 4104,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "status": "ok"
+      }
+    },
+    {
+      "op": "close-pay-week 2026-09-28",
+      "variant": "current",
+      "ok": true,
+      "ms": 4471,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "status": "ok"
+      }
+    },
+    {
+      "op": "close-pay-week 2026-10-05",
+      "variant": "current",
+      "ok": true,
+      "ms": 4121,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "status": "ok"
+      }
+    },
+    {
+      "op": "close-pay-week 2026-10-12",
+      "variant": "current",
+      "ok": true,
+      "ms": 4194,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "status": "ok"
+      }
+    }
+  ]
+}

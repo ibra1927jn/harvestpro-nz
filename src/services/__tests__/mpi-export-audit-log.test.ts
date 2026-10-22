@@ -21,6 +21,9 @@ function makeSupabaseMock() {
         gte: vi.fn(() => chain),
         lte: vi.fn(() => chain),
         not: vi.fn(() => chain),
+        is: vi.fn(() => chain),
+        order: vi.fn(() => chain),
+        range: vi.fn(() => chain),
         then: (fn: (v: unknown) => void) => Promise.resolve({ data: [], error: null }).then(fn),
     };
     const from = vi.fn((table: string) => {

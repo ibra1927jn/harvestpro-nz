@@ -33,18 +33,25 @@ export type { Employee, PayrollEntry, ComplianceAlert, HRSummary } from './hhrr/
 
 // ── Service Functions ──────────────────────────
 
-export async function fetchHRSummary(orchardId?: string): Promise<HRSummary> {
+/** Cálculo de nómina de la semana ya hecho (null = falló): para no repetirlo */
+type PayrollResult = Awaited<ReturnType<typeof payrollService.calculatePayroll>>;
+type Precomputed = { alerts?: ComplianceAlert[]; employees?: Employee[]; payrollResult?: PayrollResult | null };
+
+export async function fetchHRSummary(orchardId?: string, pre: Precomputed = {}): Promise<HRSummary> {
   try {
     const activeWorkers = await userRepository2.getActiveCount(orchardId);
     const pending = await contractRepository2.getPending(orchardId);
-    const alerts = await fetchComplianceAlerts(orchardId);
+    const alerts = pre.alerts ?? (await fetchComplianceAlerts(orchardId));
 
     // Mismo total que la pantalla de Nómina (empresa, todos los huertos);
     // si el servidor no responde, se calcula aquí con el mismo cálculo.
     let payrollThisWeek: number;
     try {
       const week = payWeekOf(todayNZST());
-      const result = await payrollService.calculatePayroll(undefined, week.start, week.end);
+      const result = pre.payrollResult !== undefined
+        ? pre.payrollResult
+        : await payrollService.calculatePayroll(undefined, week.start, week.end);
+      if (!result) throw new Error('payroll not available');
       payrollThisWeek = result.summary.total_earnings;
     } catch {
       const week = await loadPayWeek(orchardId);
@@ -187,15 +194,18 @@ async function loadPayWeek(orchardId?: string, minWageFor?: (personId: string) =
  * precio por variedad). Si el servidor no responde, el mismo cálculo aquí.
  * Salen las personas en plantilla y cualquiera que haya cobrado esa semana.
  */
-export async function fetchPayroll(orchardId?: string): Promise<PayrollEntry[]> {
+export async function fetchPayroll(orchardId?: string, pre: Precomputed = {}): Promise<PayrollEntry[]> {
   try {
-    const employees = await fetchEmployees(orchardId);
+    const employees = pre.employees ?? (await fetchEmployees(orchardId));
     const week = payWeekOf(todayNZST());
 
     let rows: WeekPayRow[];
     let minWage: number = PAY_RULES.minWageFloor;
     try {
-      const result = await payrollService.calculatePayroll(undefined, week.start, week.end);
+      const result = pre.payrollResult !== undefined
+        ? pre.payrollResult
+        : await payrollService.calculatePayroll(undefined, week.start, week.end);
+      if (!result) throw new Error('payroll not available');
       minWage = Math.max(result.settings.min_wage_rate, PAY_RULES.minWageFloor);
       rows = result.picker_breakdown.map(p => ({
         id: p.picker_id, hours: p.hours_worked, buckets: p.buckets,
@@ -253,4 +263,29 @@ export async function fetchComplianceAlerts(orchardId?: string): Promise<Complia
   }
 
   return alerts;
+}
+
+/**
+ * Todo lo que necesita la pantalla de RRHH, pidiendo cada cosa una vez.
+ * Antes, al abrir RRHH, calculate-payroll corría 2 veces (la nómina entera de
+ * la semana de toda la empresa), la plantilla se bajaba 2 veces y las alertas
+ * 2 veces (prueba de carga 2026-10-21).
+ */
+export async function loadHRDashboard(): Promise<{
+  summary: HRSummary;
+  employees: Employee[];
+  payroll: PayrollEntry[];
+  alerts: ComplianceAlert[];
+}> {
+  const week = payWeekOf(todayNZST());
+  const [employees, alerts, payrollResult] = await Promise.all([
+    fetchEmployees(),
+    fetchComplianceAlerts(),
+    payrollService.calculatePayroll(undefined, week.start, week.end).catch(() => null),
+  ]);
+  const [summary, payroll] = await Promise.all([
+    fetchHRSummary(undefined, { alerts, payrollResult }),
+    fetchPayroll(undefined, { employees, payrollResult }),
+  ]);
+  return { summary, employees, payroll, alerts };
 }

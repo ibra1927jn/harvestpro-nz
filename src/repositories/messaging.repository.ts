@@ -4,6 +4,9 @@
 import { supabase } from '@/services/supabase';
 import { nowNZST } from '@/utils/nzst';
 
+/** Mensajes que se cargan al abrir una conversación (los más recientes) */
+export const CHAT_HISTORY_LIMIT = 300;
+
 export const messagingRepository = {
     /** Send a message */
     async sendMessage(
@@ -50,15 +53,21 @@ export const messagingRepository = {
         return data || [];
     },
 
-    /** Get conversation messages (plain, no join) */
+    /**
+     * Mensajes de una conversación: los CHAT_HISTORY_LIMIT más recientes, en orden.
+     * Antes se pedía todo en orden ascendente; PostgREST corta en 1000 filas, así
+     * que un grupo de huerto con más de 1000 mensajes (unas 4 semanas de
+     * temporada) dejaba de mostrar los nuevos (prueba de carga 2026-10-21).
+     */
     async getConversationMessages(conversationId: string) {
         const { data, error } = await supabase
             .from('chat_messages')
             .select('*')
             .eq('conversation_id', conversationId)
-            .order('created_at', { ascending: true });
+            .order('created_at', { ascending: false })
+            .limit(CHAT_HISTORY_LIMIT);
         if (error) throw error;
-        return data || [];
+        return (data || []).reverse();
     },
 
     /** Subscribe to new messages (realtime) */
@@ -161,12 +170,14 @@ export const messagingRepository = {
     },
 
     /** Get last messages for conversation IDs */
+    /**
+     * Último mensaje de cada conversación (una fila por conversación, RPC
+     * last_messages). Antes bajaba TODOS los mensajes de todas las conversaciones
+     * cada 15 s para quedarse con el primero de cada una.
+     */
     async getLastMessages(conversationIds: string[]) {
-        const { data } = await supabase
-            .from('chat_messages')
-            .select('conversation_id, content, created_at')
-            .in('conversation_id', conversationIds)
-            .order('created_at', { ascending: false });
-        return data || [];
+        const { data, error } = await supabase.rpc('last_messages', { p_conversation_ids: conversationIds });
+        if (error) return [];
+        return (data || []) as Array<{ conversation_id: string; content: string; created_at: string }>;
     },
 };

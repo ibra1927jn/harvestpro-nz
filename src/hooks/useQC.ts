@@ -5,8 +5,9 @@
  * from QualityControl.tsx following the usePayroll pattern.
  */
 import { announce } from '@/services/announcer';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { qcService, QCInspection, GradeDistribution } from '@/services/qc.service';
+import { distributionOf } from '@/services/qcDistribution';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { useAuth } from '@/context/AuthContext';
 import { Picker } from '@/types';
@@ -63,16 +64,20 @@ export function useQC(): UseQCResult {
     }
     setIsLoading(true);
     try {
+      // Una consulta: el reparto sale de las mismas inspecciones (antes se pedían dos veces)
       const data = await qcService.getInspections(orchardId);
       setInspections(data);
-      const dist = await qcService.getGradeDistribution(orchardId);
-      setDistribution(dist);
     } catch (err) {
       logger.warn('[QC] Failed to load inspections:', err);
     } finally {
       setIsLoading(false);
     }
   }, [orchardId]);
+
+  // El reparto de notas siempre sale de la lista que hay en pantalla
+  useEffect(() => {
+    setDistribution(distributionOf(inspections));
+  }, [inspections]);
 
   const handleGrade = useCallback(
     async (grade: QualityGrade, photoBlob?: Blob | null): Promise<boolean> => {
@@ -117,7 +122,9 @@ export function useQC(): UseQCResult {
         setLastGrade({ grade, picker: selectedPicker.name });
         announce(t('qc.sr_logged', { grade: gradeLabel(t, grade), name: selectedPicker.name }));
         setNotes('');
-        await loadInspections();
+        // Se añade la inspección guardada sin volver a bajar todas las del día
+        // (antes, cada nota recargaba la lista dos veces)
+        setInspections(prev => [result, ...prev.filter(i => i.id !== result.id)]);
         setTimeout(() => setLastGrade(null), 3000);
       } else {
         // Antes no se avisaba y parecía guardado
@@ -129,7 +136,7 @@ export function useQC(): UseQCResult {
       setIsSubmitting(false);
       return !!result;
     },
-    [selectedPicker, orchardId, appUser?.id, notes, loadInspections, t]
+    [selectedPicker, orchardId, appUser?.id, notes, t]
   );
 
   return {

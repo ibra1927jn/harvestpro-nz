@@ -11,6 +11,7 @@ function mockChain(result: { data?: unknown; error?: unknown }) {
         eq: vi.fn(() => chain),
         gte: vi.fn(() => chain),
         order: vi.fn(() => chain),
+        range: vi.fn(() => chain),
         single: vi.fn(() => chain),
         then: (onF?: (v: unknown) => unknown, onR?: (r: unknown) => unknown) =>
             Promise.resolve(result).then(onF, onR),

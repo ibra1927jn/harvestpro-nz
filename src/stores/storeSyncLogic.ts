@@ -98,10 +98,16 @@ export function shouldUseDelta(params: {
   todayNZ: string;
   crewCount: number;
   bucketCount: number;
+  /**
+   * Las cubetas de hoy ya se bajaron en esta sesión aunque sean 0 (primera
+   * hora de la mañana). Sin esto, hasta la primera cubeta del día cada
+   * desbloqueo del móvil hacía una carga completa (prueba de carga 2026-10-21).
+   */
+  bucketsLoaded?: boolean;
 }): boolean {
-  const { lastSyncAt, todayNZ, crewCount, bucketCount } = params;
+  const { lastSyncAt, todayNZ, crewCount, bucketCount, bucketsLoaded } = params;
   const sameNZDay = !!lastSyncAt && NZ_DAY_FMT.format(new Date(lastSyncAt)) === todayNZ;
-  return sameNZDay && crewCount > 0 && bucketCount > 0;
+  return sameNZDay && crewCount > 0 && (bucketCount > 0 || !!bucketsLoaded);
 }
 
 /** Desde cuándo pedir cambios en modo delta */

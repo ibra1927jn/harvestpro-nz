@@ -1,0 +1,302 @@
+{
+  "label": "C-week-current",
+  "date": "2026-10-21",
+  "counts": {
+    "buckets": 43824,
+    "attendance": 1342,
+    "audit": 47242,
+    "chat": 690,
+    "days": 6
+  },
+  "dbMB": 71,
+  "sizes": [
+    {
+      "table": "audit_logs",
+      "rows": 43341,
+      "MB": 29.4,
+      "indexMB": 8.4
+    },
+    {
+      "table": "bucket_records",
+      "rows": 41978,
+      "MB": 20.2,
+      "indexMB": 11.7
+    },
+    {
+      "table": "daily_attendance",
+      "rows": 1342,
+      "MB": 1,
+      "indexMB": 0.5
+    },
+    {
+      "table": "chat_messages",
+      "rows": 681,
+      "MB": 0.7,
+      "indexMB": 0.1
+    },
+    {
+      "table": "qc_inspections",
+      "rows": 889,
+      "MB": 0.4,
+      "indexMB": 0.2
+    },
+    {
+      "table": "conversations",
+      "rows": 4,
+      "MB": 0.3,
+      "indexMB": 0.1
+    },
+    {
+      "table": "pickers",
+      "rows": 261,
+      "MB": 0.3,
+      "indexMB": 0.2
+    },
+    {
+      "table": "transport_requests",
+      "rows": 270,
+      "MB": 0.2,
+      "indexMB": 0.1
+    },
+    {
+      "table": "row_assignments",
+      "rows": 156,
+      "MB": 0.2,
+      "indexMB": 0
+    },
+    {
+      "table": "contracts",
+      "rows": 252,
+      "MB": 0.2,
+      "indexMB": 0.1
+    },
+    {
+      "table": "bins",
+      "rows": 600,
+      "MB": 0.2,
+      "indexMB": 0
+    },
+    {
+      "table": "block_rows",
+      "rows": 300,
+      "MB": 0.2,
+      "indexMB": 0.1
+    }
+  ],
+  "results": [
+    {
+      "op": "calculate-payroll (last week, company)",
+      "variant": "current",
+      "ok": false,
+      "ms": 21366,
+      "requests": 1,
+      "errors": 1,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": "Edge Function returned a non-2xx status code"
+    },
+    {
+      "op": "calculate-payroll (this week, company)",
+      "variant": "current",
+      "ok": false,
+      "ms": 10960,
+      "requests": 1,
+      "errors": 1,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": "Edge Function returned a non-2xx status code"
+    },
+    {
+      "op": "weekly report (manager, 7 days)",
+      "variant": "current",
+      "ok": true,
+      "ms": 28606,
+      "requests": 9,
+      "errors": 0,
+      "kbIn": 1504,
+      "kbInGzip": 137,
+      "note": {
+        "buckets": 7514,
+        "attendance": 206
+      }
+    },
+    {
+      "op": "day sheet: buckets of the day (orchard)",
+      "variant": "current",
+      "ok": true,
+      "ms": 606,
+      "requests": 2,
+      "errors": 0,
+      "kbIn": 196,
+      "kbInGzip": 14,
+      "note": {
+        "people": 80,
+        "got": 1000,
+        "real": 3208,
+        "status": 200
+      }
+    },
+    {
+      "op": "day sheet: buckets of the day (orchard)",
+      "variant": "optimized",
+      "ok": true,
+      "ms": 6004,
+      "requests": 5,
+      "errors": 0,
+      "kbIn": 622,
+      "kbInGzip": 56,
+      "note": {
+        "people": 80,
+        "got": 3208
+      }
+    },
+    {
+      "op": "HR employees: contracts IN (all staff)",
+      "variant": "current",
+      "ok": true,
+      "ms": 226,
+      "requests": 3,
+      "errors": 1,
+      "kbIn": 14,
+      "kbInGzip": 7,
+      "note": {
+        "ids": 274,
+        "status": 414,
+        "got": null
+      }
+    },
+    {
+      "op": "HR employees: contracts by chunks",
+      "variant": "optimized",
+      "ok": true,
+      "ms": 348,
+      "requests": 5,
+      "errors": 0,
+      "kbIn": 79,
+      "kbInGzip": 19,
+      "note": {
+        "ids": 274,
+        "got": 256
+      }
+    },
+    {
+      "op": "cold start runner: today buckets + crew",
+      "variant": "current",
+      "ok": true,
+      "ms": 518,
+      "requests": 2,
+      "errors": 0,
+      "kbIn": 468,
+      "kbInGzip": 52,
+      "note": {
+        "crew": 261,
+        "buckets": 652
+      }
+    },
+    {
+      "op": "chat list: last messages (all rows)",
+      "variant": "current",
+      "ok": true,
+      "ms": 17,
+      "requests": 2,
+      "errors": 0,
+      "kbIn": 39,
+      "kbInGzip": 4,
+      "note": {
+        "conversations": 2,
+        "rows": 271,
+        "truncated": false
+      }
+    },
+    {
+      "op": "chat list: last_messages RPC",
+      "variant": "optimized",
+      "ok": false,
+      "ms": 12,
+      "requests": 2,
+      "errors": 1,
+      "kbIn": 1,
+      "kbInGzip": 1,
+      "note": "Could not find the function public.last_messages(p_conversation_ids) in the schema cache"
+    },
+    {
+      "op": "open orchard chat (asc, no limit)",
+      "variant": "current",
+      "ok": true,
+      "ms": 133,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 105,
+      "kbInGzip": 9,
+      "note": {
+        "total": 219,
+        "got": 219,
+        "newestShown": true
+      }
+    },
+    {
+      "op": "open orchard chat (latest 300)",
+      "variant": "optimized",
+      "ok": true,
+      "ms": 11,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 105,
+      "kbInGzip": 9,
+      "note": {
+        "got": 219
+      }
+    },
+    {
+      "op": "manager dashboard: 7-day bleed",
+      "variant": "current",
+      "ok": true,
+      "ms": 95720,
+      "requests": 16,
+      "errors": 0,
+      "kbIn": 1561,
+      "kbInGzip": 216,
+      "note": {
+        "attendance": 446,
+        "buckets": 14546
+      }
+    },
+    {
+      "op": "payroll: unclosed shifts 30d (company)",
+      "variant": "current",
+      "ok": true,
+      "ms": 35,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "rows": 0
+      }
+    },
+    {
+      "op": "admin: audit log (100)",
+      "variant": "current",
+      "ok": true,
+      "ms": 99,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 127,
+      "kbInGzip": 11,
+      "note": {
+        "rows": 100
+      }
+    },
+    {
+      "op": "close-pay-week 2026-10-12",
+      "variant": "current",
+      "ok": false,
+      "ms": 33011,
+      "requests": 1,
+      "errors": 1,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": "Edge Function returned a non-2xx status code {\"error\":\"Request failed. Check parameters and try again.\",\"hint\":\"Unknown error\"}"
+    }
+  ]
+}

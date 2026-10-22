@@ -7,6 +7,7 @@
  */
 import { supabase } from '@/services/supabase';
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
+import { fetchInChunks } from '@/utils/fetchInChunks';
 
 export interface PayWeekActionResult {
     week: { start: string; end: string };
@@ -71,20 +72,31 @@ export const payrollRepository = {
      */
     async fetchDayOfPeople(pickerIds: string[], date: string, dayStartIso: string, dayEndIso: string) {
         if (pickerIds.length === 0) return { shifts: [], buckets: [] };
-        const [{ data: shifts }, { data: buckets }] = await Promise.all([
-            supabase
-                .from('daily_attendance')
-                .select('id, picker_id, orchard_id, check_in, check_out, break_start, break_minutes')
-                .in('picker_id', pickerIds)
-                .eq('date', date)
-                .is('deleted_at', null),
-            supabase
-                .from('bucket_records')
-                .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
-                .in('picker_id', pickerIds)
-                .is('deleted_at', null)
-                .gte('scanned_at', dayStartIso)
-                .lte('scanned_at', dayEndIso),
+        // Por trozos de ids y paginado: un día de 85 personas son ~3.400 cubetas
+        // y PostgREST corta en 1000 (la hoja del día salía con un tercio de las
+        // cubetas); con 200+ personas la URL daba 414 (prueba de carga 2026-10-21)
+        const [shifts, buckets] = await Promise.all([
+            fetchInChunks(pickerIds, (ids, from, to) =>
+                supabase
+                    .from('daily_attendance')
+                    .select('id, picker_id, orchard_id, check_in, check_out, break_start, break_minutes')
+                    .in('picker_id', ids)
+                    .eq('date', date)
+                    .is('deleted_at', null)
+                    .order('id')
+                    .range(from, to),
+            ).catch(() => []),
+            fetchInChunks(pickerIds, (ids, from, to) =>
+                supabase
+                    .from('bucket_records')
+                    .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
+                    .in('picker_id', ids)
+                    .is('deleted_at', null)
+                    .gte('scanned_at', dayStartIso)
+                    .lte('scanned_at', dayEndIso)
+                    .order('id')
+                    .range(from, to),
+            ).catch(() => []),
         ]);
         return {
             shifts: (shifts || []) as { id: string; picker_id: string; orchard_id: string | null; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null }[],
@@ -95,11 +107,10 @@ export const payrollRepository = {
     /** Fetch picker names by IDs */
     async fetchPickerNames(pickerIds: string[]): Promise<Record<string, string>> {
         if (pickerIds.length === 0) return {};
-        const { data } = await supabase
-            .from('pickers')
-            .select('id, name')
-            .in('id', pickerIds);
-        return Object.fromEntries((data || []).map(p => [p.id, p.name]));
+        const data = await fetchInChunks(pickerIds, (ids, from, to) =>
+            supabase.from('pickers').select('id, name').in('id', ids).order('id').range(from, to),
+        ).catch(() => [] as { id: string; name: string }[]);
+        return Object.fromEntries(data.map(p => [p.id, p.name]));
     },
 };
 

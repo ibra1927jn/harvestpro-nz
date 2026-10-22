@@ -25,6 +25,7 @@ import {
   type DayTopUp,
 } from './payroll/timesheetLogic';
 import { payRatesRepository } from '@/repositories/pay-rates.repository';
+import { fetchAllRows } from '@/utils/fetchAllRows';
 
 // Tipos en payroll/payroll.types.ts; se re-exportan para no cambiar los imports
 export type { PickerBreakdown, PayrollResult, TimesheetEntry, DailyTimesheetRecord } from './payroll/payroll.types';
@@ -64,6 +65,9 @@ async function computeDayOfPeople(pickerIds: string[], date: string, minWage: nu
   }
   return byPicker;
 }
+
+/** Hojas por llamada en «Aprobar todas» (el servidor admite hasta 500) */
+export const TIMESHEET_BATCH_SIZE = 200;
 
 export const payrollService = {
   /**
@@ -193,6 +197,37 @@ export const payrollService = {
   },
 
   /**
+   * Aprobar varias hojas de una vez («Aprobar todas»): una llamada por lote.
+   * Cada una se aprueba en el servidor igual que sola; vuelve cuáles salieron.
+   */
+  async approveTimesheets(
+    items: { id: string; updated_at?: string }[]
+  ): Promise<{ approved: { id: string; updated_at?: string }[]; failed: { id: string; reason: string }[] }> {
+    const approved: { id: string; updated_at?: string }[] = [];
+    const failed: { id: string; reason: string }[] = [];
+    for (let i = 0; i < items.length; i += TIMESHEET_BATCH_SIZE) {
+      const chunk = items.slice(i, i + TIMESHEET_BATCH_SIZE);
+      const { data, error } = await edgeFunctionsRepository.invoke<{
+        success: boolean;
+        approved: number;
+        results: { attendance_id: string; status: 'approved' | 'conflict' | 'error'; updated_at?: string; reason?: string }[];
+      }>('approve-timesheet', {
+        items: chunk.map(it => ({ attendance_id: it.id, current_updated_at: it.updated_at })),
+      });
+      if (error || !data) {
+        failed.push(...chunk.map(it => ({ id: it.id, reason: error?.message ?? 'no response' })));
+        continue;
+      }
+      for (const r of data.results) {
+        if (r.status === 'approved') approved.push({ id: r.attendance_id, updated_at: r.updated_at });
+        else failed.push({ id: r.attendance_id, reason: r.reason ?? r.status });
+      }
+    }
+    analytics.trackTimesheetAction('approve', `batch:${approved.length}`);
+    return { approved, failed };
+  },
+
+  /**
    * Rechazar una hoja de horas — misma Edge Function (decision 'reject').
    * Vuelve al jefe de equipo / manager para corregirla; al corregirla queda
    * otra vez pendiente. Semana de pago cerrada → error PAY_WEEK_CLOSED.
@@ -240,13 +275,19 @@ export const payrollService = {
     const startISO = nzMidnight(targetDate);
     const endISO = nzEndOfDay(targetDate);
 
-    const { data: bucketRecords } = await supabase
-      .from('bucket_records')
-      .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
-      .eq('orchard_id', orchardId)
-      .is('deleted_at', null)
-      .gte('scanned_at', startISO)
-      .lte('scanned_at', endISO);
+    // Paginado: un huerto hace ~3.000 cubetas al día y PostgREST corta en 1000
+    // (la hoja del día pagaba sobre un tercio de las cubetas; prueba de carga 2026-10-21)
+    const bucketRecords = await fetchAllRows<DayBucket>((from, to) =>
+      supabase
+        .from('bucket_records')
+        .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
+        .eq('orchard_id', orchardId)
+        .is('deleted_at', null)
+        .gte('scanned_at', startISO)
+        .lte('scanned_at', endISO)
+        .order('id')
+        .range(from, to)
+    ).catch(() => [] as DayBucket[]);
 
     // 3. Obtener settings (piece_rate, min_wage_rate) y precios por variedad
     const { data: settings } = await supabase

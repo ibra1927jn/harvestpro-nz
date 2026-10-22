@@ -7,8 +7,9 @@
 import { logger } from '@/utils/logger';
 import { syncService } from './sync.service';
 import type { QCInspectionPayload } from './sync-processors/types';
-import { todayNZST, toNZST } from '@/utils/nzst';
+import { todayNZST, nzMidnight, nzEndOfDay } from '@/utils/nzst';
 import { qcRepository } from '@/repositories/qc.repository';
+import { distributionOf } from './qcDistribution';
 
 export interface QCInspection {
     id: string;
@@ -58,7 +59,8 @@ export const qcService = {
             if (error.message?.includes('Failed to fetch') || error.message?.includes('Network') || !navigator.onLine) {
                 await syncService.addToQueue('QC_INSPECTION', payload as QCInspectionPayload);
                 logger.warn('[QCService] Inspection queued for offline sync');
-                return { ...payload, id: 'pending-sync', created_at: new Date().toISOString() } as QCInspection;
+                // id propio por inspección: varias en cola no pueden compartir clave en la lista
+                return { ...payload, id: `pending-${crypto.randomUUID()}`, created_at: new Date().toISOString() } as QCInspection;
             }
             logger.error('[QCService] Failed to log inspection:', error.message);
             return null;
@@ -76,10 +78,9 @@ export const qcService = {
     ): Promise<QCInspection[]> {
         // 🔧 L31: Use NZST for date boundaries (prevents missing morning inspections)
         const targetDate = date || todayNZST();
-        const startOfDayNZ = new Date(`${targetDate}T00:00:00`);
-        const endOfDayNZ = new Date(`${targetDate}T23:59:59`);
-        const startISO = toNZST(startOfDayNZ);
-        const endISO = toNZST(endOfDayNZ);
+        // Día NZ real, sea cual sea la zona horaria del móvil
+        const startISO = nzMidnight(targetDate);
+        const endISO = nzEndOfDay(targetDate);
 
         try {
             const data = await qcRepository.getByOrchardAndDateRange(orchardId, startISO, endISO);
@@ -97,18 +98,7 @@ export const qcService = {
         orchardId: string,
         date?: string
     ): Promise<GradeDistribution> {
-        const inspections = await this.getInspections(orchardId, date);
-
-        const dist: GradeDistribution = { A: 0, B: 0, C: 0, reject: 0, total: 0 };
-
-        for (const insp of inspections) {
-            if (insp.grade in dist) {
-                dist[insp.grade as keyof Omit<GradeDistribution, 'total'>]++;
-            }
-            dist.total++;
-        }
-
-        return dist;
+        return distributionOf(await this.getInspections(orchardId, date));
     },
 
     /**

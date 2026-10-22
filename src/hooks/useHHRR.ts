@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-    fetchHRSummary, fetchEmployees, fetchPayroll, fetchComplianceAlerts,
+    loadHRDashboard,
     type HRSummary, type Employee, type PayrollEntry, type ComplianceAlert
 } from '@/services/hhrr.service';
 import { logger } from '@/utils/logger';
@@ -35,12 +35,7 @@ export function useHHRR(): UseHHRRResult {
     const reload = useCallback(async () => {
         if (!loadedOnce.current) setIsLoading(true);
         try {
-            const [sum, emps, pay, alts] = await Promise.all([
-                fetchHRSummary(),
-                fetchEmployees(),
-                fetchPayroll(),
-                fetchComplianceAlerts(),
-            ]);
+            const { summary: sum, employees: emps, payroll: pay, alerts: alts } = await loadHRDashboard();
             setSummary(sum);
             setEmployees(emps);
             setPayroll(pay);

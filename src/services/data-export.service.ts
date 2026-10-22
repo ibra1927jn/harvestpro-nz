@@ -15,6 +15,7 @@
 
 import { supabase } from './supabase';
 import { logger } from '@/utils/logger';
+import { fetchAllRows } from '@/utils/fetchAllRows';
 
 export interface UserDataExport {
   exportedAt: string;
@@ -84,14 +85,20 @@ export const dataExportService = {
       }
 
       // 3. Cubos escaneados (la tabla es bucket_records; 'bucket_scans' no existe)
-      const { data: scans, error: scansError } = await supabase
-        .from('bucket_records')
-        .select('id, scanned_at, quality_grade, orchard_id')
-        .eq('picker_id', userId)
-        .order('scanned_at', { ascending: false })
-        .limit(5000);
-
-      if (scansError) {
+      // Todas (una temporada son ~3.500 por persona; .limit(5000) no sirve:
+      // PostgREST corta igual en 1000). Exportación legal: tiene que estar completa.
+      let scans: { id: string; scanned_at: string | null; quality_grade: string | null; orchard_id: string | null }[] = [];
+      try {
+        scans = await fetchAllRows((from, to) =>
+          supabase
+            .from('bucket_records')
+            .select('id, scanned_at, quality_grade, orchard_id')
+            .eq('picker_id', userId)
+            .order('scanned_at', { ascending: false })
+            .order('id')
+            .range(from, to)
+        );
+      } catch (scansError) {
         logger.warn('[DataExport] Failed to fetch scans:', scansError);
       }
 

@@ -16,7 +16,7 @@ function makeChain(data: unknown, error: unknown = null) {
         catch: resolved.catch.bind(resolved),
         finally: resolved.finally.bind(resolved),
     };
-    ['select', 'eq', 'order', 'limit', 'single', 'in', 'gte', 'lte'].forEach(m => {
+    ['select', 'eq', 'order', 'limit', 'single', 'in', 'gte', 'lte', 'range'].forEach(m => {
         chain[m] = vi.fn().mockReturnValue(chain);
     });
     chain['insert'] = vi.fn().mockResolvedValue({ data: null, error: null });

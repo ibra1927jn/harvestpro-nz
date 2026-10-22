@@ -44,9 +44,9 @@ export const useAttendance = (appUser: AppUser | undefined) => {
       await attendanceService.checkInPicker(pickerId, appUser.orchard_id, appUser.id);
     },
     onSuccess: () => {
-      // Invalidate both queries to refetch fresh data
+      // Solo cambian los fichajes: la cuadrilla es la misma (antes se volvía a
+      // bajar también la plantilla tras cada fichaje: 20 fichajes = 40 consultas)
       qc.invalidateQueries({ queryKey: queryKeys.attendance.all });
-      qc.invalidateQueries({ queryKey: queryKeys.pickers.all });
     },
   });
 

@@ -42,6 +42,8 @@ describe('shouldUseDelta', () => {
 
   it('falls back to full load after a reload (no buckets in memory) or with no crew', () => {
     expect(shouldUseDelta({ lastSyncAt, todayNZ: '2026-10-13', crewCount: 3, bucketCount: 0 })).toBe(false);
+    // ya bajadas en esta sesión (0 cubetas a primera hora): delta
+    expect(shouldUseDelta({ lastSyncAt, todayNZ: '2026-10-13', crewCount: 3, bucketCount: 0, bucketsLoaded: true })).toBe(true);
     expect(shouldUseDelta({ lastSyncAt, todayNZ: '2026-10-13', crewCount: 0, bucketCount: 5 })).toBe(false);
     expect(shouldUseDelta({ lastSyncAt: null, todayNZ: '2026-10-13', crewCount: 3, bucketCount: 5 })).toBe(false);
   });

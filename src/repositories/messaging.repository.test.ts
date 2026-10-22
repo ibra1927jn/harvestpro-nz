@@ -9,7 +9,7 @@ function mockChain(result: { data?: unknown; error?: unknown }) {
     const chain: Record<string, unknown> = {
         select: vi.fn(() => chain), eq: vi.fn(() => chain), in: vi.fn(() => chain),
         insert: vi.fn(() => chain), update: vi.fn(() => chain),
-        order: vi.fn(() => chain), limit: vi.fn(() => chain),
+        order: vi.fn(() => chain), range: vi.fn(() => chain), limit: vi.fn(() => chain),
         single: vi.fn(() => chain), contains: vi.fn(() => chain),
         then: (onF?: (v: unknown) => unknown, onR?: (r: unknown) => unknown) =>
             Promise.resolve(result).then(onF, onR),
@@ -156,14 +156,20 @@ describe('messagingRepository', () => {
     });
 
     describe('getLastMessages', () => {
-        it('returns last messages for conversations', async () => {
+        it('returns last messages for conversations (RPC last_messages)', async () => {
             const msgs = [{ conversation_id: 'c1', content: 'Hi' }];
-            fromSpy.mockReturnValue(mockChain({ data: msgs, error: null }) as never);
+            const rpcSpy = vi.spyOn(supabase, 'rpc').mockResolvedValue({ data: msgs, error: null } as never);
             expect(await messagingRepository.getLastMessages(['c1'])).toEqual(msgs);
+            expect(rpcSpy).toHaveBeenCalledWith('last_messages', { p_conversation_ids: ['c1'] });
         });
 
         it('returns empty on null', async () => {
-            fromSpy.mockReturnValue(mockChain({ data: null, error: null }) as never);
+            vi.spyOn(supabase, 'rpc').mockResolvedValue({ data: null, error: null } as never);
+            expect(await messagingRepository.getLastMessages(['c1'])).toEqual([]);
+        });
+
+        it('returns empty on error', async () => {
+            vi.spyOn(supabase, 'rpc').mockResolvedValue({ data: null, error: { message: 'x' } } as never);
             expect(await messagingRepository.getLastMessages(['c1'])).toEqual([]);
         });
     });
