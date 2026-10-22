@@ -18,7 +18,6 @@ const settings: TranslationDict = {
     'settings.banner.target': 'TAUMUʻA',
     'settings.harvest.title': 'Fokotuʻutuʻu Utu',
     'settings.harvest.subtitle': 'Totongi, taumuʻa mo e houa',
-    'settings.harvest.piece_rate': 'Totongi ki he pakete',
     'settings.harvest.min_wage': 'Vāhenga siʻisiʻi (ʻi he houa)',
     'settings.harvest.target_buckets': 'Taumuʻa Pakete / Houa',
     'settings.harvest.daily_target': 'Taumuʻa ʻAho (toni)',

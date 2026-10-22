@@ -20,7 +20,6 @@ const settings: TranslationDict = {
     // Harvest Configuration
     'settings.harvest.title': 'Harvest Configuration',
     'settings.harvest.subtitle': 'Rates, targets & shift hours',
-    'settings.harvest.piece_rate': 'Piece Rate (per bucket)',
     'settings.harvest.min_wage': 'Minimum Wage (per hour)',
     'settings.harvest.target_buckets': 'Target Buckets / Hour',
     'settings.harvest.daily_target': 'Daily Target (tons)',

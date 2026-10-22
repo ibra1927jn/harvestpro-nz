@@ -18,7 +18,6 @@ const settings: TranslationDict = {
     'settings.banner.target': 'लक्ष्य',
     'settings.harvest.title': 'फ़सल सेटिंग',
     'settings.harvest.subtitle': 'दरें, लक्ष्य और शिफ़्ट घंटे',
-    'settings.harvest.piece_rate': 'पीस रेट (प्रति बाल्टी)',
     'settings.harvest.min_wage': 'न्यूनतम वेतन (प्रति घंटा)',
     'settings.harvest.target_buckets': 'लक्ष्य बाल्टियाँ / घंटा',
     'settings.harvest.daily_target': 'दैनिक लक्ष्य (टन)',

@@ -18,7 +18,6 @@ const settings: TranslationDict = {
     'settings.banner.target': 'SINI',
     'settings.harvest.title': 'Fa\'atulagaga Seleselega',
     'settings.harvest.subtitle': 'Totogi, sini ma itula',
-    'settings.harvest.piece_rate': 'Totogi i le pakete',
     'settings.harvest.min_wage': 'Totogi maualalo (i le itula)',
     'settings.harvest.target_buckets': 'Sini Pakete / Itula',
     'settings.harvest.daily_target': 'Sini o le Aso (tone)',

@@ -18,7 +18,6 @@ const settings: TranslationDict = {
     'settings.banner.target': 'TARGET',
     'settings.harvest.title': 'Setting ng Ani',
     'settings.harvest.subtitle': 'Rate, target at oras ng shift',
-    'settings.harvest.piece_rate': 'Piece rate (bawat timba)',
     'settings.harvest.min_wage': 'Minimum wage (bawat oras)',
     'settings.harvest.target_buckets': 'Target na Timba / Oras',
     'settings.harvest.daily_target': 'Target sa Araw (tonelada)',
