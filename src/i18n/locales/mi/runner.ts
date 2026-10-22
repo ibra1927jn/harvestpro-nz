@@ -162,6 +162,7 @@ const runner: TranslationDict = {
     'runner.myts.needs_network': 'Me whai hononga koe hei tuku i te tono. Ngana anō ina hoki mai te hononga.',
     'runner.warehouse.pickup_sent': 'Kua tonoa te kohi mō {n} pouaka kī i te whare putunga',
     'runner.warehouse.pickup_failed': 'Kāore i taea te tuku i te tono kohi. Ngana anō.',
+    'runner.price_today': 'Utu ia pākete tēnei rā: {price}',
 };
 
 export default runner;

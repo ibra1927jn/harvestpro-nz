@@ -24,7 +24,7 @@ import { useTranslation, SUPPORTED_LOCALES, type Locale } from '@/i18n';
 import { DayClosureButton } from './DayClosureButton';
 import PageHeader from '@/components/ui/PageHeader';
 import { SettingsSection, FormField, ReadonlyField, ToggleRow } from './settings/SettingsFormComponents';
-import { VarietyRatesEditor } from './settings/VarietyRatesEditor';
+import { DailyPieceRatesEditor } from './settings/DailyPieceRatesEditor';
 import { LockedField, ComplianceTargetField, OrchardSelector } from './settings/SettingsFields';
 import { roleLabel } from '@/i18n/roleLabel';
 
@@ -86,8 +86,8 @@ const SettingsView: React.FC = () => {
 
             {/* ── Harvest Configuration ────────────────── */}
             <SettingsSection icon="tune" iconBg="bg-indigo-50" iconColor="text-indigo-600" title={t('settings.harvest.title')} subtitle={t('settings.harvest.subtitle')} accentColor="border-l-indigo-500" stagger={2}>
-                <FormField label={t('settings.harvest.piece_rate')} value={s.formData.piece_rate} onChange={(v) => s.handleChange('piece_rate', v)} prefix="$" type="number" step="0.50" />
-                <VarietyRatesEditor orchardId={s.orchard?.id} defaultRate={Number(s.formData.piece_rate) || 0} />
+                {/* Precio por cubeta de HOY por huerto y variedad (piece_rates): no reescribe días pasados */}
+                <DailyPieceRatesEditor orchardId={s.orchard?.id} onGeneralRateChange={s.setGeneralRate} />
                 {s.canEditMinWage
                     ? <FormField label={t('settings.harvest.min_wage')} value={s.formData.min_wage_rate} onChange={(v) => s.handleChange('min_wage_rate', v)} prefix="$" suffix="NZD" type="number" step="0.05" />
                     : <LockedField label={t('settings.harvest.min_wage')} value={`$${s.formData.min_wage_rate} NZD`} tooltip={t('settings.locked_by_hr')} />

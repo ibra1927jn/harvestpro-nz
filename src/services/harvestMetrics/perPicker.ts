@@ -8,10 +8,11 @@
  *   puede haber varios si sale y vuelve, con un solo descanso no pagado);
  *   si no hay fichaje, estimación por primer y último escaneo (solo panel en vivo).
  * - Cubetas: las del día, excluyendo rechazos de QC y registros borrados; cada
- *   una al precio de su variedad (settings.variety_rates) o, si no, piece_rate.
+ *   una al precio de HOY de su variedad en su huerto (settings.piece_rates) o,
+ *   si no, el general de hoy (piece_rate).
  */
 import type { Picker, BucketRecord, HarvestSettings } from '@/types';
-import { shiftHours, payForRange, pieceRateFor, nzDateOf, type HoursSource, type AttendanceRow, type BucketRow } from './pay';
+import { shiftHours, payForRange, pieceRateOn, nzDateOf, type HoursSource, type AttendanceRow, type BucketRow } from './pay';
 import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 export interface PickerMetrics {
@@ -43,15 +44,15 @@ function isPayableBucket(r: BucketRecord): boolean {
 export function computePerPicker(
     crew: Picker[],
     bucketRecords: BucketRecord[],
-    settings: Pick<HarvestSettings, 'piece_rate' | 'min_wage_rate' | 'shift_start_time' | 'variety_rates'>,
+    settings: Pick<HarvestSettings, 'piece_rate' | 'min_wage_rate' | 'shift_start_time' | 'piece_rates'>,
     now: Date = new Date()
 ): PickerMetrics[] {
     const pieceRate = settings.piece_rate || 6.5;
     const minWage = settings.min_wage_rate || PAY_RULES.minWageFloor;
     const today = nzDateOf(now);
-    const varietyRates = (settings.variety_rates ?? []).map(r => ({
-        orchardId: r.orchard_id, variety: r.variety, pieceRate: Number(r.piece_rate),
-    }));
+    const rates = settings.piece_rates ?? [];
+    // Cubeta aún sin huerto (escaneada sin conexión): la del huerto de los precios cargados
+    const defaultOrchard = rates[0]?.orchardId ?? null;
 
     // Cubetas por picker (clave = picker_id del registro: UUID o código corto)
     const scansByPicker = new Map<string, BucketRecord[]>();
@@ -83,14 +84,17 @@ export function computePerPicker(
                 breakStart: s.break_start,
                 breakMinutes: s.break_minutes,
             }));
-            const buckets: BucketRow[] = scans.map(r => ({
-                pickerId: p.id,
+            const buckets: BucketRow[] = scans.map(r => {
                 // Las cubetas del panel son del día que se mira
-                scannedAt: r.scanned_at || r.created_at || now.toISOString(),
-                orchardId: r.orchard_id ?? null,
-                variety: r.variety ?? null,
-                pieceRate: pieceRateFor({ orchardId: r.orchard_id, variety: r.variety }, { varietyRates, fallback: pieceRate }),
-            }));
+                const scannedAt = r.scanned_at || r.created_at || now.toISOString();
+                return {
+                    pickerId: p.id,
+                    scannedAt,
+                    orchardId: r.orchard_id ?? null,
+                    variety: r.variety ?? null,
+                    pieceRate: pieceRateOn(rates, r.orchard_id ?? defaultOrchard, r.variety, nzDateOf(scannedAt), pieceRate),
+                };
+            });
             const [range] = payForRange({ attendance, buckets, pieceRate, minWage, now });
             const day = range?.dayDetails.find(d => d.date === today) ?? range?.dayDetails[0];
 

@@ -183,10 +183,26 @@ describe('computePerPicker — tramos y variedades', () => {
         const buckets = [...Array.from({ length: 10 }, () => bucket('Royal Gala')), ...Array.from({ length: 10 }, () => bucket('Braeburn'))];
         const [m] = computePerPicker(crew, buckets, {
             piece_rate: 6.5, min_wage_rate: 23.95, shift_start_time: undefined,
-            variety_rates: [{ orchard_id: null, variety: 'Braeburn', piece_rate: 8 }],
+            piece_rates: [{ orchardId: 'A', variety: 'Braeburn', effectiveDate: '2026-10-01', pieceRate: 8 }],
         }, now);
         expect(m.hoursWorked).toBe(7.5);
         expect(m.pieceRateEarnings).toBe(145); // 10 × 6.5 + 10 × 8
         expect(m.hoursSource).toBe('timesheet');
+    });
+
+    it('usa el precio de HOY: el de una variedad fijado mañana todavía no cuenta', () => {
+        const now = new Date('2026-10-12T18:00:00+13:00');
+        const crew = [{ id: 'p1', picker_id: 'P1', name: 'Ana', role: 'picker', status: 'active' }] as unknown as Parameters<typeof computePerPicker>[0];
+        const bucket = (variety: string, orchard_id?: string) => ({ id: variety + Math.random(), picker_id: 'p1', bin_id: 'b', timestamp: '', scanned_at: '2026-10-12T09:00:00+13:00', variety, orchard_id });
+        const [m] = computePerPicker(crew, [bucket('Braeburn', 'A'), bucket('Braeburn'), bucket('Fuji', 'A')], {
+            piece_rate: 7, min_wage_rate: 23.95, shift_start_time: undefined,
+            piece_rates: [
+                { orchardId: 'A', variety: null, effectiveDate: '2026-10-12', pieceRate: 7 },
+                { orchardId: 'A', variety: 'Braeburn', effectiveDate: '2026-10-10', pieceRate: 8 },
+                { orchardId: 'A', variety: 'Braeburn', effectiveDate: '2026-10-13', pieceRate: 9 },
+            ],
+        }, now);
+        // 2 Braeburn a 8 (también la cubeta aún sin huerto: la del huerto cargado) + 1 Fuji al general 7
+        expect(m.pieceRateEarnings).toBe(23);
     });
 });

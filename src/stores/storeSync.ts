@@ -14,6 +14,8 @@ import { fetchAllRows } from '@/utils/fetchAllRows';
 import type { BucketRecord } from '@/types';
 import type { HarvestStoreState, ScannedBucket } from './storeTypes';
 import { storeSyncRepository } from '@/repositories/store-sync.repository';
+import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
+import { pieceRateOn } from '@/services/harvestMetrics/pay';
 import {
   applyAttendanceRecord,
   applyElsewhere,
@@ -305,6 +307,30 @@ async function loadBins(set: StoreSetter, orchardId: string): Promise<void> {
 
 /* ── Realtime Subscriptions ─────────────── */
 
+/**
+ * Vuelve a leer los precios por cubeta que valen hoy (piece_rates) y los pone
+ * en los ajustes del store: el TL y el runner ven el precio nuevo sin recargar.
+ * Se relee en vez de aplicar el evento: al borrar el precio de hoy vuelve a
+ * valer el anterior, que no viene en el evento.
+ */
+export async function refreshTodayPieceRates(orchardId: string, get: StoreGetter, set: StoreSetter): Promise<void> {
+  const today = todayNZST();
+  try {
+    const rates = await pieceRatesRepository.loadRange(today, today, orchardId);
+    if (get().orchard?.id !== orchardId) return;
+    set(state => ({
+      settings: {
+        ...state.settings,
+        piece_rates: rates,
+        piece_rate: pieceRateOn(rates, orchardId, null, today, state.settings.piece_rate),
+      },
+    }));
+    get().recalculateIntelligence();
+  } catch (e) {
+    logger.warn('[Store] Could not refresh piece rates:', e);
+  }
+}
+
 export function setupRealtimeSubscriptions(
   orchardId: string,
   get: StoreGetter,
@@ -401,6 +427,21 @@ export function setupRealtimeSubscriptions(
           rowAssignments: applyRowAssignmentEvent(state.rowAssignments, record, payload.eventType),
         }));
         logger.info(`[Store] Realtime row_assignment ${payload.eventType}: row ${record.row_number}`);
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'piece_rates',
+        filter: `orchard_id=eq.${orchardId}`,
+      },
+      () => {
+        // El manager cambió el precio de hoy (raro y barato: también en segundo plano,
+        // porque al volver a la app la sincronización ligera no relee los ajustes)
+        logger.info('[Store] Realtime piece_rates change');
+        void refreshTodayPieceRates(orchardId, get, set);
       }
     )
     .subscribe(status => logger.info(`[Store] Realtime subscription: ${status}`));

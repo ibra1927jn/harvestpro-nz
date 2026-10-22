@@ -1,4 +1,5 @@
 import { PAY_RULES } from '@/services/harvestMetrics/pay';
+import type { DailyPieceRate } from '@/services/harvestMetrics/pay';
 export enum Role {
   MANAGER = 'manager',
   TEAM_LEADER = 'team_leader',
@@ -114,19 +115,15 @@ export interface HarvestSettings {
   /** Horas que dura la confianza de dispositivo MFA (default: 72) */
   mfa_device_trust_ttl_hours?: number;
   /**
-   * Precio por cubeta de cada variedad (tabla variety_rates): los del huerto y
-   * los de la empresa (orchard_id null). Sin precio de variedad, piece_rate.
+   * Precios por cubeta que valen HOY en el huerto (tabla piece_rates, el último
+   * fijado de cada variedad y el general). piece_rate ya es el general de hoy.
+   * El precio de una cubeta: pieceRateOn(piece_rates, huerto, variedad, día, piece_rate).
    */
-  variety_rates?: VarietyRate[];
+  piece_rates?: DailyPieceRate[];
 }
 
-export interface VarietyRate {
-  id?: string;
-  /** null = precio de la empresa para esa variedad */
-  orchard_id: string | null;
-  variety: string;
-  piece_rate: number;
-}
+/** Precio por cubeta fijado un día (piece_rates); ver pieceRateOn en harvestMetrics/pay.ts */
+export type { DailyPieceRate } from '@/services/harvestMetrics/pay';
 
 /** Un tramo de trabajo de hoy (entrada/salida en un huerto) */
 export interface AttendanceShift {

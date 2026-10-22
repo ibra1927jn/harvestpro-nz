@@ -46,13 +46,17 @@ Deno.test({ name: 'payroll differential: realistic week in the DB vs reference',
         const A = await makeOrchard({ piece_rate: 6.5, min_wage_rate: 23.95 })
         const B = await makeOrchard({ piece_rate: 7.2, min_wage_rate: 23.95 })
         const payroll = await makeUser('payroll_admin', { orchardId: A })
-        // Precio de Envy en B; Jazz para toda la empresa (se borran al final)
-        const { data: vr } = must(await service.from('variety_rates').insert([
-            { orchard_id: B, variety: 'Envy', piece_rate: 11.35 },
-            { orchard_id: A, variety: `Jazz-${A.slice(0, 4)}`, piece_rate: 9.1 },
-        ]).select('id'), 'variety_rates.insert')
-        onCleanup(() => service.from('variety_rates').delete().in('id', (vr ?? []).map(v => v.id)))
+        // Precios por día (piece_rates): Envy en B; Jazz en A, que sube el jueves;
+        // el general de A sube el miércoles (no debe cambiar el lunes ni el martes)
         const JAZZ = `Jazz-${A.slice(0, 4)}`
+        const { data: vr } = must(await service.from('piece_rates').insert([
+            { orchard_id: B, variety: 'Envy', effective_date: '2026-01-01', piece_rate: 11.35 },
+            { orchard_id: A, variety: JAZZ, effective_date: '2026-01-01', piece_rate: 9.1 },
+            { orchard_id: A, variety: JAZZ, effective_date: addDays(MONDAY, 3), piece_rate: 9.6 },
+            { orchard_id: A, variety: null, effective_date: addDays(MONDAY, 2), piece_rate: 6.9 },
+        ]).select('id'), 'piece_rates.insert')
+        onCleanup(() => service.from('piece_rates').delete().in('orchard_id', [A, B]))
+        void vr
 
         const people = await Promise.all(Array.from({ length: 7 }, () => makePicker(A)))
         const [fast, slow, mover, contracted, rejecter, holidayWorker, slowMover] = people.map(p => p.id)
@@ -143,12 +147,12 @@ Deno.test({ name: 'payroll differential: realistic week in the DB vs reference',
 
         // Referencia con las tarifas que hay en la BD (la Edge Function usa las de toda la empresa)
         const { data: settings } = await service.from('harvest_settings').select('orchard_id, piece_rate, min_wage_rate')
-        const { data: varieties } = await service.from('variety_rates').select('orchard_id, variety, piece_rate')
+        const { data: daily } = await service.from('piece_rates').select('orchard_id, variety, effective_date, piece_rate')
         const orchardRates: Record<string, number> = {}
         for (const s of settings ?? []) if (s.piece_rate != null) orchardRates[s.orchard_id] = Number(s.piece_rate)
         const companyMin = Math.max(23.95, ...(settings ?? []).map(s => Number(s.min_wage_rate ?? 0)))
         const rates = {
-            varietyRates: (varieties ?? []).map(v => ({ orchardId: v.orchard_id, variety: v.variety, rate: Number(v.piece_rate) })),
+            daily: (daily ?? []).map(v => ({ orchardId: v.orchard_id, variety: v.variety, from: String(v.effective_date).slice(0, 10), rate: Number(v.piece_rate) })),
             orchardRates,
             fallback: 6.5,
         }

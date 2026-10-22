@@ -25,6 +25,7 @@ vi.mock('@/hooks/useSettings', () => ({
             variety: 'Apple',
         },
         handleChange: mockHandleChange,
+        setGeneralRate: vi.fn(),
         compliance: {
             nz_employment_standards: true,
             auto_wage_alerts: true,
@@ -70,6 +71,10 @@ vi.mock('@/i18n', async (importOriginal) => {
         }),
     };
 });
+
+vi.mock('./settings/DailyPieceRatesEditor', () => ({
+    DailyPieceRatesEditor: ({ orchardId }: { orchardId?: string }) => <div data-testid="daily-piece-rates-editor">{orchardId}</div>,
+}));
 
 vi.mock('./DayClosureButton', () => ({
     DayClosureButton: () => <button data-testid="day-closure-btn">Close Day</button>,
@@ -131,6 +136,12 @@ describe('SettingsView', () => {
     it('renders Settings page header', () => {
         render(<SettingsView />);
         expect(screen.getByText('Settings')).toBeTruthy();
+    });
+
+    it('el precio por cubeta se edita por día (editor de hoy), no como campo general', () => {
+        render(<SettingsView />);
+        expect(screen.getByTestId('daily-piece-rates-editor').textContent).toBe('o1');
+        expect(screen.queryByTestId('field-Piece Rate (per bucket)')).toBeNull();
     });
 
     it('renders user profile card with initials', () => {

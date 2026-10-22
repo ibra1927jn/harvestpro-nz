@@ -18,7 +18,6 @@ const settings: TranslationDict = {
     'settings.banner.target': 'WHĀINGA',
     'settings.harvest.title': 'Whirihoranga Hauhake',
     'settings.harvest.subtitle': 'Utu, whāinga me ngā hāora mahi',
-    'settings.harvest.piece_rate': 'Utu ia pākete',
     'settings.harvest.min_wage': 'Utu-iti (ia hāora)',
     'settings.harvest.target_buckets': 'Whāinga Pākete / Hāora',
     'settings.harvest.daily_target': 'Whāinga ā-Rā (tana)',

@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import {
-    shiftHours, dayPay, nzDateOf, payWeekOf, payForRange, isNZPublicHoliday, pieceRateFor, PAY_RULES,
+    shiftHours, dayPay, nzDateOf, payWeekOf, payForRange, isNZPublicHoliday, pieceRateOn, PAY_RULES,
     type AttendanceRow, type BucketRow,
 } from './pay';
 
@@ -386,35 +386,37 @@ describe('payForRange — aggregation', () => {
     });
 });
 
-describe('pieceRateFor — edge cases', () => {
-    const rates = {
-        varietyRates: [
-            { orchardId: 'A', variety: ' Royal Gala ', pieceRate: 7.2 },
-            { orchardId: null, variety: 'ROYAL GALA ', pieceRate: 6.9 },
-        ],
-        orchardRates: { A: 6.4, Z: 0 },
-        fallback: 6.5,
-    };
+describe('pieceRateOn — edge cases', () => {
+    const rates = [
+        { orchardId: 'A', variety: ' Royal Gala ', effectiveDate: '2026-10-01', pieceRate: 7.2 },
+        { orchardId: 'A', variety: null, effectiveDate: '2026-10-01', pieceRate: 6.4 },
+        { orchardId: 'Z', variety: null, effectiveDate: '2026-10-01', pieceRate: 0 },
+    ];
 
     it('matches varieties ignoring case and surrounding spaces', () => {
-        expect(pieceRateFor({ orchardId: 'A', variety: 'ROYAL GALA' }, rates)).toBe(7.2);
-        expect(pieceRateFor({ orchardId: 'B', variety: 'royal gala  ' }, rates)).toBe(6.9);
+        expect(pieceRateOn(rates, 'A', 'ROYAL GALA', '2026-10-02', 6.5)).toBe(7.2);
+        expect(pieceRateOn(rates, 'A', 'royal gala  ', '2026-10-02', 6.5)).toBe(7.2);
     });
 
-    it('bucket without orchard uses the company variety price', () => {
-        expect(pieceRateFor({ variety: 'Royal Gala' }, rates)).toBe(6.9);
+    it('bucket without orchard uses the fallback', () => {
+        expect(pieceRateOn(rates, undefined, 'Royal Gala', '2026-10-02', 6.9)).toBe(6.9);
     });
 
-    it('unknown variety falls back to the orchard price, then to the general one', () => {
-        expect(pieceRateFor({ orchardId: 'A', variety: 'Envy' }, rates)).toBe(6.4);
-        expect(pieceRateFor({ orchardId: 'B', variety: 'Envy' }, rates)).toBe(6.5);
-        expect(pieceRateFor({ orchardId: 'A', variety: '   ' }, rates)).toBe(6.4);
-        expect(pieceRateFor({ orchardId: 'A' }, { fallback: 6.5 })).toBe(6.5);
-        expect(pieceRateFor({ orchardId: 'A', variety: 'Envy' }, { fallback: 6.5 })).toBe(6.5);
+    it('unknown variety falls back to the orchard price, then to the fallback', () => {
+        expect(pieceRateOn(rates, 'A', 'Envy', '2026-10-02', 6.5)).toBe(6.4);
+        expect(pieceRateOn(rates, 'B', 'Envy', '2026-10-02', 6.5)).toBe(6.5);
+        expect(pieceRateOn(rates, 'A', '   ', '2026-10-02', 6.5)).toBe(6.4);
+        expect(pieceRateOn([], 'A', null, '2026-10-02', 6.5)).toBe(6.5);
+        expect(pieceRateOn([], 'A', 'Envy', '2026-10-02', 6.5)).toBe(6.5);
     });
 
     it('an orchard price of 0 is respected (not treated as missing)', () => {
-        expect(pieceRateFor({ orchardId: 'Z', variety: 'Envy' }, rates)).toBe(0);
+        expect(pieceRateOn(rates, 'Z', 'Envy', '2026-10-02', 6.5)).toBe(0);
+    });
+
+    it('the same list gives the same answer on repeated calls (index cache)', () => {
+        for (let i = 0; i < 3; i++) expect(pieceRateOn(rates, 'A', 'Royal Gala', '2026-10-02', 6.5)).toBe(7.2);
+        expect(pieceRateOn(rates, 'A', 'Royal Gala', '2026-09-30', 6.5)).toBe(6.5);
     });
 });
 
