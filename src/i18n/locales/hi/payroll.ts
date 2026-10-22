@@ -115,6 +115,12 @@ const payroll: TranslationDict = {
     'pay.err.calc': 'इस सप्ताह का पेरोल गणना नहीं हो सका।',
     'pay.err.close': 'सप्ताह बंद नहीं हो सका।',
     'pay.err.reopen': 'सप्ताह फिर नहीं खुल सका।',
+    'pay.ts.open_shift_no_approve': 'खुली शिफ्ट (अभी चेक-आउट नहीं): बंद होने पर स्वीकृत की जा सकती है',
+    'pay.ts.approve_all_skipped': '{count} खुली शिफ्ट छोड़ी गईं (अभी चेक-आउट नहीं)',
+    'pay.ts.reject_reason_label': 'अस्वीकार करने का कारण',
+    'pay.ts.reject_reason_placeholder': 'क्या ठीक करना है?',
+    'pay.ts.reject_reason_hint': '{n}/{max} अक्षर (कम से कम 3)',
+    'pay.ts.reject_confirm': 'अस्वीकार करें',
 };
 
 export default payroll;

@@ -115,6 +115,12 @@ const payroll: TranslationDict = {
     'pay.err.calc': 'No se pudo calcular la nómina de esta semana.',
     'pay.err.close': 'No se pudo cerrar la semana.',
     'pay.err.reopen': 'No se pudo reabrir la semana.',
+    'pay.ts.open_shift_no_approve': 'Turno abierto (aún sin salida): se podrá aprobar cuando se cierre',
+    'pay.ts.approve_all_skipped': '{count} turnos abiertos sin aprobar (aún sin salida)',
+    'pay.ts.reject_reason_label': 'Motivo del rechazo',
+    'pay.ts.reject_reason_placeholder': '¿Qué hay que corregir?',
+    'pay.ts.reject_reason_hint': '{n}/{max} caracteres (mínimo 3)',
+    'pay.ts.reject_confirm': 'Rechazar',
 };
 
 export default payroll;

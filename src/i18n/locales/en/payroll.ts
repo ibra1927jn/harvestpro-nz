@@ -115,6 +115,12 @@ const payroll: TranslationDict = {
     'pay.err.calc': 'Couldn\'t calculate this week\'s payroll.',
     'pay.err.close': 'Couldn\'t close the week.',
     'pay.err.reopen': 'Couldn\'t reopen the week.',
+    'pay.ts.open_shift_no_approve': 'Open shift (no check-out yet): it can be approved once it is closed',
+    'pay.ts.approve_all_skipped': '{count} open shifts skipped (no check-out yet)',
+    'pay.ts.reject_reason_label': 'Reason for rejection',
+    'pay.ts.reject_reason_placeholder': 'What needs fixing?',
+    'pay.ts.reject_reason_hint': '{n}/{max} characters (at least 3)',
+    'pay.ts.reject_confirm': 'Reject',
 };
 
 export default payroll;
