@@ -86,16 +86,35 @@ function prng(seed: number): () => number {
     };
 }
 
-const ratesArb: fc.Arbitrary<RefRates> = fc.record({
+/**
+ * Precios por día (piece_rates) como desplazamiento desde el lunes de la semana:
+ * precios de antes de la semana, cambios a mitad de semana (general y por
+ * variedad), variedades con precio solo en un huerto y un huerto sin precios.
+ */
+const dailySpecArb = fc.subarray([
+    { orchardId: 'orch-a', variety: null, offset: -40, rate: 6.9 },
+    { orchardId: 'orch-a', variety: null, offset: 3, rate: 7.4 },
+    { orchardId: 'orch-b', variety: null, offset: -10, rate: 8.2 },
+    { orchardId: 'orch-a', variety: 'Jazz', offset: 2, rate: 9.1 },
+    { orchardId: 'orch-b', variety: 'jazz', offset: -5, rate: 9.95 },
+    { orchardId: 'orch-b', variety: 'Jazz ', offset: 4, rate: 10.4 },
+    { orchardId: 'orch-b', variety: 'Envy', offset: 5, rate: 11.35 },
+    { orchardId: 'orch-c', variety: 'Royal Gala', offset: 0, rate: 5.55 },
+] as Array<{ orchardId: string; variety: string | null; offset: number; rate: number }>);
+
+const ratesArb = fc.record({
     fallback: fc.constantFrom(6.5, 7, 5.85),
     orchardRates: fc.record({ 'orch-a': fc.constantFrom(6.5, 7.25), 'orch-b': fc.constantFrom(8, 6.75) }),
-    varietyRates: fc.subarray([
-        { orchardId: null, variety: 'Jazz', rate: 9.1 },
-        { orchardId: 'orch-b', variety: 'Jazz', rate: 9.95 },
-        { orchardId: null, variety: 'Envy', rate: 11.35 },
-        { orchardId: 'orch-c', variety: 'Royal Gala', rate: 5.55 },
-    ]),
+    dailySpec: dailySpecArb,
 });
+
+function ratesOfWeek(spec: { fallback: number; orchardRates: Record<string, number>; dailySpec: Array<{ orchardId: string; variety: string | null; offset: number; rate: number }> }, weekStart: string): RefRates {
+    return {
+        fallback: spec.fallback,
+        orchardRates: spec.orchardRates,
+        daily: spec.dailySpec.map(d => ({ orchardId: d.orchardId, variety: d.variety, from: addDays(weekStart, d.offset), rate: d.rate })),
+    };
+}
 
 export const weekArb: fc.Arbitrary<GeneratedWeek> = fc.record({
     weekStart: fc.constantFrom(...WEEK_STARTS),
@@ -104,7 +123,8 @@ export const weekArb: fc.Arbitrary<GeneratedWeek> = fc.record({
     minWage: fc.constantFrom(23.95, 0, 22.7, 25.5),
     /** "Ahora": tras la semana (todo cerrado) o dentro de ella (turnos de hoy en curso) */
     nowOffsetHours: fc.oneof(fc.constant(24 * 9), fc.integer({ min: 6, max: 24 * 7 })),
-}).map(({ weekStart, pickers, rates, minWage, nowOffsetHours }) => {
+}).map(({ weekStart, pickers, rates: rateSpec, minWage, nowOffsetHours }) => {
+    const rates = ratesOfWeek(rateSpec, weekStart);
     const shifts: RefShift[] = [];
     const buckets: RefBucket[] = [];
     pickers.forEach((days, pi) => {

@@ -8,10 +8,10 @@ import { fakeSupabase } from './fakeSupabase';
 
 const nz = (date: string, hhmm: string) => new Date(`${date}T${hhmm}:00+13:00`).toISOString();
 
-function tables(extra: { attendance: object[]; buckets: object[]; contracts?: object[] }) {
+function tables(extra: { attendance: object[]; buckets: object[]; contracts?: object[]; pieceRates?: object[] }) {
     return {
         harvest_settings: [{ orchard_id: 'o1', piece_rate: 6.5, min_wage_rate: 23.95 }],
-        variety_rates: [],
+        piece_rates: (extra.pieceRates ?? []).map((r, i) => ({ id: `pr-${i}`, variety: null, orchard_id: 'o1', ...r })),
         daily_attendance: extra.attendance.map((a, i) => ({ id: i, deleted_at: null, break_start: null, break_minutes: null, orchard_id: 'o1', ...a })),
         bucket_records: extra.buckets.map((b, i) => ({ id: i, deleted_at: null, quality_grade: 'A', variety: null, orchard_id: 'o1', ...b })),
         contracts: extra.contracts ?? [],
@@ -77,5 +77,36 @@ describe('computePayroll — casos del borde de la semana y festivos', () => {
         expect(r.picker_breakdown[0].estimated_days).toBe(1);
         expect(r.picker_breakdown[0].alternative_holidays_owed).toBe(0);
         expect(r.summary.total_alternative_holidays_owed).toBe(0);
+    });
+});
+
+// Auditoría 23-10 (A4): subir el precio el miércoles recalculaba toda la semana ($19.403 → $22.474)
+describe('computePayroll — precio por cubeta por día, huerto y variedad', () => {
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const day = (d: string, n: number, variety: string | null = null) =>
+        Array.from({ length: n }, () => ({ picker_id: 'p1', scanned_at: nz(d, '10:00'), variety }));
+    // Lunes 6.50 (desde antes de la semana), miércoles 7.25; Braeburn 8.10 desde el jueves
+    const pieceRates = [
+        { effective_date: '2026-09-01', piece_rate: 6.5 },
+        { effective_date: '2026-10-14', piece_rate: 7.25 },
+        { variety: 'Braeburn', effective_date: '2026-10-15', piece_rate: 8.1 },
+    ];
+
+    it('un cambio a mitad de semana no reescribe los días anteriores', async () => {
+        const buckets = [...day('2026-10-12', 20), ...day('2026-10-13', 20), ...day('2026-10-14', 20), ...day('2026-10-15', 10, 'Braeburn'), ...day('2026-10-15', 10, 'Fuji')];
+        const r = await computePayroll(fakeSupabase(tables({ attendance: [], buckets, pieceRates })), { start_date: '2026-10-12', end_date: '2026-10-18' });
+        const pay = Object.fromEntries(r.picker_breakdown[0].days.map(d => [d.date, d.pieceEarnings]));
+        expect(pay).toMatchObject({ '2026-10-12': 130, '2026-10-13': 130, '2026-10-14': 145, '2026-10-15': 153.5 }); // 10 × 8.10 + 10 × 7.25
+        expect(r.picker_breakdown[0].piece_rate_earnings).toBe(558.5);
+    });
+
+    it('el precio de antes del rango viene de piece_rates_as_of (el último fijado antes del lunes)', async () => {
+        const r = await computePayroll(fakeSupabase(tables({ attendance: [], buckets: day('2026-10-19', 10), pieceRates })), { start_date: '2026-10-19', end_date: '2026-10-25' });
+        expect(r.picker_breakdown[0].piece_rate_earnings).toBe(72.5); // 10 × 7.25
+    });
+
+    it('sin precios por día: harvest_settings.piece_rate', async () => {
+        const r = await computePayroll(fakeSupabase(tables({ attendance: [], buckets: day('2026-10-19', 10) })), { start_date: '2026-10-19', end_date: '2026-10-25' });
+        expect(r.picker_breakdown[0].piece_rate_earnings).toBe(65);
     });
 });
