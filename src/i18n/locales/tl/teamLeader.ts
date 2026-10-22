@@ -53,9 +53,6 @@ const teamLeader: TranslationDict = {
     'tl.profile.switching_disabled': 'Hindi puwedeng magpalit',
     'tl.profile.offline_mode': 'Offline mode',
     'tl.profile.end_of_day': 'Ulat sa katapusan ng araw',
-    'tl.tasks.map_title': 'Mapa ng logistics',
-    'tl.tasks.min_target': 'Min. target',
-    'tl.tasks.bkts_hr': 'tmb/oras',
     'tl.tasks.my_rows': 'Mga hanay ng team ko',
     'tl.tasks.active_rows': 'Aktibong hanay',
     'tl.tasks.assign': 'Italaga',
@@ -77,6 +74,8 @@ const teamLeader: TranslationDict = {
     'tl.team.harness_no': 'Harness No.',
     'tl.team.assign_placeholder': 'Italaga...',
     'tl.team.add_picker': 'Magdagdag ng picker',
+    // Cajón de perfil de persona (Inicio, Equipo y Pase de lista)
+    'tl.picker.open_profile': 'Buksan ang profile ni {name}',
 };
 
 export default teamLeader;

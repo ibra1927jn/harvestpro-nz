@@ -16,12 +16,192 @@ import { writeAudit } from '../_shared/audit.ts'
  * manage-attendance — Server-side attendance operations
  *
  * Actions:
- * - check_in:  Open a work shift (closes an open one in another orchard)
- * - check_out: Record checkout time + paid hours (unpaid 30-min break deducted)
- * - correct:   Admin timesheet correction with audit trail
+ * - check_in:      Open a work shift (closes an open one in another orchard)
+ * - check_out:     Record checkout time + paid hours (unpaid 30-min break deducted)
+ * - correct:       Timesheet correction with audit trail
+ * - correct_batch: The same correction applied to up to 200 timesheets at once
+ *                  (one audit row per timesheet, per-item results, a failing
+ *                  item does not abort the batch)
  *
- * Security: Requires admin/manager/team_leader role
+ * Security: Requires admin/manager/team_leader role. Corrections (single and
+ * batch) are scoped: admin anywhere, manager their own orchard, team leader
+ * only people of their own team or without a team (never another team); nobody
+ * corrects their own timesheet (except admin).
  */
+
+// deno-lint-ignore no-explicit-any
+type SupabaseLike = { from: (table: string) => any }
+
+interface CorrectionItem {
+    attendance_id: string
+    check_in?: string
+    check_out?: string
+    break_start?: string | null
+}
+
+/**
+ * Alcance de quien corrige (se carga UNA vez por petición, también para el lote):
+ * - admin: cualquier fichaje.
+ * - manager: los de su huerto.
+ * - team_leader: los de su huerto y de personas de SU equipo
+ *   (pickers.team_leader_id = él) o sin equipo (puede coger a gente sin
+ *   equipo, regla del 16-10). Nunca los de otro equipo.
+ * Nadie (salvo admin) corrige su propio fichaje. El RLS ya impide parte de
+ * esto, pero el alcance de equipo del team leader no está en la BD (la
+ * política «Manage attendance» le deja todo el huerto): se comprueba aquí,
+ * igual que lo filtra el editor. Autocontenido a propósito: no depende de
+ * otros helpers de la función (p. ej. un `assertCanTouchPicker` futuro).
+ */
+interface CorrectionScope {
+    userId: string
+    role: string
+    orchardId: string | null
+    /** Caché picker_id → team_leader_id (solo team_leader; undefined = sin fila en pickers) */
+    teamOf: Map<string, string | null | undefined> | null
+}
+
+async function loadCorrectionScope(supabase: SupabaseLike, userId: string): Promise<CorrectionScope> {
+    const { data: me, error: meErr } = await supabase
+        .from('users')
+        .select('role, orchard_id')
+        .eq('id', userId)
+        .single()
+    if (meErr || !me) throw new Error(`Failed to load caller profile: ${meErr?.message ?? 'not found'}`)
+    return {
+        userId,
+        role: me.role,
+        orchardId: me.orchard_id ?? null,
+        teamOf: me.role === 'team_leader' ? new Map() : null,
+    }
+}
+
+/** Equipo (team_leader_id) de una persona; se cachea para el resto del lote */
+async function teamLeaderOf(supabase: SupabaseLike, scope: CorrectionScope, pickerId: string): Promise<string | null | undefined> {
+    const cache = scope.teamOf!
+    if (cache.has(pickerId)) return cache.get(pickerId)
+    const { data, error } = await supabase
+        .from('pickers')
+        .select('team_leader_id')
+        .eq('id', pickerId)
+        .maybeSingle()
+    if (error) throw new Error(`Failed to load the person's team: ${error.message}`)
+    const leader = data ? (data.team_leader_id ?? null) : undefined
+    cache.set(pickerId, leader)
+    return leader
+}
+
+/** 403 si el fichaje queda fuera del alcance de quien corrige */
+async function assertInScope(
+    supabase: SupabaseLike,
+    scope: CorrectionScope,
+    row: { picker_id: string; orchard_id: string },
+): Promise<void> {
+    if (scope.role === 'admin') return
+    if (row.picker_id === scope.userId) {
+        throw new AuthError('You cannot correct your own timesheet', 403)
+    }
+    if (row.orchard_id !== scope.orchardId) {
+        throw new AuthError('You can only correct timesheets of your own orchard', 403)
+    }
+    if (scope.teamOf) {
+        const leader = await teamLeaderOf(supabase, scope, row.picker_id)
+        // Sin fila en pickers (undefined) o de otro equipo → fuera
+        if (leader === undefined || (leader !== null && leader !== scope.userId)) {
+            throw new AuthError('You can only correct timesheets of your own team', 403)
+        }
+    }
+}
+
+/**
+ * Aplica UNA corrección (la usan `correct` y `correct_batch`): comprueba el
+ * alcance, recalcula las horas pagables, escribe la fila y deja la auditoría.
+ * Quien corrige es siempre quien llama. Si RLS deja la fila sin tocar → 403
+ * (no se audita un cambio que no hubo).
+ */
+async function applyCorrection(
+    supabase: SupabaseLike,
+    scope: CorrectionScope,
+    item: CorrectionItem,
+    reason: string,
+): Promise<void> {
+    const { attendance_id, check_in, check_out, break_start } = item
+    const userId = scope.userId
+
+    // Build update payload. Quien corrige es quien llama: antes se guardaba
+    // el admin_id del cuerpo (firmar en nombre de otro).
+    const updatePayload: Record<string, string | number | null> = {
+        correction_reason: reason,
+        corrected_by: userId,
+        corrected_at: new Date().toISOString(),
+    }
+
+    if (check_in) updatePayload.check_in = check_in
+    if (check_out) updatePayload.check_out = check_out
+    if (break_start !== undefined) updatePayload.break_start = break_start
+
+    // Fila actual: para el alcance (huerto / equipo / propio) y para recalcular
+    // las horas pagables con el cálculo único (pay-rules.ts)
+    const { data: existing, error: fetchExistingErr } = await supabase
+        .from('daily_attendance')
+        .select('picker_id, orchard_id, check_in, check_out, break_start, break_minutes')
+        .eq('id', attendance_id)
+        .single()
+
+    if (fetchExistingErr || !existing) {
+        throw new Error(`Failed to fetch existing attendance for hours recalculation: ${fetchExistingErr?.message ?? 'not found'}`)
+    }
+
+    await assertInScope(supabase, scope, existing)
+
+    const ci = check_in || existing?.check_in
+    const co = check_out || existing?.check_out
+    if (ci && co) {
+        updatePayload.hours_worked = shiftHours({
+            checkIn: ci,
+            checkOut: co,
+            breakStart: break_start !== undefined ? break_start : existing?.break_start,
+            breakMinutes: existing?.break_minutes,
+        }).hours
+    }
+
+    // Apply correction
+    const { data: corrected, error: corrErr } = await supabase
+        .from('daily_attendance')
+        .update(updatePayload)
+        .eq('id', attendance_id)
+        .select('id')
+
+    if (corrErr) throw new Error(`Failed to apply correction: ${corrErr.message}`)
+    // RLS puede dejar la fila sin tocar sin dar error (p. ej. el propio
+    // fichaje): antes se respondía success y se auditaba un cambio que no hubo
+    if (!corrected || corrected.length === 0) {
+        throw new AuthError('Not allowed to correct this timesheet', 403)
+    }
+
+    // Audit trail — must succeed for compliance (una fila por fichaje)
+    const { error: auditErr } = await writeAudit(supabase, {
+        action: 'timesheet_correction',
+        table: 'daily_attendance',
+        recordId: attendance_id,
+        userId,
+        oldValues: {
+            check_in: existing.check_in,
+            check_out: existing.check_out,
+            break_start: existing.break_start,
+            break_minutes: existing.break_minutes,
+        },
+        newValues: { check_in, check_out, break_start },
+        reason,
+    })
+
+    if (auditErr) throw new Error(`Correction applied but audit trail failed: ${auditErr.message}`)
+
+    console.info(`[Attendance] Correction applied: id=${attendance_id}, by=${userId}`)
+}
+
+/** Lotes de N en paralelo (un lote de 200 secuencial tardaría demasiado) */
+const BATCH_CONCURRENCY = 10
+
 serve(async (req) => {
     const preflight = handlePreflight(req)
     if (preflight) return preflight
@@ -203,71 +383,48 @@ serve(async (req) => {
         // ── CORRECT ──────────────────────────────────
         if (input.action === 'correct') {
             const { attendance_id, check_in, check_out, break_start, reason } = input
-
-            // Build update payload. Quien corrige es quien llama: antes se guardaba
-            // el admin_id del cuerpo (firmar en nombre de otro).
-            const updatePayload: Record<string, string | number | null> = {
-                correction_reason: reason,
-                corrected_by: user.id,
-                corrected_at: new Date().toISOString(),
-            }
-
-            if (check_in) updatePayload.check_in = check_in
-            if (check_out) updatePayload.check_out = check_out
-            if (break_start !== undefined) updatePayload.break_start = break_start
-
-            // Recalcular horas pagables con el cálculo único (pay-rules.ts)
-            const { data: existing, error: fetchExistingErr } = await supabase
-                .from('daily_attendance')
-                .select('check_in, check_out, break_start, break_minutes')
-                .eq('id', attendance_id)
-                .single()
-
-            if (fetchExistingErr) {
-                throw new Error(`Failed to fetch existing attendance for hours recalculation: ${fetchExistingErr.message}`)
-            }
-
-            const ci = check_in || existing?.check_in
-            const co = check_out || existing?.check_out
-            if (ci && co) {
-                updatePayload.hours_worked = shiftHours({
-                    checkIn: ci,
-                    checkOut: co,
-                    breakStart: break_start !== undefined ? break_start : existing?.break_start,
-                    breakMinutes: existing?.break_minutes,
-                }).hours
-            }
-
-            // Apply correction
-            const { data: corrected, error: corrErr } = await supabase
-                .from('daily_attendance')
-                .update(updatePayload)
-                .eq('id', attendance_id)
-                .select('id')
-
-            if (corrErr) throw new Error(`Failed to apply correction: ${corrErr.message}`)
-            // RLS puede dejar la fila sin tocar sin dar error (p. ej. el propio
-            // fichaje): antes se respondía success y se auditaba un cambio que no hubo
-            if (!corrected || corrected.length === 0) {
-                throw new AuthError('Not allowed to correct this timesheet', 403)
-            }
-
-            // Audit trail — must succeed for compliance
-            const { error: auditErr } = await writeAudit(supabase, {
-                action: 'timesheet_correction',
-                table: 'daily_attendance',
-                recordId: attendance_id,
-                userId: user.id,
-                oldValues: existing ?? undefined,
-                newValues: { check_in, check_out, break_start },
-                reason,
-            })
-
-            if (auditErr) throw new Error(`Correction applied but audit trail failed: ${auditErr.message}`)
-
-            console.info(`[Attendance] Correction applied: id=${attendance_id}, by=${user.id}`)
-
+            const scope = await loadCorrectionScope(supabase, user.id)
+            await applyCorrection(supabase, scope, { attendance_id, check_in, check_out, break_start }, reason)
             return jsonResponse({ success: true, attendance_id }, origin)
+        }
+
+        // ── CORRECT BATCH ────────────────────────────
+        // La misma corrección para varios fichajes (p. ej. «salida a las 16:30
+        // para todos»): resultados por índice, una fila de auditoría por
+        // fichaje y los errores de una fila no tiran el lote.
+        if (input.action === 'correct_batch') {
+            const { items, reason } = input
+            // Alcance (huerto / equipo) una sola vez para todo el lote
+            const scope = await loadCorrectionScope(supabase, user.id)
+            const results: Array<{ index: number; attendance_id: string; success: boolean; error?: string }> =
+                new Array(items.length)
+
+            for (let start = 0; start < items.length; start += BATCH_CONCURRENCY) {
+                const chunk = items.slice(start, start + BATCH_CONCURRENCY)
+                await Promise.all(chunk.map(async (item, offset) => {
+                    const index = start + offset
+                    try {
+                        await applyCorrection(supabase, scope, item, reason)
+                        results[index] = { index, attendance_id: item.attendance_id, success: true }
+                    } catch (err) {
+                        const message = err instanceof Error ? err.message : String(err)
+                        console.warn(`[Attendance] Batch correction failed: id=${item.attendance_id}, by=${user.id}: ${message}`)
+                        results[index] = { index, attendance_id: item.attendance_id, success: false, error: message }
+                    }
+                }))
+            }
+
+            const succeeded = results.filter(r => r.success).length
+            const failed = results.length - succeeded
+            console.info(`[Attendance] Batch correction: ${succeeded}/${results.length} applied, by=${user.id}`)
+
+            return jsonResponse({
+                success: failed === 0,
+                total: results.length,
+                succeeded,
+                failed,
+                results,
+            }, origin)
         }
 
         throw new Error(`Unknown action`)

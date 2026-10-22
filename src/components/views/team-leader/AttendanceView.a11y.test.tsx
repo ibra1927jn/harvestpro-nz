@@ -28,7 +28,11 @@ import AttendanceView from './AttendanceView';
 import { subscribeAnnouncer, resetAnnouncerForTests } from '@/services/announcer';
 
 describe('AttendanceView accessibility', () => {
-  beforeEach(() => resetAnnouncerForTests());
+  beforeEach(() => {
+    resetAnnouncerForTests();
+    checkIn.mockClear();
+    checkOut.mockClear();
+  });
 
   it('names the picker on each check-in / check-out button', () => {
     render(<AttendanceView />);
@@ -51,8 +55,17 @@ describe('AttendanceView accessibility', () => {
   it('warns (and tells TalkBack) when a present picker has no meal break recorded', () => {
     render(<AttendanceView />);
     const warning = screen.getByText('Meal break not recorded');
-    expect(warning.closest('p')?.textContent).toContain('Record the break time in the Timesheet tab');
+    expect(warning.textContent).toContain('Record the break time in the Timesheet tab');
     expect(screen.getAllByText('Meal break not recorded')).toHaveLength(1);
+  });
+
+  // #7: el nombre es un botón aparte que abre el perfil; no toca el fichaje
+  it('tapping the name opens the picker profile without checking anyone out', async () => {
+    const { useHarvestStore } = await import('@/stores/useHarvestStore');
+    render(<AttendanceView />);
+    fireEvent.click(screen.getByRole('button', { name: "Open Ana Present's profile" }));
+    expect(useHarvestStore.getState().pickerProfileId).toBe('p1');
+    expect(checkOut).not.toHaveBeenCalled();
   });
 
   it('does not add a second main landmark inside the page layout', () => {

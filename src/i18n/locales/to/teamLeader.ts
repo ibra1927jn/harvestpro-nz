@@ -53,9 +53,6 @@ const teamLeader: TranslationDict = {
     'tl.profile.switching_disabled': 'ʻIkai lava liliu',
     'tl.profile.offline_mode': 'Founga offline',
     'tl.profile.end_of_day': 'Lipooti ngataʻanga ʻaho',
-    'tl.tasks.map_title': 'Mape fetuku',
-    'tl.tasks.min_target': 'Taumuʻa siʻisiʻi',
-    'tl.tasks.bkts_hr': 'pkt/houa',
     'tl.tasks.my_rows': 'Laine ʻa ʻeku timi',
     'tl.tasks.active_rows': 'Laine ngāue',
     'tl.tasks.assign': 'Vahe',
@@ -77,6 +74,8 @@ const teamLeader: TranslationDict = {
     'tl.team.harness_no': 'Fika haanisi',
     'tl.team.assign_placeholder': 'Vahe...',
     'tl.team.add_picker': 'Tānaki Toli',
+    // Cajón de perfil de persona (Inicio, Equipo y Pase de lista)
+    'tl.picker.open_profile': 'Fakaava e fakamatala \'o {name}',
 };
 
 export default teamLeader;

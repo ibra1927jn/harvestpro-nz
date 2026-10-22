@@ -281,10 +281,37 @@ export const AttendanceCorrectionSchema = z.object({
   admin_id: z.string().optional(),
 });
 
+// Un fichaje dentro de un lote de correcciones: cada campo es opcional
+// (vacío = no tocar); break_start null = quitar el descanso anotado
+export const AttendanceBatchItemSchema = z.object({
+  attendance_id: z.string().uuid('attendance_id must be a valid UUID'),
+  check_in: z.string().datetime({ offset: true }).optional(),
+  check_out: z.string().datetime({ offset: true }).optional(),
+  break_start: z.string().datetime({ offset: true }).nullable().optional(),
+});
+
+/** Máximo de fichajes por lote (un día de un huerto grande cabe de sobra) */
+export const ATTENDANCE_BATCH_MAX = 200;
+
+export const AttendanceBatchCorrectionSchema = z.object({
+  action: z.literal('correct_batch'),
+  items: z.array(AttendanceBatchItemSchema)
+    .min(1, 'At least one item is required')
+    .max(ATTENDANCE_BATCH_MAX, `At most ${ATTENDANCE_BATCH_MAX} items per batch`),
+  // Un solo motivo para todo el lote (va a la auditoría de cada fichaje);
+  // mismo mínimo que `correct`, con tope para no inflar N filas de auditoría
+  reason: z.string()
+    .min(5, 'Correction reason must be at least 5 characters')
+    .max(500, 'Correction reason must be at most 500 characters'),
+  // Se ignora: quien corrige es siempre quien llama
+  admin_id: z.string().optional(),
+});
+
 export const AttendanceInputSchema = z.discriminatedUnion('action', [
   AttendanceCheckInSchema,
   AttendanceCheckOutSchema,
   AttendanceCorrectionSchema,
+  AttendanceBatchCorrectionSchema,
 ]);
 
 // Bucket Recording

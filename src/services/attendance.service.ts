@@ -5,6 +5,19 @@ import { attendanceRepository } from '@/repositories/attendance.repository';
 import { pickerRepository } from '@/repositories/picker.repository';
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
 import { analytics } from '@/config/analytics';
+import type { CorrectBatchResponse } from '@/schemas/api.schemas';
+
+/** Una corrección dentro de un lote: campos opcionales (sin valor = no tocar) */
+export interface AttendanceCorrectionItem {
+  attendance_id: string;
+  check_in?: string;
+  check_out?: string;
+  /** null = quitar el descanso anotado */
+  break_start?: string | null;
+}
+
+/** Máximo de fichajes por lote (el mismo que la Edge Function) */
+export const ATTENDANCE_BATCH_MAX = 200;
 
 export const attendanceService = {
   // --- DAILY ATTENDANCE (LIVE OPERATIONS) ---
@@ -136,6 +149,46 @@ export const attendanceService = {
       if (error) throw new Error(error.message);
     } catch (err) {
       logger.error('[Attendance] Correction via Edge Function failed:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * Corrige varios fichajes de una vez (misma corrección y motivo para todos)
+   * — Edge Function `correct_batch`. Devuelve el resultado por fichaje: una
+   * fila que falla (p. ej. RLS) no tira el lote. Requiere conexión: la
+   * corrección no se encola en Dexie (tampoco la simple).
+   */
+  async correctAttendanceBatch(
+    items: AttendanceCorrectionItem[],
+    reason: string,
+    adminId: string
+  ): Promise<CorrectBatchResponse> {
+    if (items.length === 0) {
+      return { success: true, total: 0, succeeded: 0, failed: 0, results: [] };
+    }
+    if (items.length > ATTENDANCE_BATCH_MAX) {
+      throw new Error(`At most ${ATTENDANCE_BATCH_MAX} timesheets per batch`);
+    }
+    try {
+      const { data, error } = await edgeFunctionsRepository.invoke('manage-attendance', {
+        action: 'correct_batch',
+        // Solo los campos con valor: la Edge Function no toca lo que no viene
+        items: items.map(item => ({
+          attendance_id: item.attendance_id,
+          ...(item.check_in ? { check_in: item.check_in } : {}),
+          ...(item.check_out ? { check_out: item.check_out } : {}),
+          ...(item.break_start !== undefined ? { break_start: item.break_start } : {}),
+        })),
+        reason,
+        admin_id: adminId,
+      });
+
+      if (error) throw new Error(error.message);
+      const { CorrectBatchResponseSchema, validateResponse } = await import('@/schemas/api.schemas');
+      return validateResponse(CorrectBatchResponseSchema, data, 'correctAttendanceBatch');
+    } catch (err) {
+      logger.error('[Attendance] Batch correction via Edge Function failed:', err);
       throw err;
     }
   },

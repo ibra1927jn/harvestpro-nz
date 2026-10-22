@@ -72,6 +72,24 @@ const manager3: TranslationDict = {
     'dayset.min_rate': 'Min Rate',
     'dayset.bkt_per_hr': 'bkt/hr',
     'dayset.save': 'Save Settings',
+    // Editor de fichajes: selección múltiple y corrección en lote (#9)
+    'tse.team_only': 'Showing your team\'s timesheets only.',
+    'tse.select_of': 'Select {name}\'s timesheet',
+    'tse.batch.select_all': 'Select all timesheets',
+    'tse.batch.select_flagged': 'Select flagged ({n})',
+    'tse.batch.selected': '{n} selected',
+    'tse.batch.title': 'Correct {n} timesheets',
+    'tse.batch.hint': 'Leave a field empty to keep each timesheet\'s own value. One reason for all of them.',
+    'tse.batch.reason_placeholder': 'Reason for all corrections *',
+    'tse.batch.clear': 'Clear selection',
+    'tse.batch.apply': 'Apply to {n}',
+    'tse.batch.offline': 'No connection: batch corrections go straight to the server and are not queued. Try again when you are back online.',
+    'tse.batch.done': 'Corrected {n} timesheets',
+    'tse.batch.partial': '{ok} corrected, {failed} failed (still selected)',
+    // Estado de revisión de nómina en el editor de fichajes
+    'tse.review.approved': 'Approved by payroll',
+    'tse.review.rejected': 'Rejected: {reason}',
+    'tse.review.rejected_no_reason': 'Rejected by payroll',
 };
 
 export default manager3;

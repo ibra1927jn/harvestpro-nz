@@ -44,6 +44,12 @@ const orchardMap: TranslationDict = {
     'orchardMap.list.status.active': 'Ngāue',
     'orchardMap.list.status.idle': 'Mālōlō',
     'orchardMap.blockTitle': 'Poloka {letter} — {variety}',
+    // Vista del team leader: equipo de cada fila (OrchardMapView / RowCard)
+    'orchardMap.team.mine': 'Hoku timi',
+    'orchardMap.team.other': 'Timi \'a {name}',
+    'orchardMap.team.other_unknown': 'Timi kehe',
+    'orchardMap.team.legend_mine': 'Laine \'o hoku timi',
+    'orchardMap.team.legend_other': 'Ngaahi timi kehe',
 };
 
 export default orchardMap;

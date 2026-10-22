@@ -24,11 +24,13 @@ interface RowAssignmentModalProps {
     assignedPickers: string[]
   ) => Promise<void> | void;
   pickers: PickerForAssignment[];
+  /** Fila preseleccionada (al abrir el modal tocando una fila del mapa) */
+  initialRow?: number;
 }
 
-const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, onAssign, pickers }) => {
+const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, onAssign, pickers, initialRow }) => {
   const { t } = useTranslation();
-  const [rowNumber, setRowNumber] = useState('');
+  const [rowNumber, setRowNumber] = useState(initialRow ? String(initialRow) : '');
   const [side, setSide] = useState<'North' | 'South'>('South');
   const [selectedPickers, setSelectedPickers] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
