@@ -41,7 +41,12 @@ vi.mock('@/stores/useHarvestStore', () => {
       },
     ],
     stats: { totalBuckets: 15, payEstimate: 120, tons: 0.3 },
-    settings: { min_buckets_per_hour: 3.6 },
+    settings: {
+      min_buckets_per_hour: 3.6,
+      piece_rate: 7,
+      // Precios de hoy (piece_rates): el general de hoy del huerto
+      piece_rates: [{ orchardId: 'o1', variety: null, effectiveDate: '2000-01-01', pieceRate: 7.25 }],
+    },
     orchard: { id: 'o1', name: 'Test Orchard', total_rows: 10 },
     orchardBlocks: [],
     rowTargets: {},
@@ -141,6 +146,13 @@ describe('HomeView', () => {
     const { default: HomeView } = await import('./HomeView');
     render(<HomeView />);
     expect(screen.getByText('Alice')).toBeDefined();
+  });
+
+  // Auditoría 23-10 A4: el TL ve el precio por cubeta de HOY (piece_rates), no uno fijo
+  it('shows today\'s piece rate of the orchard', async () => {
+    const { default: HomeView } = await import('./HomeView');
+    render(<HomeView />);
+    expect(screen.getByTestId('tl-price-today').textContent).toContain('$7.25');
   });
 
   // Auditoría 23-10 B8: antes navegaba a la pestaña 'profile', que ya no existe
