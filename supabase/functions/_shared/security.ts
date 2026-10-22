@@ -298,8 +298,11 @@ export const AttendanceBatchCorrectionSchema = z.object({
   items: z.array(AttendanceBatchItemSchema)
     .min(1, 'At least one item is required')
     .max(ATTENDANCE_BATCH_MAX, `At most ${ATTENDANCE_BATCH_MAX} items per batch`),
-  // Un solo motivo para todo el lote (va a la auditoría de cada fichaje)
-  reason: z.string().min(5, 'Correction reason must be at least 5 characters'),
+  // Un solo motivo para todo el lote (va a la auditoría de cada fichaje);
+  // mismo mínimo que `correct`, con tope para no inflar N filas de auditoría
+  reason: z.string()
+    .min(5, 'Correction reason must be at least 5 characters')
+    .max(500, 'Correction reason must be at most 500 characters'),
   // Se ignora: quien corrige es siempre quien llama
   admin_id: z.string().optional(),
 });
