@@ -111,6 +111,18 @@ describe('loadUserProfile', () => {
     expect(result.result.orchardId).toBe('auto-o1');
   });
 
+  it('does not auto-assign an orchard to field staff (manager / HR link them)', async () => {
+    mockGetUserProfile.mockResolvedValue({
+      data: { id: 'u2', full_name: 'Tama', email: 't@test.com', role: 'team_leader', orchard_id: null },
+      error: null,
+    });
+    mockGetFirstOrchardId.mockResolvedValue('auto-o1');
+
+    const result = await loadUserProfile('u2');
+    expect(mockAssignOrchard).not.toHaveBeenCalled();
+    expect(result.result.orchardId).toBeNull();
+  });
+
   it('throws on DB error', async () => {
     mockGetUserProfile.mockResolvedValue({
       data: null,
