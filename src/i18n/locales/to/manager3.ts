@@ -86,6 +86,10 @@ const manager3: TranslationDict = {
     'tse.batch.offline': '\'Ikai ha fehokotaki: \'oku \'alu hangatonu \'a e ngaahi fakatonutonu fakafo\'ituitui ki he seva pea \'ikai tatali. Toe \'ahi\'ahi \'i ho\'o toe hoko atu.',
     'tse.batch.done': 'Kuo fakatonutonu \'a e ngaahi pepa houa \'e {n}',
     'tse.batch.partial': '{ok} kuo fakatonutonu, {failed} na\'e \'ikai lava (kei fili pē)',
+    // Estado de revisión de nómina en el editor de fichajes
+    'tse.review.approved': 'Kuo fakangofua \'e he vahenga',
+    'tse.review.rejected': 'Kuo fakafisi: {reason}',
+    'tse.review.rejected_no_reason': 'Kuo fakafisi \'e he vahenga',
 };
 
 export default manager3;

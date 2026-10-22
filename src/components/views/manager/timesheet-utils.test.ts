@@ -191,3 +191,13 @@ describe('dailyTimesheetTotals', () => {
         expect(dailyTimesheetTotals([]).total).toBe(0);
     });
 });
+
+describe('reviewStatusOf', () => {
+    it('rejected wins over approved; nothing = pending', async () => {
+        const { reviewStatusOf } = await import('./timesheet-utils');
+        expect(reviewStatusOf({ verified_by: 'u', verified_at: 'x', rejected_at: null })).toBe('approved');
+        expect(reviewStatusOf({ verified_by: null, verified_at: null, rejected_at: 'x' })).toBe('rejected');
+        expect(reviewStatusOf({ verified_by: 'u', rejected_at: 'x' })).toBe('rejected');
+        expect(reviewStatusOf({})).toBe('pending');
+    });
+});

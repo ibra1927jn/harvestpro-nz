@@ -86,6 +86,10 @@ const manager3: TranslationDict = {
     'tse.batch.offline': 'कनेक्शन नहीं: बैच सुधार सीधे सर्वर पर जाते हैं और कतार में नहीं रहते। ऑनलाइन होने पर फिर कोशिश करें।',
     'tse.batch.done': '{n} टाइमशीट सुधारी गईं',
     'tse.batch.partial': '{ok} सुधारी गईं, {failed} विफल (अभी भी चयनित)',
+    // Estado de revisión de nómina en el editor de fichajes
+    'tse.review.approved': 'पेरोल द्वारा स्वीकृत',
+    'tse.review.rejected': 'अस्वीकृत: {reason}',
+    'tse.review.rejected_no_reason': 'पेरोल द्वारा अस्वीकृत',
 };
 
 export default manager3;

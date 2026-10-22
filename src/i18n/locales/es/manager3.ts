@@ -86,6 +86,10 @@ const manager3: TranslationDict = {
     'tse.batch.offline': 'Sin conexión: las correcciones en lote van directas al servidor y no se encolan. Inténtalo cuando vuelva la cobertura.',
     'tse.batch.done': 'Corregidos {n} fichajes',
     'tse.batch.partial': '{ok} corregidos, {failed} con error (siguen seleccionados)',
+    // Estado de revisión de nómina en el editor de fichajes
+    'tse.review.approved': 'Aprobada por nómina',
+    'tse.review.rejected': 'Rechazada: {reason}',
+    'tse.review.rejected_no_reason': 'Rechazada por nómina',
 };
 
 export default manager3;

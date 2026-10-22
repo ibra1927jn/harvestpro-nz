@@ -2,7 +2,7 @@
  * TimesheetRow — una fila del editor de hojas de horas (ver o corregir).
  */
 import { todayNZST } from '@/utils/nzst';
-import { AttendanceRow, CorrectionForm, formatTime, calculateHours, isAbnormal, isMealBreakMissing } from './timesheet-utils';
+import { AttendanceRow, CorrectionForm, formatTime, calculateHours, isAbnormal, isMealBreakMissing, reviewStatusOf } from './timesheet-utils';
 import { statusLabel } from '@/i18n/statusLabel';
 import { useTranslation } from '@/i18n';
 
@@ -29,6 +29,7 @@ export default function TimesheetRow({
   const unclosed = !!record.check_in && !record.check_out && record.date < todayNZST();
   const abnormal = isAbnormal(hours);
   const breakMissing = isMealBreakMissing(record);
+  const review = reviewStatusOf(record);
 
   return (
     <tr
@@ -54,6 +55,21 @@ export default function TimesheetRow({
           {record.picker?.name || t('common.unknown')}
         </div>
         <div className="text-xs text-text-muted">{record.picker?.picker_id}</div>
+        {/* Lo que decidió Nómina / el manager sobre esta hoja (antes el TL no lo veía) */}
+        {review === 'approved' && (
+          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+            <span aria-hidden="true" className="material-symbols-outlined text-sm">verified</span>
+            {t('tse.review.approved')}
+          </span>
+        )}
+        {review === 'rejected' && (
+          <span className="mt-1 flex items-start gap-1 rounded-lg bg-red-50 border border-red-200 px-2 py-0.5 text-[11px] font-semibold text-red-700">
+            <span aria-hidden="true" className="material-symbols-outlined text-sm">block</span>
+            {record.rejection_reason
+              ? t('tse.review.rejected', { reason: record.rejection_reason })
+              : t('tse.review.rejected_no_reason')}
+          </span>
+        )}
       </td>
 
       {/* Check-In */}

@@ -21,6 +21,11 @@ export interface AttendanceRow {
     date: string;
     correction_reason?: string;
     corrected_at?: string;
+    /** Revisión de nómina / manager (approve-timesheet) */
+    verified_by?: string | null;
+    verified_at?: string | null;
+    rejected_at?: string | null;
+    rejection_reason?: string | null;
     picker?: {
         id: string;
         name: string;
@@ -154,6 +159,17 @@ export function buildCorrectionUpdates(
         updates.break_start = form.breakStart ? nzTimeToIso(record.date, form.breakStart) : null;
     }
     return updates;
+}
+
+/** Estado de revisión de la hoja: rechazada gana a aprobada; sin revisar = pending */
+export type TimesheetReviewStatus = 'approved' | 'rejected' | 'pending';
+
+export function reviewStatusOf(
+    row: Pick<AttendanceRow, 'verified_by' | 'verified_at' | 'rejected_at'>,
+): TimesheetReviewStatus {
+    if (row.rejected_at) return 'rejected';
+    if (row.verified_by || row.verified_at) return 'approved';
+    return 'pending';
 }
 
 /**

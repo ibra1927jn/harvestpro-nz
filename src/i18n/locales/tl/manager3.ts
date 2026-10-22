@@ -86,6 +86,10 @@ const manager3: TranslationDict = {
     'tse.batch.offline': 'Walang koneksyon: ang mga batch na pagtatama ay direktang ipinapadala sa server at hindi inilalagay sa pila. Subukan ulit kapag online ka na.',
     'tse.batch.done': 'Naitama ang {n} timesheet',
     'tse.batch.partial': '{ok} naitama, {failed} nabigo (napili pa rin)',
+    // Estado de revisión de nómina en el editor de fichajes
+    'tse.review.approved': 'Inaprubahan ng payroll',
+    'tse.review.rejected': 'Tinanggihan: {reason}',
+    'tse.review.rejected_no_reason': 'Tinanggihan ng payroll',
 };
 
 export default manager3;

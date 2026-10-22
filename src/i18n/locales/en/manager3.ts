@@ -86,6 +86,10 @@ const manager3: TranslationDict = {
     'tse.batch.offline': 'No connection: batch corrections go straight to the server and are not queued. Try again when you are back online.',
     'tse.batch.done': 'Corrected {n} timesheets',
     'tse.batch.partial': '{ok} corrected, {failed} failed (still selected)',
+    // Estado de revisión de nómina en el editor de fichajes
+    'tse.review.approved': 'Approved by payroll',
+    'tse.review.rejected': 'Rejected: {reason}',
+    'tse.review.rejected_no_reason': 'Rejected by payroll',
 };
 
 export default manager3;

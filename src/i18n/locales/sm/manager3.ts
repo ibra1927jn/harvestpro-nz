@@ -86,6 +86,10 @@ const manager3: TranslationDict = {
     'tse.batch.offline': 'Leai se feso\'ota\'iga: o fa\'asa\'oga fa\'avae e alu sa\'o i le \'auʻaunaga ma e lē fa\'atalitali. Toe taumafai pe a toe feso\'ota\'i.',
     'tse.batch.done': 'Ua fa\'asa\'oina pepa itula e {n}',
     'tse.batch.partial': '{ok} ua fa\'asa\'oina, {failed} na lē manuia (o lo\'o filifilia pea)',
+    // Estado de revisión de nómina en el editor de fichajes
+    'tse.review.approved': 'Ua fa\'amaonia e le totogi',
+    'tse.review.rejected': 'Ua te\'ena: {reason}',
+    'tse.review.rejected_no_reason': 'Ua te\'ena e le totogi',
 };
 
 export default manager3;

@@ -86,6 +86,10 @@ const manager3: TranslationDict = {
     'tse.batch.offline': 'Kāore he hononga: ka haere tika ngā whakatikatika rōpū ki te tūmau, kāore e tatari. Ngana anō ina hono anō koe.',
     'tse.batch.done': 'Kua whakatikahia ngā pepa hāora {n}',
     'tse.batch.partial': '{ok} kua whakatikahia, {failed} i rahua (kei te tīpakohia tonu)',
+    // Estado de revisión de nómina en el editor de fichajes
+    'tse.review.approved': 'Kua whakaaetia e te utu',
+    'tse.review.rejected': 'Kua whakakāhoretia: {reason}',
+    'tse.review.rejected_no_reason': 'Kua whakakāhoretia e te utu',
 };
 
 export default manager3;

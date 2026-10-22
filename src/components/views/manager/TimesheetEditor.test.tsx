@@ -262,6 +262,27 @@ describe('TimesheetEditor', () => {
         await waitFor(() => expect(screen.getByText('PK-001')).toBeTruthy());
     });
 
+    // Auditoría 23-10 (C): el TL y el manager ven lo que decidió Nómina
+    it('shows the payroll review of each timesheet (approved / rejected with reason)', async () => {
+        mockGetAttendanceByDate.mockResolvedValueOnce([
+            { ...mockRecords[0], verified_by: 'pay-1', verified_at: '2026-03-11T09:00:00+13:00' },
+            { ...mockRecords[1], rejected_at: '2026-03-11T09:00:00+13:00', rejection_reason: 'Break time missing' },
+            { ...mockRecords[2], rejected_at: '2026-03-11T09:00:00+13:00', rejection_reason: null },
+        ]);
+        render(<TimesheetEditor orchardId="o1" />);
+        await waitFor(() => screen.getByText('Alice Smith'));
+        expect(screen.getAllByText('Approved by payroll')).toHaveLength(1);
+        expect(screen.getByText('Rejected: Break time missing')).toBeTruthy();
+        expect(screen.getByText('Rejected by payroll')).toBeTruthy();
+    });
+
+    it('shows no review badge on timesheets nobody reviewed yet', async () => {
+        render(<TimesheetEditor orchardId="o1" />);
+        await waitFor(() => screen.getByText('Alice Smith'));
+        expect(screen.queryByText('Approved by payroll')).toBeNull();
+        expect(screen.queryByText(/^Rejected/)).toBeNull();
+    });
+
     // ── #9: alcance por pickerIds (team leader) ──────────────────────
     describe('pickerIds scope (team leader)', () => {
         it("shows only the given pickers' timesheets and says so", async () => {
