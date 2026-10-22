@@ -12,7 +12,7 @@ import { supabase } from '@/services/supabase';
 import { todayNZST, nzMidnight, nzEndOfDay } from '@/utils/nzst';
 import { PayrollResultSchema, validateResponse } from '@/schemas/api.schemas';
 import { analytics } from '@/config/analytics';
-import { payForRange, payWeekOf, pieceRateFor, isNZPublicHoliday, PAY_RULES, type PayDay } from '@/services/harvestMetrics/pay';
+import { payForRange, payWeekOf, pieceRateOn, nzDateOf, isNZPublicHoliday, PAY_RULES, type PayDay } from '@/services/harvestMetrics/pay';
 import type { DailyTimesheetRecord, PayrollResult, TimesheetEntry } from './payroll/payroll.types';
 import {
   assignBucketsToSegments,
@@ -24,7 +24,7 @@ import {
   type DayBucket,
   type DayTopUp,
 } from './payroll/timesheetLogic';
-import { payRatesRepository } from '@/repositories/pay-rates.repository';
+import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
 import { fetchAllRows } from '@/utils/fetchAllRows';
 
 // Tipos en payroll/payroll.types.ts; se re-exportan para no cambiar los imports
@@ -42,7 +42,9 @@ async function computeDayOfPeople(pickerIds: string[], date: string, minWage: nu
   const { shifts, buckets } = await payrollRepository.fetchDayOfPeople(
     pickerIds, date, nzMidnight(date), nzEndOfDay(date),
   );
-  const rates = await payRatesRepository.load().catch(() => ({ varietyRates: [], orchardRates: {} as Record<string, number> }));
+  // Precio de ESE día de cada variedad y huerto (piece_rates)
+  const { rates, orchardFallbacks } = await pieceRatesRepository.loadForPay(date, date)
+    .catch(() => ({ rates: [], orchardFallbacks: {} as Record<string, number> }));
   const holiday = isNZPublicHoliday(date);
   const byPicker = new Map<string, { day: PayDay | undefined; segHours: Map<string, number> }>();
   for (const id of pickerIds) {
@@ -52,7 +54,7 @@ async function computeDayOfPeople(pickerIds: string[], date: string, minWage: nu
       attendance: closed.map(s => ({ pickerId: id, date, orchardId: s.orchard_id, checkIn: s.check_in, checkOut: s.check_out, breakStart: s.break_start, breakMinutes: s.break_minutes })),
       buckets: buckets.filter(b => b.picker_id === id).map(b => ({
         pickerId: id, scannedAt: b.scanned_at, qualityGrade: b.quality_grade, orchardId: b.orchard_id, variety: b.variety,
-        pieceRate: pieceRateFor({ orchardId: b.orchard_id, variety: b.variety }, { ...rates, fallback: rates.orchardRates[b.orchard_id ?? ''] ?? 6.5 }),
+        pieceRate: pieceRateOn(rates, b.orchard_id, b.variety, nzDateOf(b.scanned_at), orchardFallbacks[b.orchard_id ?? ''] ?? 6.5),
       })),
       pieceRate: 6.5,
       minWage: Math.max(minWage, PAY_RULES.minWageFloor),
@@ -296,11 +298,13 @@ export const payrollService = {
       .eq('orchard_id', orchardId)
       .single();
 
-    const pieceRate = settings?.piece_rate ?? 6.5;
+    const storedPieceRate = Number(settings?.piece_rate ?? 6.5);
     const minWageRate = settings?.min_wage_rate ?? PAY_RULES.minWageFloor;
-    const rates = await payRatesRepository.load().catch(() => ({ varietyRates: [], orchardRates: {} }));
-    const rateOf = (b: { orchard_id: string | null; variety: string | null }) =>
-      pieceRateFor({ orchardId: b.orchard_id, variety: b.variety }, { ...rates, fallback: pieceRate });
+    // Precio de ESE día (piece_rates): cambiarlo hoy no reescribe la hoja de ayer
+    const dayRates = await pieceRatesRepository.loadRange(targetDate, targetDate).catch(() => []);
+    const pieceRate = pieceRateOn(dayRates, orchardId, null, targetDate, storedPieceRate);
+    const rateOf = (b: DayBucket) =>
+      pieceRateOn(dayRates, b.orchard_id, b.variety, nzDateOf(b.scanned_at), b.orchard_id === orchardId ? storedPieceRate : pieceRate);
 
     // 4. Cada cubeta va al tramo en que se recogió (ver timesheetLogic)
     const segmentsByPicker = groupSegmentsByPicker(timesheets);

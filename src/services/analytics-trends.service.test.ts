@@ -17,6 +17,12 @@ vi.mock('@/repositories/analytics-trends.repository', () => ({
     },
 }));
 
+// Precios por día (piece_rates): por defecto ninguno (se paga a piece_rate)
+const loadRange = vi.fn();
+vi.mock('@/repositories/piece-rates.repository', () => ({
+    pieceRatesRepository: { loadRange: (...a: unknown[]) => loadRange(...a) },
+}));
+
 const repo = vi.mocked(analyticsTrendsRepository);
 
 /** Cubetas de un picker repartidas en una hora NZ (UTC+13 en octubre) */
@@ -52,6 +58,7 @@ describe('nzDateRange', () => {
 describe('getDailyTrendsV2 — costPerBin', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        loadRange.mockResolvedValue([]);
         repo.getDailyAggregates.mockResolvedValue([
             { date: '2026-10-10', total_buckets: 50, workforce_count: 1 },
             { date: '2026-10-11', total_buckets: 10, workforce_count: 1 },
@@ -106,5 +113,41 @@ describe('getDailyBleed', () => {
         expect(out[2].label).toBe('Today');
         expect(out.every(p => p.value === 0)).toBe(true);
         expect(repo.getPayInputs).toHaveBeenCalledTimes(1);
+    });
+});
+
+// Auditoría 23-10 (A4): cambiar el precio hoy no reescribe la tendencia de días pasados
+describe('getDailyPay — precio de cada día (piece_rates)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        repo.getPayInputs.mockResolvedValue({
+            attendance: [],
+            buckets: [...buckets('p1', '2026-10-10', 10), ...buckets('p1', '2026-10-11', 10)],
+        });
+    });
+
+    it('cada día cobra el precio fijado ese día o antes; los días anteriores conservan el suyo', async () => {
+        loadRange.mockResolvedValue([
+            { orchardId: 'o1', variety: null, effectiveDate: '2026-10-01', pieceRate: 6.5 },
+            { orchardId: 'o1', variety: null, effectiveDate: '2026-10-11', pieceRate: 8 },
+        ]);
+        const pay = await new AnalyticsTrendsService().getDailyPay('o1', '2026-10-10', '2026-10-11', { piece_rate: 8, min_wage_rate: 23.95 });
+        expect(loadRange).toHaveBeenCalledWith('2026-10-10', '2026-10-11', 'o1');
+        expect(pay.get('2026-10-10')?.pieceEarnings).toBe(65);
+        expect(pay.get('2026-10-11')?.pieceEarnings).toBe(80);
+    });
+
+    it('con los precios ya cargados no los vuelve a pedir; sin poder leerlos, piece_rate', async () => {
+        const svc = new AnalyticsTrendsService();
+        const pay = await svc.getDailyPay('o1', '2026-10-10', '2026-10-11', {
+            piece_rate: 6.5, min_wage_rate: 23.95,
+            daily_rates: [{ orchardId: 'o1', variety: null, effectiveDate: '2026-10-11', pieceRate: 7 }],
+        });
+        expect(loadRange).not.toHaveBeenCalled();
+        expect([pay.get('2026-10-10')?.pieceEarnings, pay.get('2026-10-11')?.pieceEarnings]).toEqual([65, 70]);
+
+        loadRange.mockRejectedValue(new Error('offline'));
+        const fallback = await svc.getDailyPay('o1', '2026-10-10', '2026-10-11', { piece_rate: 6.5, min_wage_rate: 23.95 });
+        expect(fallback.get('2026-10-11')?.pieceEarnings).toBe(65);
     });
 });
