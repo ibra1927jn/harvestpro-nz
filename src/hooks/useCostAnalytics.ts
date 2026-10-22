@@ -39,10 +39,10 @@ export function useCostAnalytics() {
 
     const breakEven = settings?.piece_rate;
 
-    // Los ajustes de pago que necesita la tendencia (precio, mínimo, precios por variedad)
+    // Los ajustes de pago que necesita la tendencia (precio y mínimo; los precios
+    // de cada día los carga getDailyPay desde piece_rates)
     const pieceRate = settings?.piece_rate;
     const minWageRate = settings?.min_wage_rate;
-    const varietyRates = settings?.variety_rates;
 
     // Tendencia histórica 7 días — sólo este fetch sigue siendo async.
     // Coste por cubeta de cada día = pago del día (complemento incluido) / cubetas,
@@ -58,7 +58,7 @@ export function useCostAnalytics() {
             const startDateNZ = nzFmt.format(new Date(Date.now() - 6 * 86_400_000));
             const trends = await analyticsService.getDailyTrendsV2(
                 orchardId, startDateNZ, endDateNZ, pieceRate,
-                { piece_rate: pieceRate, min_wage_rate: minWageRate, variety_rates: varietyRates },
+                { piece_rate: pieceRate, min_wage_rate: minWageRate },
             );
             // La etiqueta del eje es el día de la semana en el idioma de la app; la fecha va en meta
             const weekdayFmt = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'Pacific/Auckland' });
@@ -70,7 +70,7 @@ export function useCostAnalytics() {
         load()
             .catch(e => logger.warn('[CostAnalytics] Trends failed:', e))
             .finally(() => setIsLoading(false));
-    }, [orchardId, locale, t, pieceRate, minWageRate, varietyRates]);
+    }, [orchardId, locale, t, pieceRate, minWageRate]);
 
     // Mapear PickerMetrics → PickerBreakdown para compatibilidad con UI existente
     const pickers = useMemo<PickerBreakdown[]>(() =>

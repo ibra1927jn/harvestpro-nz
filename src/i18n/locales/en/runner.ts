@@ -162,6 +162,7 @@ const runner: TranslationDict = {
     'runner.myts.needs_network': 'You need a connection to send the request. Try again when you are back online.',
     'runner.warehouse.pickup_sent': 'Pickup requested for {n} full bin(s) at the warehouse',
     'runner.warehouse.pickup_failed': 'Could not send the pickup request — try again',
+    'runner.price_today': 'Price per bucket today: {price}',
 };
 
 export default runner;

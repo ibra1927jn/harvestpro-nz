@@ -13,6 +13,9 @@ vi.mock('@/stores/useHarvestStore', () => ({
         { orchard_id: 'o1', id: 'b2' },
       ],
       stats: { totalBuckets: 10 },
+      orchard: { id: 'o1', name: 'A' },
+      orchardBlocks: [],
+      settings: { piece_rate: 7, piece_rates: [{ orchardId: 'o1', variety: null, effectiveDate: '2000-01-01', pieceRate: 7.4 }] },
     }),
 }));
 
@@ -41,6 +44,12 @@ describe('runner LogisticsView', () => {
     const onScan = vi.fn();
     const { container } = render(<LogisticsView onScan={onScan} />);
     expect(container.firstChild).not.toBeNull();
+  });
+
+  // Auditoría 23-10 A4: el runner no enseñaba ningún precio
+  it('shows today\'s piece rate of the orchard', () => {
+    const { getByTestId } = render(<LogisticsView onScan={vi.fn()} />);
+    expect(getByTestId('runner-price-today').textContent).toContain('$7.40');
   });
 
   it('renders with inventory data', () => {

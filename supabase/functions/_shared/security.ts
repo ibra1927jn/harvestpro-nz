@@ -367,6 +367,11 @@ export const TimesheetApprovalSchema = z.object({
   // manda 'current_user' (no es un UUID) y antes toda aprobación daba 400.
   verified_by: z.string().optional(),
   current_updated_at: z.string().optional(),
+}).superRefine((v, ctx) => {
+  // Rechazar vuelve la hoja a quien la corrige: sin motivo no sabe qué cambiar (B10)
+  if (v.decision === 'reject' && (!v.reason || v.reason.length < 3 || v.reason.length > 200)) {
+    ctx.addIssue({ code: 'custom', path: ['reason'], message: 'A rejection needs a reason of 3 to 200 characters' });
+  }
 });
 
 // Audit Log Submission

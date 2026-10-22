@@ -19,6 +19,11 @@ import { writeAudit } from '../_shared/audit.ts'
  * - reactivate:   Restore a user
  *
  * Security: OWNER ONLY — prevents privilege escalation
+ *
+ * Baja / alta en Auth: el trigger trg_sync_auth_ban_with_active (migración
+ * 20261023010000) banea la cuenta en GoTrue y borra sus sesiones al poner
+ * is_active = false, y quita el ban al reactivarla. Se hace en la BD y no aquí
+ * porque RRHH (y otras vías) cambian is_active sin pasar por esta función.
  */
 /** Sin filas cambiadas: el usuario no existe (antes se respondía success y se auditaba) */
 function requireChanged(rows: unknown[] | null): void {

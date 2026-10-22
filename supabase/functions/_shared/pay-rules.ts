@@ -852,26 +852,73 @@ export function payForRange(params: {
 }
 
 /**
- * Precio de una cubeta: el de su variedad en su huerto; si no hay, el de su
- * variedad para la empresa; si no, el precio normal del huerto; si no, el general.
+ * Precio por cubeta fijado un día (tabla piece_rates). Vale desde effectiveDate
+ * hasta que se fije otro para el mismo huerto y variedad.
  */
-export function pieceRateFor(
-    bucket: { orchardId?: string | null; variety?: string | null },
-    rates: {
-        /** variety_rates: [{ orchardId|null, variety, pieceRate }] */
-        varietyRates?: ReadonlyArray<{ orchardId: string | null; variety: string; pieceRate: number }>;
-        /** harvest_settings.piece_rate por huerto */
-        orchardRates?: Readonly<Record<string, number>>;
-        fallback: number;
-    },
-): number {
-    const v = bucket.variety?.trim().toLowerCase();
-    if (v && rates.varietyRates?.length) {
-        const own = rates.varietyRates.find(r => r.orchardId === (bucket.orchardId ?? null) && r.variety.trim().toLowerCase() === v);
-        if (own) return own.pieceRate;
-        const company = rates.varietyRates.find(r => r.orchardId === null && r.variety.trim().toLowerCase() === v);
-        if (company) return company.pieceRate;
+export interface DailyPieceRate {
+    orchardId: string;
+    /** null = precio general del huerto (variedades sin precio propio) */
+    variety: string | null;
+    /** YYYY-MM-DD (día NZ) desde el que vale */
+    effectiveDate: string;
+    pieceRate: number;
+}
+
+/** Índice por huerto+variedad, ordenado de la fecha más nueva a la más vieja */
+type DailyRateIndex = Map<string, ReadonlyArray<DailyPieceRate>>;
+const DAILY_RATE_INDEX = new WeakMap<ReadonlyArray<DailyPieceRate>, DailyRateIndex>();
+
+const dailyRateKey = (orchardId: string, variety: string | null | undefined) =>
+    `${orchardId}|${(variety ?? '').trim().toLowerCase()}`;
+
+function dailyRateIndexOf(rates: ReadonlyArray<DailyPieceRate>): DailyRateIndex {
+    let index = DAILY_RATE_INDEX.get(rates);
+    if (index) return index;
+    const groups = new Map<string, DailyPieceRate[]>();
+    for (const r of rates) {
+        const k = dailyRateKey(r.orchardId, r.variety);
+        const list = groups.get(k) ?? [];
+        list.push(r);
+        groups.set(k, list);
     }
-    if (bucket.orchardId && rates.orchardRates?.[bucket.orchardId] != null) return rates.orchardRates[bucket.orchardId];
-    return rates.fallback;
+    index = new Map();
+    for (const [k, list] of groups) {
+        index.set(k, list.sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate)));
+    }
+    DAILY_RATE_INDEX.set(rates, index);
+    return index;
+}
+
+function latestOn(list: ReadonlyArray<DailyPieceRate> | undefined, day: string): DailyPieceRate | undefined {
+    if (!list) return undefined;
+    for (const r of list) if (r.effectiveDate.slice(0, 10) <= day) return r;
+    return undefined;
+}
+
+/**
+ * Precio de una cubeta de un día (decisión del dueño 2026-10-23): el precio se
+ * fija por huerto, variedad y día. Cambiarlo hoy no toca los días anteriores;
+ * si un día nadie lo cambia, vale el último fijado.
+ * - la fila de esa variedad en ese huerto con la mayor effectiveDate <= dateNZ;
+ * - si no hay, la general del huerto (variety null) igual;
+ * - si no, fallback (harvest_settings.piece_rate).
+ * Función pura (el índice que se crea por lista es solo una caché).
+ */
+export function pieceRateOn(
+    rates: ReadonlyArray<DailyPieceRate>,
+    orchardId: string | null | undefined,
+    variety: string | null | undefined,
+    dateNZ: string,
+    fallback: number,
+): number {
+    if (!orchardId || rates.length === 0) return fallback;
+    const index = dailyRateIndexOf(rates);
+    const day = dateNZ.slice(0, 10);
+    const v = variety?.trim();
+    if (v) {
+        const own = latestOn(index.get(dailyRateKey(orchardId, v)), day);
+        if (own) return own.pieceRate;
+    }
+    const general = latestOn(index.get(dailyRateKey(orchardId, null)), day);
+    return general ? general.pieceRate : fallback;
 }

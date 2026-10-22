@@ -4,6 +4,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { supabase } from '@/services/supabase';
 import { storeSyncRepository } from '@/repositories/store-sync.repository';
+import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
+import { todayNZST } from '@/utils/nzst';
 
 function mockChain(result: { data?: unknown; error?: unknown }) {
     const chain: Record<string, unknown> = {
@@ -46,8 +48,28 @@ describe('storeSyncRepository', () => {
         it('returns harvest settings', async () => {
             const settings = { piece_rate: 6.50, min_wage_rate: 23.95 };
             fromSpy.mockReturnValue(mockChain({ data: settings, error: null }) as never);
-            expect(await storeSyncRepository.getSettings('o1')).toEqual({ ...settings, variety_rates: [] });
+            vi.spyOn(pieceRatesRepository, 'loadRange').mockResolvedValue([]);
+            expect(await storeSyncRepository.getSettings('o1')).toEqual({ ...settings, piece_rates: [] });
             expect(fromSpy).toHaveBeenCalledWith('harvest_settings');
+        });
+
+        it('piece_rate is today\'s general price of the orchard and piece_rates the prices of today', async () => {
+            const today = todayNZST();
+            const rates = [
+                { orchardId: 'o1', variety: null, effectiveDate: today, pieceRate: 7.25 },
+                { orchardId: 'o1', variety: 'Braeburn', effectiveDate: '2026-01-01', pieceRate: 8.1 },
+            ];
+            fromSpy.mockReturnValue(mockChain({ data: { piece_rate: 6.5, min_wage_rate: 23.95 }, error: null }) as never);
+            const load = vi.spyOn(pieceRatesRepository, 'loadRange').mockResolvedValue(rates);
+            const out = await storeSyncRepository.getSettings('o1');
+            expect(load).toHaveBeenCalledWith(today, today, 'o1');
+            expect(out).toEqual({ piece_rate: 7.25, min_wage_rate: 23.95, piece_rates: rates });
+        });
+
+        it('without readable piece rates keeps the stored price', async () => {
+            fromSpy.mockReturnValue(mockChain({ data: { piece_rate: 6.5 }, error: null }) as never);
+            vi.spyOn(pieceRatesRepository, 'loadRange').mockRejectedValue(new Error('offline'));
+            expect(await storeSyncRepository.getSettings('o1')).toEqual({ piece_rate: 6.5, piece_rates: [] });
         });
 
         it('returns null on missing', async () => {

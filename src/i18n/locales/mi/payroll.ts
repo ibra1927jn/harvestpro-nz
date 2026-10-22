@@ -115,6 +115,12 @@ const payroll: TranslationDict = {
     'pay.err.calc': 'Kāore i taea te tātai i te utu o tēnei wiki.',
     'pay.err.close': 'Kāore i taea te kati i te wiki.',
     'pay.err.reopen': 'Kāore i taea te whakatuwhera anō i te wiki.',
+    'pay.ts.open_shift_no_approve': 'Kei te tuwhera te wā mahi (kāore anō kia puta): ka taea te whakaae ina katia',
+    'pay.ts.approve_all_skipped': '{count} wā mahi tuwhera i mahue (kāore anō kia puta)',
+    'pay.ts.reject_reason_label': 'Te take o te whakakore',
+    'pay.ts.reject_reason_placeholder': 'He aha me whakatika?',
+    'pay.ts.reject_reason_hint': '{n}/{max} pū (3 te iti rawa)',
+    'pay.ts.reject_confirm': 'Whakakāhore',
 };
 
 export default payroll;

@@ -410,6 +410,11 @@ BEGIN
     -- Las semanas ya cerradas en la BD (datos reales) bloquearían los fichajes
     -- de prueba de hoy: dentro de esta transacción (ROLLBACK) se reabren
     UPDATE public.pay_weeks SET status = 'reopened' WHERE status = 'closed';
+    -- Igual con los días cerrados recientes del seed (trg_enforce_closed_day_attendance
+    -- bloquearía los fichajes de prueba de hace unos días). Los cierres de prueba
+    -- (hace 200 y 400 días) se quedan.
+    UPDATE public.day_closures SET status = 'open'
+    WHERE status = 'closed' AND date > (now() AT TIME ZONE 'Pacific/Auckland')::date - 100;
 
     -- Las pruebas usan el valor de producción (2FA exigido en el servidor),
     -- aunque la BD de desarrollo lo tenga apagado (scripts/dev-disable-mfa.sql)

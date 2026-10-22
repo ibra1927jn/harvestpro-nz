@@ -115,6 +115,12 @@ const payroll: TranslationDict = {
     'pay.err.calc': 'Naʻe ʻikai lava ʻo fakafika ʻa e vāhenga ʻo e uike ni.',
     'pay.err.close': 'Naʻe ʻikai lava ʻo tāpuni ʻa e uike.',
     'pay.err.reopen': 'Naʻe ʻikai lava ʻo toe fakaava ʻa e uike.',
+    'pay.ts.open_shift_no_approve': 'Ngāue ʻoku kei ava (ʻikai ke ʻalu): ʻe lava ke fakangofua ʻi he tāpuni',
+    'pay.ts.approve_all_skipped': 'Ngāue ava ʻe {count} naʻe ʻikai fakangofua (ʻikai ke ʻalu)',
+    'pay.ts.reject_reason_label': 'Ko e ʻuhinga ʻo e taliteke',
+    'pay.ts.reject_reason_placeholder': 'Ko e hā ʻoku fiemaʻu ke fakatonutonu?',
+    'pay.ts.reject_reason_hint': '{n}/{max} mataʻitohi (ko e siʻisiʻi taha ʻa e 3)',
+    'pay.ts.reject_confirm': 'Taliteke',
 };
 
 export default payroll;

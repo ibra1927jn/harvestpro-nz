@@ -162,6 +162,7 @@ const runner: TranslationDict = {
     'runner.myts.needs_network': 'Kailangan ng koneksyon para maipadala ang kahilingan. Subukan ulit kapag may signal na.',
     'runner.warehouse.pickup_sent': 'Hiniling ang pagkuha ng {n} punong bin sa bodega',
     'runner.warehouse.pickup_failed': 'Hindi naipadala ang kahilingan sa pagkuha — subukan ulit',
+    'runner.price_today': 'Presyo bawat bucket ngayon: {price}',
 };
 
 export default runner;

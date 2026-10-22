@@ -18,7 +18,7 @@ import fc from 'fast-check';
 
 vi.mock('@/config/analytics', () => ({ analytics: { trackPayrollExport: vi.fn() } }));
 
-import { payForRange, pieceRateFor, type PickerRangePay } from '@/services/harvestMetrics/pay';
+import { payForRange, pieceRateOn, nzDateOf, type PickerRangePay, type DailyPieceRate } from '@/services/harvestMetrics/pay';
 import { computePerPicker } from '@/services/harvestMetrics/perPicker';
 import { buildWeekBreakdown } from '@/hooks/useWeeklyReport';
 import { exportService } from '@/services/export.service';
@@ -33,16 +33,23 @@ const RUNS = diffRuns();
 const cents = (n: number) => Math.round(n * 100);
 const holidays = REF_NZ_PUBLIC_HOLIDAYS;
 
-function appRates(r: RefRates) {
-    return { varietyRates: r.varietyRates.map(v => ({ orchardId: v.orchardId, variety: v.variety, pieceRate: v.rate })), orchardRates: r.orchardRates, fallback: r.fallback };
+/** Precios por día tal como los carga la app (piece_rates) */
+function appDaily(r: RefRates): DailyPieceRate[] {
+    return r.daily.map(d => ({ orchardId: d.orchardId, variety: d.variety, effectiveDate: d.from, pieceRate: d.rate }));
+}
+
+/** Precio de una cubeta en la app: pieceRateOn con el fallback del huerto (harvest_settings) */
+function appRate(b: { orchardId: string | null; variety: string | null; scannedAt: string }, r: RefRates, daily = appDaily(r)): number {
+    return pieceRateOn(daily, b.orchardId, b.variety, nzDateOf(b.scannedAt), (b.orchardId ? r.orchardRates[b.orchardId] : undefined) ?? r.fallback);
 }
 
 function appPay(w: GeneratedWeek, minWage = w.minWage, rates = w.rates): PickerRangePay[] {
+    const daily = appDaily(rates);
     return payForRange({
         attendance: w.shifts.map(s => ({ ...s })),
         buckets: w.buckets.map(b => ({
             pickerId: b.pickerId, scannedAt: b.scannedAt, qualityGrade: b.grade, orchardId: b.orchardId, variety: b.variety,
-            pieceRate: pieceRateFor(b, appRates(rates)),
+            pieceRate: appRate(b, rates, daily),
         })),
         pieceRate: rates.fallback,
         minWage,
@@ -124,7 +131,7 @@ function dbTables(w: GeneratedWeek, contracts: Record<string, number>) {
     ];
     return {
         harvest_settings: settings,
-        variety_rates: w.rates.varietyRates.map(v => ({ orchard_id: v.orchardId, variety: v.variety, piece_rate: v.rate })),
+        piece_rates: w.rates.daily.map((d, i) => ({ id: `pr-${i}`, orchard_id: d.orchardId, variety: d.variety, effective_date: d.from, piece_rate: d.rate })),
         bucket_records: [
             ...w.buckets.map((b, i) => ({ id: i, picker_id: b.pickerId, orchard_id: b.orchardId, variety: b.variety, scanned_at: b.scannedAt, quality_grade: b.grade ?? null, deleted_at: null })),
             // Una cubeta borrada nunca se paga
@@ -290,8 +297,9 @@ describe('payroll differential: live manager/team-leader screen and weekly repor
             const records = buckets.map((b, i) => ({ id: String(i), picker_id: b.pickerId, scanned_at: b.scannedAt, quality_grade: b.grade, orchard_id: b.orchardId, variety: b.variety })) as unknown as BucketRecord[];
             const live = computePerPicker(crew, records, {
                 piece_rate: w.rates.fallback, min_wage_rate: w.minWage, shift_start_time: '07:00',
-                variety_rates: w.rates.varietyRates.map(v => ({ orchard_id: v.orchardId, variety: v.variety, piece_rate: v.rate })),
-            } as never, w.now);
+                // Lo que carga el store: los precios del huerto que valen hoy
+                piece_rates: appDaily(w.rates).filter(d => d.orchardId === 'orch-a' && d.effectiveDate <= today),
+            }, w.now);
             const ref = referencePay(shifts, buckets, refCfg(w)).filter(d => d.date === today);
             for (const m of live) {
                 const r = ref.find(d => d.pickerId === m.pickerId);
@@ -310,7 +318,7 @@ describe('payroll differential: live manager/team-leader screen and weekly repor
                 crew: [],
                 pieceRate: w.rates.fallback,
                 minWage: w.minWage,
-                varietyRates: w.rates.varietyRates.map(v => ({ orchard_id: v.orchardId, variety: v.variety, piece_rate: v.rate })) as never,
+                dailyRates: appDaily(w.rates),
                 now: w.now,
             });
             // buildWeekBreakdown usa los festivos de la app: deben ser los mismos

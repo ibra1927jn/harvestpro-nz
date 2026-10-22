@@ -9,12 +9,13 @@ import { UnclosedShiftsAlert } from '@/components/common/UnclosedShiftsAlert';
 import { useTranslation } from '@/i18n';
 import { formatNZD, formatNZDate } from '@/utils/nzFormat';
 import { TeamQualityTodayCard } from './TeamQualityTodayCard';
+import { useTodayPieceRate, rowOfTeam } from '@/hooks/useTodayPieceRate';
 
 const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
     const { t } = useTranslation();
     // El avatar abre «Mi cuenta» (antes llevaba a la pestaña 'profile', que ya no existe: pantalla en blanco)
     const [accountOpen, setAccountOpen] = useState(false);
-    const { stats, crew: orchardCrew, settings, openPickerProfile } = useHarvest();
+    const { stats, crew: orchardCrew, settings, openPickerProfile, rowAssignments } = useHarvest();
     const { appUser } = useAuth();
     const currentUser = appUser ? { name: appUser.full_name, id: appUser.id } : null;
 
@@ -28,6 +29,10 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
         const ids = new Set(crew.map(p => p.id));
         return perPicker.filter(m => ids.has(m.pickerId)).reduce((sum, m) => sum + m.earned, 0);
     }, [perPicker, crew]);
+
+    // Precio por cubeta de HOY de la variedad de la fila de mi equipo (o el general
+    // de hoy); cambia sin recargar cuando el manager lo fija (realtime de piece_rates)
+    const { rate: pieceRateToday, variety: rateVariety } = useTodayPieceRate(rowOfTeam(rowAssignments, appUser?.id));
 
     // 2. Safety Status (Real Monitor)
     const safetyIssuePicker = crew.find(p => p.status === 'suspended' || p.status === 'issue');
@@ -123,6 +128,9 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('tl.home.team_target')}</span>
                             <p className="text-xs font-bold text-primary">
                                 {t('tl.home.bkt_per_hr', { n: settings?.min_buckets_per_hour || 3.6 })}
+                            </p>
+                            <p className="text-[11px] font-semibold text-slate-500" data-testid="tl-price-today">
+                                {t('tl.piece_rate')}: {t('tl.per_bin', { amount: formatNZD(pieceRateToday) })}{rateVariety ? ` · ${rateVariety}` : ''}
                             </p>
                         </div>
                     </div>

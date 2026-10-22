@@ -20,7 +20,6 @@ const settings: TranslationDict = {
     // Harvest Configuration
     'settings.harvest.title': 'Configuración de Cosecha',
     'settings.harvest.subtitle': 'Tarifas, metas y horarios de turno',
-    'settings.harvest.piece_rate': 'Tarifa por Cubeta',
     'settings.harvest.min_wage': 'Salario Mínimo (por hora)',
     'settings.harvest.target_buckets': 'Meta de Cubetas / Hora',
     'settings.harvest.daily_target': 'Meta Diaria (toneladas)',

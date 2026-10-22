@@ -7,7 +7,8 @@ import {
     checkRateLimit,
     ComplianceCheckSchema,
 } from '../_shared/security.ts'
-import { payForRange, pieceRateFor, nzDateOf, isNZPublicHoliday, PAY_RULES } from '../_shared/pay-rules.ts'
+import { payForRange, pieceRateOn, nzDateOf, isNZPublicHoliday, PAY_RULES } from '../_shared/pay-rules.ts'
+import { loadDailyPieceRates } from '../_shared/piece-rates.ts'
 
 /**
  * check-compliance — Server-side NZ Employment Relations Act compliance
@@ -110,13 +111,12 @@ serve(async (req) => {
             .lte('scanned_at', `${today}T23:59:59${nzOffset}`)
             .in('picker_id', picker_ids)
 
-        // Precio de cada cubeta: variedad (huerto → empresa) o precio del huerto
-        const [{ data: varietyRows }, { data: settingsRows }] = await Promise.all([
-            supabase.from('variety_rates').select('orchard_id, variety, piece_rate'),
+        // Precio de cada cubeta: el de hoy de su variedad en su huerto (piece_rates);
+        // sin él, el general del huerto de hoy; si no, harvest_settings.piece_rate
+        const [dailyRates, { data: settingsRows }] = await Promise.all([
+            loadDailyPieceRates(supabase, today, today),
             supabase.from('harvest_settings').select('orchard_id, piece_rate'),
         ])
-        const varietyRates = ((varietyRows ?? []) as { orchard_id: string | null; variety: string; piece_rate: number }[])
-            .map(v => ({ orchardId: v.orchard_id, variety: v.variety, pieceRate: Number(v.piece_rate) }))
         const orchardRates: Record<string, number> = {}
         for (const s of (settingsRows ?? []) as { orchard_id: string; piece_rate: number | null }[]) {
             if (s.piece_rate != null) orchardRates[s.orchard_id] = Number(s.piece_rate)
@@ -150,7 +150,7 @@ serve(async (req) => {
                 })),
                 buckets: bktRows.filter(b => b.picker_id === pickerId).map(b => ({
                     pickerId, scannedAt: b.scanned_at, qualityGrade: b.quality_grade, orchardId: b.orchard_id, variety: b.variety,
-                    pieceRate: pieceRateFor({ orchardId: b.orchard_id, variety: b.variety }, { varietyRates, orchardRates, fallback: pieceRate }),
+                    pieceRate: pieceRateOn(dailyRates, b.orchard_id, b.variety, nzDateOf(b.scanned_at), (b.orchard_id ? orchardRates[b.orchard_id] : undefined) ?? pieceRate),
                 })),
                 pieceRate,
                 minWage,

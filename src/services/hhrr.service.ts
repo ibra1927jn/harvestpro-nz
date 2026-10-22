@@ -15,8 +15,8 @@ import { todayNZST, nzMidnight, addDaysYMD } from '@/utils/nzst';
 import { userRepository2 } from '@/repositories/user.repository';
 import { contractRepository2 } from '@/repositories/contract.repository';
 import { attendanceRepository } from '@/repositories/attendance.repository';
-import { payForRange, payWeekOf, nzDateOf, pieceRateFor, PAY_RULES, type PickerRangePay } from '@/services/harvestMetrics';
-import { payRatesRepository } from '@/repositories/pay-rates.repository';
+import { payForRange, payWeekOf, nzDateOf, pieceRateOn, PAY_RULES, type PickerRangePay } from '@/services/harvestMetrics';
+import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
 import { hrDocumentsRepository, HR_DOCUMENT_TYPE_LABELS } from '@/repositories/hr-documents.repository';
 import { leaveService, onLeaveOn } from '@/services/leave.service';
 import type { ComplianceAlert, Employee, HRSummary, PayrollEntry } from './hhrr/hhrr.types';
@@ -206,7 +206,8 @@ async function loadPayWeek(orchardId?: string, minWageFor?: (personId: string) =
     attendanceRepository.getHoursSummary(orchardId, week.start),
     // Medianoche NZ del lunes; una fecha sola compara con 00:00 UTC (13:00 NZDT)
     storeSyncRepository.getBucketCounts(orchardId, nzMidnight(week.start)),
-    payRatesRepository.load().catch(() => ({ varietyRates: [], orchardRates: {} })),
+    // Precio de cada día de la semana (piece_rates)
+    pieceRatesRepository.loadForPay(week.start, week.end).catch(() => ({ rates: [], orchardFallbacks: {} as Record<string, number> })),
   ]);
 
   let pieceRate = 6.5;
@@ -236,7 +237,7 @@ async function loadPayWeek(orchardId?: string, minWageFor?: (personId: string) =
       qualityGrade: b.quality_grade,
       orchardId: b.orchard_id,
       variety: b.variety,
-      pieceRate: pieceRateFor({ orchardId: b.orchard_id, variety: b.variety }, { ...rates, fallback: pieceRate }),
+      pieceRate: pieceRateOn(rates.rates, b.orchard_id, b.variety, nzDateOf(b.scanned_at as string), rates.orchardFallbacks[b.orchard_id ?? ''] ?? pieceRate),
     }));
 
   const people = new Set<string>([...attendanceRows.map(a => a.pickerId), ...bucketRows.map(b => b.pickerId)]);

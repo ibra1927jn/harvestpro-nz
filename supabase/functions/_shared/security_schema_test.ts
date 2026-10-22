@@ -87,3 +87,13 @@ Deno.test('AttendanceInputSchema still accepts the single correct action', () =>
   });
   assert(r.success, 'single correction unchanged');
 });
+
+Deno.test('TimesheetApprovalSchema: a rejection needs a reason of 3 to 200 characters', async () => {
+  const { TimesheetApprovalSchema } = await import('./security.ts');
+  const id = '00000000-0000-4000-8000-000000000001';
+  assert(!TimesheetApprovalSchema.safeParse({ attendance_id: id, decision: 'reject' }).success, 'no reason');
+  assert(!TimesheetApprovalSchema.safeParse({ attendance_id: id, decision: 'reject', reason: '  no ' }).success, 'too short');
+  assert(!TimesheetApprovalSchema.safeParse({ attendance_id: id, decision: 'reject', reason: 'x'.repeat(201) }).success, 'too long');
+  assert(TimesheetApprovalSchema.safeParse({ attendance_id: id, decision: 'reject', reason: 'Break missing' }).success, 'valid');
+  assert(TimesheetApprovalSchema.safeParse({ attendance_id: id }).success, 'approve needs no reason');
+});
