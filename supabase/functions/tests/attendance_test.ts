@@ -18,6 +18,13 @@ import {
     seededId, seededToken, service, show, testOpts,
 } from './_helpers.ts'
 
+/** Día NZ n días antes (YYYY-MM-DD) */
+function nzDayBefore(day: string, n: number): string {
+    const d = new Date(`${day}T12:00:00Z`)
+    d.setUTCDate(d.getUTCDate() - n)
+    return d.toISOString().slice(0, 10)
+}
+
 type CheckIn = { id: string; already_checked_in: boolean; closed_shift_id?: string | null }
 
 Deno.test({ name: 'manage-attendance and approve-timesheet', ...testOpts, fn: async t => {
@@ -143,12 +150,12 @@ Deno.test({ name: 'manage-attendance and approve-timesheet', ...testOpts, fn: as
             assertEquals(count, 0, 'no audit row for a change that did not happen')
         })
 
-        await t.step('correct: someone else\'s orchard (not visible) → rejected', async () => {
+        await t.step('correct: someone else\'s orchard → rejected (403: out of scope)', async () => {
             const r = await call('manage-attendance', {
                 token: leaderU.token,
                 body: { action: 'correct', attendance_id: shiftT, check_out: nzTime(today, '20:00'), reason: 'not my orchard', admin_id: leaderU.id },
             })
-            assertEquals(r.status, 400, show(r))
+            assertEquals(r.status, 403, show(r))
             const { data } = must(await service.from('daily_attendance').select('check_out').eq('id', shiftT).single(), 'row')
             assertEquals(new Date(data!.check_out).toISOString(), nzTime(today, '15:30'))
         })
@@ -405,6 +412,28 @@ Deno.test({ name: 'manage-attendance and approve-timesheet', ...testOpts, fn: as
             const { data } = must(await service.from('daily_attendance').select('verified_by, rejected_at').eq('id', open!.id).single(), 'open')
             assertEquals(data!.verified_by, null)
             assertEquals(data!.rejected_at, null)
+        })
+
+        await t.step('approve-timesheet: a shift over 14 h is not approved until corrected (409 LONG_SHIFT)', async () => {
+            const day = nzDayBefore(today, 2)
+            const { data: long } = must(await service.from('daily_attendance').insert({
+                picker_id: other.id, orchard_id: orchardT, date: day,
+                check_in: nzTime(day, '05:00'), check_out: nzTime(day, '21:00'), status: 'present',
+            }).select('id').single(), 'long shift')
+            const token = await seededToken('payroll_admin')
+            const r = await call('approve-timesheet', { token, body: { attendance_id: long!.id } })
+            assertEquals(r.status, 409, show(r))
+            assert(r.text.includes('LONG_SHIFT'), show(r))
+            // Corregida (el manager confirma el día largo): ya se aprueba
+            const fix = await call('manage-attendance', {
+                token: managerT.token,
+                body: { action: 'correct', attendance_id: long!.id, check_out: nzTime(day, '20:30'), reason: 'Long day confirmed by the crew' },
+            })
+            assertEquals(fix.status, 200, show(fix))
+            const { data: fixed } = must(await service.from('daily_attendance').select('hours_worked').eq('id', long!.id).single(), 'fixed')
+            assertEquals(Number(fixed!.hours_worked), 15.5)
+            const ok = await call('approve-timesheet', { token, body: { attendance_id: long!.id } })
+            assertEquals(ok.status, 200, show(ok))
         })
 
         await t.step('approve-timesheet: stale copy (optimistic lock) and unknown id → 400', async () => {

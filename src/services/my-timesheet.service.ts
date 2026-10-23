@@ -76,7 +76,7 @@ export const myTimesheetService = {
             checkOut: r.check_out,
             breakStart: r.break_start,
             breakMinutes: r.break_minutes,
-            hours: shiftHours({ checkIn: r.check_in, checkOut: r.check_out, breakStart: r.break_start, breakMinutes: r.break_minutes, now }).hours,
+            hours: shiftHours({ checkIn: r.check_in, checkOut: r.check_out, breakStart: r.break_start, breakMinutes: r.break_minutes, now, corrected: !!r.corrected_at }).hours,
             status: statusOf(r),
             correctedAt: r.corrected_at,
             correctionReason: r.correction_reason,

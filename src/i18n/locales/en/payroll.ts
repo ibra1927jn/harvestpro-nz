@@ -114,7 +114,7 @@ const payroll: TranslationDict = {
     'pay.err.close': 'Couldn\'t close the week.',
     'pay.err.reopen': 'Couldn\'t reopen the week.',
     'pay.ts.open_shift_no_approve': 'Open shift (no check-out yet): it can be approved once it is closed',
-    'pay.ts.approve_all_skipped': '{count} open shifts skipped (no check-out yet)',
+    'pay.ts.approve_all_skipped': '{count} skipped (open, or over 14 h and not corrected)',
     'pay.ts.reject_reason_label': 'Reason for rejection',
     'pay.ts.reject_reason_placeholder': 'What needs fixing?',
     'pay.ts.reject_reason_hint': '{n}/{max} characters (at least 3)',
@@ -125,6 +125,8 @@ const payroll: TranslationDict = {
     'pay.hist.confirm_delete': 'Delete {file} from the export history? The file itself is not affected.',
     'pay.hist.delete_for': 'Delete {file} from the history',
     'pay.hist.delete_failed': 'Not deleted. Try again.',
+    'pay.ts.long_shift_no_approve': 'Over 14 h and not corrected: only 14 h are paid. Fix the check-out time in Timesheet before approving it',
+    'pay.ts.long_open_shift': 'Open for more than 14 h (forgotten check-out?): only 14 h are paid until it is fixed',
 };
 
 export default payroll;

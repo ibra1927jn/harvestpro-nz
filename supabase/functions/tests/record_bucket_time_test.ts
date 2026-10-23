@@ -7,7 +7,7 @@
  *   el manager del huerto puede leer (antes solo lo veía el móvil del runner).
  */
 import { assert, assertEquals } from 'https://deno.land/std@0.168.0/testing/asserts.ts'
-import { checkScanTime } from '../_shared/scan-time.ts'
+import { checkScanTime, measuredSkew } from '../_shared/scan-time.ts'
 import {
     ANON_KEY, SUPABASE_URL, call, cleanupAll, makeOrchard, makePicker, makeUser, must, service, show, testOpts,
 } from './_helpers.ts'
@@ -24,8 +24,16 @@ Deno.test('checkScanTime: offline scans from earlier today or this week are acce
         assertEquals(checkScanTime(at, NOW, NOW), { verdict: 'ok', scannedAt: at })
         assertEquals(checkScanTime(at, NOW, null), { verdict: 'ok', scannedAt: at }) // móvil antiguo sin client_now
     }
-    // Un par de minutos de diferencia de reloj es normal
-    assertEquals(checkScanTime(new Date(NOW + 2 * MIN).toISOString(), NOW, NOW + 2 * MIN).verdict, 'ok')
+    // Un par de minutos de diferencia de reloj es normal, pero nunca se guarda
+    // una hora del futuro: se queda en la del servidor
+    assertEquals(checkScanTime(new Date(NOW + 2 * MIN).toISOString(), NOW, NOW + 2 * MIN),
+        { verdict: 'ok', scannedAt: new Date(NOW).toISOString() })
+})
+
+Deno.test('measuredSkew: the phone clock offset is stored with the scan', () => {
+    assertEquals(measuredSkew(NOW, NOW - 3 * MIN, null), 3 * MIN)   // móvil 3 min atrasado
+    assertEquals(measuredSkew(NOW, null, -60 * MIN), -60 * MIN)      // sin client_now: lo que corrigió el móvil
+    assertEquals(measuredSkew(NOW, null, null), null)
 })
 
 Deno.test('checkScanTime: a scan in the future is rejected unless the measured phone clock explains it', () => {
@@ -122,9 +130,27 @@ Deno.test({ name: 'record-bucket reports rejected and flagged scans so the manag
             const [x] = r.json.results as Result[]
             assertEquals(x.status, 'saved', show(r))
             assert(x.flag?.startsWith('PHONE_CLOCK_AHEAD'), show(r))
-            const { data } = must(await service.from('bucket_records').select('scanned_at').eq('id', s.id).single(), 'read')
+            const { data } = must(await service.from('bucket_records').select('scanned_at, clock_skew_ms').eq('id', s.id).single(), 'read')
             const stored = Date.parse(data!.scanned_at as string)
             assert(Math.abs(stored - (Date.now() - 10 * 60_000)) < 2 * 60_000, `stored ${data!.scanned_at}`)
+            // El desfase del móvil queda apuntado con la cubeta (servidor − móvil: −2 h)
+            assert(Math.abs(Number(data!.clock_skew_ms) + 2 * 3_600_000) < 60_000, `skew ${data!.clock_skew_ms}`)
+        })
+
+        await t.step('a scan a couple of minutes ahead is stored with the server time, never in the future', async () => {
+            const s = scan(Date.now() + 3 * 60_000)
+            const r = await call('record-bucket', { token: runner.token, body: { scans: [s], client_now: Date.now() } })
+            assertEquals((r.json.results as Result[])[0].status, 'saved', show(r))
+            const { data } = must(await service.from('bucket_records').select('scanned_at, created_at').eq('id', s.id).single(), 'read')
+            assert(Date.parse(data!.scanned_at as string) <= Date.parse(data!.created_at as string) + 1_000, `stored ${data!.scanned_at}`)
+        })
+
+        await t.step('single scan without a phone time: the server sets it', async () => {
+            const r = await call('record-bucket', {
+                token: runner.token, body: { picker_id: picker.badge, orchard_id: orchard, quality_grade: 'A' },
+            })
+            assertEquals(r.status, 200, show(r))
+            assert(Math.abs(Date.parse(String(r.json.scanned_at)) - Date.now()) < 60_000, show(r))
         })
     } finally {
         await cleanupAll()

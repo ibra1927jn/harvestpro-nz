@@ -37,6 +37,8 @@ describe('bucketLedgerService.recordBucket', () => {
             bin_id: 'b1',
             scanned_by: 'tl1',
             scanned_at: baseEvent.scanned_at,
+            // Hora del móvil al enviar: el servidor mide el desfase y corrige
+            client_now: expect.any(Number),
         });
         expect((result as { id: string })?.id).toBe('rec-1');
     });

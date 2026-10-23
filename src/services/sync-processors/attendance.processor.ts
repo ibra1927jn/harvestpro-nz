@@ -32,15 +32,17 @@ import { SyncRejectedError, isServerRejection } from '../sync-queue/rejectedErro
 async function processRollCall(payload: AttendancePayload & { action: NonNullable<AttendancePayload['action']> }): Promise<void> {
     const id = payload.attendance_id;
     if (!id) throw new SyncRejectedError('Roll call item without shift id');
+    // Hora del móvil + lo que ya se corrigió; client_now lo pone attendance.service al enviar
+    const device = { at: payload.at, skewApplied: payload.clock_skew_ms ?? 0, pickerId: payload.picker_id };
     try {
         if (payload.action === 'check_in') {
             await attendanceService.checkInPicker(payload.picker_id, payload.orchard_id, payload.verifiedBy, {
-                clientId: id, at: payload.at,
+                ...device, clientId: id,
             });
         } else if (payload.action === 'check_out') {
-            await attendanceService.checkOutPicker(id, { at: payload.at, pickerId: payload.picker_id });
+            await attendanceService.checkOutPicker(id, device);
         } else {
-            await attendanceService.recordBreak(payload.action, id, { at: payload.at, pickerId: payload.picker_id });
+            await attendanceService.recordBreak(payload.action, id, device);
         }
     } catch (e) {
         if (isServerRejection(e)) throw new SyncRejectedError((e as Error).message);

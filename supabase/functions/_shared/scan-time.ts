@@ -18,6 +18,9 @@
  *
  * Ante la duda se marca, no se rechaza: un rechazo deja la cubeta fuera de la
  * paga hasta que alguien la meta a mano.
+ *
+ * Nunca se guarda una hora del futuro: lo que queda dentro de la tolerancia
+ * (unos minutos por delante del servidor) se guarda con la hora del servidor.
  */
 export const FUTURE_TOLERANCE_MS = 5 * 60_000
 export const CLOCK_FLAG_MS = 5 * 60_000
@@ -41,6 +44,26 @@ export function checkScanTime(
     serverNow: number,
     clientNow: number | null,
     skewApplied = 0,
+): ScanTimeVerdict {
+    const v = judgeScanTime(scannedAt, serverNow, clientNow, skewApplied)
+    if (v.verdict === 'reject' || Date.parse(v.scannedAt) <= serverNow) return v
+    return { ...v, scannedAt: new Date(serverNow).toISOString() }
+}
+
+/**
+ * Desfase medido del reloj del móvil al subir (ms, servidor − móvil) para
+ * apuntarlo con el escaneo; si el móvil no mandó client_now, lo que corrigió él.
+ */
+export function measuredSkew(serverNow: number, clientNow: number | null, skewApplied: number | null | undefined): number | null {
+    if (clientNow !== null && Number.isFinite(clientNow)) return Math.round(serverNow - clientNow)
+    return skewApplied ? Math.round(skewApplied) : null
+}
+
+function judgeScanTime(
+    scannedAt: string,
+    serverNow: number,
+    clientNow: number | null,
+    skewApplied: number,
 ): ScanTimeVerdict {
     const t = Date.parse(scannedAt)
     if (Number.isNaN(t)) return { verdict: 'reject', reason: 'INVALID_SCAN_TIME: scanned_at is not a date' }
