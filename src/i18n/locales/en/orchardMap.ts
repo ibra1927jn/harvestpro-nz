@@ -7,7 +7,6 @@ const orchardMap: TranslationDict = {
     'orchardMap.blocks': 'blocks',
     'orchardMap.rows': 'rows',
     'orchardMap.live': 'LIVE',
-    'orchardMap.varieties': 'varieties',
     'orchardMap.variety_filter': 'Variety',
     'orchardMap.all': 'All',
     'orchardMap.status.empty': 'Empty',

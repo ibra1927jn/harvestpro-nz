@@ -8,9 +8,7 @@ const settings: TranslationDict = {
     'settings.language_desc': 'Choose your preferred language',
     'settings.language.active': 'Active',
     'settings.notifications': 'Notifications',
-    'settings.profile': 'Profile',
     'settings.security': 'Security',
-    'settings.about': 'About',
     // Banner
     'settings.banner.role': 'Manager',
     'settings.banner.orchard_line': '{role} · {orchard}',
@@ -35,12 +33,6 @@ const settings: TranslationDict = {
     // Compliance
     'settings.compliance.title': 'Compliance Settings',
     'settings.compliance.subtitle': 'NZ labour regulations',
-    'settings.compliance.nz_standards': 'NZ Employment Standards',
-    'settings.compliance.nz_standards_desc': 'Enforce minimum wage and break requirements',
-    'settings.compliance.wage_alerts': 'Automatic Wage Alerts',
-    'settings.compliance.wage_alerts_desc': 'Notify when workers fall below minimum wage',
-    'settings.compliance.safety': 'Safety Verification Required',
-    'settings.compliance.safety_desc': 'Require daily safety check before scanning',
     'settings.compliance.audit_trail': 'Audit Trail Logging',
     'settings.compliance.audit_trail_desc': 'All actions are logged — cannot be disabled',
     'settings.compliance.always_on': 'Always On',
@@ -49,13 +41,8 @@ const settings: TranslationDict = {
     'settings.danger.subtitle': 'Irreversible actions',
     'settings.danger.day_closure': 'Day Closure',
     'settings.danger.day_closure_desc': 'Finalize payroll, lock records, and close the harvest day',
-    'settings.danger.end_day': 'End & Lock Day',
-    'settings.danger.reset_title': "Reset Today's Data",
-    'settings.danger.reset_desc': 'Clear all bucket records for today',
-    'settings.danger.reset_btn': 'Reset',
     // Misc
     'settings.saved_banner': 'All Changes Saved',
-    'settings.footer': 'HarvestPro NZ · v9.9.0 · © 2026 HarvestPro. Built for NZ Orchards.',
     'settings.locked_by_hr': 'Only HR can modify this value',
     'settings.harvest.shift_end_by_person': 'There is no shift end time: each team and runner finishes when they clock out.',
 };

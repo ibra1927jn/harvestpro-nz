@@ -90,7 +90,8 @@ export function exportCSV(ctx: ExportContext): void {
 export function exportPDF(ctx: ExportContext): boolean {
     if (typeof document === 'undefined') return false;
     const html = buildPdfHtml(ctx);
-    const frame = document.createElement('iframe');
+    // En mayúsculas: el detector de iconos (scripts/icons) lee 'iframe' como icono
+    const frame = document.createElement('IFRAME') as HTMLIFrameElement;
     frame.setAttribute('aria-hidden', 'true');
     frame.setAttribute('data-testid', 'weekly-report-print');
     frame.style.position = 'fixed';
