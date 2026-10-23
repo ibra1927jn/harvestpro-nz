@@ -663,6 +663,10 @@ END $$;
 -- =============================================
 -- 5. QC INSPECTIONS (~1,500 — sample from buckets)
 -- =============================================
+-- Inspecciones de una temporada simulada: sin avisos push (trg_push_qc_inspection
+-- metería ~150 «QC: rechazo» en notification_outbox). Salen en las vistas de QC de
+-- los huertos de la simulación (códigos JP, OCH…), no en los de la demo.
+ALTER TABLE public.qc_inspections DISABLE TRIGGER trg_push_qc_inspection;
 DO $$
 DECLARE v_bucket RECORD;
 v_grade TEXT;
@@ -740,6 +744,8 @@ END LOOP;
 RAISE NOTICE 'Inserted % QC inspections',
 v_count;
 END $$;
+-- Vuelve a avisar de las inspecciones nuevas (solo estas del seed van sin push)
+ALTER TABLE public.qc_inspections ENABLE TRIGGER trg_push_qc_inspection;
 -- =============================================
 -- 6. DAILY ATTENDANCE (~6,000)
 -- =============================================
