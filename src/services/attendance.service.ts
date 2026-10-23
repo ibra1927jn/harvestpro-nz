@@ -5,7 +5,6 @@ import { attendanceRepository } from '@/repositories/attendance.repository';
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
 import { analytics } from '@/config/analytics';
 import type { CorrectBatchResponse } from '@/schemas/api.schemas';
-import { updateClockSkew } from './bucket-upload.service';
 
 /** Pase de lista sin red: id del tramo hecho en el móvil y hora del móvil */
 export interface RollCallTiming {
@@ -24,8 +23,14 @@ async function invokeAttendance(body: Record<string, unknown>): Promise<unknown>
   const sentAt = Date.now();
   const { data, error } = await edgeFunctionsRepository.invoke('manage-attendance', body);
   if (error) throw error instanceof Error ? error : new Error(error.message);
+  const receivedAt = Date.now();
   const serverTime = (data as { server_time?: unknown } | null)?.server_time;
-  updateClockSkew(typeof serverTime === 'string' ? serverTime : undefined, sentAt, Date.now());
+  if (typeof serverTime === 'string') {
+    // Import diferido: bucket-upload.service lee el store, que importa este servicio
+    void import('./bucket-upload.service')
+      .then(m => m.updateClockSkew(serverTime, sentAt, receivedAt))
+      .catch(() => undefined);
+  }
   return data;
 }
 
