@@ -37,6 +37,11 @@ const manager2: TranslationDict = {
     'apikeys.requests': '{n} talosaga',
     'apikeys.last_used': 'Faaaoga mulimuli {date}',
     'apikeys.expires_on': 'E muta {date}',
+    'close.already_closed': 'Ua tapuni le aso',
+    'close.closed_status': 'Ua tapuni ma loka le aso nei: ua le toe talia ni pakete po o ni suiga o taimi mo le aso nei.',
+    'close.banner_title': 'Ua tapuni le aso',
+    'close.banner_body': 'Ua tapunia e le pule le aso nei. E le talia ni pakete fou po o ni suiga o taimi mo le aso nei.',
+    'close.scan_blocked': 'Ua tapuni le aso: e le‘i resitalaina lenei pakete',
 };
 
 export default manager2;

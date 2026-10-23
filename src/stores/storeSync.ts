@@ -15,6 +15,7 @@ import type { BucketRecord } from '@/types';
 import type { HarvestStoreState, ScannedBucket } from './storeTypes';
 import { storeSyncRepository } from '@/repositories/store-sync.repository';
 import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
+import { dayClosureRepository } from '@/repositories/day-closure.repository';
 import { pieceRateOn } from '@/services/harvestMetrics/pay';
 import {
   applyAttendanceRecord,
@@ -159,6 +160,8 @@ export async function fetchOrchardData(
   }
 
   if (activeOrchard?.id) {
+    // Día cerrado: se lee siempre (una fila); así el TL y el runner lo saben al abrir
+    await loadDayClosure(set, activeOrchard.id, today);
     await loadShiftsElsewhere(set, activeOrchard.id, today);
     if (!light) await get().fetchBlocks(activeOrchard.id);
     await loadRowAssignments(get, set, activeOrchard.id);
@@ -253,6 +256,19 @@ async function loadCrewAndBuckets(p: {
     logger.info(
       `[Sync] Full load: ${crewWithAttendance.length} pickers, ${(bucketsRes.data || []).length} buckets`
     );
+  }
+}
+
+/**
+ * ¿Está cerrado hoy? (day_closures). Antes solo vivía en memoria del manager:
+ * tras recargar se podía cerrar otra vez y el TL y el runner no se enteraban.
+ */
+async function loadDayClosure(set: StoreSetter, orchardId: string, today: string): Promise<void> {
+  try {
+    const closure = await dayClosureRepository.getForDate(orchardId, today);
+    set({ dayClosed: closure?.status === 'closed' });
+  } catch (e) {
+    logger.warn('[Sync] Could not read the day closure:', e);
   }
 }
 
@@ -427,6 +443,22 @@ export function setupRealtimeSubscriptions(
           rowAssignments: applyRowAssignmentEvent(state.rowAssignments, record, payload.eventType),
         }));
         logger.info(`[Store] Realtime row_assignment ${payload.eventType}: row ${record.row_number}`);
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'day_closures',
+        filter: `orchard_id=eq.${orchardId}`,
+      },
+      payload => {
+        // El manager cerró (o un admin reabrió) el día: aviso a todos al momento
+        const row = payload.new as { date?: string; status?: string } | null;
+        if (!row?.date || row.date !== todayNZST()) return;
+        logger.info(`[Store] Realtime day closure: ${row.status}`);
+        set({ dayClosed: row.status === 'closed' });
       }
     )
     .on(

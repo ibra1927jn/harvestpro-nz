@@ -37,6 +37,11 @@ const manager2: TranslationDict = {
     'apikeys.requests': '{n} request',
     'apikeys.last_used': 'Huling ginamit {date}',
     'apikeys.expires_on': 'Mag-e-expire {date}',
+    'close.already_closed': 'Sarado na ang araw',
+    'close.closed_status': 'Sarado at naka-lock ang araw: wala nang bucket o pagbabago sa timesheet ngayong araw.',
+    'close.banner_title': 'Sarado na ang araw',
+    'close.banner_body': 'Isinara ng manager ang araw na ito. Hindi na tinatanggap ang bagong bucket at pagbabago sa timesheet ngayong araw.',
+    'close.scan_blocked': 'Sarado na ang araw: hindi naitala ang bucket na ito',
 };
 
 export default manager2;

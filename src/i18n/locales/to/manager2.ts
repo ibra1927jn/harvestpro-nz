@@ -37,6 +37,11 @@ const manager2: TranslationDict = {
     'apikeys.requests': '{n} kole',
     'apikeys.last_used': 'Ngāueʻaki fakamuimui {date}',
     'apikeys.expires_on': 'ʻE ngata {date}',
+    'close.already_closed': 'Kuo tāpuni ‘a e ‘aho',
+    'close.closed_status': 'Kuo tāpuni mo loka ‘a e ‘aho ni: ‘ikai toe ha pākete pe liliu taimi ki he ‘aho ni.',
+    'close.banner_title': 'Kuo tāpuni ‘a e ‘aho',
+    'close.banner_body': 'Kuo tāpuni ‘e he pule ‘a e ‘aho ni. ‘Oku ‘ikai tali ha pākete fo‘ou pe liliu taimi ki he ‘aho ni.',
+    'close.scan_blocked': 'Kuo tāpuni ‘a e ‘aho: na‘e ‘ikai lekooti ‘a e pākete ni',
 };
 
 export default manager2;

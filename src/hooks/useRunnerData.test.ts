@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
-const { mockAddBucket } = vi.hoisted(() => ({ mockAddBucket: vi.fn() }));
+const { mockAddBucket, storeFlags } = vi.hoisted(() => ({ mockAddBucket: vi.fn(), storeFlags: { dayClosed: false } }));
 
 vi.mock('@/stores/useHarvestStore', () => ({
     useHarvestStore: vi.fn((selector?: (s: any) => unknown) => {
@@ -23,6 +23,7 @@ vi.mock('@/stores/useHarvestStore', () => ({
             rowAssignments: [],
             buckets: [],
             bucketRecords: [],
+            dayClosed: storeFlags.dayClosed,
         };
         if (typeof selector === 'function') return selector(state);
         return state;
@@ -47,7 +48,7 @@ vi.mock('@/services/offline.service', () => ({
 }));
 
 vi.mock('@/services/feedback.service', () => ({
-    feedbackService: { vibrate: vi.fn(), triggerSuccess: vi.fn() },
+    feedbackService: { vibrate: vi.fn(), triggerSuccess: vi.fn(), triggerError: vi.fn() },
 }));
 
 vi.mock('@/utils/nzst', () => ({
@@ -64,6 +65,15 @@ import { offlineService } from '@/services/offline.service';
 describe('useRunnerData', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        storeFlags.dayClosed = false;
+    });
+
+    it('does not record buckets once the manager closed the day, and says why', () => {
+        storeFlags.dayClosed = true;
+        const { result } = renderHook(() => useRunnerData());
+        act(() => { result.current.handleScanComplete('101'); });
+        expect(mockAddBucket).not.toHaveBeenCalled();
+        expect(result.current.toast).toEqual({ message: 'The day is closed: this bucket was not recorded', type: 'error' });
     });
 
     it('lists scans the server rejected (kept on the phone) with their reason', async () => {

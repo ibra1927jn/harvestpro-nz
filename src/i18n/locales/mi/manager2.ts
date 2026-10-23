@@ -37,6 +37,11 @@ const manager2: TranslationDict = {
     'apikeys.requests': '{n} tono',
     'apikeys.last_used': 'Whakamahi whakamutunga {date}',
     'apikeys.expires_on': 'Ka pau {date}',
+    'close.already_closed': 'Kua katia te rā',
+    'close.closed_status': 'Kua katia, kua rakaina tēnei rā: kāore he pākete, he panoni wātaka anō mō tēnei rā.',
+    'close.banner_title': 'Kua katia te rā',
+    'close.banner_body': 'Kua katia e te kaiwhakahaere tēnei rā. Kāore e whakaaetia he pākete hou, he panoni wātaka rānei mō tēnei rā.',
+    'close.scan_blocked': 'Kua katia te rā: kāore tēnei pākete i tuhia',
 };
 
 export default manager2;

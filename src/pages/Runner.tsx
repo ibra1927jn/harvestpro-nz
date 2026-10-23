@@ -17,6 +17,7 @@ import Toast from '@/components/ui/Toast';
 import SyncStatusMonitor from '@/components/common/SyncStatusMonitor';
 import { useRunnerData } from '@/hooks/useRunnerData';
 import { RUNNER_NAV_TABS, type RunnerTab } from '@/config/navigation/runner.nav';
+import DayClosedBanner from '@/components/common/DayClosedBanner';
 import { useTranslation } from '@/i18n';
 
 // Lazy-loaded views (code-split for performance)
@@ -82,6 +83,7 @@ const Runner = () => {
           <div className="absolute bottom-[-5%] right-[-10%] w-[50%] h-[40%] rounded-full bg-sky-500/10 blur-[80px] pointer-events-none" />
 
           <SyncStatusMonitor />
+          <DayClosedBanner />
 
           <div key={activeTab} className="animate-fade-in relative z-10">
             <Suspense fallback={<TabLoader />}>

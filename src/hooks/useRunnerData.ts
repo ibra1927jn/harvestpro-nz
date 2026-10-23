@@ -67,6 +67,7 @@ export function useRunnerData(): UseRunnerDataResult {
   const orchard = useHarvestStore(state => state.orchard);
   const crew = useHarvestStore(state => state.crew);
   const addBucket = useHarvestStore(state => state.addBucket);
+  const dayClosed = useHarvestStore(state => state.dayClosed);
   const { sendBroadcast } = useMessaging();
   const setGlobalState = useHarvestStore(state => state.setGlobalState);
 
@@ -259,6 +260,14 @@ export function useRunnerData(): UseRunnerDataResult {
         return;
       }
 
+      // Día cerrado por el manager: la BD rechazaría las cubetas. Se avisa claro
+      // («El día está cerrado») en vez de «guardada» y luego «escaneo rechazado»
+      if (dayClosed) {
+        feedbackService.triggerError();
+        setToast({ message: t('close.scan_blocked'), type: 'error' });
+        return;
+      }
+
       // BATCH MODO O MODO ESTÁNDAR: Procesar todos los tickets en memoria (Buckets)
       const saves: Promise<boolean>[] = [];
       const savedFor: string[] = [];
@@ -291,7 +300,7 @@ export function useRunnerData(): UseRunnerDataResult {
         });
       }
     },
-    [scanType, rawInventory, crew, addBucket, orchard?.id, rowOf, selectedBinId, setBinStatus, setGlobalState, confirmSaved, t]
+    [scanType, rawInventory, crew, addBucket, orchard?.id, rowOf, selectedBinId, setBinStatus, setGlobalState, confirmSaved, t, dayClosed]
   );
 
   const submitQuality = useCallback(

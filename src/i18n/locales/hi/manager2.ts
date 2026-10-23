@@ -37,6 +37,11 @@ const manager2: TranslationDict = {
     'apikeys.requests': '{n} अनुरोध',
     'apikeys.last_used': 'अंतिम उपयोग {date}',
     'apikeys.expires_on': '{date} को समाप्त',
+    'close.already_closed': 'दिन बंद',
+    'close.closed_status': 'आज बंद और लॉक है: आज के लिए और बकेट या टाइमशीट बदलाव नहीं।',
+    'close.banner_title': 'दिन बंद हो गया है',
+    'close.banner_body': 'मैनेजर ने आज का दिन बंद कर दिया। आज के नए बकेट और टाइमशीट बदलाव स्वीकार नहीं होंगे।',
+    'close.scan_blocked': 'दिन बंद है: यह बकेट दर्ज नहीं हुआ',
 };
 
 export default manager2;
