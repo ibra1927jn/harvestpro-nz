@@ -444,6 +444,8 @@ let corsSkipWarned = false
 export async function checkCors(fn: string): Promise<void> {
     const ok = await call(fn, { method: 'OPTIONS', origin: ORIGIN })
     if ((ok.headers.get('via') ?? '').includes('kong') || ok.headers.has('x-kong-response-latency')) {
+        // En la CI no se salta: allí FUNCTIONS_URL apunta al runtime (scripts/ci/local-stack.sh)
+        if (Deno.env.get('CI')) throw new Error(`${fn}: CORS reached through kong in CI; set FUNCTIONS_URL to the edge runtime`)
         if (!corsSkipWarned) console.warn('[cors] behind the local kong gateway (ACAO: *): CORS checks skipped; run against the runtime directly')
         corsSkipWarned = true
         return

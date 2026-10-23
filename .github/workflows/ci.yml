@@ -74,33 +74,82 @@ jobs:
       # Sin node_modules en este job: Deno usa su propia caché para los npm: de los tests
       - name: Edge Function tests (Deno, real HTTP against the local stack)
         run: deno test --node-modules-dir=none --allow-net --allow-env --allow-read --env-file=.env.local supabase/functions/tests/
-      - name: Backup + restore check (bash)
+      - name: Backup while the app writes + restore check with an orphan row (bash)
         run: |
+          db() { docker exec -i supabase_db_harvestpro-nz psql -X -q -At -v ON_ERROR_STOP=1 -U supabase_admin -d postgres "$@"; }
+          # Una fila huérfana (sesión borrada), como las que deja GoTrue: la comprobación avisa y no falla
+          db -c "SET session_replication_role = replica; INSERT INTO auth.mfa_amr_claims (id, session_id, created_at, updated_at, authentication_method) VALUES (gen_random_uuid(), gen_random_uuid(), now(), now(), 'password')"
+          # Escrituras mientras se hace la copia: los recuentos van en la instantánea del dump
+          ( for i in $(seq 1 150); do db -c "INSERT INTO auth.audit_log_entries (id, payload, created_at) VALUES (gen_random_uuid(), '{}', now())"; done ) &
+          writer=$!
           dir="$(BACKUP_DIR="$RUNNER_TEMP/backups-sh" KEEP=2 scripts/backup-local.sh)"
+          wait "$writer"
           echo "BACKUP_SH=$dir" >> "$GITHUB_ENV"
-          scripts/restore-local.sh "$dir"
+          test -s "$dir/orphans.tsv"
+          scripts/restore-local.sh "$dir" 2>&1 | tee "$RUNNER_TEMP/check.log"
+          test "${PIPESTATUS[0]}" = 0
+          grep -q 'auth.mfa_amr_claims: 1 row(s)' "$RUNNER_TEMP/check.log"
+      - name: A backup that lost most of its rows does not rotate the old ones (bash)
+        run: |
+          prev="$RUNNER_TEMP/backups-sh/harvestpro_2000-01-01_000000"
+          cp -r "$BACKUP_SH" "$prev"
+          awk -F'\t' -v OFS='\t' '$1 == "public.pickers" { $2 = $2 * 10 } { print }' "$BACKUP_SH/row-counts.tsv" > "$prev/row-counts.tsv"
+          # Que la copia "anterior" sea la última por fecha
+          mv "$prev" "$RUNNER_TEMP/backups-sh/harvestpro_2999-01-01_000000"
+          before="$(ls "$RUNNER_TEMP/backups-sh" | grep -c '^harvestpro_')"
+          code=0; BACKUP_DIR="$RUNNER_TEMP/backups-sh" KEEP=1 scripts/backup-local.sh || code=$?
+          test "$code" = 2
+          ls "$RUNNER_TEMP/backups-sh" | grep -q '\.suspect$'
+          test "$(ls "$RUNNER_TEMP/backups-sh" | grep -c '^harvestpro_.*[0-9]$')" = "$((before))"
+          rm -rf "$RUNNER_TEMP/backups-sh/harvestpro_2999-01-01_000000"
       - name: Backup + restore check (PowerShell, the owner's Windows script)
         shell: pwsh
         run: |
-          $dir = (& ./scripts/backup-local.ps1 -BackupDir "$env:RUNNER_TEMP/backups-ps" -Keep 2) | Select-Object -Last 1
-          if (-not $dir) { throw 'backup-local.ps1 returned no folder' }
-          "BACKUP_PS=$dir" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
-          ./scripts/restore-local.ps1 -Backup $dir
+          Push-Location $env:RUNNER_TEMP
+          # Ruta relativa a propósito (se resuelve contra la carpeta actual)
+          $dir = (& "$env:GITHUB_WORKSPACE/scripts/backup-local.ps1" -BackupDir 'backups-ps' -MirrorDir 'backups-ps-mirror' -Keep 2) | Select-Object -Last 1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not $dir -or -not (Test-Path (Join-Path $dir 'database.dump'))) { throw 'backup-local.ps1 returned no folder' }
+          if (-not (Test-Path (Join-Path 'backups-ps-mirror' (Split-Path -Leaf $dir)))) { throw 'no second copy' }
+          "BACKUP_PS=$dir" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          & "$env:GITHUB_WORKSPACE/scripts/restore-local.ps1" -Backup (Join-Path 'backups-ps' (Split-Path -Leaf $dir))
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
       - name: Disaster recovery into an empty stack (bash, then PowerShell)
+        env:
+          SUPABASE_BIN: supabase
         run: |
           login() {
             . ./.env.local
             curl -sf -o /dev/null -X POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
               -H "apikey: $SUPABASE_ANON_KEY" -H 'Content-Type: application/json' \
-              -d '{"email":"lead@harvestpro.nz","password":"111111"}'
+              -d '{"email":"lead@harvestpro.nz","password":"111111"}' \
+              || { echo "::error::seeded account cannot sign in after the $1 restore"; exit 1; }
+            echo "seeded account signs in after the $1 restore"
           }
           scripts/ci/local-stack.sh reset
           scripts/restore-local.sh "$BACKUP_SH" --fresh-stack
-          login && echo 'seeded account signs in after the bash restore'
+          login bash
           scripts/ci/local-stack.sh reset
           pwsh -NoProfile -File scripts/restore-local.ps1 -Backup "$BACKUP_PS" -FreshStack
-          login && echo 'seeded account signs in after the PowerShell restore'
+          login PowerShell
+      - name: Disaster recovery of a backup from an older schema (before 20261024030000)
+        env:
+          SUPABASE_BIN: supabase
+        run: |
+          db() { docker exec -i supabase_db_harvestpro-nz psql -X -q -At -v ON_ERROR_STOP=1 -U supabase_admin -d postgres "$@"; }
+          old="$(ls supabase/migrations/*.sql | xargs -n1 basename | sed 's/_.*//' | sort | awk '$1 < "20261024030000"' | tail -1)"
+          echo "Old schema: $old"
+          scripts/ci/local-stack.sh reset "$old"
+          scripts/ci/local-stack.sh seed
+          test "$(db -c "select to_regclass('public.wage_rates') is not null")" = t
+          dir="$(BACKUP_DIR="$RUNNER_TEMP/backups-old" scripts/backup-local.sh)"
+          scripts/ci/local-stack.sh reset
+          scripts/restore-local.sh "$dir" --fresh-stack
+          # Esquema al día (las tablas muertas ya no están) y los datos de la copia dentro
+          test "$(db -c "select to_regclass('public.wage_rates') is null and to_regclass('public.messages') is null")" = t
+          test "$(db -c "select max(version) from supabase_migrations.schema_migrations")" = "$(ls supabase/migrations/*.sql | xargs -n1 basename | sed 's/_.*//' | sort | tail -1)"
+          test "$(db -c 'select count(*) from public.pickers')" = "$(awk -F'\t' '$1 == "public.pickers" { print $2 }' "$dir/row-counts.tsv")"
       - name: Edge runtime logs
         if: failure()
         run: docker logs --tail 300 supabase_edge_runtime_harvestpro-nz || true
@@ -133,14 +182,24 @@ jobs:
       - name: Smoke - every role signs in, one key action per role
         run: npm run test:e2e:smoke
       # Spec «empresa desde cero» (encargo A): base recién migrada, sin seeds
+      # Spec «empresa desde cero» (encargo A, e2e/fresh-company.spec.ts). Mientras el spec no
+      # esté en la rama se avisa y se salta; si el spec está y falta el script, falla.
+      # Configuración de desarrollo: 2FA del servidor apagado y build con VITE_MFA_ENFORCE=false
       - name: Company from zero (fresh database)
+        env:
+          VITE_MFA_ENFORCE: 'false'
         run: |
-          if node -e "process.exit(require('./package.json').scripts['test:e2e:fresh'] ? 0 : 1)"; then
-            scripts/ci/local-stack.sh reset
-            npm run test:e2e:fresh
-          else
-            echo '::notice::test:e2e:fresh not in package.json yet: skipped'
+          has_script="$(node -e "process.stdout.write(require('./package.json').scripts['test:e2e:fresh'] ? '1' : '')")"
+          if [ -z "$has_script" ]; then
+            if [ -f e2e/fresh-company.spec.ts ]; then
+              echo '::error::e2e/fresh-company.spec.ts exists but package.json has no test:e2e:fresh'; exit 1
+            fi
+            echo '::notice::company-from-zero spec not on this branch yet (encargo A): skipped'
+            exit 0
           fi
+          scripts/ci/local-stack.sh reset
+          scripts/ci/local-stack.sh disable-mfa
+          npm run test:e2e:fresh
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

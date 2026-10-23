@@ -9,7 +9,9 @@
 #
 # Uso:
 #   scripts/ci/local-stack.sh start      # start + seeds + .env.local + espera a las funciones
-#   scripts/ci/local-stack.sh reset      # base vacía (solo migraciones), para «empresa desde cero»
+#   scripts/ci/local-stack.sh reset [versión]  # base vacía (solo migraciones, hasta <versión> si se da)
+#   scripts/ci/local-stack.sh seed             # aplica los seeds
+#   scripts/ci/local-stack.sh disable-mfa      # 2FA del servidor apagado (como en desarrollo)
 #   scripts/ci/local-stack.sh wait-functions
 #
 # Variables: SUPABASE_BIN (def. supabase), SEEDS (lista separada por espacios).
@@ -67,7 +69,13 @@ SUPABASE_ANON_KEY=$anon
 SUPABASE_SERVICE_ROLE_KEY=$service
 DB_URL=$db
 ENV
-  log "Wrote .env.local for $api"
+  # Runtime de funciones directo (sin kong): el kong local responde CORS con «*» y
+  # taparía lo que contestan las funciones; los tests Deno lo usan (FUNCTIONS_URL)
+  local edge ip
+  edge="$(docker ps --filter 'name=^supabase_edge_runtime_' --format '{{.Names}}' | head -1)"
+  ip="$(docker inspect "$edge" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' 2>/dev/null | awk '{print $1}')"
+  if [ -n "$ip" ]; then echo "FUNCTIONS_URL=http://$ip:8081" >>"$ROOT/.env.local"; fi
+  log "Wrote .env.local for $api (functions direct: ${ip:-no})"
 }
 
 apply_seeds() {
@@ -112,11 +120,17 @@ case "${1:-}" in
     wait_functions
     ;;
   reset)
-    # Base recién migrada sin datos (el proyecto no define [db.seed] con archivos propios)
-    "$SUPABASE" db reset --local --no-seed
+    # Base recién migrada sin datos (el proyecto no define [db.seed] con archivos propios).
+    # Con versión: solo las migraciones hasta ella (copias de un esquema anterior)
+    "$SUPABASE" db reset --local --no-seed ${2:+--version "$2"}
     write_env
     wait_functions
     ;;
+  seed) apply_seeds ;;
+  disable-mfa)
+    # Como un PC de desarrollo: sin 2FA exigido por el servidor (scripts/dev-disable-mfa.sql)
+    psql "$(sed -n 's/^DB_URL=//p' "$ROOT/.env.local")" -X -q -v ON_ERROR_STOP=1 -f "$ROOT/scripts/dev-disable-mfa.sql"
+    ;;
   wait-functions) wait_functions ;;
-  *) sed -n '2,16p' "$0"; exit 2 ;;
+  *) sed -n '2,18p' "$0"; exit 2 ;;
 esac
