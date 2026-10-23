@@ -40,4 +40,14 @@ describe('OrchardDataBootstrap', () => {
         rerender(<OrchardDataBootstrap />);
         expect(fetchGlobalData).toHaveBeenLastCalledWith('orch-B');
     });
+
+    it('writes a role or name change mid-session to the store without reloading the orchard', () => {
+        appUser = { id: 'u7', orchard_id: 'orch-A', full_name: 'Tia', role: 'team_leader' };
+        const { rerender } = render(<OrchardDataBootstrap />);
+        setState.mockClear();
+        appUser = { id: 'u7', orchard_id: 'orch-A', full_name: 'Tia Ngata', role: 'manager' };
+        rerender(<OrchardDataBootstrap />);
+        expect(setState).toHaveBeenCalledWith({ currentUser: { id: 'u7', name: 'Tia Ngata', role: 'manager' } });
+        expect(fetchGlobalData).toHaveBeenCalledTimes(1);
+    });
 });

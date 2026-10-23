@@ -134,6 +134,18 @@ describe('attendanceService', () => {
 
             await expect(attendanceService.checkOutPicker('bad-id')).rejects.toThrow('Attendance record not found');
         });
+
+        it('queued phone time: sends client_now and the correction already applied', async () => {
+            mockInvoke.mockResolvedValue({ data: { id: 'a', picker_id: 'p', check_out: 'x', hours_worked: 1 }, error: null });
+            await attendanceService.checkOutPicker('att-1', { at: '2026-10-23T05:00:00.000Z', skewApplied: 180_000 });
+            expect(mockInvoke.mock.lastCall?.[1]).toMatchObject({ at: '2026-10-23T05:00:00.000Z', clock_skew_ms: 180_000, client_now: expect.any(Number) });
+        });
+
+        it('item queued by an older app (no correction recorded): no client_now, so the server does not correct it twice', async () => {
+            mockInvoke.mockResolvedValue({ data: { id: 'a', picker_id: 'p', check_out: 'x', hours_worked: 1 }, error: null });
+            await attendanceService.checkOutPicker('att-1', { at: '2026-10-23T05:00:00.000Z' });
+            expect(mockInvoke.mock.lastCall?.[1]).toEqual({ action: 'check_out', attendance_id: 'att-1', at: '2026-10-23T05:00:00.000Z' });
+        });
     });
 
     // ═══════════════════════════════

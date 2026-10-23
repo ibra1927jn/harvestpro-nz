@@ -24,10 +24,14 @@ export type BreakAction = 'break_start' | 'break_end';
  * Hora del móvil para el servidor: `at`, la corrección ya aplicada y la hora
  * del móvil al enviar (client_now): con ellas mide el desfase de ahora, corrige
  * y lo apunta. Sin `at` no se manda nada: la hora la pone el servidor.
+ * Elementos guardados por una versión anterior de la app (sin clock_skew_ms):
+ * su `at` ya venía corregido y no se sabe cuánto, así que se manda sin
+ * client_now y el servidor no lo vuelve a corregir (solo lo acota).
  */
 function deviceTime(timing: RollCallTiming): Record<string, string | number> {
   if (!timing.at) return {};
-  return { at: timing.at, client_now: Date.now(), clock_skew_ms: Math.round(timing.skewApplied ?? 0) };
+  if (timing.skewApplied === undefined) return { at: timing.at };
+  return { at: timing.at, client_now: Date.now(), clock_skew_ms: Math.round(timing.skewApplied) };
 }
 
 /** Llama a manage-attendance midiendo el desfase del reloj del móvil */
