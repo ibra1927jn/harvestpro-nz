@@ -68,7 +68,11 @@ test.afterAll(() => {
 
 async function login(page: Page, email: string, urlPattern: RegExp): Promise<void> {
     await page.goto('/login');
-    await page.fill('input[type="email"]', email);
+    // Tras el alta por /signup la sesión ya puede estar abierta: /login redirige a su panel
+    const emailInput = page.locator('input[type="email"]');
+    await expect(emailInput.or(page.locator('main, #main-content').first())).toBeVisible({ timeout: 20_000 });
+    if (urlPattern.test(page.url())) return;
+    await emailInput.fill(email);
     await page.fill('input[type="password"]', PASSWORD);
     await page.click('button[type="submit"]');
     await page.waitForURL(urlPattern, { timeout: 30_000 });
