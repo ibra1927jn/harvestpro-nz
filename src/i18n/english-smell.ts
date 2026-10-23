@@ -127,7 +127,6 @@ export const CANONICAL_TRANSLATIONS: SmellEntry[] = [
     { section: 'orchard-setup', key: 'ostruct.seasons',        en: 'Seasons' },
     { section: 'orchard-setup', key: 'ostruct.add_block',      en: 'Add block' },
     { section: 'orchard-setup', key: 'ostruct.mode_range',     en: 'Set a range' },
-    { section: 'orchard-setup', key: 'ostruct.err.row_taken',  en: 'Row {row} is already in block {block}. Use other numbers or move it first.' },
     { section: 'orchard-setup', key: 'owiz.title',             en: 'New Orchard Setup' },
     { section: 'orchard-setup', key: 'owiz.step.structure',    en: 'Season & blocks' },
 ];
