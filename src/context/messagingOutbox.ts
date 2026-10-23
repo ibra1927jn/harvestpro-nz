@@ -17,6 +17,7 @@ export function outboxToMessage(m: OutboxMessage): DBMessage {
         read_by: [],
         created_at: m.timestamp,
         delivery: m.status,
+        ...(m.reply_to_id ? { reply_to_id: m.reply_to_id } : {}),
         ...(m.failure_reason ? { failure_reason: m.failure_reason } : {}),
         ...(m.upload ? {
             attachment_path: m.upload.path,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mergeOutbox } from './messagingOutbox';
+import { mergeOutbox, outboxToMessage } from './messagingOutbox';
 import type { DBMessage } from './messaging.types';
 import type { OutboxMessage } from '@/services/message-outbox.service';
 
@@ -26,5 +26,15 @@ describe('mergeOutbox', () => {
         const merged = mergeOutbox([server('a', '2026-10-13T10:00:00+13:00')], [queued('a', '2026-10-13T10:00:00+13:00', 'pending')]);
         expect(merged).toHaveLength(1);
         expect(merged[0].delivery).toBeUndefined();
+    });
+});
+
+describe('outboxToMessage', () => {
+    it('keeps the quoted message of a reply that has not gone out yet', () => {
+        const m = outboxToMessage({
+            id: 'a', channel_type: 'direct', recipient_id: 'c1', sender_id: 'u1', content: 'Yes',
+            timestamp: '2026-10-23T10:00:00+13:00', synced: 0, status: 'pending', reply_to_id: 'orig',
+        });
+        expect(m).toMatchObject({ id: 'a', conversation_id: 'c1', delivery: 'pending', reply_to_id: 'orig' });
     });
 });

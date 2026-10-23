@@ -91,7 +91,8 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
   const sendMessage = async (
     conversationId: string,
     content: string,
-    priority: MessagePriority = 'normal'
+    priority: MessagePriority = 'normal',
+    options?: { replyToId?: string }
   ): Promise<DBMessage | null> => {
     if (!userIdRef.current) {
       logger.error('[MessagingContext] No user ID set');
@@ -101,13 +102,17 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
     const timestamp = nowNZST();
 
     // 1. Optimistic UI Update
-    const optimisticMsg = buildOptimisticMessage(
-      userIdRef.current,
-      conversationId,
-      content,
-      priority,
-      orchardIdRef.current || undefined
-    );
+    const replyToId = options?.replyToId;
+    const optimisticMsg: DBMessage = {
+      ...buildOptimisticMessage(
+        userIdRef.current,
+        conversationId,
+        content,
+        priority,
+        orchardIdRef.current || undefined
+      ),
+      ...(replyToId ? { reply_to_id: replyToId } : {}),
+    };
 
     setState(prev => ({
       ...prev,
@@ -121,7 +126,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
           conversationId,
           userIdRef.current,
           content,
-          { id: optimisticMsg.id, createdAt: timestamp }
+          { id: optimisticMsg.id, createdAt: timestamp, replyToId }
         );
 
         if (!data) throw new Error('Send failed');
@@ -143,6 +148,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
         content,
         timestamp,
         priority,
+        ...(replyToId ? { reply_to_id: replyToId } : {}),
       });
 
       return { ...optimisticMsg, delivery: 'pending' };
@@ -177,6 +183,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
           id: optimistic.id,
           createdAt: timestamp,
           attachment,
+          replyToId: file.replyToId,
         })) as DBMessage | null;
         if (data) return { message: data };
       } catch (error) {
@@ -200,6 +207,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
       timestamp,
       priority: 'normal',
       upload: { ...attachment, file_id: optimistic.id, mime: file.mime },
+      ...(file.replyToId ? { reply_to_id: file.replyToId } : {}),
     });
     // Con red (falló otra cosa) se reintenta ya: si el servidor lo rechaza sale "No enviado"
     if (navigator.onLine) void messageOutbox.flush().catch(() => undefined);
@@ -216,6 +224,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
         attachment_size: attachment.size,
         duration_ms: attachment.duration_ms ?? null,
         local_file_id: optimistic.id,
+        ...(file.replyToId ? { reply_to_id: file.replyToId } : {}),
       },
     };
   };

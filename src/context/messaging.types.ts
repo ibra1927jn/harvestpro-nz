@@ -34,6 +34,8 @@ export interface DBMessage {
     duration_ms?: number | null;
     /** Adjunto que aún está en el móvil (pending_files): se enseña desde ahí */
     local_file_id?: string;
+    /** Mensaje al que responde (misma conversación) */
+    reply_to_id?: string | null;
 }
 
 export interface ChatGroup {
@@ -69,6 +71,8 @@ export interface OutgoingAttachment {
     durationMs?: number;
     /** Texto que acompaña al archivo (puede ir vacío) */
     caption?: string;
+    /** Respuesta a este mensaje */
+    replyToId?: string;
 }
 
 export interface SendAttachmentResult {
@@ -94,7 +98,8 @@ export interface MessagingContextType extends MessagingState {
     sendMessage: (
         conversationId: string,
         content: string,
-        priority?: MessagePriority
+        priority?: MessagePriority,
+        options?: { replyToId?: string }
     ) => Promise<DBMessage | null>;
     /** Broadcast message to team (triggers notifications) */
     sendBroadcast: (
