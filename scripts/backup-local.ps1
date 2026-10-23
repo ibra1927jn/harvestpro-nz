@@ -59,12 +59,14 @@ function Fail([string]$Message) {
 }
 
 # Ejecuta docker y falla si docker falla; devuelve la salida como texto
+# Función simple (sin param()): así -X, -U, -c... llegan tal cual a docker en $args
+# en vez de tomarse como parámetros de PowerShell
 function Invoke-Docker {
-    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$DockerArgs)
     # En PowerShell 5, con Stop, cualquier línea de stderr de docker sería un error
     $ErrorActionPreference = 'Continue'
-    $out = & docker @DockerArgs 2>&1
-    if ($LASTEXITCODE -ne 0) { throw "docker $($DockerArgs -join ' ') failed: $out" }
+    $dockerArgs = @($args)
+    $out = & docker @dockerArgs 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "docker $($dockerArgs -join ' ') failed: $out" }
     return ($out | Out-String)
 }
 
