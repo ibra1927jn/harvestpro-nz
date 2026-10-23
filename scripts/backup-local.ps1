@@ -97,7 +97,7 @@ function Get-Backups([string]$Dir) {
 }
 
 function Invoke-Rotation([string]$Dir) {
-    $all = Get-Backups $Dir
+    $all = @(Get-Backups $Dir)
     if ($all.Count -gt $Keep) {
         foreach ($old in $all[0..($all.Count - $Keep - 1)]) {
             Write-Log "Removing old backup $($old.FullName)"

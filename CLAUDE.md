@@ -126,7 +126,7 @@ Version: 9.9.0
   - `edge-functions`: tests Deno de `supabase/functions/tests/` contra las funciones del checkout, copia y
     restauración con `backup-local.sh` y `backup-local.ps1` (pwsh), y recuperación completa en una base vacía.
   - `e2e`: `npm run test:e2e:smoke` (suite móvil, Pixel 7: login de los 8 roles con 2FA real, cubeta del runner
-    con y sin red, nota de QC, equipo del TL, aprobar/rechazar de nómina; build real + `vite preview` en :3000) y,
+    con y sin red, nota de QC, equipo del TL, aprobar/rechazar de nómina; build real + `vite preview` en :3000), y
     `npm run test:e2e:fresh` («empresa desde cero») tras `local-stack.sh reset` + `disable-mfa` y con
     `VITE_MFA_ENFORCE=false`; si el spec `e2e/fresh-company.spec.ts` no está en la rama, aviso y se salta; si está
     y falta el script, falla.
