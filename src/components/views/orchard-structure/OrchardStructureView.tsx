@@ -11,8 +11,9 @@
  *   Filas:      en lote («filas 1–15»), variedad y objetivo por rango
  *               («filas 1–15 Royal Gala»), edición una a una y archivado.
  *
- * Es trabajo de oficina con conexión: si falla la red se dice y no se pierde
- * nada (no hay nada a medias, cada cambio es una sola llamada).
+ * Es trabajo de oficina con conexión: si falla la red se dice. Cada cambio es
+ * una sola llamada a la base y una sola transacción (crear temporada con copia
+ * y activación, o bloque con sus filas, incluidos): nunca queda nada a medias.
  */
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from '@/i18n';
@@ -70,7 +71,7 @@ const OrchardStructureView: React.FC<OrchardStructureViewProps> = ({ orchardId, 
     }
 
     return (
-        <div className="p-4 md:p-6 max-w-[1100px] mx-auto pb-24 space-y-5" data-testid="orchard-structure">
+        <div className="p-4 md:p-6 max-w-[1100px] mx-auto pb-36 space-y-5" data-testid="orchard-structure">
             <header className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
                     <span aria-hidden="true" className="material-symbols-outlined text-emerald-600">park</span>
@@ -104,7 +105,6 @@ const OrchardStructureView: React.FC<OrchardStructureViewProps> = ({ orchardId, 
                     />
                     {season && (
                         <BlocksSection
-                            orchardId={orchardId}
                             season={season}
                             blocks={s.blocks}
                             rows={s.rows}
@@ -157,12 +157,10 @@ function SeasonsSection({ orchardId, seasons, season, busy, onSelect, run }: {
         setLocalError(null);
         if (!name.trim() || !start) { setLocalError(t('ostruct.err.season_fields')); return; }
         if (end && end < start) { setLocalError(t('ostruct.err.dates')); return; }
-        const ok = await run(async () => {
-            const created = await repo.createSeason({ orchardId, name, startDate: start, endDate: end || null });
-            if (copyFrom) await repo.copySeasonStructure(copyFrom, created.id);
-            if (activateNow) await repo.activateSeason(created.id);
-            return created.id;
-        }, { selectSeason: id => (typeof id === 'string' ? id : null) });
+        const ok = await run(
+            () => repo.createSeason({ orchardId, name, startDate: start, endDate: end || null, copyFrom: copyFrom || null, activate: activateNow }),
+            { selectSeason: id => (typeof id === 'string' ? id : null) },
+        );
         if (ok) { setCreating(false); setCopyFrom(''); }
     };
 
@@ -307,8 +305,7 @@ function SeasonEditor({ season, busy, run }: { season: SeasonRow; busy: boolean;
 
 /* ── Bloques ────────────────────────────────────────────────────────────── */
 
-function BlocksSection({ orchardId, season, blocks, rows, rowsByBlock, selectedBlockId, busy, onOpenBlock, run }: {
-    orchardId: string;
+function BlocksSection({ season, blocks, rows, rowsByBlock, selectedBlockId, busy, onOpenBlock, run }: {
     season: SeasonRow;
     blocks: BlockRow[];
     rows: OrchardRowRecord[];
@@ -339,17 +336,15 @@ function BlocksSection({ orchardId, season, blocks, rows, rowsByBlock, selectedB
         if (range && !range.ok) { setLocalError(t(range.errorKey)); return; }
         const tgt = parseTarget(target);
         if (!tgt.ok) { setLocalError(t('ostruct.err.target')); return; }
-        const ok = await run(async () => {
-            const created = await repo.createBlock({
-                orchardId,
-                seasonId: season.id,
-                name: blockName,
-                colorCode: BLOCK_COLORS[blocks.length % BLOCK_COLORS.length],
-                startRow: range && range.ok ? range.from : firstFree,
-            });
-            if (range && range.ok) await repo.addRows(created.id, range.from, range.to, cleanVariety(variety), tgt.value);
-        });
-        if (ok) { setName(''); setFrom(''); setTo(''); setVariety(''); setTarget(''); }
+        await run(() => repo.createBlock({
+            seasonId: season.id,
+            name: blockName,
+            colorCode: BLOCK_COLORS[blocks.length % BLOCK_COLORS.length],
+            rowFrom: range && range.ok ? range.from : null,
+            rowTo: range && range.ok ? range.to : null,
+            variety: cleanVariety(variety),
+            target: tgt.value,
+        }), { onSaved: () => { setName(''); setFrom(''); setTo(''); setVariety(''); setTarget(''); } });
     };
 
     return (

@@ -289,7 +289,8 @@ const Manager = () => {
 
   /* ── Broadcast FAB ──────────────────────────────────── */
   const renderBroadcastFAB = () => {
-    if (activeTab === 'map' || activeTab === 'messaging') return null;
+    // En «Estructura del huerto» tapaba los botones de los formularios
+    if (activeTab === 'map' || activeTab === 'messaging' || activeTab === 'structure') return null;
     return (
       <div className="fixed bottom-[136px] md:bottom-8 right-4 z-40">
         <button

@@ -28,7 +28,7 @@ export interface OrchardStructureState {
     selectSeason: (id: string) => void;
     clearError: () => void;
     /** Ejecuta un cambio; devuelve false si falló (el error queda en `error`) */
-    run: (action: () => Promise<unknown>, opts?: { selectSeason?: (result: unknown) => string | null }) => Promise<boolean>;
+    run: (action: () => Promise<unknown>, opts?: { selectSeason?: (result: unknown) => string | null; onSaved?: (result: unknown) => void }) => Promise<boolean>;
     reload: () => Promise<void>;
 }
 
@@ -79,6 +79,8 @@ export function useOrchardStructure(orchardId: string | null | undefined): Orcha
         setError(null);
         try {
             const result = await action();
+            // Antes de recargar: el formulario se vacía ya (si no, lo que se escribe mientras recarga se borraría)
+            opts?.onSaved?.(result);
             await load(opts?.selectSeason?.(result) ?? undefined);
             await refreshStore();
             return true;

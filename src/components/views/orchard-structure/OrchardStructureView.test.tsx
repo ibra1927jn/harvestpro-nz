@@ -16,10 +16,12 @@ const db = vi.hoisted(() => ({
 }));
 const repo = vi.hoisted(() => ({
     listSeasons: vi.fn(async () => [...db.seasons]),
-    createSeason: vi.fn(async (i: { orchardId: string; name: string; startDate: string; endDate: string | null }) => {
+    // Como create_harvest_season: crear, copiar y activar en una sola llamada
+    createSeason: vi.fn(async (i: { orchardId: string; name: string; startDate: string; endDate: string | null; copyFrom: string | null; activate: boolean }) => {
         const s: SeasonRow = { id: `s${++db.n}`, orchard_id: i.orchardId, name: i.name, start_date: i.startDate, end_date: i.endDate, status: 'planning' };
         db.seasons.unshift(s);
-        return s;
+        if (i.activate) for (const x of db.seasons) x.status = x.id === s.id ? 'active' : x.status === 'active' ? 'closed' : x.status;
+        return s.id;
     }),
     updateSeason: vi.fn(async () => undefined),
     activateSeason: vi.fn(async (id: string) => {
@@ -28,10 +30,14 @@ const repo = vi.hoisted(() => ({
     closeSeason: vi.fn(async () => undefined),
     copySeasonStructure: vi.fn(async () => 0),
     listBlocks: vi.fn(async (seasonId: string) => db.blocks.filter(b => b.season_id === seasonId && !b.deleted_at)),
-    createBlock: vi.fn(async (i: { orchardId: string; seasonId: string; name: string; colorCode: string; startRow: number }) => {
-        const b: BlockRow = { id: `b${++db.n}`, orchard_id: i.orchardId, season_id: i.seasonId, name: i.name, total_rows: 0, start_row: i.startRow, color_code: i.colorCode, deleted_at: null };
+    // Como create_orchard_block: el bloque y sus filas en una sola llamada
+    createBlock: vi.fn(async (i: { seasonId: string; name: string; colorCode: string; rowFrom: number | null; rowTo: number | null; variety: string | null; target: number | null }) => {
+        const b: BlockRow = { id: `b${++db.n}`, orchard_id: 'o1', season_id: i.seasonId, name: i.name, total_rows: 0, start_row: i.rowFrom ?? 1, color_code: i.colorCode, deleted_at: null };
         db.blocks.push(b);
-        return b;
+        if (i.rowFrom !== null && i.rowTo !== null) {
+            for (let n = i.rowFrom; n <= i.rowTo; n++) db.rows.push({ id: `r${n}`, block_id: b.id, row_number: n, variety: i.variety, target_buckets: i.target ?? 100 });
+        }
+        return b.id;
     }),
     renameBlock: vi.fn(async (id: string, name: string) => { const b = db.blocks.find(x => x.id === id); if (b) b.name = name; }),
     archiveBlock: vi.fn(async () => undefined),
@@ -73,8 +79,7 @@ describe('OrchardStructureView', () => {
         const seasonForm = await screen.findByTestId('ostruct-season-form');
         expect((within(seasonForm).getByTestId('ostruct-season-name') as HTMLInputElement).value).toMatch(/^Season \d{4}–\d{2}$/);
         fireEvent.click(screen.getByTestId('ostruct-create-season'));
-        await waitFor(() => expect(repo.activateSeason).toHaveBeenCalledWith('s1'));
-        expect(repo.createSeason).toHaveBeenCalledWith(expect.objectContaining({ orchardId: 'o1', endDate: null }));
+        await waitFor(() => expect(repo.createSeason).toHaveBeenCalledWith(expect.objectContaining({ orchardId: 'o1', endDate: null, copyFrom: null, activate: true })));
         // Huerto abierto en la app: el mapa del store se recarga
         await waitFor(() => expect(fetchBlocks).toHaveBeenCalledWith('o1'));
 
@@ -85,8 +90,10 @@ describe('OrchardStructureView', () => {
         fireEvent.change(screen.getByTestId('ostruct-block-to'), { target: { value: '15' } });
         fireEvent.change(screen.getByTestId('ostruct-block-variety'), { target: { value: 'Braeburn' } });
         fireEvent.click(screen.getByTestId('ostruct-add-block'));
-        await waitFor(() => expect(repo.addRows).toHaveBeenCalledWith('b2', 1, 15, 'Braeburn', null));
-        expect(repo.createBlock).toHaveBeenCalledWith(expect.objectContaining({ seasonId: 's1', name: 'Block A', startRow: 1 }));
+        await waitFor(() => expect(repo.createBlock).toHaveBeenCalledWith(expect.objectContaining({
+            seasonId: 's1', name: 'Block A', rowFrom: 1, rowTo: 15, variety: 'Braeburn', target: null,
+        })));
+        expect(repo.addRows).not.toHaveBeenCalled();
         const blockLine = await screen.findByTestId('ostruct-block-Block A');
         expect(blockLine).toHaveTextContent('15 rows (1–15)');
         expect(blockLine).toHaveTextContent('Braeburn ×15');

@@ -132,6 +132,8 @@ const orchardSetup: TranslationDict = {
     'owiz.err.target': 'The target per row must be a whole number between 0 and 10000.',
     'owiz.err.overlap': 'Two blocks share row numbers. Each row number belongs to one block.',
     'owiz.err.code_taken': 'There is already an orchard with that code.',
+    'owiz.err.season_long': 'The season name can have at most 80 characters.',
+    'owiz.err.block_name_long': 'A block name can have at most 60 characters.',
 };
 
 export default orchardSetup;

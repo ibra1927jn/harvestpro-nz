@@ -17,11 +17,14 @@ function mockChain(result: { data?: unknown; error?: unknown }) {
 beforeEach(() => vi.restoreAllMocks());
 
 describe('orchardStructureRepository', () => {
-    it('creates seasons as planned (activation is a separate step)', async () => {
-        const chain = mockChain({ data: { id: 's1' }, error: null });
-        vi.spyOn(supabase, 'from').mockReturnValue(chain as never);
-        await repo.createSeason({ orchardId: 'o1', name: ' 2026–27 ', startDate: '2026-10-01', endDate: null });
-        expect(chain.insert).toHaveBeenCalledWith({ orchard_id: 'o1', name: '2026–27', start_date: '2026-10-01', end_date: null, status: 'planning' });
+    it('creates a season (copy + activate) and a block (with rows) each in one database call', async () => {
+        const rpc = vi.spyOn(supabase, 'rpc').mockResolvedValue({ data: 'id-1', error: null } as never);
+        expect(await repo.createSeason({ orchardId: 'o1', name: ' 2026–27 ', startDate: '2026-10-01', endDate: null, copyFrom: 's0', activate: true })).toBe('id-1');
+        expect(await repo.createBlock({ seasonId: 's1', name: ' Block A ', colorCode: '#000', rowFrom: 1, rowTo: 15, variety: 'Gala', target: null })).toBe('id-1');
+        expect(rpc.mock.calls).toEqual([
+            ['create_harvest_season', { p_orchard_id: 'o1', p_name: '2026–27', p_start_date: '2026-10-01', p_end_date: null, p_copy_from: 's0', p_activate: true }],
+            ['create_orchard_block', { p_season_id: 's1', p_name: 'Block A', p_color_code: '#000', p_row_from: 1, p_row_to: 15, p_variety: 'Gala', p_target: null }],
+        ]);
     });
 
     it('uses the database functions for activate, close, copy and batch rows', async () => {

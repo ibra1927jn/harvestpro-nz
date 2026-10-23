@@ -39,6 +39,10 @@ export const STEPS = [
 /** Variedades sugeridas (se puede escribir cualquiera) */
 export const VARIETIES = ['Lapin', 'Sweetheart', 'Kordia', 'Stella', 'Rainier', 'Skeena', 'Bing', 'Brooks', 'Staccato', 'Sam', 'White Gold', 'Earlise'];
 
+/** Límites de la base (CHECK de harvest_seasons.name y orchard_blocks.name) */
+export const SEASON_NAME_MAX = 80;
+export const BLOCK_NAME_MAX = 60;
+
 /** Letra del bloque n.º index: A, B, C… */
 export function blockLetter(index: number): string {
     return String.fromCharCode(65 + (index % 26));
@@ -69,6 +73,7 @@ export function initialWizardData(today: string, seasonName: string, firstBlockN
  */
 export function validateStructure(data: Pick<WizardData, 'season' | 'blocks'>): string | null {
     if (!data.season.name.trim() || !data.season.start_date) return 'owiz.err.season';
+    if (data.season.name.trim().length > SEASON_NAME_MAX) return 'owiz.err.season_long';
     if (data.season.end_date && data.season.end_date < data.season.start_date) return 'owiz.err.dates';
     if (data.blocks.length === 0) return 'owiz.err.no_blocks';
     const names = new Set<string>();
@@ -76,6 +81,7 @@ export function validateStructure(data: Pick<WizardData, 'season' | 'blocks'>): 
     for (const b of data.blocks) {
         const name = b.name.trim().toLowerCase();
         if (!name) return 'owiz.err.block_name';
+        if (name.length > BLOCK_NAME_MAX) return 'owiz.err.block_name_long';
         if (names.has(name)) return 'owiz.err.block_dup';
         names.add(name);
         if (!Number.isInteger(b.row_from) || !Number.isInteger(b.row_to) || b.row_from < 1 || b.row_to < b.row_from

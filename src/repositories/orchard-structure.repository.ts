@@ -77,20 +77,24 @@ export const orchardStructureRepository = {
         return (data ?? []) as SeasonRow[];
     },
 
-    async createSeason(input: { orchardId: string; name: string; startDate: string; endDate: string | null }): Promise<SeasonRow> {
-        const { data, error } = await supabase
-            .from('harvest_seasons')
-            .insert({
-                orchard_id: input.orchardId,
-                name: input.name.trim(),
-                start_date: input.startDate,
-                end_date: input.endDate,
-                status: 'planning',
-            })
-            .select(SEASON_COLS)
-            .single();
+    /**
+     * Temporada nueva (prevista); si se pide, copia los bloques y filas de otra
+     * y la activa. Una sola transacción en la base: o todo o nada.
+     */
+    async createSeason(input: {
+        orchardId: string; name: string; startDate: string; endDate: string | null;
+        copyFrom: string | null; activate: boolean;
+    }): Promise<string> {
+        const { data, error } = await supabase.rpc('create_harvest_season', {
+            p_orchard_id: input.orchardId,
+            p_name: input.name.trim(),
+            p_start_date: input.startDate,
+            p_end_date: input.endDate,
+            p_copy_from: input.copyFrom,
+            p_activate: input.activate,
+        });
         fail(error);
-        return data as SeasonRow;
+        return String(data);
     },
 
     async updateSeason(id: string, patch: { name?: string; start_date?: string; end_date?: string | null }): Promise<void> {
@@ -132,21 +136,22 @@ export const orchardStructureRepository = {
         return (data ?? []) as BlockRow[];
     },
 
-    async createBlock(input: { orchardId: string; seasonId: string; name: string; colorCode: string; startRow: number }): Promise<BlockRow> {
-        const { data, error } = await supabase
-            .from('orchard_blocks')
-            .insert({
-                orchard_id: input.orchardId,
-                season_id: input.seasonId,
-                name: input.name.trim(),
-                color_code: input.colorCode,
-                start_row: input.startRow,
-                total_rows: 0,
-            })
-            .select(BLOCK_COLS)
-            .single();
+    /** Bloque nuevo con sus filas (rango opcional), en una sola transacción */
+    async createBlock(input: {
+        seasonId: string; name: string; colorCode: string;
+        rowFrom: number | null; rowTo: number | null; variety: string | null; target: number | null;
+    }): Promise<string> {
+        const { data, error } = await supabase.rpc('create_orchard_block', {
+            p_season_id: input.seasonId,
+            p_name: input.name.trim(),
+            p_color_code: input.colorCode,
+            p_row_from: input.rowFrom,
+            p_row_to: input.rowTo,
+            p_variety: input.variety,
+            p_target: input.target,
+        });
         fail(error);
-        return data as BlockRow;
+        return String(data);
     },
 
     async renameBlock(id: string, name: string): Promise<void> {

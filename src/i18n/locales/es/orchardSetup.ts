@@ -132,6 +132,8 @@ const orchardSetup: TranslationDict = {
     'owiz.err.target': 'El objetivo por fila tiene que ser un número entero entre 0 y 10000.',
     'owiz.err.overlap': 'Dos bloques comparten números de fila. Cada número es de un solo bloque.',
     'owiz.err.code_taken': 'Ya hay un huerto con ese código.',
+    'owiz.err.season_long': 'El nombre de la temporada puede tener como mucho 80 caracteres.',
+    'owiz.err.block_name_long': 'El nombre de un bloque puede tener como mucho 60 caracteres.',
 };
 
 export default orchardSetup;

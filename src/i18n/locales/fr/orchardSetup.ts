@@ -132,6 +132,8 @@ const orchardSetup: TranslationDict = {
     'owiz.err.target': 'L’objectif par rang doit être un nombre entier entre 0 et 10000.',
     'owiz.err.overlap': 'Deux blocs partagent des numéros de rang. Chaque numéro appartient à un seul bloc.',
     'owiz.err.code_taken': 'Un verger porte déjà ce code.',
+    'owiz.err.season_long': 'Le nom de la saison peut compter 80 caractères au maximum.',
+    'owiz.err.block_name_long': 'Le nom d’un bloc peut compter 60 caractères au maximum.',
 };
 
 export default orchardSetup;

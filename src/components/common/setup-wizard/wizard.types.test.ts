@@ -35,6 +35,8 @@ describe('validateStructure', () => {
         ['season without name', { season: { ...sampleWizardData.season, name: ' ' } }, 'owiz.err.season'],
         ['end before start', { season: { ...sampleWizardData.season, end_date: '2026-01-01' } }, 'owiz.err.dates'],
         ['no blocks', { blocks: [] }, 'owiz.err.no_blocks'],
+        ['season name over 80', { season: { ...sampleWizardData.season, name: 'S'.repeat(81) } }, 'owiz.err.season_long'],
+        ['block name over 60', { blocks: [{ ...sampleWizardData.blocks[0], name: 'B'.repeat(61) }] }, 'owiz.err.block_name_long'],
         ['block without name', { blocks: [{ ...sampleWizardData.blocks[0], name: '' }] }, 'owiz.err.block_name'],
         ['same name twice', { blocks: [sampleWizardData.blocks[0], { ...sampleWizardData.blocks[1], name: 'block a' }] }, 'owiz.err.block_dup'],
         ['to before from', { blocks: [{ ...sampleWizardData.blocks[0], row_from: 9, row_to: 3 }] }, 'owiz.err.range'],
