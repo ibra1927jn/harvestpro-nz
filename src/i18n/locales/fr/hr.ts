@@ -155,6 +155,23 @@ const hr: TranslationDict = {
     'hr.agenda.load_failed': 'Impossible de charger l’agenda',
     'hr.agenda.not_saved': 'Impossible d’enregistrer l’absence',
     'hr.agenda.breaks_reminder': 'Pauses : {rest} min de repos payé toutes les {restEvery} h et une pause repas de {meal} min à {mealAt} h. Pas d’heure de fin de poste : chacun pointe lui-même son départ.',
+    'hr.file.open': 'Ouvrir la fiche de {name}',
+    'hr.file.contract': 'Contrat',
+    'hr.file.from': 'Du',
+    'hr.file.to': 'Au',
+    'hr.file.open_ended': 'Sans date de fin',
+    'hr.file.rate': 'Taux horaire',
+    'hr.file.signed_copy': 'Copie signée',
+    'hr.file.yes': 'Oui',
+    'hr.file.no': 'Manquante',
+    'hr.file.missing': 'Ce qui manque',
+    'hr.file.loading': 'Chargement des documents et absences…',
+    'hr.file.load_failed': 'Impossible de charger les documents et absences.',
+    'hr.file.documents': 'Documents ({n})',
+    'hr.file.no_documents': 'Aucun document envoyé',
+    'hr.file.expires': 'Expire le {date}',
+    'hr.file.leave': 'Absences ({n})',
+    'hr.file.no_leave': 'Aucune absence enregistrée',
 };
 
 export default hr;

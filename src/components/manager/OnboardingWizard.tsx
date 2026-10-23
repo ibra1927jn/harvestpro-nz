@@ -2,11 +2,14 @@
  * OnboardingWizard.tsx — Pantalla de bienvenida para managers nuevos
  *
  * Se muestra cuando el orchard no tiene crew ni configuracion.
- * Envuelve el SetupWizard existente con un paso de bienvenida previo.
+ * Envuelve el asistente «Configura tu huerto» (ManagerSetupWizard) con un paso
+ * de bienvenida previo. Antes abría el de crear huerto (SetupWizard), que es
+ * solo de admin y al manager le acababa en error (B4, auditoría 2026-10-23).
  * Guarda finalizacion en localStorage para no mostrarse de nuevo.
  */
 import React, { useState } from 'react';
-import SetupWizard from '@/components/common/SetupWizard';
+import ManagerSetupWizard from './ManagerSetupWizard';
+import { useTranslation } from '@/i18n';
 
 const ONBOARDING_STORAGE_KEY = 'harvestpro_manager_onboarding_completed';
 
@@ -34,6 +37,7 @@ interface OnboardingWizardProps {
 }
 
 const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete }) => {
+    const { t } = useTranslation();
     const [showWizard, setShowWizard] = useState(false);
 
     const handleStartSetup = () => {
@@ -50,10 +54,10 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete }) => {
         onComplete();
     };
 
-    // Si el usuario eligio configurar, mostrar SetupWizard existente
+    // Si el usuario eligio configurar, el asistente de SU huerto
     if (showWizard) {
         return (
-            <SetupWizard
+            <ManagerSetupWizard
                 onComplete={handleWizardComplete}
                 onCancel={() => setShowWizard(false)}
             />
@@ -71,31 +75,31 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete }) => {
                         <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
                             <span aria-hidden="true" className="material-symbols-outlined text-white text-5xl">agriculture</span>
                         </div>
-                        <h1 className="text-2xl font-black text-white mb-1">Welcome to HarvestPro</h1>
+                        <h1 className="text-2xl font-black text-white mb-1">{t('msetup.welcome')}</h1>
                         <p className="text-emerald-100 text-sm font-medium">
-                            Let's set up your orchard in a few quick steps
+                            {t('msetup.welcome_sub')}
                         </p>
                     </div>
 
                     {/* Pasos resumidos */}
                     <div className="px-8 py-6 space-y-4">
                         <WelcomeStep
-                            stepNumber={1}
-                            icon="park"
-                            title="Set up your orchard"
-                            description="Name your orchard and configure the number of rows."
+                            stepLabel={t('msetup.step', { n: 1 })}
+                            icon="target"
+                            title={t('msetup.target')}
+                            description={t('msetup.target_hint')}
                         />
                         <WelcomeStep
-                            stepNumber={2}
-                            icon="groups"
-                            title="Invite your first team leader"
-                            description="Add at least one team leader to start organising pickers."
-                        />
-                        <WelcomeStep
-                            stepNumber={3}
+                            stepLabel={t('msetup.step', { n: 2 })}
                             icon="payments"
-                            title="Configure wage rates"
-                            description="Set piece rates and minimum wage to comply with NZ law."
+                            title={t('msetup.rate')}
+                            description={t('msetup.rate_hint')}
+                        />
+                        <WelcomeStep
+                            stepLabel={t('msetup.step', { n: 3 })}
+                            icon="eco"
+                            title={t('msetup.varieties')}
+                            description={t('msetup.varieties_hint')}
                         />
                     </div>
 
@@ -105,21 +109,21 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete }) => {
                             onClick={handleStartSetup}
                             className="w-full py-3.5 gradient-primary glow-primary text-white rounded-xl font-bold text-sm shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                         >
-                            <span aria-hidden="true" className="material-symbols-outlined text-lg">rocket_launch</span>
-                            Start Setup
+                            <span aria-hidden="true" className="material-symbols-outlined text-lg">tune</span>
+                            {t('msetup.start')}
                         </button>
                         <button
                             onClick={handleSkip}
                             className="w-full py-3 text-text-muted text-sm font-medium hover:text-text-sub transition-colors"
                         >
-                            Skip for now — I'll configure later
+                            {t('msetup.skip')}
                         </button>
                     </div>
                 </div>
 
                 {/* Nota de ayuda */}
                 <p className="text-center text-xs text-text-muted mt-4">
-                    You can always access setup from Settings later.
+                    {t('msetup.later')}
                 </p>
             </div>
         </div>
@@ -128,12 +132,12 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete }) => {
 
 /** Componente interno: paso de bienvenida con icono y descripcion */
 function WelcomeStep({
-    stepNumber,
+    stepLabel,
     icon,
     title,
     description,
 }: {
-    stepNumber: number;
+    stepLabel: string;
     icon: string;
     title: string;
     description: string;
@@ -146,7 +150,7 @@ function WelcomeStep({
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-                        STEP {stepNumber}
+                        {stepLabel}
                     </span>
                     <h3 className="text-sm font-bold text-text-main">{title}</h3>
                 </div>

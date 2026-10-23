@@ -17,7 +17,6 @@ const settings2: TranslationDict = {
     'settings.save_failed': 'No se pudo guardar. Inténtalo de nuevo.',
     'settings.copyright': '© 2026 HarvestPro. Hecho para huertos de NZ.',
     'settings.override': '(ajuste manual: {value})',
-    'settings.select_orchard': 'Elegir huerto',
     'wage.picker_piece': 'Recolector (a destajo)',
     'wage.loading': 'Cargando tarifas…',
     'wage.title': 'Configuración de tarifas salariales',

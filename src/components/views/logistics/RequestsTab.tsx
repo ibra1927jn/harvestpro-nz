@@ -9,6 +9,7 @@ import {
     TransportRequest, Tractor,
     assignVehicleToRequest, completeTransportRequest, cancelTransportRequest
 } from '@/services/logistics-dept.service';
+import { vehiclesForTransport, type TransportVehicleFilter } from './logisticsLogic';
 import { useAuth } from '@/context/AuthContext';
 import { useTranslation } from '@/i18n';
 import { statusLabel } from '@/i18n/statusLabel';
@@ -40,6 +41,8 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
     const { appUser } = useAuth();
     const [assigningId, setAssigningId] = useState<string | null>(null);
     const [selectedVehicle, setSelectedVehicle] = useState('');
+    // Por defecto sin carretillas: mueven bins dentro de la zona, no entre zonas
+    const [vehicleType, setVehicleType] = useState<TransportVehicleFilter>('not_forklift');
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
@@ -63,7 +66,7 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
         setTimeout(() => setToast(null), 3000);
     };
 
-    const availableTractors = tractors.filter(tr => tr.status === 'active' || tr.status === 'idle');
+    const availableTractors = vehiclesForTransport(tractors, vehicleType);
 
     const handleAssign = (requestId: string, updatedAt?: string) => {
         if (!selectedVehicle || !appUser?.id) return;
@@ -82,6 +85,9 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
     };
 
     const handleCancel = (requestId: string, updatedAt?: string) => {
+        // Cancelar no se deshace: se pregunta antes (auditoría 2026-10-23, E)
+        const req = requests.find(r => r.id === requestId);
+        if (!window.confirm(t('logi.req.confirm_cancel', { zone: req?.zone ?? '', bins: req?.bins_count ?? 0 }))) return;
         cancelTransportRequest(requestId, updatedAt);
         showToast(t('logi.toast.cancelled'), 'error');
         onRefresh?.();
@@ -174,6 +180,18 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
                                     {assigningId === req.id ? (
                                         <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-top-1">
                                             <select
+                                                value={vehicleType}
+                                                onChange={e => { setVehicleType(e.target.value as TransportVehicleFilter); setSelectedVehicle(''); }}
+                                                className="w-full px-3 py-2 rounded-xl bg-white/80 border border-slate-200 text-sm outline-none"
+                                                aria-label={t('logi.fleet.type')}
+                                            >
+                                                <option value="not_forklift">{t('logi.req.no_forklifts')}</option>
+                                                <option value="all">{t('logi.req.all_types')}</option>
+                                                {(['tractor', 'truck', 'ute', 'forklift'] as const).map(v => (
+                                                    <option key={v} value={v}>{t(`runner.now.vehicle_${v}`)}</option>
+                                                ))}
+                                            </select>
+                                            <select
                                                 value={selectedVehicle}
                                                 onChange={e => setSelectedVehicle(e.target.value)}
                                                 className="w-full px-3 py-2 rounded-xl bg-white/80 border border-slate-200 text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all shadow-sm"
@@ -182,7 +200,7 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
                                                 <option value="">{t('logi.select_vehicle')}...</option>
                                                 {availableTractors.map(tr => (
                                                     <option key={tr.id} value={tr.id}>
-                                                        {tr.name} — {tr.zone} ({statusLabel(t, tr.status)})
+                                                        {tr.name} · {t(`runner.now.vehicle_${tr.type}`)} — {tr.zone} ({statusLabel(t, tr.status)}, {tr.bins_loaded}/{tr.max_capacity})
                                                     </option>
                                                 ))}
                                             </select>

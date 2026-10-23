@@ -13,7 +13,9 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { logger } from '@/utils/logger';
-import { fraudDetectionService, Anomaly } from '../../../services/fraud-detection.service';
+import { fraudDetectionService, anomalyKey, type Anomaly, type AnomalyDismissalRow } from '../../../services/fraud-detection.service';
+import { nzMidnight, todayNZST } from '@/utils/nzst';
+import { useTranslation } from '@/i18n';
 import { useHarvestStore } from '../../../stores/useHarvestStore';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import { FILTER_LABELS, type FilterType } from './anomaly/anomaly.constants';
@@ -21,20 +23,27 @@ import AnomalyCard from './anomaly/AnomalyCard';
 import SmartDismissals from './anomaly/SmartDismissals';
 
 const AnomalyDetectionView: React.FC = () => {
+    const { t } = useTranslation();
     const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
+    // Descartes reales de hoy (anomaly_dismissals); antes una lista fija en el código
+    const [dismissed, setDismissed] = useState<AnomalyDismissalRow[]>([]);
+    const [dismissError, setDismissError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [isLive, setIsLive] = useState(false);
     const [filter, setFilter] = useState<FilterType>('all');
     const openPickerProfile = useHarvestStore(state => state.openPickerProfile);
     const orchard = useHarvestStore(state => state.orchard);
-    const dismissed = fraudDetectionService.getDismissedExamples();
 
     const loadAnomalies = useCallback(async () => {
         setLoading(true);
         try {
             if (orchard?.id) {
-                const result = await fraudDetectionService.fetchAnomalies(orchard.id);
+                const [result, gone] = await Promise.all([
+                    fraudDetectionService.fetchAnomalies(orchard.id),
+                    fraudDetectionService.listDismissals(orchard.id, nzMidnight(todayNZST())),
+                ]);
                 setAnomalies(result);
+                setDismissed(gone);
                 setIsLive(result.length > 0);
             } else {
                 setAnomalies([]);
@@ -53,10 +62,37 @@ const AnomalyDetectionView: React.FC = () => {
         loadAnomalies();
     }, [loadAnomalies]);
 
-    const filtered = filter === 'all' ? anomalies : anomalies.filter(a => a.type === filter);
-    const highCount = anomalies.filter(a => a.severity === 'high').length;
-    const medCount = anomalies.filter(a => a.severity === 'medium').length;
-    const lowCount = anomalies.filter(a => a.severity === 'low').length;
+    const dismissedKeys = new Set(dismissed.map(d => d.anomaly_key));
+    const open = anomalies.filter(a => !dismissedKeys.has(anomalyKey(a)));
+    const filtered = filter === 'all' ? open : open.filter(a => a.type === filter);
+    const highCount = open.filter(a => a.severity === 'high').length;
+    const medCount = open.filter(a => a.severity === 'medium').length;
+    const lowCount = open.filter(a => a.severity === 'low').length;
+
+    const handleDismiss = async (anomaly: Anomaly) => {
+        if (!orchard?.id) return;
+        const reason = window.prompt(t('fraud.dismiss_prompt', { name: anomaly.pickerName }));
+        if (reason === null) return;
+        setDismissError(null);
+        try {
+            const row = await fraudDetectionService.dismissAnomaly(orchard.id, anomaly, reason);
+            setDismissed(prev => [row, ...prev]);
+        } catch (err) {
+            logger.error('[AnomalyDetection] Dismiss failed:', err);
+            setDismissError(t('fraud.dismiss_failed'));
+        }
+    };
+
+    const handleUndo = async (id: string) => {
+        setDismissError(null);
+        try {
+            await fraudDetectionService.undoDismissal(id);
+            setDismissed(prev => prev.filter(d => d.id !== id));
+        } catch (err) {
+            logger.error('[AnomalyDetection] Undo failed:', err);
+            setDismissError(t('fraud.dismiss_failed'));
+        }
+    };
 
     return (
         <ComponentErrorBoundary componentName="Fraud Detection">
@@ -98,7 +134,7 @@ const AnomalyDetectionView: React.FC = () => {
                                 { label: 'High', count: highCount, color: 'text-rose-400' },
                                 { label: 'Medium', count: medCount, color: 'text-amber-400' },
                                 { label: 'Low', count: lowCount, color: 'text-sky-400' },
-                                { label: 'Dismissed', count: dismissed.length, color: 'text-emerald-400' },
+                                { label: t('fraud.dismissed'), count: dismissed.length, color: 'text-emerald-400' },
                             ].map(({ label, count, color }) => (
                                 <div key={label} className="text-center bg-slate-800/50 px-4 py-2 rounded-xl border border-slate-700">
                                     <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p>
@@ -164,7 +200,7 @@ const AnomalyDetectionView: React.FC = () => {
                                 {FILTER_LABELS[f]}
                                 {f !== 'all' && (
                                     <span className="ml-1.5 text-xs opacity-60">
-                                        ({anomalies.filter(a => a.type === f).length})
+                                        ({open.filter(a => a.type === f).length})
                                     </span>
                                 )}
                             </button>
@@ -189,6 +225,7 @@ const AnomalyDetectionView: React.FC = () => {
                                         anomaly={anomaly}
                                         index={idx}
                                         onViewProfile={openPickerProfile}
+                                        onDismiss={handleDismiss}
                                     />
                                 ))}
                             </div>
@@ -196,8 +233,12 @@ const AnomalyDetectionView: React.FC = () => {
                     </>
                 )}
 
-                {/* ─── Smart Dismissals ─── */}
-                <SmartDismissals dismissed={dismissed} />
+                {dismissError && (
+                    <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{dismissError}</div>
+                )}
+
+                {/* ─── Descartadas (reales) ─── */}
+                <SmartDismissals dismissed={dismissed} onUndo={handleUndo} />
             </div>
         </ComponentErrorBoundary>
     );

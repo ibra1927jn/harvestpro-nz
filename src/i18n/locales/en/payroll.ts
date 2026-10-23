@@ -52,10 +52,8 @@ const payroll: TranslationDict = {
     'pay.d.topup': 'Top-up:',
     'pay.minutes': '{n} min',
     'pay.no_variety': '(no variety)',
-    'pay.hist.confirm_clear': 'Clear all export history?',
     'pay.hist.title': 'Export History',
     'pay.hist.count': '{n} exports logged',
-    'pay.hist.clear_all': 'Clear All',
     'pay.hist.empty': 'No exports yet',
     'pay.hist.empty_hint': 'Export history will appear here after your first payroll export',
     'pay.hist.line': '{n} workers • {total} total',
@@ -121,6 +119,12 @@ const payroll: TranslationDict = {
     'pay.ts.reject_reason_placeholder': 'What needs fixing?',
     'pay.ts.reject_reason_hint': '{n}/{max} characters (at least 3)',
     'pay.ts.reject_confirm': 'Reject',
+    'pay.hist.loading': 'Loading history…',
+    'pay.hist.load_failed': 'Could not load the export history.',
+    'pay.hist.week': 'Week {from} → {to}',
+    'pay.hist.confirm_delete': 'Delete {file} from the export history? The file itself is not affected.',
+    'pay.hist.delete_for': 'Delete {file} from the history',
+    'pay.hist.delete_failed': 'Not deleted. Try again.',
 };
 
 export default payroll;

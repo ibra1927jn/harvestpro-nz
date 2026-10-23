@@ -1,141 +1,78 @@
 /**
- * Tests for ExportHistoryTab (payroll views)
- * Tests both the component rendering and the utility functions
+ * ExportHistoryTab — historial de exportaciones en el servidor (payroll_exports).
  */
-import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('@/utils/logger', () => ({
   logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn() },
 }));
 
-import ExportHistoryTab, {
-  getExportHistory,
-  logExportToHistory,
-  ExportRecord,
-} from './ExportHistoryTab';
+const list = vi.fn();
+const log = vi.fn();
+const remove = vi.fn();
+vi.mock('@/repositories/payroll-exports.repository', () => ({
+  payrollExportsRepository: {
+    list: (...a: unknown[]) => list(...a),
+    log: (...a: unknown[]) => log(...a),
+    remove: (...a: unknown[]) => remove(...a),
+  },
+}));
 
-describe('getExportHistory', () => {
-  beforeEach(() => localStorage.clear());
+import ExportHistoryTab, { logExportToHistory } from './ExportHistoryTab';
 
-  it('returns empty array when no history', () => {
-    expect(getExportHistory()).toEqual([]);
-  });
-
-  it('returns stored records', () => {
-    const records: ExportRecord[] = [
-      {
-        id: '1',
-        format: 'csv',
-        date: '2026-03-04',
-        filename: 'payroll.csv',
-        recordCount: 10,
-        totalEarnings: 500,
-        timestamp: new Date().toISOString(),
-      },
-    ];
-    localStorage.setItem('harvestpro_export_history', JSON.stringify(records));
-    expect(getExportHistory()).toHaveLength(1);
-    expect(getExportHistory()[0].format).toBe('csv');
-  });
-
-  it('returns empty array on corrupted JSON', () => {
-    localStorage.setItem('harvestpro_export_history', 'NOT_JSON');
-    expect(getExportHistory()).toEqual([]);
-  });
+const rec = (id: string, filename: string) => ({
+  id, exported_by: 'u1', exported_at: '2026-10-13T09:00:00+13:00', week_start: '2026-10-06', week_end: '2026-10-12',
+  format: 'xero', filename, record_count: 10, total_earnings: '1234.50', week_status: 'final',
 });
+
+beforeEach(() => { list.mockReset(); log.mockReset(); remove.mockReset(); });
 
 describe('logExportToHistory', () => {
-  beforeEach(() => localStorage.clear());
-
-  it('adds record to history', () => {
-    logExportToHistory({
-      format: 'pdf',
-      date: '2026-03-04',
-      filename: 'payroll.pdf',
-      recordCount: 5,
-      totalEarnings: 250,
-    });
-    const history = getExportHistory();
-    expect(history).toHaveLength(1);
-    expect(history[0].format).toBe('pdf');
-    expect(history[0]).toHaveProperty('id');
-    expect(history[0]).toHaveProperty('timestamp');
+  it('logs the export on the server', async () => {
+    log.mockResolvedValue({});
+    const entry = { week_start: '2026-10-06', week_end: '2026-10-12', format: 'csv' as const, filename: 'p.csv', record_count: 3, total_earnings: 99 };
+    expect(await logExportToHistory(entry)).toBe(true);
+    expect(log).toHaveBeenCalledWith(entry);
   });
 
-  it('prepends new records', () => {
-    logExportToHistory({
-      format: 'csv',
-      date: 'd1',
-      filename: 'f1.csv',
-      recordCount: 1,
-      totalEarnings: 100,
-    });
-    logExportToHistory({
-      format: 'pdf',
-      date: 'd2',
-      filename: 'f2.pdf',
-      recordCount: 2,
-      totalEarnings: 200,
-    });
-    const history = getExportHistory();
-    expect(history[0].format).toBe('pdf'); // most recent first
+  it('does not throw if it cannot log (the file was already downloaded)', async () => {
+    log.mockRejectedValue(new Error('offline'));
+    expect(await logExportToHistory({ week_start: 'a', week_end: 'b', format: 'pdf', filename: 'x', record_count: 0, total_earnings: 0 })).toBe(false);
   });
 });
 
-describe('ExportHistoryTab Component', () => {
-  beforeEach(() => localStorage.clear());
-
-  it('shows empty state when no history', () => {
+describe('ExportHistoryTab', () => {
+  it('lists the server history with week and format', async () => {
+    list.mockResolvedValue([rec('e1', 'xero-week.csv')]);
     render(<ExportHistoryTab />);
-    expect(screen.getByText('No exports yet')).toBeTruthy();
+    expect(await screen.findByText('xero-week.csv')).toBeTruthy();
+    expect(screen.getByText(/XERO/)).toBeTruthy();
   });
 
-  it('shows Export History title', () => {
+  it('shows the empty state', async () => {
+    list.mockResolvedValue([]);
     render(<ExportHistoryTab />);
-    expect(screen.getByText('Export History')).toBeTruthy();
+    expect(await screen.findByText(/No exports yet/i)).toBeTruthy();
   });
 
-  it('shows "0 exports logged" when empty', () => {
+  it('Delete asks first and then removes it on the server', async () => {
+    list.mockResolvedValue([rec('e1', 'xero-week.csv')]);
+    remove.mockResolvedValue(undefined);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
     render(<ExportHistoryTab />);
-    expect(screen.getByText('0 exports logged')).toBeTruthy();
+    const btn = await screen.findByRole('button', { name: 'Delete xero-week.csv from the history' });
+    fireEvent.click(btn);
+    expect(remove).not.toHaveBeenCalled();
+    fireEvent.click(btn);
+    await waitFor(() => expect(remove).toHaveBeenCalledWith('e1'));
+    await waitFor(() => expect(screen.queryByText('xero-week.csv')).toBeNull());
+    confirm.mockRestore();
   });
 
-  it('renders records from localStorage', () => {
-    const records: ExportRecord[] = [
-      {
-        id: '1',
-        format: 'csv',
-        date: '2026-03-04',
-        filename: 'payroll-march.csv',
-        recordCount: 25,
-        totalEarnings: 1500,
-        timestamp: '2026-03-04T12:00:00Z',
-      },
-    ];
-    localStorage.setItem('harvestpro_export_history', JSON.stringify(records));
+  it('says so when the history cannot load', async () => {
+    list.mockRejectedValue(new Error('offline'));
     render(<ExportHistoryTab />);
-    expect(screen.getByText('payroll-march.csv')).toBeTruthy();
-    expect(screen.getByText(/CSV/)).toBeTruthy();
-  });
-
-  it('shows Clear All button when records exist', () => {
-    localStorage.setItem(
-      'harvestpro_export_history',
-      JSON.stringify([
-        {
-          id: '1',
-          format: 'csv',
-          date: '2026-03-04',
-          filename: 'f.csv',
-          recordCount: 1,
-          totalEarnings: 100,
-          timestamp: '2026-03-04T12:00:00Z',
-        },
-      ])
-    );
-    render(<ExportHistoryTab />);
-    expect(screen.getByText('Clear All')).toBeTruthy();
+    expect(await screen.findByRole('alert')).toBeTruthy();
   });
 });

@@ -39,6 +39,8 @@ export type AuditEventType =
     | 'settings.day_setup_created'
     | 'settings.day_setup_modified'
     | 'settings.broadcast_sent'
+    // Cierre del día (manager)
+    | 'day.closed'
     // Compliance events
     | 'compliance.break_started'
     | 'compliance.break_ended'

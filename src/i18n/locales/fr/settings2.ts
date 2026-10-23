@@ -17,7 +17,6 @@ const settings2: TranslationDict = {
     'settings.save_failed': 'Impossible d’enregistrer. Réessayez.',
     'settings.copyright': '© 2026 HarvestPro. Conçu pour les vergers de Nouvelle-Zélande.',
     'settings.override': '(valeur forcée : {value})',
-    'settings.select_orchard': 'Choisir un verger',
     'wage.picker_piece': 'Cueilleur (tarif à la pièce)',
     'wage.loading': 'Chargement des taux de salaire…',
     'wage.title': 'Configuration des taux de salaire',

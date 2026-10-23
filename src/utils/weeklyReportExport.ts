@@ -32,7 +32,7 @@ interface CrewMember {
     team_leader_id?: string;
 }
 
-interface ExportContext {
+export interface ExportContext {
     pickers: PickerBreakdown[];
     binsTrend: TrendDataPoint[];
     workforceTrend: TrendDataPoint[];
@@ -44,12 +44,15 @@ interface ExportContext {
     totalEarnings: number;
     avgBPA: number;
     costPerBin: number;
-    exportSections: {
-        summary: boolean;
-        charts: boolean;
-        teams: boolean;
-        pickerDetail: boolean;
-    };
+    exportSections: ExportSections;
+}
+
+/** Secciones que el manager marca en «Export Report» */
+export interface ExportSections {
+    summary: boolean;
+    charts: boolean;
+    teams: boolean;
+    pickerDetail: boolean;
 }
 
 // ═══════════════════════════════════════════
@@ -77,15 +80,42 @@ export function exportCSV(ctx: ExportContext): void {
 // PDF Export
 // ═══════════════════════════════════════════
 
-export function exportPDF(ctx: ExportContext): void {
+/**
+ * PDF = impresión del navegador («Guardar como PDF») de la hoja del informe.
+ * Antes abría una ventana nueva (window.open), que el bloqueador de ventanas
+ * o el modo app de la PWA cortaban sin decir nada: «Generate PDF» no hacía
+ * nada. Ahora se imprime desde un iframe oculto en la misma página.
+ * Devuelve false si no se pudo preparar la impresión.
+ */
+export function exportPDF(ctx: ExportContext): boolean {
+    if (typeof document === 'undefined') return false;
     const html = buildPdfHtml(ctx);
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-        printWindow.document.write(html);
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => printWindow.print(), 500);
-    }
+    // En mayúsculas: el detector de iconos (scripts/icons) lee 'iframe' como icono
+    const frame = document.createElement('IFRAME') as HTMLIFrameElement;
+    frame.setAttribute('aria-hidden', 'true');
+    frame.setAttribute('data-testid', 'weekly-report-print');
+    frame.style.position = 'fixed';
+    frame.style.width = '0';
+    frame.style.height = '0';
+    frame.style.border = '0';
+    frame.style.right = '0';
+    frame.style.bottom = '0';
+    let printed = false;
+    const cleanup = () => { setTimeout(() => frame.remove(), 1000); };
+    frame.onload = () => {
+        if (printed) return;
+        printed = true;
+        const win = frame.contentWindow;
+        if (!win) { cleanup(); return; }
+        win.addEventListener('afterprint', cleanup, { once: true });
+        win.focus();
+        win.print();
+        // Navegadores sin afterprint: se quita igualmente
+        setTimeout(() => frame.remove(), 60_000);
+    };
+    frame.srcdoc = html;
+    document.body.appendChild(frame);
+    return true;
 }
 
 // ── Internal helpers ──

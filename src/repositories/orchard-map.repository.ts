@@ -33,6 +33,22 @@ export const orchardMapRepository = {
         return { data, error };
     },
 
+    /**
+     * Pone la misma variedad a todas las filas de un bloque (asistente del
+     * manager, B4). Devuelve cuántas filas cambió. RLS «Manage rows»: manager
+     * y admin de su huerto.
+     */
+    async setBlockVariety(blockId: string, variety: string): Promise<number> {
+        const { data, error } = await supabase
+            .from('block_rows')
+            .update({ variety: variety.trim() })
+            .eq('block_id', blockId)
+            .is('deleted_at', null)
+            .select('id');
+        if (error) throw error;
+        return (data ?? []).length;
+    },
+
     /** Get rows for given block IDs */
     async getBlockRows(blockIds: string[]) {
         const { data, error } = await supabase

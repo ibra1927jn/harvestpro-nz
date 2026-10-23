@@ -309,6 +309,9 @@ BEGIN
     RETURNING id INTO v_id;
     INSERT INTO sec_test.ids VALUES (o || '.att_tl', v_id);
 
+    -- Un contrato activo que ya tuviera la persona en la base local (demo, otras
+    -- pruebas a mano) choca con «uno activo por persona»; dentro del ROLLBACK se aparta
+    UPDATE public.contracts SET status = 'expired' WHERE employee_id = v_runner AND status = 'active';
     INSERT INTO public.contracts (employee_id, orchard_id, type, status, start_date, hourly_rate, created_by)
     VALUES (v_runner, v_orchard, 'seasonal', 'active', v_today - 10, 25.00, v_hr) RETURNING id INTO v_id;
     INSERT INTO sec_test.ids VALUES (o || '.contract', v_id);

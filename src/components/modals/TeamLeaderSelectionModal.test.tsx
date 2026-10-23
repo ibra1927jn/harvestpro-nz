@@ -5,15 +5,11 @@ import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import React from 'react';
 
-vi.mock('../../services/database.service', () => ({
-  databaseService: {
-    from: vi.fn(),
-  },
-}));
-
 vi.mock('../../services/user.service', () => ({
   userService: {
-    linkUserToOrchard: vi.fn(),
+    getAvailableTeamLeaders: vi.fn().mockResolvedValue([]),
+    getAvailableRunners: vi.fn().mockResolvedValue([]),
+    assignUserToOrchard: vi.fn(),
   },
 }));
 

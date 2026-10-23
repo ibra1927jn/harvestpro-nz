@@ -15,6 +15,7 @@ import type { BucketRecord } from '@/types';
 import type { HarvestStoreState, ScannedBucket } from './storeTypes';
 import { storeSyncRepository } from '@/repositories/store-sync.repository';
 import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
+import { dayClosureRepository } from '@/repositories/day-closure.repository';
 import { pieceRateOn } from '@/services/harvestMetrics/pay';
 import {
   applyAttendanceRecord,
@@ -160,6 +161,8 @@ export async function fetchOrchardData(
   }
 
   if (activeOrchard?.id) {
+    // Día cerrado: se lee siempre (una fila); así el TL y el runner lo saben al abrir
+    await loadDayClosure(set, activeOrchard.id, today);
     await loadShiftsElsewhere(set, activeOrchard.id, today);
     if (!light) await get().fetchBlocks(activeOrchard.id);
     await loadRowAssignments(get, set, activeOrchard.id);
@@ -257,6 +260,19 @@ async function loadCrewAndBuckets(p: {
   }
 }
 
+/**
+ * ¿Está cerrado hoy? (day_closures). Antes solo vivía en memoria del manager:
+ * tras recargar se podía cerrar otra vez y el TL y el runner no se enteraban.
+ */
+async function loadDayClosure(set: StoreSetter, orchardId: string, today: string): Promise<void> {
+  try {
+    const closure = await dayClosureRepository.getForDate(orchardId, today);
+    set({ dayClosed: closure?.status === 'closed' });
+  } catch (e) {
+    logger.warn('[Sync] Could not read the day closure:', e);
+  }
+}
+
 /** Quién está trabajando ahora en otro huerto (la gente rota entre huertos) */
 async function loadShiftsElsewhere(set: StoreSetter, orchardId: string, today: string): Promise<void> {
   try {
@@ -307,6 +323,23 @@ async function loadBins(set: StoreSetter, orchardId: string): Promise<void> {
 }
 
 /* ── Realtime Subscriptions ─────────────── */
+
+/** Espera para juntar varios cambios de bins en una lectura (igual que Logística) */
+export const BINS_REALTIME_DEBOUNCE_MS = 2000;
+let binsRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Un bin cambió (Logística lo puso vacío / lleno / recogido, lo dio de alta o
+ * de baja, u otro runner lo escaneó): se relee la lista, una vez por ráfaga.
+ */
+function scheduleBinsRefresh(orchardId: string, get: StoreGetter, set: StoreSetter): void {
+  if (binsRefreshTimer) return;
+  binsRefreshTimer = setTimeout(() => {
+    binsRefreshTimer = null;
+    if (get().orchard?.id !== orchardId) return;
+    void loadBins(set, orchardId).then(() => { binsLoadedAt = Date.now(); });
+  }, BINS_REALTIME_DEBOUNCE_MS);
+}
 
 /**
  * Vuelve a leer los precios por cubeta que valen hoy (piece_rates) y los pone
@@ -430,6 +463,41 @@ export function setupRealtimeSubscriptions(
           rowAssignments: applyRowAssignmentEvent(state.rowAssignments, record, payload.eventType),
         }));
         logger.info(`[Store] Realtime row_assignment ${payload.eventType}: row ${record.row_number}`);
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'bins',
+        filter: `orchard_id=eq.${orchardId}`,
+      },
+      payload => {
+        // Baja de Logística: fuera ya (la recarga conserva los bins solo del móvil,
+        // y uno dado de baja ya no viene del servidor)
+        const row = payload.new as { id?: string; deleted_at?: string | null } | null;
+        if (row?.id && row.deleted_at) {
+          set(state => ({ inventory: state.inventory.filter(b => b.id !== row.id) }));
+        }
+        if (document.hidden) return;
+        scheduleBinsRefresh(orchardId, get, set);
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'day_closures',
+        filter: `orchard_id=eq.${orchardId}`,
+      },
+      payload => {
+        // El manager cerró (o un admin reabrió) el día: aviso a todos al momento
+        const row = payload.new as { date?: string; status?: string } | null;
+        if (!row?.date || row.date !== todayNZST()) return;
+        logger.info(`[Store] Realtime day closure: ${row.status}`);
+        set({ dayClosed: row.status === 'closed' });
       }
     )
     .on(

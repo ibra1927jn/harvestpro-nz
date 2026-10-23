@@ -52,12 +52,15 @@ export const ExportTab: React.FC<{
         setExportError(null);
         try {
             const result = exportService.exportPayroll(format, data);
-            logExportToHistory({
+            // Historial en el servidor (quién, cuándo, semana, formato)
+            void logExportToHistory({
+                week_start: week.start,
+                week_end: week.end,
                 format,
-                date: data.date,
                 filename: result.filename,
-                recordCount: result.recordCount,
-                totalEarnings: result.totalEarnings,
+                record_count: result.recordCount,
+                total_earnings: result.totalEarnings,
+                week_status: data.status === 'final' ? 'final' : 'draft',
             });
             setLastExport(result.filename);
         } catch (err) {

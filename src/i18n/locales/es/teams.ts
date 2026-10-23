@@ -12,11 +12,7 @@ const teams: TranslationDict = {
     'teams.no_orchard': 'Sin huerto',
     'teams.link_staff': 'Vincular Personal',
     'teams.import_csv': 'Importar CSV',
-    'teams.no_runners': 'Sin corredores activos',
-    'teams.no_teams': 'Aún no hay equipos de cosecha',
     'teams.bins_today': 'cubetas hoy',
-    'teams.active': 'Activo',
-    'teams.on_break': 'En Descanso',
     // Nuevas claves para TeamsView, TeamLeaderCard y RunnersSection
     'teams.view_profile': 'VER PERFIL',
     'teams.bucket_runner': 'Corredor de Cubetas',
@@ -36,11 +32,9 @@ const teams: TranslationDict = {
     'teams.assign_leader': 'Asignar líder',
     'teams.no_runners_assigned': 'Sin Corredores Asignados',
     'teams.no_runners_sub': 'Los corredores ayudan a transportar cubetas de los recolectores a los bins. Asigna corredores desde la selección de líder de equipo.',
-    'teams.runner_active': 'Activo · Corredor de Cubetas',
     'teams.status_active': 'Activo',
     'teams.status_break': 'En Descanso',
     'teams.status_idle': 'Inactivo',
-    'teams.manage_teams': 'Gestionar Equipos',
     'teams.confirm_q': '¿Confirmar?',
 };
 

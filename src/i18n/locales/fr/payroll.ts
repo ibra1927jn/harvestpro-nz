@@ -52,10 +52,8 @@ const payroll: TranslationDict = {
     'pay.d.topup': 'Complément :',
     'pay.minutes': '{n} min',
     'pay.no_variety': '(sans variété)',
-    'pay.hist.confirm_clear': 'Effacer tout l’historique des exports ?',
     'pay.hist.title': 'Historique des exports',
     'pay.hist.count': '{n} exports enregistrés',
-    'pay.hist.clear_all': 'Tout effacer',
     'pay.hist.empty': 'Aucun export pour l’instant',
     'pay.hist.empty_hint': 'L’historique apparaîtra ici après votre premier export de paie',
     'pay.hist.line': '{n} travailleurs • {total} au total',
@@ -121,6 +119,12 @@ const payroll: TranslationDict = {
     'pay.ts.reject_reason_placeholder': 'Que faut-il corriger ?',
     'pay.ts.reject_reason_hint': '{n}/{max} caractères (au moins 3)',
     'pay.ts.reject_confirm': 'Refuser',
+    'pay.hist.loading': 'Chargement de l’historique…',
+    'pay.hist.load_failed': 'Impossible de charger l’historique des exports.',
+    'pay.hist.week': 'Semaine {from} → {to}',
+    'pay.hist.confirm_delete': 'Supprimer {file} de l’historique des exports ? Le fichier lui-même n’est pas touché.',
+    'pay.hist.delete_for': 'Supprimer {file} de l’historique',
+    'pay.hist.delete_failed': 'Non supprimé. Réessayez.',
 };
 
 export default payroll;

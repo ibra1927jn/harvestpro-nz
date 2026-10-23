@@ -5,8 +5,6 @@ const pickerDetails: TranslationDict = {
     'addPicker.full_name': 'Full Name',
     'addPicker.team': 'Team (team leader)',
     'addPicker.no_team': 'No team yet',
-    'addPicker.start_time': 'Start Time',
-    'addPicker.row_optional': 'Row (Optional)',
     'addPicker.safety_induction': 'Safety Induction',
     'addPicker.protocols': '{name} Protocols',
     'addPicker.induction_done': 'Safety Induction Completed',
