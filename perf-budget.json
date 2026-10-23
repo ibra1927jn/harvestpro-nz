@@ -59,11 +59,7 @@
       "^assets/inter-latin-wght-[\\w-]+\\.woff2$",
       "^offline\\.html$",
       "^assets/locale-es-[\\w-]+\\.js$",
-      "^assets/locale-mi-[\\w-]+\\.js$",
-      "^assets/locale-sm-[\\w-]+\\.js$",
-      "^assets/locale-hi-[\\w-]+\\.js$",
-      "^assets/locale-to-[\\w-]+\\.js$",
-      "^assets/locale-tl-[\\w-]+\\.js$"
+      "^assets/locale-fr-[\\w-]+\\.js$"
     ]
   },
   "locales": {

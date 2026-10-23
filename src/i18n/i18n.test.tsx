@@ -7,8 +7,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SUPPORTED_LOCALES, I18nProvider, useI18n } from './index';
 
 describe('SUPPORTED_LOCALES', () => {
-  it('has 7 locales (en, es, mi, sm, hi, to, tl)', () => {
-    expect(SUPPORTED_LOCALES.length).toBe(7);
+  it('has 3 locales (en, es, fr)', () => {
+    expect(SUPPORTED_LOCALES.map(l => l.code)).toEqual(['en', 'es', 'fr']);
   });
 
   it('default is English', () => {
@@ -20,11 +20,6 @@ describe('SUPPORTED_LOCALES', () => {
     const es = SUPPORTED_LOCALES.find(l => l.code === 'es');
     expect(es).toBeDefined();
     expect(es!.nativeName).toBe('Español');
-  });
-
-  it('includes Māori', () => {
-    const mi = SUPPORTED_LOCALES.find(l => l.code === 'mi');
-    expect(mi).toBeDefined();
   });
 
   it('each locale has required fields', () => {
