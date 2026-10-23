@@ -13,6 +13,8 @@ import { logger } from '../../utils/logger';
 import MessagingSidebar from './messaging/MessagingSidebar';
 import ChatWindow from './messaging/ChatWindow';
 import NewChatModal from './messaging/NewChatModal';
+import ChatInfoPanel from './messaging/ChatInfoPanel';
+import type { OutgoingAttachment } from '../../context/messaging.types';
 import { useTranslation } from '@/i18n';
 
 /** Sondeo de la barra lateral: solo red de seguridad, los cambios llegan por realtime */
@@ -27,6 +29,9 @@ const UnifiedMessagingView = () => {
     loadConversation,
     retryMessage,
     sendMessage,
+    sendAttachment,
+    updateConversation,
+    setConversationMuted,
     sendBroadcast,
     getOrCreateConversation,
     createChatGroup,
@@ -45,6 +50,7 @@ const UnifiedMessagingView = () => {
   >([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   // No leídos: vienen del servidor (antes siempre 0)
   const unreadCounts = useMemo(
@@ -53,18 +59,38 @@ const UnifiedMessagingView = () => {
   );
 
   const isManager = appUser?.role === Role.MANAGER;
+  // Gestionan cualquier grupo en el que estén (además de quien lo creó)
+  const canManageAnyGroup = appUser?.role === Role.MANAGER || appUser?.role === Role.ADMIN;
+
+  // La conversación abierta sigue a la lista (renombrar, personas, silenciar)
+  useEffect(() => {
+    if (!selectedChat) return;
+    const fresh = chatGroups.find(g => g.id === selectedChat.id);
+    if (fresh && (fresh.name !== selectedChat.name || fresh.muted !== selectedChat.muted
+      || fresh.members.join(',') !== selectedChat.members.join(',') || fresh.createdBy !== selectedChat.createdBy)) {
+      setSelectedChat(prev => (prev && prev.id === fresh.id ? { ...prev, ...fresh } : prev));
+    }
+  }, [chatGroups, selectedChat]);
+  // Nombres de todas las cuentas (también dadas de baja): los mensajes antiguos siguen con nombre
+  const [allNames, setAllNames] = useState<Record<string, string>>({});
   const userNameMap = useMemo(() => {
-    const map: Record<string, string> = {};
+    const map: Record<string, string> = { ...allNames };
     availableUsers.forEach(u => {
       map[u.id] = u.name;
     });
     return map;
-  }, [availableUsers]);
+  }, [availableUsers, allNames]);
 
   // ── Initial Load ──
   useEffect(() => {
     refreshMessages();
-    simpleMessagingService.getUsers().then(setAvailableUsers);
+    simpleMessagingService
+      .getDirectory()
+      .then(d => {
+        setAvailableUsers(d.contacts);
+        setAllNames(d.names);
+      })
+      .catch(e => logger.warn('[Messaging] People not loaded:', e));
   }, [refreshMessages]);
 
   // ── Load messages + subscribe to real-time ──
@@ -87,8 +113,14 @@ const UnifiedMessagingView = () => {
           conversation_id: newMsg.conversation_id,
           priority: 'normal' as MessagePriority,
           read_by: [],
+          attachment_path: newMsg.attachment_path ?? null,
+          attachment_type: newMsg.attachment_type ?? null,
+          attachment_name: newMsg.attachment_name ?? null,
+          attachment_size: newMsg.attachment_size ?? null,
+          duration_ms: newMsg.duration_ms ?? null,
         };
-        setMessages(prev => [...prev, dbMsg]);
+        // Sin duplicar si ya llegó por la recarga
+        setMessages(prev => (prev.some(m => m.id === dbMsg.id) ? prev : [...prev, dbMsg]));
       }
     });
     // Bandeja de salida: al enviarse, fallar o reintentar un mensaje propio,
@@ -149,6 +181,16 @@ const UnifiedMessagingView = () => {
       }
     },
     [selectedChat, isSending, sendMessage]
+  );
+
+  const handleSendAttachment = useCallback(
+    async (file: OutgoingAttachment) => {
+      if (!selectedChat) return 'failed' as const;
+      const { message, error } = await sendAttachment(selectedChat.id, file);
+      if (message) setMessages(prev => (prev.some(m => m.id === message.id) ? prev : [...prev, message]));
+      return error;
+    },
+    [selectedChat, sendAttachment]
   );
 
   const handleRetry = useCallback(
@@ -215,6 +257,8 @@ const UnifiedMessagingView = () => {
             userNameMap={userNameMap}
             isSending={isSending}
             onSend={handleSend}
+            onSendAttachment={handleSendAttachment}
+            onOpenInfo={() => setShowInfo(true)}
             onRetry={handleRetry}
             onBack={() => {
               setSelectedChat(null);
@@ -253,6 +297,31 @@ const UnifiedMessagingView = () => {
         )}
       </section>
 
+      {showInfo && selectedChat && (
+        <ChatInfoPanel
+          chat={selectedChat}
+          messages={messages}
+          appUserId={appUser?.id || ''}
+          canManageAny={canManageAnyGroup}
+          availableUsers={availableUsers.filter(u => u.id !== appUser?.id)}
+          onClose={() => setShowInfo(false)}
+          onUpdate={changes => updateConversation(selectedChat.id, changes)}
+          onSetMuted={muted => setConversationMuted(selectedChat.id, muted)}
+          onCreateGroup={async (name, ids) => {
+            setActionError(null);
+            try {
+              const group = await createChatGroup(name, ids);
+              if (group) {
+                setShowInfo(false);
+                setSelectedChat(group);
+              }
+            } catch (e) {
+              setActionError(t('chat.group_not_created', { error: e instanceof Error ? e.message : t('chat.try_again') }));
+              setShowInfo(false);
+            }
+          }}
+        />
+      )}
       {showNewChatModal && (
         <NewChatModal
           availableUsers={availableUsers}

@@ -27,6 +27,36 @@ export interface QueuedMessage {
   synced: number; // 0 = pending, 1 = synced, -1 = error
   priority?: string;
   failure_reason?: string;
+  /** Foto, PDF o nota de voz: los bytes esperan cifrados en pending_files (file_id) */
+  upload?: QueuedAttachment;
+}
+
+/** Adjunto de un mensaje en cola */
+export interface QueuedAttachment {
+  /** id en pending_files (= id del mensaje) */
+  file_id: string;
+  /** Ruta en el almacén chat-attachments: <conversation_id>/<uuid>.<ext> */
+  path: string;
+  type: 'image' | 'pdf' | 'audio';
+  mime: string;
+  name?: string;
+  size: number;
+  duration_ms?: number;
+}
+
+/**
+ * Archivo que espera red para subirse (adjunto del chat, foto de QC).
+ * Los bytes van cifrados (AES-256-GCM, misma clave que el resto de la cola).
+ */
+export interface PendingFile {
+  id: string;
+  kind: 'chat' | 'qc';
+  mime: string;
+  size: number;
+  /** IV del cifrado; null = guardado sin cifrar porque el cifrado falló */
+  iv: Uint8Array | null;
+  data: ArrayBuffer;
+  created_at: number;
 }
 
 export interface CachedUser {
@@ -81,6 +111,7 @@ export interface QueuedSyncItem {
     | 'PICKER'
     | 'QC_INSPECTION'
     | 'UNLINK'
+    | 'BIN'
     | 'LEAVE_REQUEST';
   payload: Record<string, unknown>;
   timestamp: number;
@@ -133,6 +164,8 @@ export class HarvestDB extends Dexie {
   sync_conflicts!: Table<StoredConflict, string>;
   /** Perfil de auth cacheado — fallback offline cuando Supabase da 504/PGRST003 */
   auth_cache!: Table<CachedAuthProfile, string>;
+  /** Archivos pendientes de subir (adjuntos del chat, fotos de QC), cifrados */
+  pending_files!: Table<PendingFile, string>;
 
   constructor() {
     super('HarvestProDB');
@@ -194,6 +227,10 @@ export class HarvestDB extends Dexie {
     // no re-declarar tablas existentes — hacerlo causa UpgradeError al comparar keyPaths)
     this.version(8).stores({
       auth_cache: 'id, cached_at',
+    });
+    // v9: archivos que esperan red (adjuntos del chat sin cobertura, fotos de QC)
+    this.version(9).stores({
+      pending_files: 'id, kind, created_at',
     });
   }
 }

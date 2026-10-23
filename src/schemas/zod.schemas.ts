@@ -110,6 +110,8 @@ export const QcCriteriaSchema = z.object({
 });
 
 export const QcInspectionInsertSchema = z.object({
+    /** id generado en el móvil: reintentar (cola offline) no duplica la inspección */
+    id: z.string().uuid().optional(),
     orchard_id: z.string().min(1),
     picker_id: z.string().min(1),
     inspector_id: z.string().min(1),

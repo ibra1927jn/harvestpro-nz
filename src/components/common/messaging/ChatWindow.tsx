@@ -3,8 +3,25 @@
  */
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { ChatGroup, DBMessage } from '../../../context/MessagingContext';
+import type { OutgoingAttachment, SendAttachmentResult } from '../../../context/messaging.types';
 import { QUICK_REPLIES, REACTION_EMOJIS, getAvatarColor, formatTime, getDateLabel } from './messagingHelpers';
 import { useTranslation } from '@/i18n';
+import {
+    MAX_ATTACHMENT_BYTES,
+    MAX_VOICE_MS,
+    baseMime,
+    classifyFile,
+    formatDuration,
+    prepareImage,
+} from '@/services/chat-attachments.service';
+import { useVoiceRecorder, type VoiceRecording } from '@/hooks/useVoiceRecorder';
+import ChatAttachmentView from './ChatAttachmentView';
+
+/** Mantener pulsado el micrófono al menos esto = grabar mientras se pulsa y enviar al soltar */
+export const HOLD_TO_RECORD_MS = 400;
+
+/** Tipos que acepta el selector de archivos */
+const ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf';
 
 // Extend DBMessage with optional metadata for reply threading
 interface MessageWithMetadata extends DBMessage {
@@ -19,13 +36,17 @@ interface Props {
     userNameMap: Record<string, string>;
     isSending: boolean;
     onSend: (content: string) => void;
+    /** Foto, PDF o nota de voz. Devuelve el error si no se pudo enviar ni guardar. */
+    onSendAttachment?: (file: OutgoingAttachment) => Promise<SendAttachmentResult['error'] | undefined>;
+    /** Abrir el panel de info de la conversación */
+    onOpenInfo?: () => void;
     /** Reintentar un mensaje propio que no se envió */
     onRetry?: (messageId: string) => void;
     onBack: () => void;
 }
 
 const ChatWindow: React.FC<Props> = ({
-    selectedChat, messages, appUserId, userNameMap, isSending, onSend, onRetry, onBack,
+    selectedChat, messages, appUserId, userNameMap, isSending, onSend, onSendAttachment, onOpenInfo, onRetry, onBack,
 }) => {
     const { t } = useTranslation();
     const [newMessage, setNewMessage] = useState('');
@@ -33,8 +54,13 @@ const ChatWindow: React.FC<Props> = ({
     const [replyTo, setReplyTo] = useState<DBMessage | null>(null);
     const [hoveredMsg, setHoveredMsg] = useState<string | null>(null);
     const [reactions, setReactions] = useState<Record<string, string[]>>({});
-    const [isRecording, setIsRecording] = useState(false);
     const [isTyping, setIsTyping] = useState(false);
+    const [attachError, setAttachError] = useState<string | null>(null);
+    const [isPreparing, setIsPreparing] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const pressStartRef = useRef<number | null>(null);
+    const voice = useVoiceRecorder(MAX_VOICE_MS);
+    const isRecording = voice.isRecording;
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -48,7 +74,75 @@ const ChatWindow: React.FC<Props> = ({
         setHoveredMsg(null);
     };
 
-    const getSenderName = (senderId: string) => senderId === appUserId ? 'You' : (userNameMap[senderId] || 'Unknown');
+    const getSenderName = (senderId: string) => senderId === appUserId ? t('chat.you') : (userNameMap[senderId] || t('chat.unknown_person'));
+
+    const errorText = (e: SendAttachmentResult['error']) =>
+        e === 'queue_full' ? t('chat.queue_full') : e === 'too_large' ? t('chat.file_too_large') : t('chat.attachment_failed');
+
+    const sendFile = useCallback(async (file: OutgoingAttachment) => {
+        if (!onSendAttachment) return;
+        setAttachError(null);
+        const err = await onSendAttachment(file);
+        if (err) setAttachError(errorText(err));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [onSendAttachment, t]);
+
+    // Foto (se reduce a 1600 px) o PDF, máx. 10 MB
+    const handleFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+        setAttachError(null);
+        const kind = classifyFile(file.type);
+        if (!kind || kind.type === 'audio') {
+            setAttachError(t('chat.file_unsupported'));
+            return;
+        }
+        if (kind.type === 'pdf' && file.size > MAX_ATTACHMENT_BYTES) {
+            setAttachError(t('chat.file_too_large'));
+            return;
+        }
+        setIsPreparing(true);
+        try {
+            const blob = kind.type === 'image' ? await prepareImage(file) : file;
+            if (blob.size > MAX_ATTACHMENT_BYTES) {
+                setAttachError(t('chat.file_too_large'));
+                return;
+            }
+            const resized = blob !== file;
+            const mime = resized ? 'image/jpeg' : baseMime(file.type);
+            const ext = resized ? 'jpg' : kind.ext;
+            const name = resized ? file.name.replace(/\.[^.]+$/, '') + '.jpg' : file.name;
+            await sendFile({ blob, type: kind.type, mime, ext, name, caption: newMessage });
+            setNewMessage('');
+        } finally {
+            setIsPreparing(false);
+        }
+    };
+
+    // Nota de voz: se envía como adjunto 'audio'
+    const sendVoice = useCallback(async (rec: VoiceRecording) => {
+        const kind = classifyFile(rec.mime);
+        await sendFile({
+            blob: rec.blob,
+            type: 'audio',
+            mime: baseMime(rec.mime) || 'audio/webm',
+            ext: kind?.type === 'audio' ? kind.ext : 'webm',
+            durationMs: rec.durationMs,
+        });
+    }, [sendFile]);
+
+    const startVoice = () => {
+        setAttachError(null);
+        void voice.start(rec => void sendVoice(rec));
+    };
+    const finishVoice = async () => {
+        const rec = await voice.stop();
+        if (rec) await sendVoice(rec);
+    };
+    const voiceErrorText = voice.error === 'denied'
+        ? t('chat.mic_denied')
+        : voice.error ? t('chat.mic_unavailable') : null;
 
     const handleSend = useCallback((content?: string) => {
         const text = (content || newMessage).trim();
@@ -95,7 +189,7 @@ const ChatWindow: React.FC<Props> = ({
                         </p>
                     </div>
                 </div>
-                <button aria-label={t('chat.info')} className="size-9 rounded-xl hover:bg-slate-50 text-slate-400 flex items-center justify-center transition" title={t('chat.info')}>
+                <button type="button" onClick={onOpenInfo} aria-label={t('chat.info')} className="size-9 rounded-xl hover:bg-slate-50 text-slate-400 flex items-center justify-center transition" title={t('chat.info')}>
                     <span aria-hidden="true" className="material-symbols-outlined text-xl">more_vert</span>
                 </button>
             </header>
@@ -147,7 +241,8 @@ const ChatWindow: React.FC<Props> = ({
                                                         <p className={`${isMe ? 'text-white/60' : 'text-slate-400'} truncate`}>{(m as MessageWithMetadata).metadata!.replyTo}</p>
                                                     </div>
                                                 )}
-                                                <p className="break-words">{m.content}</p>
+                                                {m.attachment_path && <ChatAttachmentView message={m} isMe={isMe} />}
+                                                {m.content.trim() !== '' && <p className={`break-words ${m.attachment_path ? 'mt-1.5' : ''}`}>{m.content}</p>}
                                             </div>
                                             {msgReactions.length > 0 && (
                                                 <div className={`flex gap-0.5 mt-0.5 ${isMe ? 'justify-end' : 'justify-start'} px-1`}>
@@ -221,6 +316,15 @@ const ChatWindow: React.FC<Props> = ({
 
             {/* Compose Bar */}
             <footer className="bg-white border-t border-slate-100">
+                {(attachError || voiceErrorText) && (
+                    <div role="alert" className="mx-3 mt-2 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+                        <span className="flex-1">{attachError || voiceErrorText}</span>
+                        <button type="button" aria-label={t('common.close')} onClick={() => { setAttachError(null); voice.clearError(); }} className="text-red-700">
+                            <span aria-hidden="true" className="material-symbols-outlined text-sm">close</span>
+                        </button>
+                    </div>
+                )}
+                <input ref={fileInputRef} type="file" accept={ACCEPT} className="hidden" onChange={e => void handleFilePicked(e)} data-testid="chat-file-input" />
                 {replyTo && (
                     <div className="px-4 pt-2.5 pb-1 flex items-center gap-2 animate-[msgSlideIn_0.2s_ease]">
                         <div className="flex-1 reply-quote">
@@ -237,9 +341,21 @@ const ChatWindow: React.FC<Props> = ({
                         className={`size-9 rounded-full flex items-center justify-center transition shrink-0 ${showQuickReplies ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}>
                         <span aria-hidden="true" className="material-symbols-outlined text-[20px]">emoji_emotions</span>
                     </button>
-                    <button className="size-9 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-50 flex items-center justify-center transition shrink-0" aria-label={t('chat.attach')} title={t('chat.attach')}>
-                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">attach_file</span>
+                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isPreparing || isRecording || !onSendAttachment}
+                        className="size-9 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-50 flex items-center justify-center transition shrink-0 disabled:opacity-40" aria-label={t('chat.attach')} title={t('chat.attach')}>
+                        <span aria-hidden="true" className="material-symbols-outlined text-[20px]">{isPreparing ? 'hourglass_empty' : 'attach_file'}</span>
                     </button>
+                    {isRecording ? (
+                        <div role="status" className="flex-1 flex items-center gap-2 bg-red-50 border border-red-100 rounded-3xl px-4 py-2.5">
+                            <span aria-hidden="true" className="size-2.5 rounded-full bg-red-500 animate-pulse" />
+                            <span className="text-sm font-bold text-red-700 tabular-nums">
+                                {t('chat.recording', { time: formatDuration(voice.elapsedMs), max: formatDuration(MAX_VOICE_MS) })}
+                            </span>
+                            <button type="button" onClick={voice.cancel} aria-label={t('chat.cancel_recording')} className="ml-auto size-8 rounded-full text-red-600 hover:bg-red-100 flex items-center justify-center">
+                                <span aria-hidden="true" className="material-symbols-outlined text-lg">delete</span>
+                            </button>
+                        </div>
+                    ) : (
                     <div className="flex-1 flex items-center bg-slate-50/80 border border-slate-100 rounded-3xl px-4 py-0.5 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-50 transition">
                         <input ref={inputRef} type="text" value={newMessage}
                             onChange={(e) => {
@@ -255,15 +371,38 @@ const ChatWindow: React.FC<Props> = ({
                             placeholder={replyTo ? t('chat.type_reply') : t('chat.type_message')}
                             className="flex-1 bg-transparent py-2.5 text-sm focus:outline-none placeholder:text-slate-300 font-medium text-slate-800" />
                     </div>
-                    {newMessage.trim() ? (
+                    )}
+                    {isRecording ? (
+                        <button type="button" aria-label={t('chat.send_voice')} onClick={() => void finishVoice()}
+                            className="size-10 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-lg flex items-center justify-center transition active:scale-90 shrink-0"
+                            onPointerUp={() => {
+                                // Grabación de "mantener pulsado": al soltar se envía
+                                if (pressStartRef.current !== null && Date.now() - pressStartRef.current >= HOLD_TO_RECORD_MS) {
+                                    pressStartRef.current = null;
+                                    void finishVoice();
+                                }
+                                pressStartRef.current = null;
+                            }}>
+                            <span aria-hidden="true" className="material-symbols-outlined filled text-lg">send</span>
+                        </button>
+                    ) : newMessage.trim() ? (
                         <button aria-label={isSending ? t('chat.sending') : t('chat.send')} onClick={() => handleSend()} disabled={isSending}
                             className="size-10 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-lg shadow-indigo-500/20 flex items-center justify-center transition active:scale-90 disabled:opacity-40 shrink-0">
                             <span aria-hidden="true" className="material-symbols-outlined filled text-lg">{isSending ? 'hourglass_empty' : 'send'}</span>
                         </button>
                     ) : (
-                        <button aria-label={isRecording ? t('chat.stop_recording') : t('chat.record_voice')} aria-pressed={isRecording} onClick={() => setIsRecording(!isRecording)}
-                            className={`size-10 rounded-full flex items-center justify-center transition active:scale-90 shrink-0 ${isRecording ? 'voice-recording text-white' : 'bg-slate-50 text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}>
-                            <span aria-hidden="true" className="material-symbols-outlined text-lg">{isRecording ? 'stop' : 'mic'}</span>
+                        <button type="button" aria-label={t('chat.record_voice')} title={t('chat.record_hint')} disabled={!onSendAttachment}
+                            onPointerDown={() => {
+                                // Pulsar = empezar; si se mantiene pulsado, al soltar se envía
+                                pressStartRef.current = Date.now();
+                                startVoice();
+                            }}
+                            onClick={e => {
+                                // Teclado (Enter / Espacio): sin pointerdown, pulsar para grabar
+                                if (e.detail === 0 && !isRecording) startVoice();
+                            }}
+                            className="size-10 rounded-full flex items-center justify-center transition active:scale-90 shrink-0 bg-slate-50 text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-40 touch-none">
+                            <span aria-hidden="true" className="material-symbols-outlined text-lg">mic</span>
                         </button>
                     )}
                 </div>

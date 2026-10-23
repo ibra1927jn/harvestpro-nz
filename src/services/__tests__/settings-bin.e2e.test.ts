@@ -12,6 +12,18 @@ vi.mock('@/utils/nzst', () => ({
     nowNZST: () => '2026-03-10T14:00:00+13:00',
 }));
 
+// La cola offline se sustituye por su procesador: el cambio llega al repositorio
+// igual que cuando la cola lo sube (sync.service → dispatchItem → processBin)
+vi.mock('@/services/sync.service', () => ({
+    syncService: {
+        addToQueue: async (_type: string, payload: unknown) => {
+            const { processBin } = await import('@/services/sync-processors/bin.processor');
+            await processBin(payload as Parameters<typeof processBin>[0]);
+            return 'queued-id';
+        },
+    },
+}));
+
 // ── Settings mocks ──
 const mockGetByOrchardId = vi.fn().mockResolvedValue({
     min_wage_rate: 23.95, piece_rate: 6.50, min_buckets_per_hour: 4, target_tons: 10, variety: 'Braeburn',

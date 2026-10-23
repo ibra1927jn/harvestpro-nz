@@ -106,6 +106,7 @@ const qc: TranslationDict = {
     'qc.flag_not_informed': 'Pas informé',
     'qc.flag_not_comfortable': 'Mal à l’aise dans l’équipe',
     'qc.profile_criteria': 'Critères signalés (14 derniers jours)',
+    'qc.photo_not_kept': 'La photo n’a pas pu être gardée sur ce téléphone sans réseau (plus de place). L’inspection a été enregistrée sans photo.',
 };
 
 export default qc;

@@ -18,6 +18,9 @@ import SetupWizard from '@/components/common/SetupWizard';
 import { useAdmin } from '@/hooks/useAdmin';
 import { ADMIN_NAV_ITEMS, ADMIN_SUMMARY_CARDS, type AdminTab } from '@/config/navigation/admin.nav';
 import { useTranslation } from '@/i18n';
+import { useMessaging } from '@/context/MessagingContext';
+import { CHAT_TAB_ID, withChatBadge } from '@/config/navigation/chat.nav';
+import ChatTabView from '@/components/common/messaging/ChatTabView';
 
 // Lazy-loaded tab content (code-split for performance)
 const AdminOrchardsTab = React.lazy(() => import('./admin/AdminOrchardsTab'));
@@ -37,10 +40,11 @@ export default function Admin() {
     const [showWizard, setShowWizard] = useState(false);
     const admin = useAdmin();
 
-    const navItems = ADMIN_NAV_ITEMS.map(item => ({
+    const { unreadCount } = useMessaging();
+    const navItems = withChatBadge(ADMIN_NAV_ITEMS.map(item => ({
         ...item,
         badge: item.id === 'users' ? admin.activeUsers : undefined,
-    }));
+    })), unreadCount);
 
     const summaryValues: Record<string, string | number> = {
         orchards: admin.orchards.length,
@@ -76,6 +80,8 @@ export default function Admin() {
                 );
             case 'compliance':
                 return <AdminComplianceTab orchards={admin.orchards} />;
+            case CHAT_TAB_ID:
+                return <ChatTabView />;
             case 'audit':
                 return <ComponentErrorBoundary componentName="Audit Log"><AuditLogViewer /></ComponentErrorBoundary>;
             default:
@@ -93,8 +99,8 @@ export default function Admin() {
                 accentColor="red"
                 titleIcon="shield"
             >
-                {/* Summary Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                {/* Summary Cards (no en el chat) */}
+                {activeTab !== CHAT_TAB_ID && <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
                     {ADMIN_SUMMARY_CARDS.map(card => (
                         <SummaryCard
                             key={card.key}
@@ -106,7 +112,7 @@ export default function Admin() {
                             highlightColor="emerald"
                         />
                     ))}
-                </div>
+                </div>}
 
                 {/* Tab Content */}
                 <div key={activeTab} className="animate-fade-in">

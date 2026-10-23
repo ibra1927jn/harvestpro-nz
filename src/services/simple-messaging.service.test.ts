@@ -86,14 +86,29 @@ describe('simpleMessagingService.getConversations', () => {
 });
 
 describe('simpleMessagingService.getUsers', () => {
-    it('mapea users a {id, name, role} con defaults', async () => {
+    it('mapea users a {id, name, role}; solo cuentas activas con chat', async () => {
         vi.spyOn(userRepository2, 'getAll').mockResolvedValue([
-            { id: 'u1', full_name: 'Alice', role: 'picker' },
-            { id: 'u2', full_name: null, role: null },
+            { id: 'u1', full_name: 'Alice', role: 'qc_inspector' },
+            { id: 'u2', full_name: null, role: 'payroll_admin', is_active: true },
+            { id: 'u3', full_name: 'Gone', role: 'manager', is_active: false },
+            { id: 'u4', full_name: 'Picker', role: 'picker' },
+            { id: 'u5', full_name: 'No role', role: null },
         ] as never);
         const users = await simpleMessagingService.getUsers();
-        expect(users[0]).toEqual({ id: 'u1', name: 'Alice', role: 'picker' });
-        expect(users[1]).toEqual({ id: 'u2', name: 'Unknown', role: 'picker' });
+        expect(users).toEqual([
+            { id: 'u1', name: 'Alice', role: 'qc_inspector' },
+            { id: 'u2', name: 'Unknown', role: 'payroll_admin' },
+        ]);
+    });
+
+    it('getDirectory: nombres de todas las cuentas (también dadas de baja)', async () => {
+        vi.spyOn(userRepository2, 'getAll').mockResolvedValue([
+            { id: 'u1', full_name: 'Alice', role: 'runner' },
+            { id: 'u3', full_name: 'Gone', role: 'manager', is_active: false },
+        ] as never);
+        const d = await simpleMessagingService.getDirectory();
+        expect(d.contacts.map(c => c.id)).toEqual(['u1']);
+        expect(d.names).toEqual({ u1: 'Alice', u3: 'Gone' });
     });
 });
 

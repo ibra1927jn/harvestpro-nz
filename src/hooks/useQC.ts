@@ -12,7 +12,8 @@ import { useHarvestStore } from '@/stores/useHarvestStore';
 import { useAuth } from '@/context/AuthContext';
 import { Picker } from '@/types';
 import { logger } from '@/utils/logger';
-import { supabase } from '@/services/supabase';
+import { qcRepository } from '@/repositories/qc.repository';
+import { pendingFiles } from '@/services/pending-uploads.service';
 import { useTranslation } from '@/i18n';
 import { todayNZST } from '@/utils/nzst';
 import { canViewWellbeing } from '@/services/qcAlerts';
@@ -29,6 +30,8 @@ export interface UseQCResult {
   isLoading: boolean;
   lastGrade: { grade: QualityGrade; picker: string } | null;
   gradeError: string | null;
+  /** Aviso si la foto se perdió (no cabía en el móvil sin cobertura) */
+  photoWarning: string | null;
   crew: Picker[];
   orchardId: string | undefined;
   /** El usuario puede ver las respuestas de bienestar de las inspecciones */
@@ -60,6 +63,8 @@ export function useQC(): UseQCResult {
   const [isLoading, setIsLoading] = useState(true);
   const [lastGrade, setLastGrade] = useState<{ grade: QualityGrade; picker: string } | null>(null);
   const [gradeError, setGradeError] = useState<string | null>(null);
+  /** La foto no se pudo subir ni guardar en el móvil (la inspección sí se guardó) */
+  const [photoWarning, setPhotoWarning] = useState<string | null>(null);
 
   const loadInspections = useCallback(async () => {
     if (!orchardId) {
@@ -88,32 +93,36 @@ export function useQC(): UseQCResult {
       if (!selectedPicker || !orchardId || !appUser?.id) return false;
       setIsSubmitting(true);
       setGradeError(null);
+      setPhotoWarning(null);
 
+      // id del móvil: la foto se llama igual y la cola puede reintentar sin duplicar
+      const inspectionId = crypto.randomUUID();
       let photoUrl: string | undefined;
+      let pendingPhoto: { fileId: string; path: string } | undefined;
 
       if (photoBlob) {
+        const path = `${orchardId}/${todayNZST()}/${inspectionId}.webp`;
         try {
-          const dateStr = todayNZST();
-          const fileName = `${orchardId}/${dateStr}/${crypto.randomUUID()}.webp`;
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('qc-photos')
-            .upload(fileName, photoBlob, {
-              contentType: 'image/webp',
-              cacheControl: '31536000',
-            });
-
-          if (uploadError) {
-            logger.error('[QC] Photo upload failed:', uploadError.message);
-          } else if (uploadData?.path) {
-            // Bucket privado: se guarda la ruta; se muestra con enlace firmado (useQcPhotoUrl)
-            photoUrl = uploadData.path;
-          }
+          if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new TypeError('Failed to fetch (offline)');
+          // Bucket privado: se guarda la ruta; se muestra con enlace firmado (useQcPhotoUrl)
+          photoUrl = await qcRepository.uploadPhoto(path, photoBlob);
         } catch (err) {
-          logger.error('[QC] Photo upload error:', err);
+          // Sin cobertura (o fallo al subir): la foto espera cifrada en el móvil
+          // con la inspección y la cola la sube al volver la red
+          logger.warn('[QC] Photo not uploaded now, keeping it on the phone:', err);
+          try {
+            await pendingFiles.put(inspectionId, 'qc', photoBlob, 'image/webp');
+            pendingPhoto = { fileId: inspectionId, path };
+          } catch (storeErr) {
+            logger.error('[QC] Photo could not be kept on this phone:', storeErr);
+            setPhotoWarning(t('qc.photo_not_kept'));
+          }
         }
       }
 
       const result = await qcService.logInspection({
+        id: inspectionId,
+        ...(pendingPhoto ? { pendingPhoto } : {}),
         orchardId,
         pickerId: selectedPicker.id,
         inspectorId: appUser.id,
@@ -155,6 +164,7 @@ export function useQC(): UseQCResult {
     isLoading,
     lastGrade,
     gradeError,
+    photoWarning,
     crew,
     orchardId,
     canViewWellbeing: canViewWellbeing(appUser?.role),

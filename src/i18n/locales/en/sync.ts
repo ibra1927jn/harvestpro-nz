@@ -35,6 +35,7 @@ const sync: TranslationDict = {
     'sync.type.timesheet': 'Timesheet change',
     'sync.type.picker': 'Picker change',
     'sync.type.qc_inspection': 'QC inspection',
+    'sync.type.bin': 'Bin update',
     'sync.type.unlink': 'Team unlink',
     'rejected.summary_one': '{n} bucket scan rejected (not counted for pay)',
     'rejected.summary_other': '{n} bucket scans rejected (not counted for pay)',

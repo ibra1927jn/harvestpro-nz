@@ -50,9 +50,11 @@ Version: 9.9.0
 - 35 tablas, RLS en todas, 2FA (aal2) exigido por política para roles privilegiados
 
 ### Offline
-- Dexie IndexedDB con sync queue (11 tipos con processor; LEAVE_REQUEST: ausencias que pide el team leader sin red;
-  ATTENDANCE: pase de lista y descansos sin red vía `rollCall.service`, con id del tramo y hora del móvil;
-  un rechazo 4xx del servidor va directo a la DLQ con su motivo)
+- Dexie IndexedDB con sync queue (12 tipos con processor; LEAVE_REQUEST: ausencias que pide el team leader sin red;
+  BIN: alta y estado de bins del runner sin red; ATTENDANCE: pase de lista y descansos sin red vía
+  `rollCall.service`, con id del tramo y hora del móvil; un rechazo 4xx del servidor va directo a la DLQ con su motivo)
+- Archivos sin red (adjuntos y notas de voz del chat, fotos de QC): tabla `pending_files`, cifrados, tope 50 MB
+  (`services/pending-uploads.service.ts`); salen con la bandeja del chat / la cola QC_INSPECTION
 - Encrypt-before-write con AES-256-GCM
 - Dead letter queue para items fallidos
 - Cross-tab mutex via Web Locks API

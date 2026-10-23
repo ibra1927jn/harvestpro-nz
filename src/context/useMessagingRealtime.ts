@@ -19,8 +19,10 @@ export function useMessagingRealtime(params: {
   setState: Dispatch<SetStateAction<MessagingState>>;
   userIdRef: MutableRefObject<string | null>;
   orchardIdRef: MutableRefObject<string | null>;
+  /** Conversaciones silenciadas por mí: sin notificación del sistema */
+  mutedIdsRef?: MutableRefObject<Set<string>>;
 }): void {
-  const { setState, userIdRef, orchardIdRef } = params;
+  const { setState, userIdRef, orchardIdRef, mutedIdsRef } = params;
 
   // Mensajes que no salieron: se envían al abrir la app y al volver la conexión
   useEffect(() => {
@@ -101,6 +103,7 @@ export function useMessagingRealtime(params: {
         const msg = payload.new as { sender_id?: string; content?: string; conversation_id?: string };
         if (!userIdRef.current || msg.sender_id === userIdRef.current) return;
         refreshUnread();
+        if (msg.conversation_id && mutedIdsRef?.current.has(msg.conversation_id)) return;
         if (document.hidden && msg.content) {
           void showSystemNotification('New message', msg.content.slice(0, 120), `chat-${msg.conversation_id}`);
         }
@@ -110,5 +113,5 @@ export function useMessagingRealtime(params: {
       if (unreadTimer) clearTimeout(unreadTimer);
       supabase.removeChannel(channel);
     };
-  }, [setState, userIdRef]);
+  }, [setState, userIdRef, mutedIdsRef]);
 }

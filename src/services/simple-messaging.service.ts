@@ -11,7 +11,17 @@ export interface ChatMessage {
     created_at: string;
     sender_name?: string;
     sender?: { full_name: string };
+    attachment_path?: string | null;
+    attachment_type?: 'image' | 'pdf' | 'audio' | null;
+    attachment_name?: string | null;
+    attachment_size?: number | null;
+    duration_ms?: number | null;
 }
+
+/** Roles con pantalla de chat (todos los de la app; los pickers no tienen cuenta con chat) */
+export const CHAT_ROLES: ReadonlySet<string> = new Set([
+    'admin', 'manager', 'team_leader', 'runner', 'qc_inspector', 'hr_admin', 'payroll_admin', 'logistics',
+]);
 
 export interface Conversation {
     id: string;
@@ -59,13 +69,29 @@ export const simpleMessagingService = {
         }
     },
 
+    /**
+     * Personas con las que se puede chatear: cuentas activas con pantalla de
+     * chat. Antes salían también las dadas de baja y roles sin chat.
+     */
     async getUsers() {
+        return (await this.getDirectory()).contacts;
+    },
+
+    /**
+     * Una consulta: contactos (activos con chat) y nombres de todas las cuentas
+     * (para que los mensajes de alguien dado de baja sigan con su nombre).
+     */
+    async getDirectory(): Promise<{
+        contacts: Array<{ id: string; name: string; role: string }>;
+        names: Record<string, string>;
+    }> {
         const data = await userRepository2.getAll();
-        return data.map(u => ({
-            id: u.id,
-            name: u.full_name || 'Unknown',
-            role: u.role || 'picker'
-        }));
+        const names: Record<string, string> = {};
+        for (const u of data) names[u.id] = u.full_name || 'Unknown';
+        const contacts = data
+            .filter(u => u.is_active !== false && CHAT_ROLES.has(String(u.role ?? '')))
+            .map(u => ({ id: u.id, name: u.full_name || 'Unknown', role: String(u.role) }));
+        return { contacts, names };
     },
 
     async createConversation(type: 'direct' | 'group', participantIds: string[], createdBy: string, name?: string) {

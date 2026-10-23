@@ -75,6 +75,7 @@ export const PickerPayloadSchema = z.object({
 // estricto (sin passthrough): si no lista las columnas nuevas, zod las quita
 // del payload encolado y la inspección llega a la BD solo con la nota.
 export const QCInspectionPayloadSchema = z.object({
+  id: z.string().uuid().optional(),
   orchard_id: z.string(),
   picker_id: z.string(),
   inspector_id: z.string(),
@@ -88,7 +89,25 @@ export const QCInspectionPayloadSchema = z.object({
   informed: z.boolean().nullable().optional(),
   comfortable: z.boolean().nullable().optional(),
   wellbeing_notes: z.string().max(500).nullable().optional(),
+  /** Foto en el móvil (pending_files) y ruta donde subirla en qc-photos */
+  photo_file_id: z.string().nullable().optional(),
+  photo_path: z.string().max(1000).regex(/^[0-9a-f-]{36}\/\d{4}-\d{2}-\d{2}\/[0-9a-f-]{36}\.webp$/).nullable().optional(),
 });
+
+/** Bins del runner: alta (id del móvil) o cambio de estado */
+export const BinPayloadSchema = z
+  .object({
+    action: z.enum(['register', 'status']),
+    bin_id: z.string().uuid(),
+    orchard_id: z.string().uuid().optional(),
+    bin_code: z.string().min(1).max(100).optional(),
+    status: z.enum(['empty', 'partial', 'full', 'collected']).optional(),
+    filled_at: z.string().nullable().optional(),
+  })
+  .refine(p => p.action !== 'register' || (!!p.orchard_id && !!p.bin_code), {
+    message: 'register needs orchard_id and bin_code',
+  })
+  .refine(p => p.action !== 'status' || !!p.status, { message: 'status change needs status' });
 
 export const UnlinkPayloadSchema = z.object({
   userId: z.string(),

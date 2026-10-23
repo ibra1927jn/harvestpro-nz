@@ -13,6 +13,7 @@ import {
   processPicker,
   processQCInspection,
   processUnlink,
+  processBin,
   processLeaveRequest,
 } from '../sync-processors';
 import type { AttendancePayload, PickerPayload, QCInspectionPayload } from '../sync-processors';
@@ -50,6 +51,7 @@ const HANDLERS: Partial<Record<QueuedSyncItem['type'], Handler>> = {
   QC_INSPECTION: (item, s) =>
     processQCInspection(s.QCInspectionPayloadSchema.parse(item.payload) as QCInspectionPayload),
   UNLINK: (item, s) => processUnlink(s.UnlinkPayloadSchema.parse(item.payload)),
+  BIN: (item, s) => processBin(s.BinPayloadSchema.parse(item.payload)),
   LEAVE_REQUEST: (item, s) => processLeaveRequest(s.LeaveRequestPayloadSchema.parse(item.payload)),
 };
 

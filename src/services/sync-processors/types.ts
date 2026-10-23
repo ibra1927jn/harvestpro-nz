@@ -90,6 +90,8 @@ export type PickerPayload = {
 
 // 🔧 L31: QC inspection payload for offline-first quality control
 export type QCInspectionPayload = {
+    /** id generado en el móvil (el mismo en cada reintento) */
+    id?: string;
     orchard_id: string;
     picker_id: string;
     inspector_id: string;
@@ -107,6 +109,25 @@ export type QCInspectionPayload = {
     /** Bienestar: ¿está a gusto en el equipo? */
     comfortable?: boolean | null;
     wellbeing_notes?: string | null;
+    /**
+     * Foto hecha sin cobertura: espera cifrada en pending_files (id = este) y se
+     * sube a photo_path (almacén qc-photos) antes de guardar la inspección.
+     */
+    photo_file_id?: string | null;
+    photo_path?: string | null;
+};
+
+// Bins del runner sin cobertura: alta de un bin escaneado y cambios de estado.
+// El id del bin se genera en el móvil: reintentar el alta no crea otro.
+export type BinPayload = {
+    action: 'register' | 'status';
+    bin_id: string;
+    orchard_id?: string;
+    bin_code?: string;
+    /** Estado en la BD: empty | partial | full | collected */
+    status?: 'empty' | 'partial' | 'full' | 'collected';
+    /** Hora en que se llenó (la del móvil al marcarlo, no la de la subida) */
+    filled_at?: string | null;
 };
 
 // Ausencia pedida por el team leader desde el móvil (decisión del dueño 23-10):
@@ -123,11 +144,11 @@ export type LeaveRequestPayload = {
     requested_by: string;
 };
 
-export type SyncPayload = LeaveRequestPayload | ScanPayload | MessagePayload | AttendancePayload | ContractPayload | TransportPayload | TimesheetPayload | PickerPayload | QCInspectionPayload;
+export type SyncPayload = BinPayload | LeaveRequestPayload | ScanPayload | MessagePayload | AttendancePayload | ContractPayload | TransportPayload | TimesheetPayload | PickerPayload | QCInspectionPayload;
 
 export interface PendingItem {
     id: string; // UUID (generated client-side)
-    type: 'SCAN' | 'MESSAGE' | 'ATTENDANCE' | 'ASSIGNMENT' | 'CONTRACT' | 'TRANSPORT' | 'TIMESHEET' | 'PICKER' | 'QC_INSPECTION' | 'UNLINK' | 'LEAVE_REQUEST';
+    type: 'SCAN' | 'MESSAGE' | 'ATTENDANCE' | 'ASSIGNMENT' | 'CONTRACT' | 'TRANSPORT' | 'TIMESHEET' | 'PICKER' | 'QC_INSPECTION' | 'UNLINK' | 'BIN' | 'LEAVE_REQUEST';
     payload: SyncPayload;
     timestamp: number;
     retryCount: number;

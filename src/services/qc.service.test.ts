@@ -39,6 +39,30 @@ describe('qcService.logInspection', () => {
         expect(payload.photo_url).toBeNull();
     });
 
+    it('con foto pendiente (sin cobertura) va directo a la cola con su id, la foto y la ruta', async () => {
+        const insert = vi.spyOn(qcRepository, 'insert');
+        const queue = vi.spyOn(syncService, 'addToQueue').mockResolvedValue('q');
+        const id = '0f5e2c1a-1111-4222-8333-944455556666';
+        const res = await qcService.logInspection({
+            ...baseParams, id, pendingPhoto: { fileId: id, path: `o1/2026-10-23/${id}.webp` },
+        });
+        expect(insert).not.toHaveBeenCalled();
+        expect(queue).toHaveBeenCalledWith('QC_INSPECTION', expect.objectContaining({
+            id, photo_file_id: id, photo_path: `o1/2026-10-23/${id}.webp`, photo_url: null,
+        }));
+        expect(res?.id).toBe(id);
+    });
+
+    it('el id del móvil va en el insert y en la cola si no hay red', async () => {
+        const id = '0f5e2c1a-1111-4222-8333-944455556666';
+        const insert = vi.spyOn(qcRepository, 'insert').mockResolvedValue({ data: null, error: { message: 'Failed to fetch' } } as never);
+        const queue = vi.spyOn(syncService, 'addToQueue').mockResolvedValue('q');
+        const res = await qcService.logInspection({ ...baseParams, id });
+        expect(insert.mock.calls[0][0]).toMatchObject({ id });
+        expect(queue).toHaveBeenCalledWith('QC_INSPECTION', expect.objectContaining({ id }));
+        expect(res?.id).toBe(id);
+    });
+
     it('queue a sync cuando error es "Failed to fetch"', async () => {
         vi.spyOn(qcRepository, 'insert').mockResolvedValue({
             data: null,

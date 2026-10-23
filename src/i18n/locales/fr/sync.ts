@@ -35,6 +35,7 @@ const sync: TranslationDict = {
     'sync.type.timesheet': 'Modification de feuille d’heures',
     'sync.type.picker': 'Modification de cueilleur',
     'sync.type.qc_inspection': 'Inspection contrôle qualité',
+    'sync.type.bin': 'Mise à jour de bin',
     'sync.type.unlink': 'Retrait de l’équipe',
     'rejected.summary_one': '{n} scan de seau refusé (non compté dans la paie)',
     'rejected.summary_other': '{n} scans de seau refusés (non comptés dans la paie)',

@@ -10,6 +10,7 @@ import {
   withBroadcastAcknowledged,
   withConversationRead,
   withMessageRead,
+  withConversationMuted,
   withUnreadCounts,
   type ConversationRow,
 } from './messagingLogic';
@@ -137,5 +138,40 @@ describe('state transitions', () => {
     expect(s.chatGroups.map(g => g.unreadCount)).toEqual([0, 2]);
     expect(s.unreadCount).toBe(3);
     expect(sumUnread({})).toBe(0);
+  });
+});
+
+describe('muted chats and attachment previews', () => {
+  it('marks my muted chats, keeps the creator and says "photo" when the last message is only a photo', () => {
+    const [g] = buildChatGroups({
+      conversations: [conv({ id: 'g1', type: 'group', name: 'Crew', created_by: 'u2', muted_by: ['me'] })],
+      me: 'me',
+      profileMap: {},
+      lastMsgMap: buildLastMessageMap([{ conversation_id: 'g1', content: '', created_at: '2026-10-23T10:00:00Z', attachment_type: 'image' }]),
+      unreadMap: { g1: 4 },
+    });
+    expect(g.muted).toBe(true);
+    expect(g.createdBy).toBe('u2');
+    expect(g.lastMsg).toBe('');
+    expect(g.lastAttachmentType).toBe('image');
+    const [other] = buildChatGroups({
+      conversations: [conv({ muted_by: ['someone-else'] })],
+      me: 'me', profileMap: {}, lastMsgMap: {}, unreadMap: {},
+    });
+    expect(other.muted).toBe(false);
+  });
+
+  it('muted chats do not count in the total (their own number stays)', () => {
+    expect(sumUnread({ a: 2, b: 3 }, new Set(['b']))).toBe(2);
+    const s = withConversationMuted(
+      state({ chatGroups: [{ id: 'a', name: 'A', members: [], unreadCount: 2 }, { id: 'b', name: 'B', members: [], unreadCount: 3 }], unreadCount: 5 }),
+      'b', true
+    );
+    expect(s.unreadCount).toBe(2);
+    expect(s.chatGroups[1]).toMatchObject({ muted: true, unreadCount: 3 });
+    expect(withConversationMuted(s, 'b', false).unreadCount).toBe(5);
+    // Leer una silenciada no descuenta del total
+    expect(withConversationRead(s, 'b').unreadCount).toBe(2);
+    expect(withUnreadCounts(s, { a: 1, b: 7 }).unreadCount).toBe(1);
   });
 });

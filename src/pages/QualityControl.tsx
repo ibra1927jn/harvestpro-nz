@@ -17,6 +17,9 @@ import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import { useQC } from '@/hooks/useQC';
 import { QC_NAV_TABS, type QCTab } from '@/config/navigation/qc.nav';
 import { useTranslation } from '@/i18n';
+import { useMessaging } from '@/context/MessagingContext';
+import { withChatBadge } from '@/config/navigation/chat.nav';
+import ChatTabView from '@/components/common/messaging/ChatTabView';
 
 // Lazy-loaded views (code-split for performance)
 const InspectTab = React.lazy(() => import('@/components/views/qc/InspectTab'));
@@ -34,6 +37,8 @@ export default function QualityControl() {
     const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState<QCTab>('inspect');
     const qc = useQC();
+    const { unreadCount } = useMessaging();
+    const navTabs = withChatBadge(QC_NAV_TABS, unreadCount);
 
     useEffect(() => {
         qc.loadInspections();
@@ -55,8 +60,8 @@ export default function QualityControl() {
 
     return (
         <ResponsiveLayout
-            navItems={QC_NAV_TABS}
-            mobileTabs={QC_NAV_TABS}
+            navItems={navTabs}
+            mobileTabs={navTabs}
             activeTab={activeTab}
             onTabChange={(id) => setActiveTab(id as QCTab)}
             title={t('qc.page_title')}
@@ -70,6 +75,9 @@ export default function QualityControl() {
 
                 <div key={activeTab} className="animate-fade-in relative z-10">
                     <Suspense fallback={<TabLoader />}>
+                        {activeTab === 'inspect' && qc.photoWarning && (
+                            <p role="alert" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">{qc.photoWarning}</p>
+                        )}
                         {activeTab === 'inspect' && (
                             <ComponentErrorBoundary componentName="Inspect">
                                 <InspectTab
@@ -97,6 +105,7 @@ export default function QualityControl() {
                                 <StatsTab distribution={qc.distribution} inspections={qc.inspections} />
                             </ComponentErrorBoundary>
                         )}
+                        {activeTab === 'messaging' && <ChatTabView />}
                         {activeTab === 'trends' && qc.orchardId && (
                             <ComponentErrorBoundary componentName="Quality Trends">
                                 <TrendsTab orchardId={qc.orchardId} />
