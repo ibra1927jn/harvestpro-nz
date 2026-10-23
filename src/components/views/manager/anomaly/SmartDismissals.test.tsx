@@ -1,53 +1,37 @@
 /**
- * SmartDismissals — Deep render + interaction tests
+ * SmartDismissals — descartes reales (anomaly_dismissals), no una lista fija.
  */
-import React from 'react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import SmartDismissals from './SmartDismissals';
+import type { AnomalyDismissalRow } from '@/services/fraud-detection.service';
 
-const dismissed = [
-    { scenario: 'Picker near tractor during break', reason: 'Break time detected by system', rule: 'break_proximity' },
-    { scenario: 'Low bucket count first hour', reason: 'Normal ramp-up pattern', rule: 'ramp_up' },
-    { scenario: 'GPS drift near shed', reason: 'Known GPS dead zone', rule: 'gps_exclusion' },
-];
+const row = (over: Partial<AnomalyDismissalRow>): AnomalyDismissalRow => ({
+    id: 'd1', orchard_id: 'o1', anomaly_key: 'k', anomaly_type: 'peer_outlier', picker_id: null, picker_name: 'Ana',
+    detail: '2x row mates', anomaly_at: '2026-10-23T01:00:00Z', reason: 'good trees', dismissed_by: 'm', dismissed_at: '2026-10-23T02:00:00Z', ...over,
+});
 
 describe('SmartDismissals', () => {
-    it('renders Smart Dismissals heading', () => {
-        render(<SmartDismissals dismissed={dismissed} />);
-        expect(screen.getByText('Smart Dismissals')).toBeTruthy();
+    it('counts the real dismissals', () => {
+        render(<SmartDismissals dismissed={[row({}), row({ id: 'd2', reason: null })]} />);
+        expect(screen.getByText('Dismissed today')).toBeTruthy();
+        expect(screen.getByText(/2 anomalies dismissed/)).toBeTruthy();
     });
 
-    it('shows count of dismissed scenarios', () => {
-        render(<SmartDismissals dismissed={dismissed} />);
-        expect(screen.getByText(/3 scenarios correctly ignored/)).toBeTruthy();
+    it('shows each one with its reason after expanding, and can undo', () => {
+        const onUndo = vi.fn();
+        render(<SmartDismissals dismissed={[row({}), row({ id: 'd2', reason: null, picker_name: 'Ben' })]} onUndo={onUndo} />);
+        expect(screen.queryByText('2x row mates')).toBeNull();
+        fireEvent.click(screen.getByText('Dismissed today'));
+        expect(screen.getByText(/good trees/)).toBeTruthy();
+        expect(screen.getByText(/No reason given/)).toBeTruthy();
+        fireEvent.click(screen.getAllByRole('button', { name: 'Undo' })[0]);
+        expect(onUndo).toHaveBeenCalledWith('d1');
     });
 
-    it('does not show details initially', () => {
-        render(<SmartDismissals dismissed={dismissed} />);
-        expect(screen.queryByText('Picker near tractor during break')).toBeNull();
-    });
-
-    it('shows details after clicking expand', () => {
-        render(<SmartDismissals dismissed={dismissed} />);
-        fireEvent.click(screen.getByText('Smart Dismissals'));
-        expect(screen.getByText('Picker near tractor during break')).toBeTruthy();
-        expect(screen.getByText('Normal ramp-up pattern')).toBeTruthy();
-    });
-
-    it('shows rule badges after expanding', () => {
-        render(<SmartDismissals dismissed={dismissed} />);
-        fireEvent.click(screen.getByText('Smart Dismissals'));
-        expect(screen.getByText('Rule: break_proximity')).toBeTruthy();
-        expect(screen.getByText('Rule: ramp_up')).toBeTruthy();
-        expect(screen.getByText('Rule: gps_exclusion')).toBeTruthy();
-    });
-
-    it('hides details after second click', () => {
-        render(<SmartDismissals dismissed={dismissed} />);
-        fireEvent.click(screen.getByText('Smart Dismissals'));
-        expect(screen.getByText('Picker near tractor during break')).toBeTruthy();
-        fireEvent.click(screen.getByText('Smart Dismissals'));
-        expect(screen.queryByText('Picker near tractor during break')).toBeNull();
+    it('says when nothing was dismissed', () => {
+        render(<SmartDismissals dismissed={[]} />);
+        fireEvent.click(screen.getByText('Dismissed today'));
+        expect(screen.getByText(/Nothing dismissed today/)).toBeTruthy();
     });
 });

@@ -1,8 +1,9 @@
 import { logger } from '@/utils/logger';
-import { useState } from 'react';
-import { supabase } from '@/services/supabase';
+import { useEffect, useState } from 'react';
 import { useHarvestStore } from '@/stores/useHarvestStore';
-import { nowNZST, todayNZST } from '@/utils/nzst';
+import { todayNZST } from '@/utils/nzst';
+import { dayClosureRepository } from '@/repositories/day-closure.repository';
+import { logAudit } from '@/services/audit.service';
 import { payrollService, PayrollResult } from '@/services/payroll.service';
 import Toast from '@/components/ui/Toast';
 import { useTranslation } from '@/i18n';
@@ -108,9 +109,22 @@ export const DayClosureButton = () => {
     const orchard = useHarvestStore(state => state.orchard);
     const currentUser = useHarvestStore(state => state.currentUser);
     const fetchGlobalData = useHarvestStore(state => state.fetchGlobalData);
+    const dayClosed = useHarvestStore(state => state.dayClosed);
     const setDayClosed = useHarvestStore(state => state.setDayClosed);
 
+    // El estado sale de day_closures (no solo de memoria): tras recargar no se
+    // puede cerrar dos veces
+    useEffect(() => {
+        if (!orchard?.id) return;
+        let cancelled = false;
+        dayClosureRepository.getForDate(orchard.id, todayNZST())
+            .then(row => { if (!cancelled) setDayClosed(row?.status === 'closed'); })
+            .catch(e => logger.warn('[DayClosure] Could not read today\'s closure:', e));
+        return () => { cancelled = true; };
+    }, [orchard?.id, setDayClosed]);
+
     const handleClosureClick = async () => {
+        if (dayClosed) return;
         setIsLoading(true);
 
         try {
@@ -135,57 +149,41 @@ export const DayClosureButton = () => {
     };
 
     const confirmClosure = async () => {
-        if (!summary) return;
+        if (!summary || !orchard?.id || !currentUser?.id) return;
 
         setIsLoading(true);
 
         try {
             const today = todayNZST();
 
-            // 1. Insert into day_closures
-            const { data: closure, error: closureError } = await supabase
-                .from('day_closures')
-                .insert({
-                    orchard_id: orchard?.id,
+            // 1. day_closures (upsert: un día reabierto se vuelve a cerrar)
+            const closure = await dayClosureRepository.close(orchard.id, today, currentUser.id, {
+                total_buckets: summary.summary.total_buckets,
+                total_cost: summary.summary.total_earnings,
+                total_hours: summary.summary.total_hours,
+                wage_violations: summary.compliance.workers_below_minimum,
+            });
+
+            // 2. Auditoría por submit-audit-log (columnas reales; antes un insert
+            //    directo con columnas inexistentes daba 400 sin que nadie lo viera)
+            void logAudit('day.closed', 'day_closed', {
+                userId: currentUser.id,
+                orchardId: orchard.id,
+                entityType: 'day_closures',
+                entityId: closure.id,
+                immediate: true,
+                details: {
                     date: today,
-                    status: 'closed',
-                    closed_by: currentUser?.id,
-                    closed_at: nowNZST(),
                     total_buckets: summary.summary.total_buckets,
                     total_cost: summary.summary.total_earnings,
-                    total_hours: summary.summary.total_hours,
-                    wage_violations: summary.compliance.workers_below_minimum,
-                })
-                .select()
-                .single();
+                    total_top_up: summary.summary.total_top_up,
+                    compliance_rate: summary.compliance.compliance_rate,
+                },
+            });
 
-            if (closureError) {
-                throw closureError;
-            }
-
-            // 2. Insert audit log
-            await supabase
-                .from('audit_logs')
-                .insert({
-                    event_type: 'day.closure',
-                    user_id: currentUser?.id,
-                    metadata: {
-                        closure_id: closure.id,
-                        date: today,
-                        summary: {
-                            total_buckets: summary.summary.total_buckets,
-                            total_cost: summary.summary.total_earnings,
-                            total_top_up: summary.summary.total_top_up,
-                            compliance_rate: summary.compliance.compliance_rate,
-                        },
-                    },
-                });
-
-            // 3. Show confirmation via Toast
+            // 3. Confirmación visible y estado «día cerrado» para todos
             setToast({ message: `✅ ${t('close.done')}`, type: 'success' });
             setShowConfirm(false);
-
-            // Refresh global state instead of reloading page
             setDayClosed(true);
             await fetchGlobalData();
 
@@ -206,14 +204,22 @@ export const DayClosureButton = () => {
             <button
                 onClick={handleClosureClick}
                 className="btn-close-day"
-                disabled={isLoading}
+                disabled={isLoading || dayClosed}
+                aria-disabled={isLoading || dayClosed}
             >
-                {isLoading ? (
+                {dayClosed ? (
+                    <>🔒 {t('close.already_closed')}</>
+                ) : isLoading ? (
                     <>⏳ {t('common.loading')}</>
                 ) : (
                     <>🔒 {t('close.title')}</>
                 )}
             </button>
+            {dayClosed && (
+                <p role="status" data-testid="day-closed-status" className="mt-2 text-xs font-semibold text-emerald-700">
+                    {t('close.closed_status')}
+                </p>
+            )}
 
             {showConfirm && summary && (
                 <ClosureConfirmModal

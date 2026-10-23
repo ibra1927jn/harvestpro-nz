@@ -14,6 +14,8 @@ import { roleLabel } from '@/i18n/roleLabel';
 import { statusLabel } from '@/i18n/statusLabel';
 import type { TFunction } from '@/i18n';
 import { useTranslation } from '@/i18n';
+import InvitationsPanel from '@/components/common/invitations/InvitationsPanel';
+import EmployeeDrawer from './EmployeeDrawer';
 
 const ROLE_BADGES: Record<string, string> = {
     team_leader: 'bg-indigo-50 text-indigo-700',
@@ -50,9 +52,11 @@ interface EmployeesTabProps {
     onUpdateEmployee?: (emp: Employee, changes: Partial<Employee>) => Promise<string | null>;
     /** Dar de alta un picker (RRHH) */
     onAddPicker?: () => void;
+    /** Invitaciones de usuarios con cuenta (RRHH; no puede invitar admins) */
+    showInvitations?: boolean;
 }
 
-const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdateEmployee, onAddPicker }) => {
+const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdateEmployee, onAddPicker, showInvitations = false }) => {
     const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = useState('');
     const [saveError, setSaveError] = useState<string | null>(null);
@@ -62,6 +66,8 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
         if (err) setSaveError(`${emp.full_name}: ${err}`);
     };
     const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
+    // Ficha de la persona (antes la fila y la flecha no hacían nada)
+    const [openEmployee, setOpenEmployee] = useState<Employee | null>(null);
 
     // Estado y visado: dominio completo con recuento (las de 0 en gris, no ocultas);
     // roles: los que hay en la lista, con recuento y nombre traducido
@@ -95,6 +101,7 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
                     </button>
                 </div>
             )}
+            {showInvitations && <InvitationsPanel canInviteAdmin={false} />}
             {saveError && (
                 <div role="alert" className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-800">{saveError}</div>
             )}
@@ -117,7 +124,14 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
                 <Virtuoso
                     data={filtered}
                     itemContent={(_index, emp) => (
-                        <div className="bg-white/70 backdrop-blur-md rounded-2xl p-5 shadow-[0_4px_24px_rgb(0,0,0,0.02)] border border-white/60 hover:shadow-[0_8px_32px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 cursor-pointer mb-3 relative overflow-hidden group">
+                        <div
+                            data-testid={`employee-row-${emp.id}`}
+                            onClick={(e) => {
+                                // Los selectores de la fila (alta / baja) no abren la ficha
+                                if ((e.target as HTMLElement).closest('select, input, [data-no-row-open]')) return;
+                                setOpenEmployee(emp);
+                            }}
+                            className="bg-white/70 backdrop-blur-md rounded-2xl p-5 shadow-[0_4px_24px_rgb(0,0,0,0.02)] border border-white/60 hover:shadow-[0_8px_32px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 cursor-pointer mb-3 relative overflow-hidden group">
                             
                             {/* Decorative background gradient on hover */}
                             <div className="absolute inset-0 bg-gradient-to-r from-sky-50/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
@@ -135,12 +149,14 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
                                     </div>
                                     <div className="flex items-center gap-3 text-xs text-slate-500 font-medium flex-wrap">
                                         {/* Alta / baja (lo que RRHH cambia a mano) */}
+                                        <span data-no-row-open>
                                         <InlineSelect
                                             value={emp.status === 'terminated' ? 'terminated' : 'active'}
                                             options={['active', 'terminated']}
                                             colorMap={STATUS_COLORS}
                                             onSave={(val) => update(emp, { status: val as Employee['status'] })}
                                         />
+                                        </span>
                                         {/* Situación derivada: de permiso hoy o alta incompleta */}
                                         {(emp.status === 'on_leave' || emp.status === 'pending') && (
                                             <span
@@ -183,7 +199,11 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
                                         )}
                                     </div>
                                 </div>
-                                <button aria-hidden="true" tabIndex={-1} className="size-8 rounded-full border border-slate-200 bg-white/50 text-slate-400 flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100 transition-all opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0">
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setOpenEmployee(emp); }}
+                                    aria-label={t('hr.file.open', { name: emp.full_name })}
+                                    className="size-8 rounded-full border border-slate-200 bg-white/50 text-slate-400 flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100 transition-all md:opacity-0 md:group-hover:opacity-100 focus:opacity-100">
                                     <span aria-hidden="true" className="material-symbols-outlined text-lg">chevron_right</span>
                                 </button>
                             </div>
@@ -191,6 +211,8 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
                     )}
                 />
             </div>
+
+            <EmployeeDrawer employee={openEmployee} onClose={() => setOpenEmployee(null)} />
 
             {filtered.length === 0 && (
                 <EmptyState

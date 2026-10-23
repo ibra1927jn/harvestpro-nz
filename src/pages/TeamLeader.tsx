@@ -10,6 +10,7 @@
  *   teamLeaderNav.config.ts    — Navigation tabs
  *   team-leader/               — View components (lazy-loaded)
  */
+import DayClosedBanner from '@/components/common/DayClosedBanner';
 import React, { useState, Suspense, useMemo } from 'react';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { useAuth } from '@/context/AuthContext';
@@ -70,6 +71,7 @@ const TeamLeader = () => {
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/10 blur-[80px] pointer-events-none" />
                 <div className="absolute bottom-[-5%] right-[-10%] w-[50%] h-[40%] rounded-full bg-blue-500/10 blur-[80px] pointer-events-none" />
 
+                <DayClosedBanner />
                 <div key={activeTab} className="animate-fade-in relative z-10">
                     <Suspense fallback={<TabLoader />}>
                         {activeTab === 'home' && (

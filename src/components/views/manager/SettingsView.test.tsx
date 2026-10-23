@@ -7,7 +7,6 @@ import { render, screen, fireEvent } from '@/test-utils';
 
 const mockHandleChange = vi.fn();
 const mockHandleSave = vi.fn();
-const mockSetCompliance = vi.fn();
 const mockHandleNotifToggle = vi.fn();
 const mockHandleNotifType = vi.fn();
 const mockHandleSendTest = vi.fn();
@@ -26,21 +25,11 @@ vi.mock('@/hooks/useSettings', () => ({
         },
         handleChange: mockHandleChange,
         setGeneralRate: vi.fn(),
-        compliance: {
-            nz_employment_standards: true,
-            auto_wage_alerts: true,
-            safety_verification: false,
-            audit_trail: true,
-        },
-        setCompliance: mockSetCompliance,
         // Issue 2: permisos de edición de salario mínimo
         canEditMinWage: false,
         // Issue 3: floor de compliance
         complianceFloor: 4,
-        // Issue 4: orchard selector
-        availableOrchards: [{ id: 'o1', name: 'Green Valley Orchard', total_rows: 42 }],
         orchardVarieties: 'Apple',
-        handleOrchardSelect: vi.fn(),
         notifEnabled: true,
         handleNotifToggle: mockHandleNotifToggle,
         notifTypes: {
@@ -216,9 +205,14 @@ describe('SettingsView', () => {
         expect(screen.getByText(/Finalize payroll/)).toBeTruthy();
     });
 
-    it('renders Reset button in Danger Zone', () => {
+    it('no dead controls (B5): no Reset Today\'s Data, no compliance switches, no orchard selector', () => {
         render(<SettingsView />);
-        expect(screen.getByText('Reset')).toBeTruthy();
+        expect(screen.queryByText('Reset')).toBeNull();
+        expect(screen.queryByText('NZ Employment Standards')).toBeNull();
+        expect(screen.queryByLabelText('Select orchard')).toBeNull();
+        expect(screen.queryByRole('combobox', { name: /orchard/i })).toBeNull();
+        // El registro de auditoría sigue a la vista como «siempre activo»
+        expect(screen.getByText('Audit Trail Logging')).toBeTruthy();
     });
 
     it('renders language selector', () => {
@@ -269,7 +263,7 @@ describe('SettingsView', () => {
         expect(screen.getByText(/b\/hr/)).toBeTruthy();
     });
 
-    // ── Issue 4: Orchard selector ────────────────────────────────
+    // ── Huerto: solo se enseña (se cambia en la cabecera) ─────────────
     it('renders orchard details section', () => {
         render(<SettingsView />);
         expect(screen.getByText('Orchard Details')).toBeTruthy();
@@ -277,7 +271,6 @@ describe('SettingsView', () => {
 
     it('shows orchard name when only one orchard available', () => {
         render(<SettingsView />);
-        // Con un solo orchard, OrchardSelector muestra como texto (no dropdown)
         expect(screen.getByText('Green Valley Orchard')).toBeTruthy();
     });
 

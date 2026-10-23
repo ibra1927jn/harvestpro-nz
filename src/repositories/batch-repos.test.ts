@@ -304,9 +304,9 @@ describe('pickerHistoryRepository', () => {
 
     it('getInspectionsSince returns data', async () => {
         fromSpy.mockReturnValue(mockChain({ data: [{ id: 'i1' }], error: null }) as never);
-        // Lee qc_inspections y la tabla antigua (el mock responde lo mismo a las dos)
+        // Solo qc_inspections (quality_inspections ya no se consulta)
         const result = await repo.getInspectionsSince('p1', '2026-01-01');
-        expect(result).toHaveLength(2);
+        expect(result).toHaveLength(1);
     });
 
     it('getDaySetupsSince returns data', async () => {

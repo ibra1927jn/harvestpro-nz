@@ -37,6 +37,11 @@ const manager2: TranslationDict = {
     'apikeys.requests': '{n} requêtes',
     'apikeys.last_used': 'Dernière utilisation {date}',
     'apikeys.expires_on': 'Expire le {date}',
+    'close.already_closed': 'Journée clôturée',
+    'close.closed_status': 'La journée est clôturée et verrouillée : plus de seaux ni de modifications de feuilles d’heures pour aujourd’hui.',
+    'close.banner_title': 'La journée est clôturée',
+    'close.banner_body': 'Le manager a clôturé la journée. Les nouveaux seaux et les modifications de feuilles d’heures d’aujourd’hui ne sont plus acceptés.',
+    'close.scan_blocked': 'La journée est clôturée : ce seau n’a pas été enregistré',
 };
 
 export default manager2;

@@ -26,13 +26,6 @@ const insights: TranslationDict = {
     'insights.trend.title': 'Costo por Cubeta — Tendencia 7 Días',
     'insights.trend.subtitle': 'Puntos rojos = por encima del umbral de equilibrio',
     'insights.trend.breakeven': 'Equilibrio',
-    'insights.trend.day.mon': 'Lun',
-    'insights.trend.day.tue': 'Mar',
-    'insights.trend.day.wed': 'Mié',
-    'insights.trend.day.thu': 'Jue',
-    'insights.trend.day.fri': 'Vie',
-    'insights.trend.day.sat': 'Sáb',
-    'insights.trend.day.sun': 'Dom',
     // Team cost
     'insights.team_cost.title': 'Costo por Equipo',
     'insights.team_cost.subtitle': 'Menor costo/cubeta = más eficiente',

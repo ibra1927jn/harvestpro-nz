@@ -44,6 +44,8 @@ import { analytics } from '@/config/analytics';
 
 const SCAN = { picker_id: 'p1', orchard_id: 'o1', scanned_by: 'runner1', quality_grade: 'A' };
 const MSG = { receiverId: 'u2', content: 'hola' };
+// El tipo MESSAGE ya no tiene procesador (2026-10-23): los tests de la cola usan ASSIGNMENT
+const ASG = { userId: 'u2', orchardId: 'o1' };
 
 let seq = 0;
 async function queue(type: QueuedSyncItem['type'], payload: Record<string, unknown>, extra: Partial<QueuedSyncItem> = {}) {
@@ -84,7 +86,7 @@ describe('background timers (fake, under test control)', () => {
 describe('processQueue — success', () => {
     it('sends each item to its processor with the validated payload and empties the queue', async () => {
         await queue('SCAN', SCAN, { timestamp: Date.parse('2026-10-12T21:00:05Z') });
-        await queue('MESSAGE', MSG);
+        await queue('ASSIGNMENT', ASG);
         await queue('TIMESHEET', { action: 'approve', attendanceId: 'a1', verifiedBy: 'hr1' }, { updated_at: '2026-10-12T00:00:00Z' });
 
         await syncService.processQueue();
@@ -94,7 +96,7 @@ describe('processQueue — success', () => {
         expect(sent).toMatchObject(SCAN);
         // La hora del escaneo es la de la cola, en hora NZ (+13 en octubre)
         expect(sent.scanned_at).toBe('2026-10-13T10:00:05+13:00');
-        expect(sendMessage).toHaveBeenCalledWith('u2', 'hola', 'direct');
+        expect(assignUserToOrchard).toHaveBeenCalledWith('u2', 'o1');
         expect(processors.processTimesheet).toHaveBeenCalledWith({ action: 'approve', attendanceId: 'a1', verifiedBy: 'hr1' }, '2026-10-12T00:00:00Z');
         expect(await syncService.getLastSyncTime()).toBeGreaterThan(0);
         expect(analytics.trackSync).toHaveBeenCalledWith(3, expect.any(Number), true);
@@ -110,10 +112,20 @@ describe('processQueue — success', () => {
     });
 });
 
+describe('legacy MESSAGE items', () => {
+    it('a MESSAGE left on a phone goes to the dead letter queue (no processor), it is not sent', async () => {
+        const old = await queue('MESSAGE', MSG);
+        await syncService.processQueue();
+        expect(sendMessage).not.toHaveBeenCalled();
+        expect(await db.sync_queue.get(old.id)).toBeUndefined();
+        expect(await db.dead_letter_queue.get(old.id)).toBeTruthy();
+    });
+});
+
 describe('processQueue — failures', () => {
     it('a failing item stays with retryCount + 1 and does not block the next ones', async () => {
         const bad = await queue('SCAN', SCAN, { retryCount: 2 });
-        const good = await queue('MESSAGE', MSG);
+        const good = await queue('ASSIGNMENT', ASG);
         recordBucket.mockRejectedValueOnce(new Error('something odd'));
 
         await syncService.processQueue();
@@ -125,12 +137,12 @@ describe('processQueue — failures', () => {
 
     it('losing the connection stops the run: later items are not touched', async () => {
         const first = await queue('SCAN', SCAN);
-        const second = await queue('MESSAGE', MSG);
+        const second = await queue('ASSIGNMENT', ASG);
         recordBucket.mockImplementationOnce(async () => { online = false; throw new Error('Failed to fetch'); });
 
         await syncService.processQueue();
 
-        expect(sendMessage).not.toHaveBeenCalled();
+        expect(assignUserToOrchard).not.toHaveBeenCalled();
         expect(await db.sync_queue.get(first.id)).toMatchObject({ retryCount: 1 });
         expect(await db.sync_queue.get(second.id)).toMatchObject({ retryCount: 0 });
         expect(await syncService.getLastSyncTime()).toBeNull();
@@ -138,22 +150,22 @@ describe('processQueue — failures', () => {
 
     it('a network failure while online does not block the items behind it; three in a row stop the run', async () => {
         const first = await queue('SCAN', SCAN);
-        const second = await queue('MESSAGE', MSG);
+        const second = await queue('ASSIGNMENT', ASG);
         recordBucket.mockRejectedValueOnce(new Error('Failed to fetch'));
 
         await syncService.processQueue();
-        expect(sendMessage).toHaveBeenCalledTimes(1);
+        expect(assignUserToOrchard).toHaveBeenCalledTimes(1);
         expect(await db.sync_queue.get(first.id)).toMatchObject({ retryCount: 1 });
         expect(await db.sync_queue.get(second.id)).toBeUndefined();
 
         const a = await queue('SCAN', SCAN);
         const b = await queue('SCAN', SCAN);
-        const c = await queue('MESSAGE', MSG);
+        const c = await queue('ASSIGNMENT', ASG);
         recordBucket.mockRejectedValue(new Error('Failed to fetch'));
-        sendMessage.mockClear();
+        assignUserToOrchard.mockClear();
         await syncService.processQueue();
         // first, a y b fallan seguidos: c no se toca
-        expect(sendMessage).not.toHaveBeenCalled();
+        expect(assignUserToOrchard).not.toHaveBeenCalled();
         expect(await db.sync_queue.get(a.id)).toMatchObject({ retryCount: 1 });
         expect(await db.sync_queue.get(b.id)).toMatchObject({ retryCount: 1 });
         expect(await db.sync_queue.get(c.id)).toMatchObject({ retryCount: 0 });
@@ -182,9 +194,9 @@ describe('processQueue — failures', () => {
     });
 
     it('other errors are retried up to 50 times before the dead letter queue', async () => {
-        const a = await queue('MESSAGE', MSG, { retryCount: 48 });
-        const b = await queue('MESSAGE', MSG, { retryCount: 49 });
-        sendMessage.mockRejectedValue(new Error('500 internal error'));
+        const a = await queue('ASSIGNMENT', ASG, { retryCount: 48 });
+        const b = await queue('ASSIGNMENT', ASG, { retryCount: 49 });
+        assignUserToOrchard.mockRejectedValue(new Error('500 internal error'));
 
         await syncService.processQueue();
 

@@ -82,14 +82,14 @@ const HHRR: React.FC = () => {
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'employees': return <ComponentErrorBoundary componentName="Employees"><EmployeesTab employees={employees} alerts={alerts} onUpdateEmployee={updateEmployee} onAddPicker={() => setShowAddPicker(true)} /></ComponentErrorBoundary>;
+            case 'employees': return <ComponentErrorBoundary componentName="Employees"><EmployeesTab employees={employees} alerts={alerts} onUpdateEmployee={updateEmployee} onAddPicker={() => setShowAddPicker(true)} showInvitations /></ComponentErrorBoundary>;
             case 'contracts': return <ComponentErrorBoundary componentName="Contracts"><ContractsTab employees={employees} summary={summary} onRefresh={reload} /></ComponentErrorBoundary>;
             case 'payroll': return <ComponentErrorBoundary componentName="Payroll"><PayrollTab payroll={payroll} summary={summary} /></ComponentErrorBoundary>;
             case 'documents': return <ComponentErrorBoundary componentName="Documents"><DocumentsTab /></ComponentErrorBoundary>;
             case 'calendar': return <ComponentErrorBoundary componentName="Calendar"><CalendarTab employees={employees} onChanged={reload} /></ComponentErrorBoundary>;
             case CHAT_TAB_ID: return <ChatTabView />;
             case 'planning': return <ComponentErrorBoundary componentName="Seasonal Planning"><SeasonalPlanningTab employees={employees} /></ComponentErrorBoundary>;
-            default: return <ComponentErrorBoundary componentName="Employees"><EmployeesTab employees={employees} alerts={alerts} onUpdateEmployee={updateEmployee} onAddPicker={() => setShowAddPicker(true)} /></ComponentErrorBoundary>;
+            default: return <ComponentErrorBoundary componentName="Employees"><EmployeesTab employees={employees} alerts={alerts} onUpdateEmployee={updateEmployee} onAddPicker={() => setShowAddPicker(true)} showInvitations /></ComponentErrorBoundary>;
         }
     };
 

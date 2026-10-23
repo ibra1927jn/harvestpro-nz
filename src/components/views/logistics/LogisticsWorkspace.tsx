@@ -15,6 +15,10 @@ import SummaryCard from '@/components/ui/SummaryCard';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import { useLogistics } from '@/hooks/useLogistics';
+import { useHarvestStore } from '@/stores/useHarvestStore';
+import {
+    updateVehicle, addVehicle, retireVehicle, setBinStatus, addBin, retireBin,
+} from '@/services/logistics-dept.service';
 import { LOG_NAV_ITEMS } from '@/config/navigation/logistics.nav';
 import { useTranslation } from '@/i18n';
 
@@ -49,7 +53,24 @@ interface LogisticsWorkspaceProps {
 
 const LogisticsWorkspace: React.FC<LogisticsWorkspaceProps> = ({ activeTab, onTabChange, showTabBar = false, onPendingRequests }) => {
     const { t } = useTranslation();
-    const { summary, tractors, bins, requests, history, isLoading, reload } = useLogistics();
+    const { summary, tractors, bins, requests, history, isLoading, reload, refreshFleet, refreshBins } = useLogistics();
+    // Huerto donde dar de alta vehículos y bins: el cargado (el de la cuenta)
+    const orchardId = useHarvestStore(s => s.orchard?.id) ?? null;
+    const requireOrchard = (): string => {
+        if (!orchardId) throw new Error(t('logi.no_orchard'));
+        return orchardId;
+    };
+    // Flota y bins (B6): cada escritura recarga su lista (realtime también avisa)
+    const fleetHandlers = {
+        onUpdateTractor: async (id: string, changes: Parameters<typeof updateVehicle>[1]) => { await updateVehicle(id, changes); await refreshFleet(); },
+        onAddVehicle: async (input: Parameters<typeof addVehicle>[1]) => { await addVehicle(requireOrchard(), input); await refreshFleet(); },
+        onRetireVehicle: async (id: string) => { await retireVehicle(id); await refreshFleet(); },
+    };
+    const binHandlers = {
+        onSetStatus: async (id: string, status: Parameters<typeof setBinStatus>[1]) => { await setBinStatus(id, status); await refreshBins(); },
+        onAddBin: async (code: string, zone: string) => { await addBin(requireOrchard(), code, zone); await refreshBins(); },
+        onRetireBin: async (id: string) => { await retireBin(id); await refreshBins(); },
+    };
 
     React.useEffect(() => {
         onPendingRequests?.(summary.pendingRequests);
@@ -68,11 +89,11 @@ const LogisticsWorkspace: React.FC<LogisticsWorkspaceProps> = ({ activeTab, onTa
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'bins': return <ComponentErrorBoundary componentName="Bin Inventory"><BinsTab bins={bins} summary={summary} /></ComponentErrorBoundary>;
+            case 'bins': return <ComponentErrorBoundary componentName="Bin Inventory"><BinsTab bins={bins} summary={summary} {...binHandlers} /></ComponentErrorBoundary>;
             case 'requests': return <ComponentErrorBoundary componentName="Requests"><RequestsTab requests={requests} tractors={tractors} onRefresh={reload} /></ComponentErrorBoundary>;
             case 'history': return <ComponentErrorBoundary componentName="History"><HistoryTab history={history} /></ComponentErrorBoundary>;
             case 'fleet':
-            default: return <ComponentErrorBoundary componentName="Fleet"><FleetTab tractors={tractors} /></ComponentErrorBoundary>;
+            default: return <ComponentErrorBoundary componentName="Fleet"><FleetTab tractors={tractors} {...fleetHandlers} /></ComponentErrorBoundary>;
         }
     };
 

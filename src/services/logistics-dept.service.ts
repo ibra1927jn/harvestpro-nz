@@ -10,7 +10,9 @@
 import { safeUUID } from '@/utils/uuid';
 import { syncService } from '@/services/sync.service';
 import { logger } from '@/utils/logger';
-import { logisticsRepository } from '@/repositories/logistics.repository';
+import { logisticsRepository, type VehicleWrite, type BinDbStatus } from '@/repositories/logistics.repository';
+
+export type { VehicleWrite, BinDbStatus };
 
 // ── Types ──────────────────────────────────────
 /** Tipo de vehículo (fleet_vehicles.type); decide el papel del runner que lo lleva */
@@ -31,6 +33,8 @@ export interface Tractor {
     max_capacity: number;
     fuel_level?: number;
     wof_expiry?: string;
+    cof_expiry?: string;
+    next_service_date?: string;
     last_update: string;
 }
 
@@ -43,6 +47,8 @@ export interface BinInventory {
     assigned_tractor?: string;
     last_scan: string;
     variety?: string;
+    /** Estado tal cual en la BD (el que Logística cambia) */
+    db_status: BinDbStatus;
 }
 
 export interface TransportRequest {
@@ -127,6 +133,8 @@ export async function fetchFleet(orchardId?: string): Promise<Tractor[]> {
             max_capacity: v.max_capacity,
             fuel_level: v.fuel_level || undefined,
             wof_expiry: v.wof_expiry || undefined,
+            cof_expiry: v.cof_expiry || undefined,
+            next_service_date: v.next_service_date || undefined,
             last_update: v.updated_at,
         }));
     } catch (error) {
@@ -147,6 +155,7 @@ export async function fetchBinInventory(orchardId?: string): Promise<BinInventor
             assigned_tractor: undefined,
             last_scan: bin.filled_at || bin.created_at || new Date().toISOString(),
             variety: bin.variety,
+            db_status: toBinDbStatus(bin.status),
         }));
     } catch (error) {
         logger.error('[Logistics] Error fetching bin inventory:', error);
@@ -154,10 +163,15 @@ export async function fetchBinInventory(orchardId?: string): Promise<BinInventor
     }
 }
 
+function toBinDbStatus(s: string): BinDbStatus {
+    return s === 'partial' || s === 'in-progress' ? 'partial' : s === 'full' || s === 'collected' ? s : 'empty';
+}
+
 function mapBinStatus(dbStatus: string): BinInventory['status'] {
     switch (dbStatus) {
         case 'empty': return 'empty';
         case 'partial': return 'filling';
+        case 'in-progress': return 'filling';
         case 'full': return 'full';
         case 'collected': return 'in_transit';
         default: return 'empty';
@@ -168,6 +182,7 @@ function calculateFillPercentage(status: string): number {
     switch (status) {
         case 'empty': return 0;
         case 'partial': return 50;
+        case 'in-progress': return 50;
         case 'full': return 100;
         case 'collected': return 100;
         default: return 0;
@@ -212,6 +227,60 @@ export async function fetchTransportHistory(orchardId?: string): Promise<Transpo
         logger.error('[Logistics] Error fetching transport history:', error);
         return [];
     }
+}
+
+// ── Flota y bins (Logística, B6) ───────────────
+// Escrituras directas: Logística trabaja en la oficina. Cada una lanza con el
+// motivo si la BD no deja (antes la pantalla editaba y no guardaba nada).
+
+const VEHICLE_FIELDS: readonly (keyof VehicleWrite)[] = [
+    'name', 'registration', 'type', 'zone', 'max_capacity', 'driver_name', 'status',
+    'wof_expiry', 'cof_expiry', 'next_service_date',
+];
+
+/** Solo columnas reales y textos vacíos como null (el conductor «sin asignar» es null) */
+export function toVehicleWrite(changes: Partial<Tractor> & { [k: string]: unknown }): VehicleWrite {
+    const out: Record<string, unknown> = {};
+    for (const k of VEHICLE_FIELDS) {
+        if (!(k in changes)) continue;
+        const v = changes[k];
+        if (k === 'max_capacity') {
+            const n = Number(v);
+            if (Number.isFinite(n) && n > 0) out[k] = Math.round(n);
+            continue;
+        }
+        out[k] = typeof v === 'string' ? (v.trim() === '' ? null : v.trim()) : v ?? null;
+    }
+    if (out.name === null) delete out.name;
+    return out as VehicleWrite;
+}
+
+export async function updateVehicle(id: string, changes: Partial<Tractor>): Promise<void> {
+    await logisticsRepository.updateVehicle(id, toVehicleWrite(changes));
+}
+
+export async function addVehicle(orchardId: string, input: VehicleWrite & { name: string }): Promise<void> {
+    const write = toVehicleWrite(input as Partial<Tractor>);
+    if (!write.name) throw new Error('Vehicle name is required');
+    await logisticsRepository.insertVehicle(orchardId, { ...write, name: write.name });
+}
+
+export async function retireVehicle(id: string): Promise<void> {
+    await logisticsRepository.retireVehicle(id);
+}
+
+export async function setBinStatus(id: string, status: BinDbStatus): Promise<void> {
+    await logisticsRepository.updateBinStatus(id, status);
+}
+
+export async function addBin(orchardId: string, binCode: string, zone?: string): Promise<void> {
+    const code = binCode.trim();
+    if (!code) throw new Error('Bin code is required');
+    await logisticsRepository.insertBin({ orchard_id: orchardId, bin_code: code, zone: zone?.trim() || null });
+}
+
+export async function retireBin(id: string): Promise<void> {
+    await logisticsRepository.retireBin(id);
 }
 
 export async function createTransportRequest(

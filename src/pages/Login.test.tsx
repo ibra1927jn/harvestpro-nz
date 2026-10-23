@@ -91,6 +91,21 @@ describe('Login Page', () => {
         expect(screen.getByTestId('register-form')).toBeTruthy();
     });
 
+    it('opens Register when it comes from an invitation link (/login?invite=email)', () => {
+        const original = window.location;
+        Object.defineProperty(window, 'location', {
+            configurable: true,
+            value: { ...original, search: '?invite=new.person%40example.nz' },
+        });
+        try {
+            render(<Login />);
+            expect(screen.getByText('Create your account')).toBeTruthy();
+            expect(screen.getByTestId('register-form')).toBeTruthy();
+        } finally {
+            Object.defineProperty(window, 'location', { configurable: true, value: original });
+        }
+    });
+
     it('shows loading spinner when auth is loading', () => {
         (useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
             signIn: vi.fn(),

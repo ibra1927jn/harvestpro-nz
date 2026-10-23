@@ -63,7 +63,7 @@
     ]
   },
   "locales": {
-    "comment": "Cada idioma no inglés es un chunk aparte (carga bajo demanda, precacheado; sin claves: scripts/i18n/compact-locales.mjs). Límite por idioma, gzip; medido 2026-10-14: 12.8–16.1 KB.",
-    "maxGzipKB": 19
+    "comment": "Cada idioma no inglés es un chunk aparte (carga bajo demanda, precacheado; sin claves: scripts/i18n/compact-locales.mjs). Límite por idioma, gzip; medido 2026-10-14: 12.8–16.1 KB con 7 idiomas. 2026-10-23: de 7 idiomas a 3 (en/es/fr) el precache bajó ~240 KB; el límite por idioma pasa de 19 a 24 KB para el texto nuevo de las pantallas (es 18.1, fr 18.9 KB medidos el 23-10).",
+    "maxGzipKB": 24
   }
 }

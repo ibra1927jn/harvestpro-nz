@@ -67,25 +67,19 @@ export const pickerHistoryRepository = {
     /** Get quality inspections for a picker since a given ISO timestamp */
     async getInspectionsSince(pickerId: string, sinceIso: string): Promise<PickerInspectionRow[]> {
         // Las inspecciones de la app de Calidad están en qc_inspections (columna
-        // grade, y desde 2026-10 criterios, puntuación y fila); quality_inspections
-        // es la tabla antigua (solo nota). Se leen las dos.
-        const [qc, legacy] = await Promise.all([
-            supabase.from('qc_inspections').select('grade, created_at, criteria, score, row_number')
-                .eq('picker_id', pickerId).gte('created_at', sinceIso),
-            supabase.from('quality_inspections').select('quality_grade, created_at')
-                .eq('picker_id', pickerId).gte('created_at', sinceIso),
-        ]);
-        return [
-            ...((qc.data || []) as Array<{ grade: string; created_at: string | null; criteria?: unknown; score?: number | null; row_number?: number | null }>)
-                .map(i => ({
-                    quality_grade: i.grade,
-                    created_at: i.created_at,
-                    criteria: i.criteria ?? null,
-                    score: i.score ?? null,
-                    row_number: i.row_number ?? null,
-                })),
-            ...((legacy.data || []) as Array<{ quality_grade: string | null; created_at: string | null }>),
-        ];
+        // grade, y desde 2026-10 criterios, puntuación y fila). quality_inspections
+        // (la tabla antigua) siempre volvía vacía y ya no se consulta (auditoría
+        // 2026-10-23, punto 7; la tabla no se borra).
+        const qc = await supabase.from('qc_inspections').select('grade, created_at, criteria, score, row_number')
+            .eq('picker_id', pickerId).gte('created_at', sinceIso);
+        return ((qc.data || []) as Array<{ grade: string; created_at: string | null; criteria?: unknown; score?: number | null; row_number?: number | null }>)
+            .map(i => ({
+                quality_grade: i.grade,
+                created_at: i.created_at,
+                criteria: i.criteria ?? null,
+                score: i.score ?? null,
+                row_number: i.row_number ?? null,
+            }));
     },
 
     /** Get day setups for an orchard since a given date */

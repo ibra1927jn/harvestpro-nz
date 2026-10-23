@@ -83,6 +83,21 @@ export const hrDocumentsRepository = {
     return (data || []) as HRDocumentRow[];
   },
 
+  /**
+   * Documentos de una persona: los de plantilla van por picker_id y los de
+   * cuentas de oficina por user_id (ficha de RRHH › Employees).
+   */
+  async listByPerson(personId: string): Promise<HRDocumentRow[]> {
+    const { data, error } = await supabase
+      .from('hr_documents')
+      .select('*')
+      .or(`picker_id.eq.${personId},user_id.eq.${personId}`)
+      .is('deleted_at', null)
+      .order('uploaded_at', { ascending: false });
+    if (error) throw error;
+    return (data || []) as HRDocumentRow[];
+  },
+
   /** Upload a file to the private bucket and create the DB row. */
   async upload(
     file: File,

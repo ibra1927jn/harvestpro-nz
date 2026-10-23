@@ -17,7 +17,6 @@ const settings2: TranslationDict = {
     'settings.save_failed': 'Failed to save. Please try again.',
     'settings.copyright': '© 2026 HarvestPro. Built for NZ Orchards.',
     'settings.override': '(override: {value})',
-    'settings.select_orchard': 'Select orchard',
     'wage.picker_piece': 'Picker (Piece Rate)',
     'wage.loading': 'Loading wage rates…',
     'wage.title': 'Wage Rates Configuration',

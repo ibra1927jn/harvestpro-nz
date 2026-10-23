@@ -83,7 +83,10 @@ describe('pickerHistoryRepository.getInspectionsSince', () => {
     it('devuelve array', async () => {
         fromSpy.mockReturnValue(mockChain({ data: [{ id: 'i1' }, { id: 'i2' }], error: null }) as never);
         const res = await pickerHistoryRepository.getInspectionsSince('p1', '2026-04-10T00:00Z');
-        expect(res).toHaveLength(4);
+        expect(res).toHaveLength(2);
+        // Solo qc_inspections: quality_inspections (siempre vacía) ya no se consulta
+        expect(fromSpy).toHaveBeenCalledWith('qc_inspections');
+        expect(fromSpy).not.toHaveBeenCalledWith('quality_inspections');
     });
 
     it('[] cuando data null', async () => {

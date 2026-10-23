@@ -2,7 +2,6 @@ import type { TranslationDict } from '../../types';
 
 const scanner: TranslationDict = {
     'scanner.scan': 'Escanear',
-    'scanner.manual_entry': 'Ingresar código manualmente',
     'scanner.camera_unavailable': 'Cámara no disponible',
     'scanner.native': 'NATIVO',
     'scanner.hardware_accelerated': 'Usando escáner acelerado por hardware',
