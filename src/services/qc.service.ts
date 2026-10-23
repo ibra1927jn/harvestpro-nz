@@ -60,6 +60,10 @@ export const qcService = {
      * Log a new quality inspection
      */
     async logInspection(params: {
+        /** id del móvil: la cola puede reintentar sin duplicar */
+        id?: string;
+        /** Foto que no se pudo subir: espera en el móvil y la cola la sube antes */
+        pendingPhoto?: { fileId: string; path: string };
         orchardId: string;
         pickerId: string;
         inspectorId: string;
@@ -68,6 +72,7 @@ export const qcService = {
         photoUrl?: string;
     } & InspectionDetails): Promise<QCInspection | null> {
         const candidate: QCInspectionPayload = {
+            ...(params.id ? { id: params.id } : {}),
             orchard_id: params.orchardId,
             picker_id: params.pickerId,
             inspector_id: params.inspectorId,
@@ -88,6 +93,21 @@ export const qcService = {
             return null;
         }
         const payload: QCInspectionPayload = checked.data;
+        const queuedResult = () =>
+            // id propio por inspección: varias en cola no pueden compartir clave en la lista
+            ({ ...payload, id: payload.id ?? `pending-${crypto.randomUUID()}`, created_at: new Date().toISOString() } as QCInspection);
+
+        // Foto sin subir (sin cobertura): todo va por la cola, que sube la foto
+        // y después guarda la inspección con esa foto (mismo id)
+        if (params.pendingPhoto) {
+            await syncService.addToQueue('QC_INSPECTION', {
+                ...payload,
+                photo_file_id: params.pendingPhoto.fileId,
+                photo_path: params.pendingPhoto.path,
+            });
+            logger.warn('[QCService] Inspection and photo queued for offline sync');
+            return queuedResult();
+        }
 
         const { data, error } = await qcRepository.insert(payload);
 
@@ -96,8 +116,7 @@ export const qcService = {
             if (error.message?.includes('Failed to fetch') || error.message?.includes('Network') || !navigator.onLine) {
                 await syncService.addToQueue('QC_INSPECTION', payload);
                 logger.warn('[QCService] Inspection queued for offline sync');
-                // id propio por inspección: varias en cola no pueden compartir clave en la lista
-                return { ...payload, id: `pending-${crypto.randomUUID()}`, created_at: new Date().toISOString() } as QCInspection;
+                return queuedResult();
             }
             logger.error('[QCService] Failed to log inspection:', error.message);
             return null;

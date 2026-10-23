@@ -75,6 +75,9 @@ export default function QualityControl() {
 
                 <div key={activeTab} className="animate-fade-in relative z-10">
                     <Suspense fallback={<TabLoader />}>
+                        {activeTab === 'inspect' && qc.photoWarning && (
+                            <p role="alert" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">{qc.photoWarning}</p>
+                        )}
                         {activeTab === 'inspect' && (
                             <ComponentErrorBoundary componentName="Inspect">
                                 <InspectTab

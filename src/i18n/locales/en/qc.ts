@@ -116,6 +116,7 @@ const qc: TranslationDict = {
     'qc.flag_not_informed': 'Not informed',
     'qc.flag_not_comfortable': 'Not comfortable in the team',
     'qc.profile_criteria': 'Criteria flagged (last 14 days)',
+    'qc.photo_not_kept': 'The photo could not be kept on this phone without signal (not enough room). The inspection was saved without it.',
 };
 
 export default qc;
