@@ -28,6 +28,13 @@ const comms: TranslationDict = {
     'comms.ts_on_leave_title': 'I le malologa faʻamaonia i le aso: {n}',
     'comms.ts_on_leave_hint': 'O le polokalame totogi e fuafua le totogi o le malologa, ae le o iinei.',
     'sync.type.leave_request': 'Talosaga malologa',
+    'comms.audience_label': 'Lafo i',
+    'comms.audience.all': 'Tagata uma',
+    'comms.audience.team_leaders': 'Taʻitaʻi ʻau',
+    'comms.audience.runners': 'Tagata momoli',
+    'comms.audience.qc': 'Siaki lelei',
+    'comms.audience.office': 'Ofisa',
+    'comms.audience_some': 'Na o tulaga ua filifilia',
 };
 
 export default comms;

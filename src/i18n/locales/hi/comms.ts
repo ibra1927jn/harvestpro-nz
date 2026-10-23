@@ -28,6 +28,13 @@ const comms: TranslationDict = {
     'comms.ts_on_leave_title': 'आज मंज़ूर छुट्टी पर: {n}',
     'comms.ts_on_leave_hint': 'छुट्टी का भुगतान पेरोल प्रोग्राम करता है, यहाँ नहीं।',
     'sync.type.leave_request': 'छुट्टी का अनुरोध',
+    'comms.audience_label': 'किसे भेजें',
+    'comms.audience.all': 'सभी',
+    'comms.audience.team_leaders': 'टीम लीडर',
+    'comms.audience.runners': 'रनर',
+    'comms.audience.qc': 'गुणवत्ता जाँच',
+    'comms.audience.office': 'ऑफ़िस',
+    'comms.audience_some': 'केवल चुनी गई भूमिकाओं को',
 };
 
 export default comms;

@@ -28,6 +28,13 @@ const comms: TranslationDict = {
     'comms.ts_on_leave_title': 'ʻI he mālōlō fakangofua he ʻaho ni: {n}',
     'comms.ts_on_leave_hint': 'Ko e polokalama vahe ʻoku ne fakakaukau ʻa e totongi mālōlō, ʻikai heni.',
     'sync.type.leave_request': 'Kole mālōlō',
+    'comms.audience_label': 'ʻAve ki',
+    'comms.audience.all': 'Kotoa',
+    'comms.audience.team_leaders': 'Kau taki timi',
+    'comms.audience.runners': 'Kau momoli',
+    'comms.audience.qc': 'Sivi tuʻunga',
+    'comms.audience.office': 'ʻŌfisi',
+    'comms.audience_some': 'Ki he ngaahi fatongia kuo fili pē',
 };
 
 export default comms;

@@ -28,6 +28,13 @@ const comms: TranslationDict = {
     'comms.ts_on_leave_title': 'I te wehe kua whakaaetia i tēnei rā: {n}',
     'comms.ts_on_leave_hint': 'Mā te hōtaka utu e tātai te utu wehe, ehara i konei.',
     'sync.type.leave_request': 'Tono wehe',
+    'comms.audience_label': 'Tukuna ki',
+    'comms.audience.all': 'Te katoa',
+    'comms.audience.team_leaders': 'Kaiārahi rōpū',
+    'comms.audience.runners': 'Kaiwhakahaere',
+    'comms.audience.qc': 'Kounga',
+    'comms.audience.office': 'Tari',
+    'comms.audience_some': 'Ki ngā tūranga i kōwhiria anake',
 };
 
 export default comms;

@@ -6,10 +6,14 @@
 import React, { useState } from 'react';
 import ModalOverlay from '@/components/ui/ModalOverlay';
 import { useTranslation } from '@/i18n';
+import { BroadcastAudiencePicker } from '@/components/common/BroadcastAudiencePicker';
+import { rolesForAudiences, type BroadcastAudience } from '@/services/broadcastAudience';
+import type { Role } from '@/types';
 
 interface BroadcastModalProps {
     onClose: () => void;
-    onSend: (title: string, message: string, priority: 'normal' | 'high' | 'urgent') => void | Promise<void>;
+    /** targetRoles vacío = para todos */
+    onSend: (title: string, message: string, priority: 'normal' | 'high' | 'urgent', targetRoles: Role[]) => void | Promise<void>;
 }
 
 const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose, onSend }) => {
@@ -18,12 +22,13 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose, onSend }) => {
     const [message, setMessage] = useState('');
     const [priority, setPriority] = useState<'normal' | 'high' | 'urgent'>('normal');
     const [isSending, setIsSending] = useState(false);
+    const [audience, setAudience] = useState<BroadcastAudience[]>(['all']);
 
     const handleSend = async () => {
         if (!title.trim() || !message.trim()) return;
         setIsSending(true);
         try {
-            await onSend(title, message, priority);
+            await onSend(title, message, priority, rolesForAudiences(audience));
             onClose();
         } catch {
             // No se envió: el modal sigue abierto y la pantalla muestra el motivo
@@ -42,7 +47,7 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose, onSend }) => {
                         </div>
                         <div>
                             <h3 className="text-xl font-black text-text-main">{t('broadcast.new')}</h3>
-                            <p className="text-xs text-text-muted">{t('broadcast.to_all_field')}</p>
+                            <p className="text-xs text-text-muted">{t(audience.includes('all') ? 'broadcast.to_all_field' : 'comms.audience_some')}</p>
                         </div>
                     </div>
                     <button aria-label={t('common.close')} onClick={onClose} className="text-text-muted hover:text-text-main transition-colors">
@@ -72,6 +77,8 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose, onSend }) => {
                             className="w-full bg-slate-50 border border-border-light rounded-xl px-4 py-3 text-text-main focus:border-primary outline-none resize-none transition-colors"
                         />
                     </div>
+
+                    <BroadcastAudiencePicker value={audience} onChange={setAudience} />
 
                     <div>
                         <label className="text-xs font-bold text-text-muted uppercase mb-2 block">{t('broadcast.priority')}</label>

@@ -278,9 +278,9 @@ const UnifiedMessagingView = () => {
       {showBroadcastModal && isManager && (
         <BroadcastModal
           onClose={() => setShowBroadcastModal(false)}
-          onSend={async (title, content, priority) => {
+          onSend={async (title, content, priority, targetRoles) => {
             // Si no se guardó, el modal no se cierra y se avisa
-            const ok = await sendBroadcast(title, content, priority as MessagePriority);
+            const ok = await sendBroadcast(title, content, priority as MessagePriority, targetRoles);
             if (!ok) {
               setActionError(t('chat.broadcast_failed'));
               throw new Error('Broadcast not sent');

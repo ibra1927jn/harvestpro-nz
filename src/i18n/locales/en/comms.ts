@@ -28,6 +28,13 @@ const comms: TranslationDict = {
     'comms.ts_on_leave_title': 'On approved leave today: {n}',
     'comms.ts_on_leave_hint': 'Leave pay is worked out by the payroll program, not here.',
     'sync.type.leave_request': 'Leave request',
+    'comms.audience_label': 'Send to',
+    'comms.audience.all': 'Everyone',
+    'comms.audience.team_leaders': 'Team leaders',
+    'comms.audience.runners': 'Runners',
+    'comms.audience.qc': 'QC',
+    'comms.audience.office': 'Office',
+    'comms.audience_some': 'Only to the chosen roles',
 };
 
 export default comms;

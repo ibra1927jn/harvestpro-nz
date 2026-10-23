@@ -28,6 +28,13 @@ const comms: TranslationDict = {
     'comms.ts_on_leave_title': 'De permiso aprobado hoy: {n}',
     'comms.ts_on_leave_hint': 'El pago de la ausencia lo calcula el programa de nóminas, no esta pantalla.',
     'sync.type.leave_request': 'Solicitud de ausencia',
+    'comms.audience_label': 'Enviar a',
+    'comms.audience.all': 'Todos',
+    'comms.audience.team_leaders': 'Jefes de equipo',
+    'comms.audience.runners': 'Runners',
+    'comms.audience.qc': 'Calidad',
+    'comms.audience.office': 'Oficina',
+    'comms.audience_some': 'Solo a los roles elegidos',
 };
 
 export default comms;

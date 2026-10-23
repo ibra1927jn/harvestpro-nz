@@ -28,6 +28,13 @@ const comms: TranslationDict = {
     'comms.ts_on_leave_title': 'Naka-aprubadong leave ngayon: {n}',
     'comms.ts_on_leave_hint': 'Ang bayad sa leave ay kinukwenta ng payroll program, hindi rito.',
     'sync.type.leave_request': 'Kahilingan sa leave',
+    'comms.audience_label': 'Ipadala kay',
+    'comms.audience.all': 'Lahat',
+    'comms.audience.team_leaders': 'Mga team leader',
+    'comms.audience.runners': 'Mga runner',
+    'comms.audience.qc': 'Kalidad',
+    'comms.audience.office': 'Opisina',
+    'comms.audience_some': 'Sa mga napiling tungkulin lang',
 };
 
 export default comms;
