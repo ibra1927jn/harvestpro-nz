@@ -35,6 +35,12 @@ const comms: TranslationDict = {
     'comms.audience.qc': 'Siaki lelei',
     'comms.audience.office': 'Ofisa',
     'comms.audience_some': 'Na o tulaga ua filifilia',
+    'comms.presence.on_shift': 'Ua resitala',
+    'comms.presence.on_break': 'I le malologa puupuu',
+    'comms.presence.left': 'Ua alu',
+    'comms.presence.on_leave': 'I le malologa',
+    'comms.presence.not_in': 'E leʻi resitala i le aso',
+    'comms.team_presence': '{in}/{total} ua resitala · {brk} malologa puupuu · {leave} malologa',
 };
 
 export default comms;

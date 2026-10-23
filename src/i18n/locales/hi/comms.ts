@@ -35,6 +35,12 @@ const comms: TranslationDict = {
     'comms.audience.qc': 'गुणवत्ता जाँच',
     'comms.audience.office': 'ऑफ़िस',
     'comms.audience_some': 'केवल चुनी गई भूमिकाओं को',
+    'comms.presence.on_shift': 'हाज़िर',
+    'comms.presence.on_break': 'विश्राम पर',
+    'comms.presence.left': 'चले गए',
+    'comms.presence.on_leave': 'छुट्टी पर',
+    'comms.presence.not_in': 'आज नहीं आए',
+    'comms.team_presence': '{in}/{total} हाज़िर · {brk} विश्राम पर · {leave} छुट्टी पर',
 };
 
 export default comms;

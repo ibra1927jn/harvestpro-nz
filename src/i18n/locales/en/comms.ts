@@ -35,6 +35,12 @@ const comms: TranslationDict = {
     'comms.audience.qc': 'QC',
     'comms.audience.office': 'Office',
     'comms.audience_some': 'Only to the chosen roles',
+    'comms.presence.on_shift': 'Clocked in',
+    'comms.presence.on_break': 'On break',
+    'comms.presence.left': 'Left',
+    'comms.presence.on_leave': 'On leave',
+    'comms.presence.not_in': 'Not in today',
+    'comms.team_presence': '{in}/{total} in · {brk} on break · {leave} on leave',
 };
 
 export default comms;

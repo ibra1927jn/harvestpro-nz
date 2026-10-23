@@ -35,6 +35,12 @@ const comms: TranslationDict = {
     'comms.audience.qc': 'Calidad',
     'comms.audience.office': 'Oficina',
     'comms.audience_some': 'Solo a los roles elegidos',
+    'comms.presence.on_shift': 'Fichado',
+    'comms.presence.on_break': 'En descanso',
+    'comms.presence.left': 'Salió',
+    'comms.presence.on_leave': 'De permiso',
+    'comms.presence.not_in': 'Sin fichar hoy',
+    'comms.team_presence': '{in}/{total} fichados · {brk} en descanso · {leave} de permiso',
 };
 
 export default comms;

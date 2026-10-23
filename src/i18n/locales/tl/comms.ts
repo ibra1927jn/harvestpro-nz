@@ -35,6 +35,12 @@ const comms: TranslationDict = {
     'comms.audience.qc': 'Kalidad',
     'comms.audience.office': 'Opisina',
     'comms.audience_some': 'Sa mga napiling tungkulin lang',
+    'comms.presence.on_shift': 'Naka-clock in',
+    'comms.presence.on_break': 'Naka-break',
+    'comms.presence.left': 'Umalis na',
+    'comms.presence.on_leave': 'Naka-leave',
+    'comms.presence.not_in': 'Hindi pa pumapasok',
+    'comms.team_presence': '{in}/{total} naka-clock in · {brk} naka-break · {leave} naka-leave',
 };
 
 export default comms;

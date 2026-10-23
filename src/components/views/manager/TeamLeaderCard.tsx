@@ -6,6 +6,8 @@ import { logger } from '@/utils/logger';
 import { useTranslation } from '@/i18n';
 import { ElsewhereBadge } from '@/components/common/ElsewhereBadge';
 import type { LeaveRequest } from '@/services/leave.service';
+import { PresenceBadge } from '@/components/common/PresenceBadge';
+import { countPresence, presenceOf } from '@/services/presence';
 
 interface TeamLeaderCardProps {
     leader: Picker;
@@ -40,6 +42,9 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
             .map(ra => ra.row_number);
         return [...new Set(rows)].sort((a, b) => a - b);
     };
+
+    // Presencia del equipo (cabecera): fichados y en descanso ahora
+    const teamPresence = countPresence(crew.map(m => presenceOf(m, !!leaveToday?.has(m.id))));
 
     // Calculate Team Stats
     const totalBuckets = crew.reduce((acc, p) => acc + (p.total_buckets_today || 0), 0) + (leader.total_buckets_today || 0);
@@ -104,6 +109,10 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                         <span>{crew.length === 1
                             ? t('teams.members_count_one').replace('{n}', '1')
                             : t('teams.members_count_other').replace('{n}', String(crew.length))}</span>
+                        <span>•</span>
+                        <span data-testid={`team-presence-${leader.id}`} className="normal-case">
+                            {t('comms.team_presence', { in: teamPresence.on_shift + teamPresence.on_break, total: crew.length, brk: teamPresence.on_break, leave: teamPresence.on_leave })}
+                        </span>
                         {leaderRows.length > 0 && (
                             <>
                                 <span>•</span>
@@ -190,11 +199,14 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-text-main text-sm truncate">{member.name}</p>
                                         {member.elsewhere && <div className="mt-0.5 max-w-full overflow-hidden"><ElsewhereBadge person={member} /></div>}
-                                        {leaveToday?.get(member.id) && !(member.check_in && !member.check_out) && (
-                                            <span data-testid={`team-on-leave-${member.id}`} className="mt-0.5 inline-flex text-[10px] font-bold uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                                                {t('comms.on_leave_type', { type: t(`leave.type.${leaveToday.get(member.id)!.type}`) })}
-                                            </span>
-                                        )}
+                                        {/* Presencia de hoy (fichajes en vivo + ausencias aprobadas) */}
+                                        <div className="mt-0.5">
+                                            <PresenceBadge
+                                                testId={`presence-${member.id}`}
+                                                presence={presenceOf(member, !!leaveToday?.has(member.id))}
+                                                leaveTypeLabel={leaveToday?.get(member.id) ? t(`leave.type.${leaveToday.get(member.id)!.type}`) : undefined}
+                                            />
+                                        </div>
                                         <div className="flex justify-between items-center mt-0.5">
                                             <div className="flex items-center gap-1.5">
                                                 <span className="text-[10px] text-slate-400 font-mono">{member.picker_id || '---'}</span>

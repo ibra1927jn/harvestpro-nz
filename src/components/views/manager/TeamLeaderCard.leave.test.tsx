@@ -21,8 +21,9 @@ describe('TeamLeaderCard — leave', () => {
     ]);
     render(<TeamLeaderCard leader={leader} crew={crew} onSelectUser={vi.fn()} settings={null} leaveToday={leave} />);
     fireEvent.click(screen.getByText('Tama'));
-    expect(screen.getByTestId('team-on-leave-p1').textContent).toBe('On leave (Sick leave)');
+    expect(screen.getByTestId('presence-p1').textContent).toContain('On leave (Sick leave)');
     // Rua tiene ausencia pero ha fichado: manda lo que está pasando
-    expect(screen.queryByTestId('team-on-leave-p2')).toBeNull();
+    expect(screen.getByTestId('presence-p2').getAttribute('data-presence')).toBe('on_shift');
+    expect(screen.getByTestId('team-presence-tl1').textContent).toBe('1/2 in · 0 on break · 1 on leave');
   });
 });

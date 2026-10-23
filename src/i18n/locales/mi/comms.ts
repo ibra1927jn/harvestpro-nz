@@ -35,6 +35,12 @@ const comms: TranslationDict = {
     'comms.audience.qc': 'Kounga',
     'comms.audience.office': 'Tari',
     'comms.audience_some': 'Ki ngā tūranga i kōwhiria anake',
+    'comms.presence.on_shift': 'Kua tae mai',
+    'comms.presence.on_break': 'E whakatā ana',
+    'comms.presence.left': 'Kua wehe',
+    'comms.presence.on_leave': 'I te wehe',
+    'comms.presence.not_in': 'Kāore anō kia tae mai',
+    'comms.team_presence': '{in}/{total} kua tae · {brk} e whakatā · {leave} i te wehe',
 };
 
 export default comms;

@@ -35,6 +35,12 @@ const comms: TranslationDict = {
     'comms.audience.qc': 'Sivi tuʻunga',
     'comms.audience.office': 'ʻŌfisi',
     'comms.audience_some': 'Ki he ngaahi fatongia kuo fili pē',
+    'comms.presence.on_shift': 'Kuo lēsisita',
+    'comms.presence.on_break': 'ʻI he mālōlō nounou',
+    'comms.presence.left': 'Kuo ʻalu',
+    'comms.presence.on_leave': 'ʻI he mālōlō',
+    'comms.presence.not_in': 'Teʻeki lēsisita he ʻaho ni',
+    'comms.team_presence': '{in}/{total} kuo lēsisita · {brk} mālōlō nounou · {leave} mālōlō',
 };
 
 export default comms;

@@ -13,6 +13,8 @@ import EmptyState from '@/components/ui/EmptyState';
 import { selectStaff, selectTeamLeaders, selectRunners, selectTeamOf, selectUnassigned } from '@/services/harvestMetrics/roster';
 import { useTranslation } from '@/i18n';
 import { useLeaveOnDay } from '@/hooks/useLeave';
+import { PresenceBadge } from '@/components/common/PresenceBadge';
+import { presenceOf } from '@/services/presence';
 
 interface TeamsViewProps {
     crew: Picker[];
@@ -91,6 +93,7 @@ const TeamsView: React.FC<TeamsViewProps> = ({
                                 runners={filteredRunners}
                                 onSelectUser={setSelectedUser}
                                 onRemoveUser={onRemoveUser}
+                                leaveToday={leaveToday}
                             />
                         </div>
 
@@ -153,6 +156,13 @@ const TeamsView: React.FC<TeamsViewProps> = ({
                                             className="px-3 py-1.5 rounded-xl bg-white border border-amber-200 text-sm font-bold text-text-main hover:bg-amber-50"
                                         >
                                             {p.name}
+                                            <span className="ml-2 align-middle">
+                                                <PresenceBadge
+                                                    testId={`presence-${p.id}`}
+                                                    presence={presenceOf(p, leaveToday.has(p.id))}
+                                                    leaveTypeLabel={leaveToday.get(p.id) ? t(`leave.type.${leaveToday.get(p.id)!.type}`) : undefined}
+                                                />
+                                            </span>
                                         </button>
                                     ))}
                                 </div>
