@@ -10,6 +10,7 @@ import { Picker } from '@/types';
 import RowTeamDisplay from './RowTeamDisplay';
 import RowGrid from './RowGrid';
 import { useTranslation } from '@/i18n';
+import { blockRowNumbers } from '@/utils/blockRows';
 
 interface RowAssignmentModalProps {
     onClose: () => void;
@@ -48,10 +49,8 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, initia
     const selectedBlock = orchardBlocks.find(b => b.id === selectedBlockId) || null;
     const blockRows = useMemo(() => {
         if (selectedBlock) {
-            return Array.from(
-                { length: selectedBlock.totalRows },
-                (_, i) => selectedBlock.startRow + i
-            );
+            // Filas reales del bloque (puede tener huecos)
+            return blockRowNumbers(selectedBlock);
         }
         return Array.from({ length: 20 }, (_, i) => i + 1);
     }, [selectedBlock]);
