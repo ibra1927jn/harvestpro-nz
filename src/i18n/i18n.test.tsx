@@ -7,8 +7,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SUPPORTED_LOCALES, I18nProvider, useI18n } from './index';
 
 describe('SUPPORTED_LOCALES', () => {
-  it('has 2 locales (en, es)', () => {
-    expect(SUPPORTED_LOCALES.map(l => l.code)).toEqual(['en', 'es']);
+  it('has 3 locales (en, es, fr)', () => {
+    expect(SUPPORTED_LOCALES.map(l => l.code)).toEqual(['en', 'es', 'fr']);
   });
 
   it('default is English', () => {

@@ -1,5 +1,5 @@
 /** i18n types — used by all locale files and the context */
-export type Locale = 'en' | 'es';
+export type Locale = 'en' | 'es' | 'fr';
 
 export interface LocaleInfo {
     code: Locale;

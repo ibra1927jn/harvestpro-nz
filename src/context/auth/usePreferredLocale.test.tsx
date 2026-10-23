@@ -56,9 +56,9 @@ describe('usePreferredLocale', () => {
         const { rerender } = render(<Probe userId="u1" preferred="es" />);
         await act(async () => undefined);
         i18n.locale = 'en'; // u1 cambió a mano a inglés antes de salir
-        await act(async () => { rerender(<Probe userId="u2" preferred="es" />); });
+        await act(async () => { rerender(<Probe userId="u2" preferred="fr" />); });
         expect(i18n.setLocale).toHaveBeenNthCalledWith(1, 'es');
-        expect(i18n.setLocale).toHaveBeenNthCalledWith(2, 'es');
+        expect(i18n.setLocale).toHaveBeenNthCalledWith(2, 'fr');
     });
 
     it('a saved language that the app no longer offers (mi, sm, hi, to, tl) is ignored: stays in English', async () => {

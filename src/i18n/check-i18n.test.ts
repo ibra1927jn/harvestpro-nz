@@ -107,6 +107,6 @@ describe('this repository', () => {
         const baseline = JSON.parse(readFileSync(BASELINE_FILE, 'utf8')) as Record<string, number>;
         const r = runChecks({ baseline });
         expect(failures(r)).toEqual([]);
-        expect(r.languages).toEqual(['en', 'es']);
+        expect(r.languages).toEqual(['en', 'es', 'fr']);
     }, 60_000);
 });

@@ -24,6 +24,7 @@ export { translations, isLocaleLoaded, loadLocale } from './locales';
 export const SUPPORTED_LOCALES: LocaleInfo[] = [
     { code: 'en', label: 'English',          nativeName: 'English',       flag: '🇳🇿' },
     { code: 'es', label: 'Spanish',          nativeName: 'Español',       flag: '🇪🇸' },
+    { code: 'fr', label: 'French',           nativeName: 'Français',      flag: '🇫🇷' },
 ];
 
 // ─── Context ──────────────────────────────────────────────────

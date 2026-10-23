@@ -9,13 +9,14 @@ import en from './en';
  *
  * Todos los idiomas de golpe (tests, e2e, scripts): ./all.ts.
  */
-export const LOCALE_CODES = ['en', 'es'] as const satisfies readonly Locale[];
+export const LOCALE_CODES = ['en', 'es', 'fr'] as const satisfies readonly Locale[];
 
 type LazyLocale = Exclude<Locale, 'en'>;
 
 // Un import() por idioma → un chunk por idioma (scripts/route-preload.mjs lo precarga)
 const loaders: Record<LazyLocale, () => Promise<{ default: TranslationDict }>> = {
     es: () => import('./es'),
+    fr: () => import('./fr'),
 };
 
 /** Idiomas ya cargados (siempre el inglés). Mutable: loadLocale() añade. */

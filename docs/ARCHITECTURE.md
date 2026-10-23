@@ -64,7 +64,7 @@ Other offline writes (attendance, timesheets, contracts, QC inspections, transpo
 
 ## Internationalisation
 
-Two locales in `src/i18n/locales/` (en, es). `npm run i18n:check` fails the build if a key is missing in any language or placeholders do not match.
+Three locales in `src/i18n/locales/` (en, es, fr). `npm run i18n:check` fails the build if a key is missing in any language or placeholders do not match.
 
 ## Decisions worth knowing
 

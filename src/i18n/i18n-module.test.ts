@@ -19,8 +19,16 @@ describe('i18n module', () => {
       expect(es!.nativeName).toBe('Español');
     });
 
-    it('has exactly 2 locales', () => {
-      expect(SUPPORTED_LOCALES.map(l => l.code)).toEqual(['en', 'es']);
+    it('supports French', () => {
+      const fr = SUPPORTED_LOCALES.find(l => l.code === 'fr');
+      expect(fr).toBeDefined();
+      expect(fr!.label).toBe('French');
+      expect(fr!.nativeName).toBe('Français');
+      expect(fr!.flag).toBe('🇫🇷');
+    });
+
+    it('has exactly 3 locales', () => {
+      expect(SUPPORTED_LOCALES.map(l => l.code)).toEqual(['en', 'es', 'fr']);
     });
 
     it('all locales have required fields', () => {

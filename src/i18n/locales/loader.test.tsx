@@ -25,6 +25,7 @@ beforeEach(() => {
 
 afterEach(() => {
     vi.doUnmock('./es');
+    vi.doUnmock('./fr');
     vi.useRealTimers();
     vi.restoreAllMocks();
     localStorage.removeItem('harvestpro_locale');
@@ -41,23 +42,26 @@ describe('locale registry', () => {
         expect(locales.isLocaleLoaded('es')).toBe(true);
         expect(locales.translations.es?.['common.retry']).toBeTruthy();
         expect(locales.translations.es?.['common.retry']).not.toBe(locales.translations.en['common.retry']);
+        // Solo el pedido: no se cargan todos
+        expect(locales.isLocaleLoaded('fr')).toBe(false);
     });
 
     it('a failed load rejects and can be retried later (back online)', async () => {
         let fail = true;
-        vi.doMock('./es', async (importOriginal) => {
+        vi.doMock('./fr', async (importOriginal) => {
             if (fail) throw new Error('Failed to fetch dynamically imported module');
             return importOriginal();
         });
         const { locales } = await fresh();
         // (vitest envuelve el error del mock; en el navegador es "Failed to fetch dynamically imported module")
-        await expect(locales.loadLocale('es')).rejects.toThrow();
-        expect(locales.isLocaleLoaded('es')).toBe(false);
+        await expect(locales.loadLocale('fr')).rejects.toThrow();
+        expect(locales.isLocaleLoaded('fr')).toBe(false);
 
         fail = false;
         vi.resetModules(); // el mock vuelve a evaluarse en el siguiente import()
-        await expect(locales.loadLocale('es')).resolves.toHaveProperty('sync.offline');
-        expect(locales.isLocaleLoaded('es')).toBe(true);
+        await expect(locales.loadLocale('fr')).resolves.toHaveProperty('sync.offline');
+        expect(locales.isLocaleLoaded('fr')).toBe(true);
+        expect(locales.translations.fr?.['common.retry']).toBe('Réessayer');
     });
 });
 
@@ -138,7 +142,7 @@ describe('prepareInitialLocale (before first render)', () => {
 });
 
 describe('setLocale (language switch)', () => {
-    function Switcher({ i18n, to }: { i18n: I18nModule; to: 'es' }) {
+    function Switcher({ i18n, to }: { i18n: I18nModule; to: 'es' | 'fr' }) {
         const { t, setLocale, locale } = i18n.useI18n();
         const [result, setResult] = React.useState<string>('');
         return React.createElement('div', null,
@@ -160,10 +164,20 @@ describe('setLocale (language switch)', () => {
         expect(i18n.translate('common.retry')).toBe(locales.translations.es?.['common.retry']);
     });
 
-    it('offline and the chunk is not available: stays in the current language, no crash', async () => {
-        vi.doMock('./es', () => { throw new Error('Failed to fetch dynamically imported module'); });
+    it('switches to French (lazy chunk) and sets <html lang="fr">', async () => {
         const { i18n } = await fresh();
-        render(React.createElement(i18n.I18nProvider, null, React.createElement(Switcher, { i18n, to: 'es' })));
+        render(React.createElement(i18n.I18nProvider, null, React.createElement(Switcher, { i18n, to: 'fr' })));
+        fireEvent.click(screen.getByRole('button', { name: 'switch' }));
+        await waitFor(() => expect(screen.getByRole('status').textContent).toBe('true'));
+        expect(screen.getByText('fr:Réessayer')).toBeTruthy();
+        expect(document.documentElement.lang).toBe('fr');
+        expect(localStorage.getItem('harvestpro_locale')).toBe('fr');
+    });
+
+    it('offline and the chunk is not available: stays in the current language, no crash', async () => {
+        vi.doMock('./fr', () => { throw new Error('Failed to fetch dynamically imported module'); });
+        const { i18n } = await fresh();
+        render(React.createElement(i18n.I18nProvider, null, React.createElement(Switcher, { i18n, to: 'fr' })));
 
         fireEvent.click(screen.getByRole('button', { name: 'switch' }));
         await waitFor(() => expect(screen.getByRole('status').textContent).toBe('false'));

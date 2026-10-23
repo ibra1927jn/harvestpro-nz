@@ -40,7 +40,7 @@ const WageShieldPanel: React.FC<WageShieldPanelProps> = ({
 
     // Fetch 7-day bleed trend desde bucket_records (estimado con SHIFT_HOURS=8h)
     useEffect(() => {
-        const bcp47 = locale === 'es' ? 'es-NZ' : 'en-NZ';
+        const bcp47 = locale === 'es' ? 'es-NZ' : locale === 'fr' ? 'fr-NZ' : 'en-NZ';
         analyticsService.getDailyBleed(orchardId, 7, bcp47, { piece_rate, min_wage_rate }).then(data => {
             setBleedTrend(data.map(d => d.label === 'Today' ? { ...d, label: t('dashboard.wage.today') } : d));
         });

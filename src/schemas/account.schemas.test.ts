@@ -21,7 +21,7 @@ describe('ProfileDetailsSchema', () => {
 
 describe('PreferredLocaleSchema', () => {
     it('accepts only the app locales', () => {
-        for (const code of ['en', 'es']) {
+        for (const code of ['en', 'es', 'fr']) {
             expect(PreferredLocaleSchema.safeParse(code).success).toBe(true);
         }
         // Idiomas retirados (2026-10-21) y cualquier otro código

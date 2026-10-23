@@ -32,7 +32,7 @@ HarvestPro replaces that with one app that works **without signal in the field**
 | **Logistics**     | Bin inventory, fleet, transport requests and history                                                                                                          |
 | **Admin**         | Company setup wizard, orchards, users and invitations                                                                                                         |
 
-Across every role: **2 languages** (English, Spanish), installable on phones as a PWA or Android app, and two-factor authentication for privileged accounts.
+Across every role: **3 languages** (English, Spanish, French), installable on phones as a PWA or Android app, and two-factor authentication for privileged accounts.
 
 ## Highlights
 

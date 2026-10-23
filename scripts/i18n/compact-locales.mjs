@@ -12,7 +12,7 @@ import { buildSync } from 'esbuild';
 import { join } from 'node:path';
 import { normalizePath } from 'vite';
 
-export const LOCALES = ['en', 'es'];
+export const LOCALES = ['en', 'es', 'fr'];
 
 /** Evalúa src/i18n/locales/<lang>/index.ts (con sus imports) → { clave: texto }. */
 export function evaluateLocale(localesDir, lang) {

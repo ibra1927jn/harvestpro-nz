@@ -58,7 +58,8 @@
       "^assets/material-symbols-subset-[\\w-]+\\.woff2$",
       "^assets/inter-latin-wght-[\\w-]+\\.woff2$",
       "^offline\\.html$",
-      "^assets/locale-es-[\\w-]+\\.js$"
+      "^assets/locale-es-[\\w-]+\\.js$",
+      "^assets/locale-fr-[\\w-]+\\.js$"
     ]
   },
   "locales": {
