@@ -51,7 +51,7 @@ async function computeDayOfPeople(pickerIds: string[], date: string, minWage: nu
     const closed = shifts.filter(s => s.picker_id === id && s.check_in && s.check_out)
       .sort((a, b) => (a.check_in ?? '').localeCompare(b.check_in ?? ''));
     const [range] = payForRange({
-      attendance: closed.map(s => ({ pickerId: id, date, orchardId: s.orchard_id, checkIn: s.check_in, checkOut: s.check_out, breakStart: s.break_start, breakMinutes: s.break_minutes })),
+      attendance: closed.map(s => ({ pickerId: id, date, orchardId: s.orchard_id, checkIn: s.check_in, checkOut: s.check_out, breakStart: s.break_start, breakMinutes: s.break_minutes, corrected: !!s.corrected_at })),
       buckets: buckets.filter(b => b.picker_id === id).map(b => ({
         pickerId: id, scannedAt: b.scanned_at, qualityGrade: b.quality_grade, orchardId: b.orchard_id, variety: b.variety,
         pieceRate: pieceRateOn(rates, b.orchard_id, b.variety, nzDateOf(b.scanned_at), orchardFallbacks[b.orchard_id ?? ''] ?? 6.5),
@@ -161,7 +161,7 @@ export const payrollService = {
       const entry = buildTimesheetEntry(a, pickerNames[a.picker_id], days?.get(a.picker_id)?.segHours.get(a.id), today);
       if (entry.requires_review) {
         const staleOpen = !!a.check_in && !a.check_out;
-        logger.warn(`[Payroll] Picker ${a.picker_id} timesheet needs review (${staleOpen ? 'no check-out' : `${entry.hours_worked}h`})`);
+        logger.warn(`[Payroll] Picker ${a.picker_id} timesheet needs review (${staleOpen ? 'no check-out' : entry.long_shift ? 'over 14 h, not corrected' : `${entry.hours_worked}h`})`);
       }
       return entry;
     });

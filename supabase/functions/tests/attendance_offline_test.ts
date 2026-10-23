@@ -109,6 +109,52 @@ Deno.test({ name: 'manage-attendance offline roll call and breaks', ...testOpts,
             assertEquals(r.json.id, open.json.id)
         })
 
+        await t.step('online: the server sets the time and no skew is stored', async () => {
+            const { data } = must(await service.from('daily_attendance')
+                .select('check_in, check_in_clock_skew_ms, check_out_clock_skew_ms').eq('picker_id', second.id).single(), 'row')
+            assert(Math.abs(Date.parse(data!.check_in) - Date.now()) < 120_000, 'server time')
+            assertEquals(data!.check_in_clock_skew_ms, null)
+            assertEquals(data!.check_out_clock_skew_ms, null)
+        })
+
+        await t.step('queued with a phone clock 20 min behind: corrected, skew stored, never in the future', async () => {
+            const third = await makePicker(orchard)
+            must(await service.from('pickers').update({ team_leader_id: leader.id }).eq('id', third.id), 'team')
+            const id = crypto.randomUUID()
+            // Fichó hace 60 min por su reloj (que va 20 min atrasado): fueron hace 40 de verdad
+            const r = await call<Shift>('manage-attendance', {
+                token: leader.token,
+                body: { action: 'check_in', picker_id: third.id, orchard_id: orchard, client_id: id, at: minutesAgo(80), client_now: Date.now() - 20 * 60_000 },
+            })
+            assertEquals(r.status, 200, show(r))
+            // Salida sin red con la hora del móvil 3 min por delante, sin client_now (móvil antiguo)
+            const out = await call<Shift>('manage-attendance', {
+                token: leader.token, body: { action: 'check_out', attendance_id: id, at: new Date(Date.now() + 3 * 60_000).toISOString() },
+            })
+            assertEquals(out.status, 200, show(out))
+            const { data } = must(await service.from('daily_attendance')
+                .select('check_in, check_out, check_in_clock_skew_ms, check_out_clock_skew_ms').eq('id', id).single(), 'row')
+            assert(Math.abs(Date.parse(data!.check_in) - (Date.now() - 60 * 60_000)) < 60_000, `corrected check_in ${data!.check_in}`)
+            assert(Math.abs(data!.check_in_clock_skew_ms - 20 * 60_000) < 5_000, `skew ${data!.check_in_clock_skew_ms}`)
+            assert(Date.parse(data!.check_out) <= Date.now(), 'check_out never in the future')
+            assertEquals(data!.check_out_clock_skew_ms, 0)
+        })
+
+        await t.step('a shift left open 16 h is paid 14 h at check-out until corrected', async () => {
+            const fourth = await makePicker(orchard)
+            must(await service.from('pickers').update({ team_leader_id: leader.id }).eq('id', fourth.id), 'team')
+            const id = crypto.randomUUID()
+            const r = await call<Shift>('manage-attendance', {
+                token: leader.token, body: { action: 'check_in', picker_id: fourth.id, orchard_id: orchard, client_id: id, at: minutesAgo(16 * 60) },
+            })
+            assertEquals(r.status, 200, show(r))
+            const out = await call<Shift & { hours_worked: number }>('manage-attendance', {
+                token: leader.token, body: { action: 'check_out', attendance_id: id },
+            })
+            assertEquals(out.status, 200, show(out))
+            assertEquals(Number(out.json.hours_worked), 14)
+        })
+
         await t.step('another team: breaks are out of scope (403)', async () => {
             const own = await call<Shift>('manage-attendance', {
                 token: otherLeader.token, body: { action: 'check_in', picker_id: foreign.id, orchard_id: orchard },

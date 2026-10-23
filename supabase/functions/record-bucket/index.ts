@@ -8,7 +8,7 @@ import {
     BucketRecordSchema,
 } from '../_shared/security.ts'
 import { z } from 'npm:zod@^4.3.6'
-import { checkScanTime, FUTURE_TOLERANCE_MS } from '../_shared/scan-time.ts'
+import { checkScanTime, measuredSkew } from '../_shared/scan-time.ts'
 
 /**
  * record-bucket — Server-side bucket/scan recording
@@ -202,6 +202,8 @@ serve(async (req) => {
                         bin_id: s.bin_id,
                         scanned_by: s.scanned_by ?? user.id,
                         scanned_at: time.scannedAt,
+                        // Desfase del reloj del móvil, apuntado con la cubeta
+                        clock_skew_ms: measuredSkew(serverNow, clientNow, s.clock_skew_ms),
                     }
                     ready.push({ idx, row, pickerId, time })
                 } catch (e) {
@@ -314,9 +316,17 @@ serve(async (req) => {
         }
 
         // ── Insert Bucket Record ─────────────────────
-        const scannedAt = input.scanned_at || new Date().toISOString()
-        if (Date.parse(scannedAt) > Date.now() + FUTURE_TOLERANCE_MS) {
-            throw new Error('SCAN_TIME_IN_FUTURE: scanned_at is ahead of server time (phone clock wrong?)')
+        // La hora la pone el servidor. Si el móvil manda la suya (cola sin red),
+        // se comprueba y corrige igual que en el lote y se apunta su desfase.
+        const serverNow = Date.now()
+        const clientNow = typeof input.client_now === 'number' ? input.client_now : null
+        let scannedAt = new Date(serverNow).toISOString()
+        let clockSkewMs: number | null = null
+        if (input.scanned_at) {
+            const time = checkScanTime(input.scanned_at, serverNow, clientNow, input.clock_skew_ms ?? 0)
+            if (time.verdict === 'reject') throw new Error(time.reason)
+            scannedAt = time.scannedAt
+            clockSkewMs = measuredSkew(serverNow, clientNow, input.clock_skew_ms)
         }
 
         const { data: record, error: insertErr } = await supabase
@@ -329,6 +339,7 @@ serve(async (req) => {
                 bin_id: input.bin_id,
                 scanned_by: input.scanned_by ?? user.id,
                 scanned_at: scannedAt,
+                clock_skew_ms: clockSkewMs,
             })
             .select('id, picker_id, scanned_at')
             .single()

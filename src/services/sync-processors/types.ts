@@ -33,6 +33,8 @@ export type AttendancePayload = {
     action?: 'check_in' | 'check_out' | 'break_start' | 'break_end';
     attendance_id?: string;
     at?: string;
+    /** Corrección (ms) que el móvil ya sumó a `at` con el desfase que conocía */
+    clock_skew_ms?: number;
 };
 
 // Phase 2: Offline-first payloads for HR, Logistics, Payroll

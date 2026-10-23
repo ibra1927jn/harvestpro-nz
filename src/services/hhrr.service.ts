@@ -228,6 +228,7 @@ async function loadPayWeek(orchardId?: string, minWageFor?: (personId: string) =
       checkOut: a.check_out,
       breakStart: a.break_start,
       breakMinutes: a.break_minutes,
+      corrected: !!a.corrected_at,
     }));
   const bucketRows = (buckets || [])
     .filter(b => !b.deleted_at && b.scanned_at)
