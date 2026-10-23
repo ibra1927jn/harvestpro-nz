@@ -15,6 +15,8 @@ import ChatWindow from './messaging/ChatWindow';
 import NewChatModal from './messaging/NewChatModal';
 import ChatInfoPanel from './messaging/ChatInfoPanel';
 import type { OutgoingAttachment } from '../../context/messaging.types';
+import { useConversationLive } from '../../hooks/useConversationLive';
+import type { ChatMessage } from '../../services/simple-messaging.service';
 import { useTranslation } from '@/i18n';
 
 /** Sondeo de la barra lateral: solo red de seguridad, los cambios llegan por realtime */
@@ -101,28 +103,6 @@ const UnifiedMessagingView = () => {
     }
     loadConversation(selectedChat.id).then(setMessages);
     if (window.innerWidth < 768) setIsSidebarOpen(false);
-    const unsubscribe = simpleMessagingService.subscribeToConversation(selectedChat.id, newMsg => {
-      if (newMsg.sender_id !== appUser?.id) {
-        // Está abierta: el mensaje cuenta como leído
-        void markConversationRead(newMsg.conversation_id);
-        const dbMsg: DBMessage = {
-          id: newMsg.id,
-          sender_id: newMsg.sender_id,
-          content: newMsg.content,
-          created_at: newMsg.created_at,
-          conversation_id: newMsg.conversation_id,
-          priority: 'normal' as MessagePriority,
-          read_by: [],
-          attachment_path: newMsg.attachment_path ?? null,
-          attachment_type: newMsg.attachment_type ?? null,
-          attachment_name: newMsg.attachment_name ?? null,
-          attachment_size: newMsg.attachment_size ?? null,
-          duration_ms: newMsg.duration_ms ?? null,
-        };
-        // Sin duplicar si ya llegó por la recarga
-        setMessages(prev => (prev.some(m => m.id === dbMsg.id) ? prev : [...prev, dbMsg]));
-      }
-    });
     // Bandeja de salida: al enviarse, fallar o reintentar un mensaje propio,
     // la conversación se recarga (sale como enviado / "Not sent")
     const chatId = selectedChat.id;
@@ -130,11 +110,41 @@ const UnifiedMessagingView = () => {
       loadConversation(chatId).then(setMessages);
     });
     return () => {
-      unsubscribe();
       unsubscribeOutbox();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChat?.id, loadConversation]);
+
+  // ── En vivo (canal único de la conversación): mensajes, reacciones, «Escribiendo…» ──
+  const handleIncoming = useCallback((newMsg: ChatMessage) => {
+    if (newMsg.sender_id === appUser?.id) return;
+    // Está abierta: el mensaje cuenta como leído
+    void markConversationRead(newMsg.conversation_id);
+    const dbMsg: DBMessage = {
+      id: newMsg.id,
+      sender_id: newMsg.sender_id,
+      content: newMsg.content,
+      created_at: newMsg.created_at,
+      conversation_id: newMsg.conversation_id,
+      priority: 'normal' as MessagePriority,
+      read_by: [],
+      attachment_path: newMsg.attachment_path ?? null,
+      attachment_type: newMsg.attachment_type ?? null,
+      attachment_name: newMsg.attachment_name ?? null,
+      attachment_size: newMsg.attachment_size ?? null,
+      duration_ms: newMsg.duration_ms ?? null,
+      reply_to_id: newMsg.reply_to_id ?? null,
+    };
+    // Sin duplicar si ya llegó por la recarga
+    setMessages(prev => (prev.some(m => m.id === dbMsg.id) ? prev : [...prev, dbMsg]));
+  }, [appUser?.id, markConversationRead]);
+
+  const live = useConversationLive({
+    conversationId: selectedChat?.id ?? null,
+    me: appUser?.id || '',
+    messages,
+    onIncomingMessage: handleIncoming,
+  });
 
   // ── Sidebar: red de seguridad por si se pierde algún evento de realtime ──
   // (los mensajes nuevos y los contadores ya llegan por realtime; antes se
@@ -170,11 +180,11 @@ const UnifiedMessagingView = () => {
   };
 
   const handleSend = useCallback(
-    async (content: string) => {
+    async (content: string, replyToId?: string) => {
       if (!content.trim() || !selectedChat || isSending) return;
       setIsSending(true);
       try {
-        const sent = await sendMessage(selectedChat.id, content);
+        const sent = await sendMessage(selectedChat.id, content, 'normal', replyToId ? { replyToId } : undefined);
         if (sent) setMessages(prev => [...prev, sent]);
       } finally {
         setIsSending(false);
@@ -260,6 +270,11 @@ const UnifiedMessagingView = () => {
             onSendAttachment={handleSendAttachment}
             onOpenInfo={() => setShowInfo(true)}
             onRetry={handleRetry}
+            reactions={live.reactions}
+            onToggleReaction={live.toggleReaction}
+            typingUserIds={live.typingUserIds}
+            onTyping={live.notifyTyping}
+            onSent={live.resetTyping}
             onBack={() => {
               setSelectedChat(null);
               setIsSidebarOpen(true);

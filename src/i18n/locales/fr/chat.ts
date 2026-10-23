@@ -105,6 +105,17 @@ const chat: TranslationDict = {
     'chat.cancel_recording': 'Annuler le message vocal',
     'chat.send_voice': 'Envoyer le message vocal',
     'chat.record_hint': 'Maintenez pour enregistrer et relâchez pour envoyer, ou touchez pour commencer',
+    'chat.message_actions': 'Options du message',
+    'chat.react_with': 'Réagir avec {emoji}',
+    'chat.reaction_by': '{emoji} {names}',
+    'chat.reaction_toggle': '{emoji} {n}. Touchez pour ajouter ou retirer la vôtre',
+    'chat.reaction_failed': 'Impossible d’enregistrer la réaction. Réessayez',
+    'chat.go_to_original': 'Aller au message d’origine',
+    'chat.original_not_loaded': 'Message précédent',
+    'chat.typing_one': '{name} est en train d’écrire…',
+    'chat.typing_two': '{a} et {b} sont en train d’écrire…',
+    'chat.typing_many': 'Plusieurs personnes sont en train d’écrire…',
+    'sync.type.chat_reaction': 'Réaction dans le chat',
 };
 
 export default chat;
