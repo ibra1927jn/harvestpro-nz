@@ -98,10 +98,16 @@ export function shouldUseDelta(params: {
   todayNZ: string;
   crewCount: number;
   bucketCount: number;
+  /**
+   * Las cubetas de hoy ya se bajaron en esta sesión aunque sean 0 (primera
+   * hora de la mañana). Sin esto, hasta la primera cubeta del día cada
+   * desbloqueo del móvil hacía una carga completa (prueba de carga 2026-10-21).
+   */
+  bucketsLoaded?: boolean;
 }): boolean {
-  const { lastSyncAt, todayNZ, crewCount, bucketCount } = params;
+  const { lastSyncAt, todayNZ, crewCount, bucketCount, bucketsLoaded } = params;
   const sameNZDay = !!lastSyncAt && NZ_DAY_FMT.format(new Date(lastSyncAt)) === todayNZ;
-  return sameNZDay && crewCount > 0 && bucketCount > 0;
+  return sameNZDay && crewCount > 0 && (bucketCount > 0 || !!bucketsLoaded);
 }
 
 /** Desde cuándo pedir cambios en modo delta */
@@ -274,4 +280,27 @@ export function mergeBins(serverBins: Bin[], local: Bin[] | undefined): Bin[] {
   const serverIds = new Set(serverBins.map(b => b.id));
   const localOnly = (local || []).filter(b => !serverIds.has(b.id) && b.bin_code);
   return [...serverBins, ...localOnly];
+}
+
+/* ── Ajustes del huerto en vivo ───────────── */
+
+/** Campos de harvest_settings que llegan en vivo (el precio va por piece_rates) */
+const LIVE_SETTINGS_FIELDS = ['min_buckets_per_hour', 'target_tons', 'min_wage_rate', 'variety', 'shift_start_time'] as const;
+
+/**
+ * Aplica una fila de harvest_settings llegada por realtime: meta, mínimo y
+ * objetivo cambian; el precio (piece_rate / piece_rates) se queda como está.
+ */
+export function applyHarvestSettingsChange<S extends object>(settings: S, row: Record<string, unknown> | null | undefined): S {
+  if (!row) return settings;
+  const next = { ...settings } as Record<string, unknown>;
+  let changed = false;
+  for (const key of LIVE_SETTINGS_FIELDS) {
+    if (!(key in row)) continue;
+    const raw = row[key];
+    const value = key === 'variety' || key === 'shift_start_time' ? raw : raw == null ? raw : Number(raw);
+    if (value === undefined || (typeof value === 'number' && Number.isNaN(value))) continue;
+    if (next[key] !== value) { next[key] = value; changed = true; }
+  }
+  return changed ? (next as unknown as S) : settings;
 }

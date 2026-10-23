@@ -4,7 +4,7 @@
 React 19 + TypeScript (strict, no `any`, allowJs: false) + Vite 7 + Tailwind 3
 Supabase (PostgreSQL, Edge Functions, RLS) + Capacitor 8 (Android)
 State: Zustand (7 slices) + Dexie v3 (IndexedDB offline) + TanStack React Query
-Validacion: Zod 4 | Monitoring: Sentry + PostHog (lazy) | i18n: 7 idiomas (en, es, mi, sm, to, hi, tl)
+Validacion: Zod 4 | Monitoring: Sentry + PostHog (lazy) | i18n: 3 idiomas (en, es, fr)
 Crypto: AES-256-GCM via Web Crypto API
 Version: 9.9.0
 
@@ -44,12 +44,20 @@ Version: 9.9.0
 ### Supabase
 - `supabase/migrations/` — 90 migraciones (las viejas en archive/ no se aplican)
 - `supabase/functions/` — 12 Edge Functions: approve-timesheet, calculate-payroll, check-compliance, close-pay-week, detect-anomalies, manage-admin, manage-attendance, provision-orchard, record-bucket, send-push, submit-audit-log, api-v1 (api-v1 sin tabla api_keys todavía)
+- Push: triggers → `notification_outbox` → `send-push` (flush) → `public/sw-push.js`; ver `docs/push-notifications.md`
 - `supabase/functions/_shared/` — pay-rules.ts (idéntico a src/services/harvestMetrics/pay.ts, lo vigila pay-parity.test.ts), payroll-calc.ts, security.ts, scan-time.ts, cors.ts
 - `supabase/seeds/` — seeds locales (orden: seed_00_local_bootstrap → seed_2weeks_local → seed_role_users)
 - 35 tablas, RLS en todas, 2FA (aal2) exigido por política para roles privilegiados
 
 ### Offline
-- Dexie IndexedDB con sync queue (10 tipos con processor)
+- Dexie IndexedDB con sync queue (13 tipos con processor; LEAVE_REQUEST: ausencias que pide el team leader sin red;
+  BIN: alta y estado de bins del runner sin red; CHAT_REACTION: reacciones del chat sin red; ATTENDANCE: pase de
+  lista y descansos sin red vía `rollCall.service`, con id del tramo y hora del móvil; un rechazo 4xx del servidor
+  va directo a la DLQ con su motivo)
+- Chat en vivo: un canal privado por conversación abierta, `chat:<id>` (RLS en realtime.messages, migración
+  20261023070000): mensajes nuevos, reacciones (Broadcast desde la base) y «Escribiendo…» (Broadcast, sin tabla)
+- Archivos sin red (adjuntos y notas de voz del chat, fotos de QC): tabla `pending_files`, cifrados, tope 50 MB
+  (`services/pending-uploads.service.ts`); salen con la bandeja del chat / la cola QC_INSPECTION
 - Encrypt-before-write con AES-256-GCM
 - Dead letter queue para items fallidos
 - Cross-tab mutex via Web Locks API
@@ -84,6 +92,20 @@ Version: 9.9.0
 - Codigo en ingles, comentarios en espanol
 - Commits en ingles: tipo(scope): descripcion breve
 - Ver SECURITY_RULES.md para reglas de seguridad obligatorias
+- Consultas que pueden pasar de 1000 filas (cubetas, fichajes de varios días, chat, auditoría): SIEMPRE
+  `fetchAllRows` con orden estable (`.order('id')`); PostgREST corta en 1000 sin avisar. Listas de ids
+  en `.in()` de más de ~100: `fetchInChunks` (con 200+ UUIDs la URL da 414). En Edge Functions:
+  `_shared/fetch-all-rows.ts` y `_shared/fetch-in-chunks.ts`.
+- Políticas RLS nuevas: las funciones de rol van envueltas, `(SELECT get_my_orchard_id())`,
+  `(SELECT is_role(ARRAY['manager']))`, `(SELECT auth.uid())`: sin el SELECT se ejecutan por cada fila
+  (migración 20261021000100_rls_initplan: la nómina pasó de 18 s a 0,4 s).
+
+## Prueba de carga (scripts/loadsim)
+- Simula una empresa (3 huertos, 240 pickers, 31 móviles) contra el Supabase local: un día en vivo por
+  roles (`live-day.mjs`, reloj acelerado), N días de histórico en bloque (`history.sh`) y las operaciones
+  de oficina con ese volumen (`period-ops.mjs`). `run-scenario.sh <nombre> <dias> current|optimized`.
+- `use-variant.sh` cambia las Edge Functions y migraciones a las de main (current) o a las de la rama.
+- Resultados y comparación: `scripts/loadsim/results/`, informe en `docs/audits/2026-10-21-load-test.md`.
 
 ## Variables de entorno (solo keys, NUNCA valores)
 - VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (requeridas)

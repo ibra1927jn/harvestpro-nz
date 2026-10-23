@@ -71,8 +71,9 @@ SELECT sec_test.deny('A.team_leader', 'cannot delete own timesheet', $$DELETE FR
 SELECT sec_test.allow('A.manager', 'corrects a team leader timesheet', $$UPDATE daily_attendance SET hours_worked = 7.5 WHERE id = {A.att_tl}$$);
 SELECT sec_test.deny('A.manager', 'cannot change a timesheet of a closed pay week',
     $$UPDATE daily_attendance SET hours_worked = 9 WHERE id = {A.att_closed_week}$$, ARRAY['42501', 'P0001']);
--- manage-attendance: al fichar en otro huerto se cierra el turno abierto del anterior
-SELECT sec_test.allow('B.team_leader', 'closes an open shift left in another orchard',
+-- manage-attendance cierra el turno abierto del huerto anterior con la clave de
+-- servicio; con la sesión del team leader no se toca otro huerto (20261023011000)
+SELECT sec_test.deny('B.team_leader', 'cannot close a shift of another orchard with own session',
     $$UPDATE daily_attendance SET check_out = now(), notes = 'Auto-closed' WHERE id = {A.att_rotated}$$);
 SELECT sec_test.deny('B.team_leader', 'cannot move a timesheet to another orchard',
     $$UPDATE daily_attendance SET orchard_id = {B} WHERE id = {A.att_rotated}$$);

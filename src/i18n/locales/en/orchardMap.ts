@@ -7,7 +7,6 @@ const orchardMap: TranslationDict = {
     'orchardMap.blocks': 'blocks',
     'orchardMap.rows': 'rows',
     'orchardMap.live': 'LIVE',
-    'orchardMap.varieties': 'varieties',
     'orchardMap.variety_filter': 'Variety',
     'orchardMap.all': 'All',
     'orchardMap.status.empty': 'Empty',
@@ -49,6 +48,12 @@ const orchardMap: TranslationDict = {
     'orchardMap.list.status.idle': 'Idle',
     // Block card title with letter and variety
     'orchardMap.blockTitle': 'Block {letter} — {variety}',
+    // Vista del team leader: equipo de cada fila (OrchardMapView / RowCard)
+    'orchardMap.team.mine': 'My team',
+    'orchardMap.team.other': 'Team of {name}',
+    'orchardMap.team.other_unknown': 'Another team',
+    'orchardMap.team.legend_mine': 'My team\'s rows',
+    'orchardMap.team.legend_other': 'Other teams',
 };
 
 export default orchardMap;

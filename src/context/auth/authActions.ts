@@ -88,6 +88,12 @@ export async function teardownSession(userId: string | undefined): Promise<void>
   edgeFunctionWarmupService.stop();
   // Confianza MFA del dispositivo (web + Android)
   if (userId) await clearDeviceTrust(userId);
+  // Este móvil deja de recibir los avisos push de esta cuenta (con la sesión
+  // aún válida: la fila solo la puede borrar su dueño). Sin red no espera más de 3 s.
+  await Promise.race([
+    import('@/services/push.service').then(m => m.pushService.forgetDevice()).catch(() => undefined),
+    new Promise(resolve => setTimeout(resolve, 3000)),
+  ]);
   // U6: cerrar canales realtime ANTES de borrar la sesión
   supabase.removeAllChannels();
   await supabase.auth.signOut();

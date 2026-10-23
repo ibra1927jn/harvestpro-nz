@@ -2,15 +2,24 @@ import { describe, it, expect } from 'vitest';
 import { NZ_MINIMUM_WAGE_2026 } from '@/constants/nz-law';
 import type { Employee } from './hhrr.types';
 import {
+  CONTRACT_TYPES,
+  EMPLOYEE_STATUSES,
+  VISA_STATUSES,
   buildEmployee,
   buildPayrollEntries,
   contractExpiryAlerts,
   contractExpirySeverity,
   documentExpiryAlerts,
   documentExpirySeverity,
+  domainOptions,
+  employeeStatusOf,
   expiredContractAlerts,
   latestVisaFor,
+  missingOnboardingItems,
+  pendingContractIds,
+  signedCopyOf,
   visaStatusOf,
+  type PersonDoc,
   type StaffPerson,
 } from './hrLogic';
 
@@ -54,7 +63,8 @@ describe('employees', () => {
       NOW
     );
     expect(e).toMatchObject({
-      status: 'active',
+      // Contrato sí, copia firmada no → alta pendiente
+      status: 'pending',
       contract_type: 'permanent',
       contract_start: '2026-01-01',
       contract_end: '2027-01-01',
@@ -74,6 +84,124 @@ describe('employees', () => {
     expect(e.contract_start).toBe(NOW);
     expect(e.contract_end).toBeUndefined();
   });
+
+  it('attaches the signed copy of the current contract (employment_agreement linked by contract_id)', () => {
+    const contract = { id: 'c1', employee_id: 'p1', type: 'seasonal', start_date: '2026-01-01', end_date: '2027-01-01', hourly_rate: 25, updated_at: null };
+    const docs = [
+      doc({ id: 'd-other', contract_id: 'c9' }),
+      doc({ id: 'd-visa', document_type: 'work_visa', contract_id: null }),
+      doc({ id: 'd-signed', contract_id: 'c1', storage_path: 'o1/employment_agreement/1-x.pdf' }),
+    ];
+    const e = buildEmployee(person(), [contract], [], '2026-10-13', NOW, { documents: docs });
+    expect(e.contract_document).toEqual({ id: 'd-signed', storage_path: 'o1/employment_agreement/1-x.pdf' });
+    expect(buildEmployee(person(), [contract], [], '2026-10-13', NOW).contract_document).toBeUndefined();
+  });
+});
+
+describe('employee status and onboarding (filters with a fixed domain)', () => {
+  const contract = { id: 'c1', employee_id: 'p1', type: 'seasonal', start_date: '2026-01-01', end_date: '2027-01-01', hourly_rate: 25, updated_at: null };
+  const signed = doc({ contract_id: 'c1', expires_at: '2027-01-01' });
+
+  it('domainOptions keeps every value of the domain with its count (0 included), in domain order', () => {
+    expect(domainOptions(EMPLOYEE_STATUSES, ['active', 'active', 'terminated'])).toEqual([
+      { value: 'active', count: 2 },
+      { value: 'on_leave', count: 0 },
+      { value: 'pending', count: 0 },
+      { value: 'terminated', count: 1 },
+    ]);
+    expect(domainOptions(CONTRACT_TYPES, [])).toEqual([
+      { value: 'permanent', count: 0 }, { value: 'seasonal', count: 0 }, { value: 'casual', count: 0 },
+    ]);
+    expect(VISA_STATUSES).toEqual(['work_visa', 'expired', 'not_recorded']);
+  });
+
+  it('missingOnboardingItems: contract, signed copy, visa, IR330 and H&S certificate', () => {
+    const today = '2026-10-13';
+    const me = { id: 'p1', visa_status: 'work_visa' as const };
+    expect(missingOnboardingItems(me, [], undefined, today)).toEqual(['contract', 'tax_declaration', 'health_safety_cert']);
+    expect(missingOnboardingItems(me, [], contract, today)).toEqual(['signed_copy', 'tax_declaration', 'health_safety_cert']);
+    expect(missingOnboardingItems({ ...me, visa_status: 'expired' }, [signed], contract, today)).toEqual(['visa', 'tax_declaration', 'health_safety_cert']);
+    const complete = [
+      signed,
+      doc({ id: 'ird', document_type: 'tax_declaration', contract_id: null }),
+      doc({ id: 'hs', document_type: 'health_safety_cert', contract_id: null, expires_at: '2027-01-01' }),
+    ];
+    expect(missingOnboardingItems(me, complete, contract, today)).toEqual([]);
+    // Certificado caducado = falta; documentos de otra persona no cuentan
+    expect(missingOnboardingItems(me, [...complete.slice(0, 2), doc({ id: 'hs-old', document_type: 'health_safety_cert', contract_id: null, expires_at: '2026-01-01' })], contract, today)).toEqual(['health_safety_cert']);
+    expect(missingOnboardingItems(me, complete.map(d => ({ ...d, picker_id: 'p2' })), contract, today)).toEqual(['signed_copy', 'tax_declaration', 'health_safety_cert']);
+  });
+
+  it('employeeStatusOf: terminated > on_leave > pending (contract or signed copy) > active', () => {
+    expect(employeeStatusOf(false, true, [])).toBe('terminated');
+    expect(employeeStatusOf(true, true, ['contract'])).toBe('on_leave');
+    expect(employeeStatusOf(true, false, ['contract'])).toBe('pending');
+    expect(employeeStatusOf(true, false, ['signed_copy'])).toBe('pending');
+    // Visado y certificados salen en el semáforo pero no bloquean el alta
+    expect(employeeStatusOf(true, false, ['visa', 'tax_declaration', 'health_safety_cert'])).toBe('active');
+    expect(employeeStatusOf(true, false, [])).toBe('active');
+  });
+
+  it('buildEmployee: pending without a signed copy, active with it, on_leave when a leave covers today', () => {
+    const today = '2026-10-13';
+    const unsigned = buildEmployee(person(), [contract], [], today, NOW, { documents: [] });
+    expect(unsigned.status).toBe('pending');
+    expect(unsigned.missing_items).toContain('signed_copy');
+
+    const ok = buildEmployee(person(), [contract], [], today, NOW, { documents: [signed] });
+    expect(ok.status).toBe('active');
+    expect(ok.missing_items).toEqual(['visa', 'tax_declaration', 'health_safety_cert']);
+
+    const away = buildEmployee(person(), [contract], [], today, NOW, { documents: [signed], onLeaveToday: new Set(['p1']) });
+    expect(away.status).toBe('on_leave');
+    expect(buildEmployee(person({ active: false }), [contract], [], today, NOW, { documents: [signed], onLeaveToday: new Set(['p1']) }).status).toBe('terminated');
+    // Sin contexto (sin documentos cargados) nadie tiene copia firmada
+    expect(buildEmployee(person(), [], [], today, NOW).status).toBe('pending');
+  });
+});
+
+const doc = (over: Partial<PersonDoc> = {}): PersonDoc => ({
+  id: 'd1',
+  picker_id: 'p1',
+  user_id: null,
+  document_type: 'employment_agreement',
+  expires_at: null,
+  contract_id: 'c1',
+  storage_path: 'o1/employment_agreement/d1.pdf',
+  ...over,
+});
+
+describe('signed copy of the agreement', () => {
+  it('must be linked to the contract and cover its end date; the latest one wins', () => {
+    const c = { id: 'c1', end_date: '2027-01-01' };
+    expect(signedCopyOf(c, [doc({ contract_id: null })])).toBeUndefined();
+    expect(signedCopyOf(c, [doc({ document_type: 'passport' })])).toBeUndefined();
+    // Copia de la temporada pasada: el contrato se renovó y hace falta el PDF nuevo
+    expect(signedCopyOf(c, [doc({ expires_at: '2026-06-30' })])).toBeUndefined();
+    expect(signedCopyOf(c, [doc({ expires_at: '2027-01-01' })])?.id).toBe('d1');
+    expect(signedCopyOf(c, [doc({ id: 'old', expires_at: '2027-01-01' }), doc({ id: 'new', expires_at: '2028-01-01' })])?.id).toBe('new');
+    expect(signedCopyOf(c, [doc({ id: 'open', expires_at: null })])?.id).toBe('open');
+    expect(signedCopyOf({ id: 'c1', end_date: null }, [doc({ expires_at: '2026-06-30' })])?.id).toBe('d1');
+    expect(signedCopyOf(undefined, [doc()])).toBeUndefined();
+  });
+
+  it('pending contracts: drafts, expiring, and active ones without a signed copy', () => {
+    const out = pendingContractIds(
+      [
+        { id: 'draft', status: 'draft', end_date: null },
+        { id: 'expiring', status: 'expiring', end_date: '2026-11-01' },
+        { id: 'signed', status: 'active', end_date: '2027-01-01' },
+        { id: 'unsigned', status: 'active', end_date: '2027-01-01' },
+        { id: 'stale', status: 'active', end_date: '2027-01-01' },
+        { id: 'terminated', status: 'terminated', end_date: null },
+      ],
+      [
+        doc({ contract_id: 'signed', expires_at: '2027-01-01' }),
+        doc({ contract_id: 'stale', expires_at: '2026-01-01' }),
+      ]
+    );
+    expect(out).toEqual(['draft', 'expiring', 'unsigned', 'stale']);
+  });
 });
 
 describe('weekly payroll entries', () => {
@@ -83,14 +211,14 @@ describe('weekly payroll entries', () => {
   });
   const week = { start: '2026-10-05', end: '2026-10-11' };
 
-  it('lists active people and anyone who was paid, not inactive people without pay', () => {
+  it('lists everyone on the books (active, on leave, pending) and anyone who was paid, not terminated people without pay', () => {
     const out = buildPayrollEntries(
-      [emp({ id: 'a' }), emp({ id: 'b', status: 'terminated' }), emp({ id: 'c', status: 'terminated' })],
+      [emp({ id: 'a' }), emp({ id: 'b', status: 'terminated' }), emp({ id: 'c', status: 'terminated' }), emp({ id: 'd', status: 'pending' }), emp({ id: 'e', status: 'on_leave' })],
       [{ id: 'b', hours: 8, buckets: 40, piece: 260, topUp: 0, total: 260 }],
       23.95,
       week
     );
-    expect(out.map(e => e.employee_id)).toEqual(['a', 'b']);
+    expect(out.map(e => e.employee_id)).toEqual(['a', 'b', 'd', 'e']);
     expect(out[0]).toMatchObject({ hours_worked: 0, total_pay: 0, wage_shield_applied: false, period_start: '2026-10-05', period_end: '2026-10-11' });
   });
 

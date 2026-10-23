@@ -21,11 +21,41 @@ import { attendanceRepository } from '@/repositories/attendance.repository';
 import { logger } from '@/utils/logger';
 import { shiftHours } from '@/services/harvestMetrics/pay';
 import type { AttendancePayload } from './types';
+import { SyncRejectedError, isServerRejection } from '../sync-queue/rejectedError';
+
+/**
+ * Pase de lista sin red (formato con `action`): se envía a manage-attendance con
+ * el id del tramo y la hora del móvil. Reintentar no duplica (el servidor es
+ * idempotente con ese id). Si el servidor lo rechaza (día o semana cerrados,
+ * otro equipo, hora imposible) → cola de fallidos con el motivo, sin reintentos.
+ */
+async function processRollCall(payload: AttendancePayload & { action: NonNullable<AttendancePayload['action']> }): Promise<void> {
+    const id = payload.attendance_id;
+    if (!id) throw new SyncRejectedError('Roll call item without shift id');
+    try {
+        if (payload.action === 'check_in') {
+            await attendanceService.checkInPicker(payload.picker_id, payload.orchard_id, payload.verifiedBy, {
+                clientId: id, at: payload.at,
+            });
+        } else if (payload.action === 'check_out') {
+            await attendanceService.checkOutPicker(id, { at: payload.at, pickerId: payload.picker_id });
+        } else {
+            await attendanceService.recordBreak(payload.action, id, { at: payload.at, pickerId: payload.picker_id });
+        }
+    } catch (e) {
+        if (isServerRejection(e)) throw new SyncRejectedError((e as Error).message);
+        throw e;
+    }
+}
 
 export async function processAttendance(
     payload: AttendancePayload,
     expectedUpdatedAt?: string
 ): Promise<void> {
+    if (payload.action) {
+        await processRollCall({ ...payload, action: payload.action });
+        return;
+    }
     if (payload.check_out && payload.attendanceId && expectedUpdatedAt) {
         // 🔧 L25: Calculate hours_worked for offline checkout
         // Without this, syncing offline checkouts left hours_worked as null → payroll = $0

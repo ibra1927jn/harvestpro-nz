@@ -39,9 +39,10 @@ import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import Header from '@/components/common/Header';
 
 // Modals
-import DaySettingsModal from '@/components/modals/DaySettingsModal';
 import BroadcastModal from '@/components/views/manager/BroadcastModal';
 import RowAssignmentModal from '@/components/views/manager/RowAssignmentModal';
+import Toast from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
 
 /* ── Lazy loading fallback ─────────────────────────── */
 const TabLoader = () => {
@@ -61,7 +62,6 @@ const Manager = () => {
     crew,
     orchard,
     settings,
-    updateSettings,
     addPicker: _addPicker,
     removePicker: _removePicker,
     updatePicker: _updatePicker,
@@ -81,6 +81,8 @@ const Manager = () => {
 
   const openPickerProfile = useHarvestStore(s => s.openPickerProfile);
   const { t } = useTranslation();
+  // Confirmaciones de la página (asignar fila: el modal ya se ha cerrado)
+  const { toast, showToast, hideToast } = useToast();
 
   const isDesktop = useMediaQuery('(min-width: 768px)');
 
@@ -126,7 +128,6 @@ const Manager = () => {
   }, [orchard?.id]);
 
   // Modal States
-  const [showSettings, setShowSettings] = useState(false);
   const [showBroadcast, setShowBroadcast] = useState(false);
   const [showAssignment, setShowAssignment] = useState<{ show: boolean; row: number }>({
     show: false,
@@ -243,26 +244,13 @@ const Manager = () => {
   /* ── Shared Modals ──────────────────────────────────── */
   const renderModals = () => (
     <>
-      {showSettings && (
-        <DaySettingsModal
-          onClose={() => setShowSettings(false)}
-          settings={{
-            bucketRate: settings?.piece_rate,
-            targetTons: settings?.target_tons,
-          }}
-          onSave={newSettings =>
-            updateSettings({
-              piece_rate: newSettings.bucketRate,
-              target_tons: newSettings.targetTons,
-            })
-          }
-        />
-      )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
       {showBroadcast && <BroadcastModal onClose={() => setShowBroadcast(false)} />}
       {showAssignment.show && (
         <RowAssignmentModal
           initialRow={showAssignment.row}
           onClose={() => setShowAssignment({ show: false, row: 1 })}
+          onAssigned={rows => showToast(t('comms.rows_assigned', { rows: rows.join(', ') }), 'success')}
           onViewPicker={picker => {
             setShowAssignment({ show: false, row: 1 });
             openPickerProfile(picker.id);
@@ -327,10 +315,10 @@ const Manager = () => {
   /* ── Mobile Layout ──────────────────────────────────── */
   return (
     <div className="flex flex-col h-full bg-background-light min-h-screen text-slate-900 pb-20">
+      {/* El avatar abre «Mi cuenta» (lo hace la propia cabecera); Ajustes del huerto sigue en su pestaña */}
       <Header
         title={t('mgr.page_title')}
         subtitle={t('mgr.page_subtitle', { orchard: orchard?.name || t('teams.no_orchard') })}
-        onProfileClick={() => setShowSettings(true)}
         onNavigateToMessaging={() => setActiveTab('messaging' as Tab)}
       />
 

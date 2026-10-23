@@ -13,10 +13,10 @@ import { onLocalDbChange } from '@/services/dbChanges';
 import { feedbackService } from '@/services/feedback.service';
 import { nowNZST } from '@/utils/nzst';
 import { logger } from '@/utils/logger';
-import { Role, type Bin, type Picker } from '@/types/app.types';
+import { type Bin, type Picker } from '@/types/app.types';
 import { createTransportRequest } from '@/services/logistics-dept.service';
 import { binService, bucketsInBin } from '@/services/bin.service';
-import { MAX_BUCKETS_PER_BIN } from '@/types/app.types';
+import { MAX_BUCKETS_PER_BIN, Role } from '@/types/app.types';
 import { bucketSavedAnnouncement, isOnlineNow } from './runnerAnnouncements';
 import { useTranslation } from '@/i18n';
 
@@ -47,7 +47,6 @@ export interface UseRunnerDataResult {
   showScanner: boolean;
   scanType: 'BIN' | 'BUCKET';
   toast: { message: string; type: 'success' | 'error' | 'info' | 'warning'; announcement?: string } | null;
-  qualityScan: { code: string; step: 'SCAN' | 'QUALITY' } | null;
   setSelectedBinId: (id: string | undefined) => void;
   setShowScanner: (show: boolean) => void;
   setToast: (
@@ -57,8 +56,6 @@ export interface UseRunnerDataResult {
   handleBroadcast: (message: string) => Promise<void>;
   handleRequestRefill: () => Promise<void>;
   handleScanComplete: (scannedData: string | string[]) => void;
-  submitQuality: (grade: 'A' | 'B' | 'C' | 'reject') => Promise<void>;
-  setQualityScan: (scan: { code: string; step: 'SCAN' | 'QUALITY' } | null) => void;
 }
 
 export function useRunnerData(): UseRunnerDataResult {
@@ -67,10 +64,11 @@ export function useRunnerData(): UseRunnerDataResult {
   const orchard = useHarvestStore(state => state.orchard);
   const crew = useHarvestStore(state => state.crew);
   const addBucket = useHarvestStore(state => state.addBucket);
+  const dayClosed = useHarvestStore(state => state.dayClosed);
   const { sendBroadcast } = useMessaging();
   const setGlobalState = useHarvestStore(state => state.setGlobalState);
 
-  // Cambia el estado de un bin en pantalla al momento y en el servidor
+  // Cambia el estado de un bin en pantalla al momento; al servidor va por la cola offline
   const setBinStatus = useCallback(
     (binId: string, status: Bin['status']) => {
       const inv = useHarvestStore.getState().inventory;
@@ -82,7 +80,7 @@ export function useRunnerData(): UseRunnerDataResult {
         ),
       });
       binService.updateBinStatus(binId, status).catch(e =>
-        logger.warn('[Runner] Bin status not saved on server:', e)
+        logger.warn('[Runner] Bin status not queued:', e)
       );
     },
     [setGlobalState]
@@ -99,9 +97,6 @@ export function useRunnerData(): UseRunnerDataResult {
     /** Texto completo para lector de pantalla (nombre del picker, sin cobertura) */
     announcement?: string;
   } | null>(null);
-  const [qualityScan, setQualityScan] = useState<{ code: string; step: 'SCAN' | 'QUALITY' } | null>(
-    null
-  );
 
   // Poll for pending uploads — 5s interval, pauses when tab is hidden
   useEffect(() => {
@@ -138,7 +133,8 @@ export function useRunnerData(): UseRunnerDataResult {
   const handleBroadcast = useCallback(
     async (message: string) => {
       feedbackService.vibrate(50);
-      const ok = await sendBroadcast('Runner Request', message, 'normal');
+      // Igual que antes del cambio de destinatarios por defecto: a team leaders y runners
+      const ok = await sendBroadcast('Runner Request', message, 'normal', [Role.TEAM_LEADER, Role.RUNNER]);
       setToast(ok
         ? { message: t('runner.toast.broadcast_sent'), type: 'success' }
         : { message: t('runner.toast.broadcast_failed'), type: 'error' });
@@ -172,16 +168,14 @@ export function useRunnerData(): UseRunnerDataResult {
         notes: 'Empty bins requested from runner app',
       });
       setToast({ message: t('runner.toast.bin_request_sent', { zone: zoneLabel }), type: 'success' });
-      // Aviso a Logística y manager; si no sale, la petición sigue en la cola
-      sendBroadcast('Bins needed', `${currentUser.name || 'A runner'} needs empty bins at ${zone}`, 'high', [
-        Role.LOGISTICS,
-        Role.MANAGER,
-      ]).catch(() => undefined);
+      // Logística la ve al momento por realtime (transport_requests). Ya no se
+      // manda además un aviso: los avisos son solo de manager/admin (RLS) y el
+      // del runner fallaba siempre con 403 (prueba de carga 2026-10-21).
     } catch (e) {
       logger.error('[Runner] Refill request failed:', e);
       setToast({ message: t('runner.toast.bin_request_failed'), type: 'error' });
     }
-  }, [orchard?.id, orchard?.name, currentUser?.id, currentUser?.name, crew, sendBroadcast, t]);
+  }, [orchard?.id, orchard?.name, currentUser?.id, currentUser?.name, crew, t]);
 
   // Fila del picker: la que tiene asignada en el mapa, o su fila actual
   const rowAssignments = useHarvestStore(s => s.rowAssignments);
@@ -261,6 +255,14 @@ export function useRunnerData(): UseRunnerDataResult {
         return;
       }
 
+      // Día cerrado por el manager: la BD rechazaría las cubetas. Se avisa claro
+      // («El día está cerrado») en vez de «guardada» y luego «escaneo rechazado»
+      if (dayClosed) {
+        feedbackService.triggerError();
+        setToast({ message: t('close.scan_blocked'), type: 'error' });
+        return;
+      }
+
       // BATCH MODO O MODO ESTÁNDAR: Procesar todos los tickets en memoria (Buckets)
       const saves: Promise<boolean>[] = [];
       const savedFor: string[] = [];
@@ -271,8 +273,9 @@ export function useRunnerData(): UseRunnerDataResult {
           return; // ignora los que no están checked in
         }
 
-        // Para la máxima velocidad en Batch Mode, asignamos calidad 'A' por defecto.
-        // (La integración original abría un modal bloqueando el progreso).
+        // La nota de calidad la da QC (inspecciones de qc_inspections), no el runner:
+        // la cubeta se guarda con 'A' y el runner no califica (decisión 2026-10-23;
+        // el QualityRatingModal nunca se mostraba y se quitó).
         savedFor.push(picker.name || picker.picker_id || code);
         saves.push(addBucket({
           picker_id: code,
@@ -293,28 +296,9 @@ export function useRunnerData(): UseRunnerDataResult {
         });
       }
     },
-    [scanType, rawInventory, crew, addBucket, orchard?.id, rowOf, selectedBinId, setBinStatus, setGlobalState, confirmSaved, t]
+    [scanType, rawInventory, crew, addBucket, orchard?.id, rowOf, selectedBinId, setBinStatus, setGlobalState, confirmSaved, t, dayClosed]
   );
 
-  const submitQuality = useCallback(
-    async (grade: 'A' | 'B' | 'C' | 'reject') => {
-      if (!qualityScan) return;
-      const { code } = qualityScan;
-      setQualityScan(null);
-      logger.debug(`[Runner] Scanning bucket with bin_id: ${selectedBinId}`);
-
-      const picker = crew.find(p => p.id === code || p.picker_id === code);
-      confirmSaved([addBucket({
-        picker_id: code,
-        quality_grade: grade,
-        timestamp: nowNZST(),
-        orchard_id: orchard?.id || 'offline_pending',
-        row_number: picker ? rowOf(picker.id, picker.current_row) : undefined,
-        bin_id: selectedBinId || null,
-      })], [picker?.name || code]);
-    },
-    [qualityScan, selectedBinId, addBucket, orchard?.id, crew, rowOf, confirmSaved]
-  );
 
   // Calculate real inventory data from context
   // Llenado del bin activo: al llegar a la capacidad pasa a lleno y se suelta
@@ -357,7 +341,6 @@ export function useRunnerData(): UseRunnerDataResult {
     showScanner,
     scanType,
     toast,
-    qualityScan,
     setSelectedBinId,
     setShowScanner,
     setToast,
@@ -365,7 +348,5 @@ export function useRunnerData(): UseRunnerDataResult {
     handleBroadcast,
     handleRequestRefill,
     handleScanComplete,
-    submitQuality,
-    setQualityScan,
   };
 }

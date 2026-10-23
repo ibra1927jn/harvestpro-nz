@@ -165,3 +165,35 @@ describe('processAttendance', () => {
     });
   });
 });
+
+describe('processAttendance — roll call queued without signal', () => {
+  beforeEach(() => vi.restoreAllMocks());
+
+  it('check_in goes to manage-attendance with the phone shift id and time', async () => {
+    const spy = vi.spyOn(attendanceService, 'checkInPicker').mockResolvedValue(undefined as never);
+    const { processAttendance } = await import('./attendance.processor');
+    await processAttendance({ action: 'check_in', picker_id: 'p-1', orchard_id: 'o-1', attendance_id: 'c-1', at: '2026-10-23T08:00:00.000Z' });
+    expect(spy).toHaveBeenCalledWith('p-1', 'o-1', undefined, { clientId: 'c-1', at: '2026-10-23T08:00:00.000Z' });
+  });
+
+  it('breaks and check-out use the shift and fall back to the person', async () => {
+    const brk = vi.spyOn(attendanceService, 'recordBreak').mockResolvedValue(undefined as never);
+    const out = vi.spyOn(attendanceService, 'checkOutPicker').mockResolvedValue(undefined as never);
+    const { processAttendance } = await import('./attendance.processor');
+    await processAttendance({ action: 'break_end', picker_id: 'p-1', orchard_id: 'o-1', attendance_id: 'c-1', at: 'T' });
+    await processAttendance({ action: 'check_out', picker_id: 'p-1', orchard_id: 'o-1', attendance_id: 'c-1', at: 'T' });
+    expect(brk).toHaveBeenCalledWith('break_end', 'c-1', { at: 'T', pickerId: 'p-1' });
+    expect(out).toHaveBeenCalledWith('c-1', { at: 'T', pickerId: 'p-1' });
+  });
+
+  it('a server refusal (4xx) becomes a rejection; a 503 stays retryable', async () => {
+    const spy = vi.spyOn(attendanceService, 'checkOutPicker');
+    const { processAttendance } = await import('./attendance.processor');
+    spy.mockRejectedValueOnce(Object.assign(new Error('PAY_WEEK_CLOSED: closed'), { status: 409 }));
+    await expect(processAttendance({ action: 'check_out', picker_id: 'p', orchard_id: 'o', attendance_id: 'c', at: 'T' }))
+      .rejects.toMatchObject({ name: 'SyncRejectedError', message: 'PAY_WEEK_CLOSED: closed' });
+    spy.mockRejectedValueOnce(Object.assign(new Error('Edge Function failed (503)'), { status: 503 }));
+    await expect(processAttendance({ action: 'check_out', picker_id: 'p', orchard_id: 'o', attendance_id: 'c', at: 'T' }))
+      .rejects.not.toMatchObject({ name: 'SyncRejectedError' });
+  });
+});

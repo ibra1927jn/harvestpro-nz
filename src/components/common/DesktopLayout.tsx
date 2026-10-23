@@ -4,14 +4,18 @@
  * Used by: Admin, HR Admin, Payroll Admin, Manager (desktop breakpoint)
  * Features: Collapsible sidebar, header with user info, content area
  */
-import React, { useRef, useState } from 'react';
+import React, { Suspense, useRef, useState } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { useAuth } from '@/context/AuthContext';
-import { useMessaging } from '@/context/MessagingContext';
+import { useAvatarSignedUrl } from '@/hooks/useAvatarUrl';
+import UserAvatar from './account/UserAvatar';
+import { LazyAccountSheet as AccountSheet } from './account/lazyAccountSheet';
+import { useNotificationBadge } from '@/hooks/useNotificationBadge';
 import { useNavigate } from 'react-router-dom';
 import NotificationPanel from './NotificationPanel';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { useTranslation } from '@/i18n';
+
 
 export interface NavItem {
     id: string;
@@ -54,7 +58,8 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
     const { appUser, signOut } = useAuth();
     // Nombres de las secciones en el idioma de la app
     navItems = navItems.map(i => (i.labelKey ? { ...i, label: t(i.labelKey) } : i));
-    const { unreadCount } = useMessaging();
+    // Campana: chat sin leer + avisos (calidad, avisos del huerto) sin ver
+    const unreadCount = useNotificationBadge();
     const navigate = useNavigate();
     // Persiste el estado del sidebar en localStorage para que no se resetee al navegar entre páginas
     const [collapsed, setCollapsed] = useState(() => {
@@ -65,6 +70,10 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
     // Menú móvil como diálogo modal: foco dentro, Escape cierra, foco de vuelta al botón
     useDialogA11y(drawerRef, { onClose: () => setMobileMenuOpen(false), enabled: mobileMenuOpen });
     const [showNotifications, setShowNotifications] = useState(false);
+    // Mi cuenta: se abre desde el avatar (cabecera y bloque de usuario del sidebar)
+    const [accountOpen, setAccountOpen] = useState(false);
+    const avatarUrl = useAvatarSignedUrl(appUser?.avatar_url);
+    const displayName = appUser?.full_name || t('shell.user');
 
     const handleSignOut = async () => {
         await signOut();
@@ -159,19 +168,26 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                         </span>
                     </button>
 
-                    <div className={`mt-2 flex items-center gap-2 px-2 ${collapsed ? 'justify-center' : ''}`}>
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                            <span className="text-white text-xs font-bold">
-                                {(appUser?.full_name || 'U').charAt(0).toUpperCase()}
-                            </span>
-                        </div>
+                    <button
+                        type="button"
+                        onClick={() => setAccountOpen(true)}
+                        aria-label={t('account.open')}
+                        title={collapsed ? t('account.title') : undefined}
+                        className={`mt-2 w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors text-left ${collapsed ? 'justify-center' : ''}`}
+                    >
+                        <UserAvatar
+                            name={displayName}
+                            url={avatarUrl}
+                            className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white"
+                            textClassName="text-xs"
+                        />
                         {!collapsed && (
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-slate-700 truncate">{appUser?.full_name || t('shell.user')}</p>
-                                <p className="text-[10px] text-slate-400 truncate">{appUser?.email}</p>
-                            </div>
+                            <span className="flex-1 min-w-0 block">
+                                <span className="block text-xs font-semibold text-slate-700 truncate">{displayName}</span>
+                                <span className="block text-[10px] text-slate-400 truncate">{appUser?.email}</span>
+                            </span>
                         )}
-                    </div>
+                    </button>
                 </div>
             </aside>
 
@@ -224,6 +240,20 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                                 />
                             )}
                         </div>
+                        <button
+                            type="button"
+                            onClick={() => setAccountOpen(true)}
+                            className="rounded-full hover:ring-2 hover:ring-slate-200 transition-shadow"
+                            title={t('account.title')}
+                            aria-label={t('account.open')}
+                        >
+                            <UserAvatar
+                                name={displayName}
+                                url={avatarUrl}
+                                className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white"
+                                textClassName="text-xs"
+                            />
+                        </button>
                         <button
                             onClick={handleSignOut}
                             className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50"
@@ -295,17 +325,23 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                         </nav>
 
                         <div className="border-t border-slate-100 p-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                                    <span className="text-white text-sm font-bold">
-                                        {(appUser?.full_name || 'U').charAt(0).toUpperCase()}
-                                    </span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-slate-700 truncate">{appUser?.full_name || t('shell.user')}</p>
-                                    <p className="text-xs text-slate-400 truncate">{appUser?.email}</p>
-                                </div>
-                            </div>
+                            <button
+                                type="button"
+                                onClick={() => { setMobileMenuOpen(false); setAccountOpen(true); }}
+                                aria-label={t('account.open')}
+                                className="w-full flex items-center gap-3 rounded-lg hover:bg-slate-50 transition-colors text-left"
+                            >
+                                <UserAvatar
+                                    name={displayName}
+                                    url={avatarUrl}
+                                    className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white"
+                                    textClassName="text-sm"
+                                />
+                                <span className="flex-1 min-w-0 block">
+                                    <span className="block text-sm font-semibold text-slate-700 truncate">{displayName}</span>
+                                    <span className="block text-xs text-slate-400 truncate">{appUser?.email}</span>
+                                </span>
+                            </button>
                             <button
                                 onClick={handleSignOut}
                                 className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
@@ -317,6 +353,12 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                         </div>
                     </aside>
                 </div>
+            )}
+
+            {accountOpen && (
+                <Suspense fallback={null}>
+                    <AccountSheet onClose={() => setAccountOpen(false)} />
+                </Suspense>
             )}
         </div>
     );

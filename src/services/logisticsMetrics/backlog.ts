@@ -1,9 +1,9 @@
 /**
  * logisticsMetrics/backlog.ts — Serie temporal de cubetas pendientes por hora de turno.
  *
- * Módulo puro sin React. Usa buildShiftSlots de @/utils/time.
+ * Módulo puro sin React. Usa buildShiftSlotsUntilNow de @/utils/time.
  */
-import { buildShiftSlots } from '@/utils/time';
+import { buildShiftSlotsUntilNow } from '@/utils/time';
 
 // ── Tipos compartidos del módulo ──────────────────────────────────────────────
 
@@ -44,13 +44,12 @@ export function binBacklogSeries(params: {
   fills: BinFillEvent[];
   runs: PickupRun[];
   shiftStart: string; // "07:00"
-  shiftEnd: string;   // "17:00"
   now: Date;
 }): BacklogPoint[] {
-  const { fills, runs, shiftStart, shiftEnd, now } = params;
+  const { fills, runs, shiftStart, now } = params;
 
-  // Construir slots hasta ahora (buildShiftSlots usa ref=now para saber hasta qué hora)
-  const allSlots = buildShiftSlots(shiftStart, shiftEnd, now);
+  // Tramos desde el inicio de turno hasta la hora actual (no hay hora de fin de turno)
+  const allSlots = buildShiftSlotsUntilNow(shiftStart, now);
 
   // Filtrar solo slots que ya comenzaron (slotStartMs <= now)
   const nowMs = now.getTime();

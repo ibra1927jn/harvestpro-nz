@@ -37,6 +37,7 @@ vi.mock('@/stores/useHarvestStore', () => ({
   useHarvestStore: vi.fn((sel?: (s: Record<string, unknown>) => unknown) => {
     const state = {
       crew: [],
+      bucketRecords: [],
       rows: [],
       orchardBlocks: [],
       orchardMapRows: [],
@@ -78,6 +79,7 @@ vi.mock('@/repositories/edge-functions.repository', () => ({
 }));
 
 vi.mock('@/services/logistics-dept.service', () => ({
+  fetchFleet: vi.fn().mockResolvedValue([]),
   logisticsDeptService: {
     getTransportRequests: vi.fn().mockResolvedValue([]),
     getTractors: vi.fn().mockResolvedValue([]),
@@ -105,28 +107,33 @@ vi.mock('@/services/compliance.service', () => ({
 // ── HHRR Components ──────────────────────────────
 
 describe('CalendarTab', () => {
-  it('renders schedule and leave sections', async () => {
+  // Agenda (revisión 21-10 #18): sin «Horario de hoy» del fin de turno (punto 5)
+  it('renders the agenda (month grid, week toggle, new leave) with no employees', async () => {
     const mod = await import('@/components/views/hhrr/CalendarTab');
     const CalendarTab = mod.default;
-    const { container } = render(<CalendarTab />);
-    expect(container.textContent).toContain("Today's Schedule");
-    expect(container.textContent).toContain('Upcoming Leave');
+    const { container } = render(<CalendarTab employees={[]} />);
+    expect(screen.getByTestId('hr-agenda')).toBeTruthy();
+    expect(screen.getByTestId('agenda-month')).toBeTruthy();
+    expect(container.textContent).toContain('New leave');
+    expect(container.textContent).toContain('Week');
   });
 
-  it('shows schedule items', async () => {
+  it('no longer shows the orchard shift schedule', async () => {
     const mod = await import('@/components/views/hhrr/CalendarTab');
     const CalendarTab = mod.default;
-    const { container } = render(<CalendarTab />);
-    expect(container.textContent).toContain('07:00');
-    expect(container.textContent).toContain('Shift Start');
+    const { container } = render(<CalendarTab employees={[]} />);
+    expect(container.textContent).not.toContain("Today's Schedule");
+    expect(container.textContent).not.toContain('Shift Start');
+    expect(container.textContent).not.toContain('07:00');
+    expect(container.textContent).not.toContain('17:00');
   });
 
   it('does not show sample leave entries', async () => {
     const mod = await import('@/components/views/hhrr/CalendarTab');
     const CalendarTab = mod.default;
-    const { container } = render(<CalendarTab />);
+    const { container } = render(<CalendarTab employees={[]} />);
     expect(container.textContent).not.toContain('Aroha W.');
-    expect(container.textContent).toContain('not tracked in the app yet');
+    expect(container.textContent).not.toContain('Upcoming Leave');
   });
 });
 
@@ -221,18 +228,19 @@ describe('FleetTab', () => {
 // ── Runner Components ────────────────────────────
 
 describe('RunnersView', () => {
+  // «Runners en el huerto» (revisión 2026-10-21, punto 13): ya no lista pickers
   it('renders with title', async () => {
     const mod = await import('@/components/views/runner/RunnersView');
     const RunnersView = mod.default;
     const { container } = render(<RunnersView onBack={vi.fn()} />);
-    expect(container.textContent).toContain('Orchard Crew');
+    expect(container.textContent).toContain('Runners in the orchard');
   });
 
   it('shows empty state when no crew', async () => {
     const mod = await import('@/components/views/runner/RunnersView');
     const RunnersView = mod.default;
     const { container } = render(<RunnersView onBack={vi.fn()} />);
-    expect(container.textContent).toContain('No Active Pickers');
+    expect(container.textContent).toContain('No runners in the orchard');
   });
 
   it('calls onBack when back button clicked', async () => {

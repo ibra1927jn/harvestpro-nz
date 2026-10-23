@@ -1,11 +1,15 @@
-import { announce } from '@/services/announcer';
 import { logger } from '@/utils/logger';
 import { useAuth } from '../../../context/AuthContext';
 import { useAttendance } from '../../../hooks/useAttendance';
+import { useHarvestStore } from '@/stores/useHarvestStore';
 import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/ui/Toast';
 import { useTranslation } from '@/i18n';
 import { formatNZDate, formatNZTime } from '@/utils/nzFormat';
+import { useState, useMemo } from 'react';
+import { useLeaveOnDay, useMyLeaveRequests } from '@/hooks/useLeave';
+import RequestLeaveModal from './RequestLeaveModal';
+import { MyLeaveRequests } from './MyLeaveRequests';
 
 interface Picker {
     id: string;
@@ -22,31 +26,58 @@ const AttendanceView = () => {
         mergedList,
         stats,
         checkIn,
-        checkOut
+        checkOut,
+        startBreak,
+        endBreak,
+        queuedCount,
+        clockSkewMinutes,
     } = useAttendance(appUser ?? undefined);
     const { toast, showToast, hideToast } = useToast();
+    // Tocar el nombre abre el cajón de perfil (el mismo que el manager); el fichaje va en su botón
+    const openPickerProfile = useHarvestStore(s => s.openPickerProfile);
+    // Ausencias aprobadas de hoy: «De permiso», no cuenta como ausente ni se le ofrece fichar
+    const leaveToday = useLeaveOnDay(appUser?.orchard_id ?? undefined);
+    const myLeave = useMyLeaveRequests(appUser?.id);
+    const [leaveFor, setLeaveFor] = useState<Picker | null>(null);
+    const onLeaveCount = useMemo(
+        () => mergedList.filter(i => !i.isPresent && leaveToday.has(i.id)).length,
+        [mergedList, leaveToday],
+    );
+    const names = useMemo(() => new Map(mergedList.map(i => [i.id, i.name])), [mergedList]);
 
-    const noSignal = (key: 'tl.attendance.no_signal_check_in' | 'tl.attendance.no_signal_check_out') =>
-        typeof navigator !== 'undefined' && navigator.onLine === false ? t(key) : null;
-
-    // Handlers
+    // Handlers. Sin cobertura el fichaje se guarda en el móvil y se envía solo
+    // (rollCall.service): aviso informativo, no error.
     const handleCheckIn = async (picker: Picker) => {
         try {
-            await checkIn(picker.id);
-            announce(t('tl.attendance.sr_checked_in', { name: picker.name }));
+            const res = await checkIn(picker.id);
+            if (res.state === 'queued') showToast(t('tl.attendance.queued_check_in', { name: picker.name }), 'info');
+            // Toast visible (y lo anuncia al lector de pantalla): antes solo se anunciaba
+            else showToast(t('tl.attendance.sr_checked_in', { name: picker.name }), 'success');
         } catch (error: unknown) {
-            showToast(noSignal('tl.attendance.no_signal_check_in') || (error as Error).message || t('tl.attendance.check_in_failed'), 'error');
+            showToast((error as Error).message || t('tl.attendance.check_in_failed'), 'error');
         }
     };
 
     const handleCheckOut = async (attendanceId: string, name?: string) => {
+        const who = name ?? t('panel.role.picker');
         try {
-            await checkOut(attendanceId);
-            announce(t('tl.attendance.sr_checked_out', { name: name ?? t('panel.role.picker') }));
+            const res = await checkOut(attendanceId);
+            if (res.state === 'queued') showToast(t('tl.attendance.queued_check_out', { name: who }), 'info');
+            else showToast(t('tl.attendance.sr_checked_out', { name: who }), 'success');
         } catch (err) {
-            // Antes solo iba al log: sin red el botón no hacía nada y nadie se enteraba
             logger.error(err);
-            showToast(noSignal('tl.attendance.no_signal_check_out') || (err as Error)?.message || t('tl.attendance.check_out_failed'), 'error');
+            showToast((err as Error)?.message || t('tl.attendance.check_out_failed'), 'error');
+        }
+    };
+
+    const handleBreak = async (attendanceId: string, name: string, ending: boolean) => {
+        try {
+            const res = await (ending ? endBreak(attendanceId) : startBreak(attendanceId));
+            if (res.state === 'queued') showToast(t('tl.attendance.queued_break', { name }), 'info');
+            else showToast(t(ending ? 'tl.attendance.sr_break_ended' : 'tl.attendance.sr_break_started', { name }), 'success');
+        } catch (err) {
+            logger.error(err);
+            showToast((err as Error)?.message || t('tl.attendance.break_failed'), 'error');
         }
     };
 
@@ -66,58 +97,125 @@ const AttendanceView = () => {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                     <div className="bg-green-50 p-3 rounded-2xl border border-green-100 flex flex-col items-center">
                         <span className="text-2xl font-black text-green-600">{stats.present}</span>
                         <span className="text-xs font-bold text-green-700 uppercase">{t('tl.attendance.present')}</span>
                     </div>
                     <div className="bg-slate-100 p-3 rounded-2xl border border-slate-200 flex flex-col items-center">
-                        <span className="text-2xl font-black text-slate-500">{stats.absent}</span>
+                        <span className="text-2xl font-black text-slate-500">{stats.absent - onLeaveCount}</span>
                         <span className="text-xs font-bold text-slate-500 uppercase">{t('tl.attendance.absent')}</span>
                     </div>
+                    <div className="bg-amber-50 p-3 rounded-2xl border border-amber-100 flex flex-col items-center" data-testid="on-leave-count">
+                        <span className="text-2xl font-black text-amber-600">{onLeaveCount}</span>
+                        <span className="text-xs font-bold text-amber-700 uppercase text-center">{t('comms.on_leave')}</span>
+                    </div>
                 </div>
+                {queuedCount > 0 && (
+                    <p data-testid="rollcall-queued" className="mt-3 flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm">cloud_upload</span>
+                        {t('tl.attendance.queued_count', { n: queuedCount })}
+                    </p>
+                )}
+                {clockSkewMinutes !== 0 && (
+                    <p role="alert" data-testid="clock-skew" className="mt-3 flex items-start gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm">schedule</span>
+                        {/* clockSkew = servidor − móvil: positivo, el móvil va atrasado */}
+                        {t(clockSkewMinutes > 0 ? 'tl.attendance.clock_behind' : 'tl.attendance.clock_ahead', { n: Math.abs(clockSkewMinutes) })}
+                    </p>
+                )}
             </div>
 
             {/* List */}
             <div className="px-4 mt-6 space-y-3">
-                {mergedList.map(item => (
+                {mergedList.map(item => {
+                    const leave = !item.isPresent ? leaveToday.get(item.id) : undefined;
+                    return (
                     <div
                         key={item.id}
+                        data-testid={`roll-${item.id}`}
                         className={`p-4 rounded-xl border flex flex-wrap gap-3 items-center justify-between transition-all ${item.isPresent
                             ? 'bg-white border-green-200 shadow-sm'
+                            : leave ? 'bg-amber-50 border-amber-200'
                             : 'bg-slate-100 border-transparent opacity-80'
                             }`}
                     >
-                        <div className="flex items-center gap-4 min-w-0">
+                        <button
+                            type="button"
+                            onClick={() => openPickerProfile(item.id)}
+                            aria-label={t('tl.picker.open_profile', { name: item.name })}
+                            className="flex items-center gap-4 min-w-0 text-left rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        >
                             <div className={`size-12 shrink-0 rounded-full flex items-center justify-center text-sm font-bold border ${item.isPresent ? 'bg-green-100 text-green-700 border-green-200' : 'bg-slate-200 text-slate-500 border-slate-300'
                                 }`}>
                                 {item.avatar || (item.name ? item.name.substring(0, 2).toUpperCase() : '??')}
                             </div>
-                            <div>
-                                <h3 className={`font-bold text-base ${item.isPresent ? 'text-slate-900' : 'text-slate-500'}`}>
+                            <span className="block">
+                                <span className={`block font-bold text-base ${item.isPresent ? 'text-slate-900' : 'text-slate-500'}`}>
                                     {item.name}
-                                </h3>
-                                <p className="text-xs font-semibold text-slate-400">
+                                </span>
+                                {leave && (
+                                    <span className="block text-xs font-bold text-amber-700" data-testid={`on-leave-${item.id}`}>
+                                        {t('comms.on_leave_type', { type: t(`leave.type.${leave.type}`) })}
+                                    </span>
+                                )}
+                                <span className="block text-xs font-semibold text-slate-400">
                                     {item.attendanceRecord?.check_in
                                         ? t('tl.attendance.in_at', { time: formatNZTime(item.attendanceRecord.check_in) })
                                         : t('tl.attendance.not_checked_in')
                                     }
-                                </p>
+                                </span>
+                                {item.onBreak && item.attendanceRecord?.break_start && (
+                                    <span className="block text-xs font-bold text-blue-700" data-testid={`on-break-${item.id}`}>
+                                        {t('tl.attendance.on_break', { time: formatNZTime(item.attendanceRecord.break_start) })}
+                                    </span>
+                                )}
+                                {item.isPresent && !item.onBreak && item.attendanceRecord?.break_end && (
+                                    <span className="block text-xs font-semibold text-slate-500">
+                                        {t('tl.attendance.break_done', { minutes: item.attendanceRecord.break_minutes ?? 0 })}
+                                    </span>
+                                )}
+                                {item.pending && (
+                                    <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold text-blue-700" data-testid={`pending-${item.id}`}>
+                                        <span aria-hidden="true" className="material-symbols-outlined text-sm">cloud_upload</span>
+                                        {t('tl.attendance.pending')}
+                                    </span>
+                                )}
                                 {item.breakMissing && (
-                                    <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-amber-700" title={t('tl.attendance.break_missing_hint')}>
+                                    <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-amber-700" title={t('tl.attendance.break_missing_hint')}>
                                         <span aria-hidden="true" className="material-symbols-outlined text-sm">warning</span>
                                         {t('tl.attendance.break_missing')}
                                         <span className="sr-only">. {t('tl.attendance.break_missing_hint')}</span>
-                                    </p>
+                                    </span>
                                 )}
-                            </div>
-                        </div>
+                            </span>
+                        </button>
 
                         {/* Action Button */}
-                        <div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setLeaveFor(item)}
+                                aria-label={t('comms.leave_request_for', { name: item.name })}
+                                title={t('comms.leave_request_for', { name: item.name })}
+                                className="size-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-blue-600 hover:border-blue-200 flex items-center justify-center"
+                            >
+                                <span aria-hidden="true" className="material-symbols-outlined text-lg">event_busy</span>
+                            </button>
                             {processing === item.id || (item.attendanceRecord?.id && processing === item.attendanceRecord.id) ? (
                                 <span aria-hidden="true" className="material-symbols-outlined animate-spin text-slate-400">progress_activity</span>
                             ) : item.isPresent ? (
+                                <>
+                                {item.attendanceRecord?.id && (item.onBreak || !item.attendanceRecord.break_start) && (
+                                    <button
+                                        type="button"
+                                        aria-label={t(item.onBreak ? 'tl.attendance.break_end_name' : 'tl.attendance.break_start_name', { name: item.name })}
+                                        onClick={() => item.attendanceRecord?.id && handleBreak(item.attendanceRecord.id, item.name, item.onBreak)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${item.onBreak ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100'}`}
+                                    >
+                                        {t(item.onBreak ? 'tl.attendance.break_end' : 'tl.attendance.break_start')}
+                                    </button>
+                                )}
                                 <button
                                     aria-label={t('tl.attendance.check_out_name', { name: item.name })}
                                     onClick={() => item.attendanceRecord?.id && handleCheckOut(item.attendanceRecord.id, item.name)}
@@ -125,7 +223,8 @@ const AttendanceView = () => {
                                 >
                                     {t('tl.attendance.check_out')}
                                 </button>
-                            ) : (
+                                </>
+                            ) : leave ? null : (
                                 <button
                                     aria-label={t('tl.attendance.check_in_name', { name: item.name })}
                                     onClick={() => handleCheckIn(item)}
@@ -137,7 +236,8 @@ const AttendanceView = () => {
                             )}
                         </div>
                     </div>
-                ))}
+                    );
+                })}
 
                 {mergedList.length === 0 && !loading && (
                     <div className="text-center py-12 text-slate-400">
@@ -145,7 +245,25 @@ const AttendanceView = () => {
                         <p>{t('tl.attendance.empty')}</p>
                     </div>
                 )}
+
+                <MyLeaveRequests items={myLeave.items} names={names} />
             </div>
+
+            {leaveFor && appUser?.orchard_id && (
+                <RequestLeaveModal
+                    picker={{ id: leaveFor.id, name: leaveFor.name }}
+                    orchardId={appUser.orchard_id}
+                    requestedBy={appUser.id}
+                    onClose={() => setLeaveFor(null)}
+                    onDone={state => {
+                        const name = leaveFor.name;
+                        setLeaveFor(null);
+                        showToast(t(state === 'queued' ? 'comms.leave_queued' : 'comms.leave_sent', { name }), state === 'queued' ? 'info' : 'success');
+                        myLeave.refetch();
+                    }}
+                    onError={message => showToast(message, 'error')}
+                />
+            )}
         </div>
     );
 };

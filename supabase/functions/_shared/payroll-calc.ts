@@ -4,8 +4,10 @@
  * close-pay-week (foto de lo que se paga al cerrar la semana), así ambos dan
  * exactamente las mismas cifras.
  */
-import { payForRange, pieceRateFor, isNZPublicHoliday, PAY_RULES, type PayDay, type PickerRangePay } from './pay-rules.ts'
+import { payForRange, pieceRateOn, nzDateOf, isNZPublicHoliday, PAY_RULES, type PayDay, type PickerRangePay } from './pay-rules.ts'
+import { loadDailyPieceRates } from './piece-rates.ts'
 import { fetchAllRows } from './fetch-all-rows.ts'
+import { fetchInChunks } from './fetch-in-chunks.ts'
 
 // deno-lint-ignore no-explicit-any
 type SupabaseLike = any
@@ -154,9 +156,9 @@ export async function computePayroll(
     supabase: SupabaseLike,
     { orchard_id, start_date, end_date }: { orchard_id?: string; start_date: string; end_date: string },
 ): Promise<PayrollResult> {
-    // 1. Tarifas. Cada cubeta cobra el precio de su variedad (en su huerto o,
-    //    si no, el de la empresa); si la variedad no tiene precio, el precio
-    //    normal del huerto (harvest_settings.piece_rate).
+    // 1. Tarifas. Cada cubeta cobra el precio de SU DÍA para su variedad en su
+    //    huerto; si la variedad no tiene precio, el general del huerto ese día;
+    //    si el huerto no tiene ninguno, harvest_settings.piece_rate.
     const { data: settingsRows, error: settingsError } = await supabase
         .from('harvest_settings')
         .select('orchard_id, piece_rate, min_wage_rate')
@@ -182,11 +184,10 @@ export async function computePayroll(
         console.warn(`[Payroll] COMPLIANCE WARNING: min_wage_rate=${stored_min_wage} < legal floor ${PAY_RULES.minWageFloor}. Using floor.`)
     }
 
-    const { data: varietyRows } = await supabase
-        .from('variety_rates')
-        .select('orchard_id, variety, piece_rate')
-    const varietyRates = ((varietyRows ?? []) as { orchard_id: string | null; variety: string; piece_rate: number }[])
-        .map(v => ({ orchardId: v.orchard_id, variety: v.variety, pieceRate: Number(v.piece_rate) }))
+    // Precio por cubeta de cada día, huerto y variedad (piece_rates): cambiar el
+    // precio hoy no reescribe los días anteriores. Hasta el día siguiente al
+    // rango (cubetas de un turno que cruza la medianoche).
+    const dailyRates = await loadDailyPieceRates(supabase, start_date, addDays(end_date, 1))
 
     // 2. Cubetas y tramos del rango (límites en hora NZ), de TODOS los huertos
     //    (también si se pide uno). La gente rota y puede pasar de un huerto a
@@ -200,7 +201,10 @@ export async function computePayroll(
             .gte('scanned_at', toNZBoundary(start_date, '00:00:00'))
             // Hasta el final del día siguiente al rango (turno que cruza la medianoche)
             .lt('scanned_at', toNZBoundary(addDays(end_date, 2), '00:00:00'))
-        return q.order('id').range(from, to)
+        // Orden por (scanned_at, id): el índice de scanned_at ya da el orden y cada
+        // página no reordena la semana entera (con order('id') cada página
+        // ordenaba ~70.000 filas en disco: 150 ms × 70 páginas; ahora ~45 ms)
+        return q.order('scanned_at').order('id').range(from, to)
     })
     const attendance = await fetchAllRows((from, to) => {
         const q = supabase
@@ -246,7 +250,7 @@ export async function computePayroll(
         variety: e.variety,
         scannedAt: e.scanned_at,
         qualityGrade: e.quality_grade,
-        pieceRate: pieceRateFor({ orchardId: e.orchard_id, variety: e.variety }, { varietyRates, orchardRates, fallback: companyBucketRate }),
+        pieceRate: pieceRateOn(dailyRates, e.orchard_id, e.variety, nzDateOf(e.scanned_at), (e.orchard_id ? orchardRates[e.orchard_id] : undefined) ?? companyBucketRate),
     }))
 
     // Tarifa por hora del contrato: si es mayor que el mínimo, es el mínimo
@@ -285,9 +289,10 @@ export async function computePayroll(
     const rows = (orchard_id ? onlyOrchardShare(allRows, orchard_id) : allRows).sort((a, b) => b.buckets - a.buckets)
     const pickerIds = rows.map(r => r.pickerId)
 
-    const { data: names } = pickerIds.length
-        ? await supabase.from('pickers').select('id, name').in('id', pickerIds)
-        : { data: [] as { id: string; name: string }[] }
+    // Por trozos: con ~250 personas en la URL Kong respondía 414 y la nómina
+    // salía sin nombres (prueba de carga 2026-10-21)
+    const names = await fetchInChunks<{ id: string; name: string }>(pickerIds, (chunk, from, to) =>
+        supabase.from('pickers').select('id, name').in('id', chunk).order('id').range(from, to))
     const nameById = new Map<string, string>((names ?? []).map((n: { id: string; name: string }) => [n.id, n.name]))
 
     // 4. Desglose por picker

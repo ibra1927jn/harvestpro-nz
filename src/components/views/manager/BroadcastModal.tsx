@@ -3,6 +3,8 @@ import React, { useState, useRef } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { useMessaging } from '../../../context/MessagingContext';
 import { useTranslation } from '@/i18n';
+import { BroadcastAudiencePicker } from '@/components/common/BroadcastAudiencePicker';
+import { rolesForAudiences, type BroadcastAudience } from '@/services/broadcastAudience';
 
 
 interface BroadcastModalProps {
@@ -20,6 +22,8 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose }) => {
     const [priority, setPriority] = useState<'normal' | 'high' | 'urgent'>('normal');
     const [isSending, setIsSending] = useState(false);
     const [sendError, setSendError] = useState(false);
+    // Destinatarios: por defecto todos
+    const [audience, setAudience] = useState<BroadcastAudience[]>(['all']);
 
     const handleSend = async () => {
         if (!title || !message) return;
@@ -29,7 +33,8 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose }) => {
             const ok = await sendBroadcast(
                 title,
                 message,
-                priority
+                priority,
+                rolesForAudiences(audience)
             );
             // Si no se guardó, la ventana sigue abierta para reintentar
             if (ok === false) setSendError(true);
@@ -55,7 +60,7 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose }) => {
                     </div>
                     <div>
                         <h2 className="text-xl font-black text-text-main leading-none">{t('broadcast.alert_title')}</h2>
-                        <span className="text-xs text-text-muted">{t('broadcast.push_all')}</span>
+                        <span className="text-xs text-text-muted">{t(audience.includes('all') ? 'broadcast.push_all' : 'comms.audience_some')}</span>
                     </div>
                 </div>
 
@@ -80,6 +85,8 @@ const BroadcastModal: React.FC<BroadcastModalProps> = ({ onClose }) => {
                             placeholder={t('broadcast.message_placeholder_alt')}
                         />
                     </div>
+
+                    <BroadcastAudiencePicker value={audience} onChange={setAudience} />
 
                     <div className="space-y-1.5">
                         <label className="text-xs font-bold text-text-muted uppercase">{t('broadcast.priority')}</label>

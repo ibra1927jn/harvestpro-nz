@@ -206,3 +206,12 @@ describe('gatewayService — deep branch tests', () => {
   });
 });
 
+
+describe('gateway keeps the HTTP status of a refused call', () => {
+    it('a 409 from the Edge Function keeps status 409 (the offline queue knows it is a refusal)', async () => {
+        const { gatewayService } = await import('../gateway.service');
+        const refusal = Object.assign(new Error('DAY_CLOSED: this day is closed.'), { status: 409 });
+        await expect(gatewayService.withResilience(async () => { throw refusal; }, { operationName: 't', maxRetries: 0 }))
+            .rejects.toMatchObject({ status: 409, message: 'DAY_CLOSED: this day is closed.' });
+    });
+});

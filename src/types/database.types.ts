@@ -377,29 +377,93 @@ export type Database = {
           },
         ]
       }
+      chat_message_reactions: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          emoji: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id?: string
+          created_at?: string
+          emoji: string
+          message_id: string
+          user_id?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          emoji?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_message_reactions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_message_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
+          attachment_name: string | null
+          attachment_path: string | null
+          attachment_size: number | null
+          attachment_type: string | null
           content: string
           conversation_id: string
           created_at: string | null
+          duration_ms: number | null
           id: string
           read_by: string[] | null
+          reply_to_id: string | null
           sender_id: string
         }
         Insert: {
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_size?: number | null
+          attachment_type?: string | null
           content: string
           conversation_id: string
           created_at?: string | null
+          duration_ms?: number | null
           id?: string
           read_by?: string[] | null
+          reply_to_id?: string | null
           sender_id: string
         }
         Update: {
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_size?: number | null
+          attachment_type?: string | null
           content?: string
           conversation_id?: string
           created_at?: string | null
+          duration_ms?: number | null
           id?: string
           read_by?: string[] | null
+          reply_to_id?: string | null
           sender_id?: string
         }
         Relationships: [
@@ -515,6 +579,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           id: string
+          muted_by: string[]
           name: string | null
           participant_ids: string[]
           type: string
@@ -524,6 +589,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
+          muted_by?: string[]
           name?: string | null
           participant_ids?: string[]
           type: string
@@ -533,6 +599,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
+          muted_by?: string[]
           name?: string | null
           participant_ids?: string[]
           type?: string
@@ -558,6 +625,7 @@ export type Database = {
       daily_attendance: {
         Row: {
           check_in: string | null
+          break_end: string | null
           break_minutes: number
           break_start: string | null
           check_out: string | null
@@ -586,6 +654,7 @@ export type Database = {
         }
         Insert: {
           check_in?: string | null
+          break_end?: string | null
           break_minutes?: number
           break_start?: string | null
           check_out?: string | null
@@ -614,6 +683,7 @@ export type Database = {
         }
         Update: {
           check_in?: string | null
+          break_end?: string | null
           break_minutes?: number
           break_start?: string | null
           check_out?: string | null
@@ -843,6 +913,7 @@ export type Database = {
           updated_at: string | null
           wof_expiry: string | null
           zone: string | null
+          type: string
         }
         Insert: {
           bins_loaded?: number | null
@@ -864,6 +935,7 @@ export type Database = {
           updated_at?: string | null
           wof_expiry?: string | null
           zone?: string | null
+          type?: string
         }
         Update: {
           bins_loaded?: number | null
@@ -885,6 +957,7 @@ export type Database = {
           updated_at?: string | null
           wof_expiry?: string | null
           zone?: string | null
+          type?: string
         }
         Relationships: [
           {
@@ -1286,34 +1359,52 @@ export type Database = {
       }
       qc_inspections: {
         Row: {
+          comfortable: boolean | null
           created_at: string | null
+          criteria: Json | null
           grade: string
           id: string
+          informed: boolean | null
           inspector_id: string
           notes: string | null
           orchard_id: string
           photo_url: string | null
           picker_id: string
+          row_number: number | null
+          score: number | null
+          wellbeing_notes: string | null
         }
         Insert: {
+          comfortable?: boolean | null
           created_at?: string | null
+          criteria?: Json | null
           grade: string
           id?: string
+          informed?: boolean | null
           inspector_id: string
           notes?: string | null
           orchard_id: string
           photo_url?: string | null
           picker_id: string
+          row_number?: number | null
+          score?: number | null
+          wellbeing_notes?: string | null
         }
         Update: {
+          comfortable?: boolean | null
           created_at?: string | null
+          criteria?: Json | null
           grade?: string
           id?: string
+          informed?: boolean | null
           inspector_id?: string
           notes?: string | null
           orchard_id?: string
           photo_url?: string | null
           picker_id?: string
+          row_number?: number | null
+          score?: number | null
+          wellbeing_notes?: string | null
         }
         Relationships: [
           {
@@ -1629,36 +1720,45 @@ export type Database = {
       }
       users: {
         Row: {
+          avatar_url: string | null
           created_at: string | null
           email: string | null
           full_name: string | null
           id: string
           is_active: boolean | null
           orchard_id: string | null
+          phone: string | null
+          preferred_locale: string | null
           privacy_consent_at: string | null
           role: string | null
           team_id: string | null
           updated_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id: string
           is_active?: boolean | null
           orchard_id?: string | null
+          phone?: string | null
+          preferred_locale?: string | null
           privacy_consent_at?: string | null
           role?: string | null
           team_id?: string | null
           updated_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
           is_active?: boolean | null
           orchard_id?: string | null
+          phone?: string | null
+          preferred_locale?: string | null
           privacy_consent_at?: string | null
           role?: string | null
           team_id?: string | null
@@ -1711,6 +1811,170 @@ export type Database = {
             columns: ["orchard_id"]
             isOneToOne: false
             referencedRelation: "orchards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      // Añadido a mano (sin generador): 20260418000000_hr_documents + 20261022040000_hr_contract_document
+      hr_documents: {
+        Row: {
+          contract_id: string | null
+          deleted_at: string | null
+          document_type: string
+          expires_at: string | null
+          file_size_bytes: number | null
+          id: string
+          mime_type: string | null
+          notes: string | null
+          orchard_id: string
+          picker_id: string | null
+          storage_path: string
+          title: string
+          uploaded_at: string
+          uploaded_by: string | null
+          user_id: string | null
+        }
+        Insert: {
+          contract_id?: string | null
+          deleted_at?: string | null
+          document_type: string
+          expires_at?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          orchard_id: string
+          picker_id?: string | null
+          storage_path: string
+          title: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          contract_id?: string | null
+          deleted_at?: string | null
+          document_type?: string
+          expires_at?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          orchard_id?: string
+          picker_id?: string | null
+          storage_path?: string
+          title?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_documents_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_documents_orchard_id_fkey"
+            columns: ["orchard_id"]
+            isOneToOne: false
+            referencedRelation: "orchards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_documents_picker_id_fkey"
+            columns: ["picker_id"]
+            isOneToOne: false
+            referencedRelation: "pickers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      // Añadido a mano (sin generador): 20261022041000_leave_requests
+      leave_requests: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          deleted_at: string | null
+          end_date: string
+          half_day: boolean
+          id: string
+          orchard_id: string
+          picker_id: string
+          reason: string | null
+          requested_by: string | null
+          start_date: string
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          deleted_at?: string | null
+          end_date: string
+          half_day?: boolean
+          id?: string
+          orchard_id: string
+          picker_id: string
+          reason?: string | null
+          requested_by?: string | null
+          start_date: string
+          status?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          deleted_at?: string | null
+          end_date?: string
+          half_day?: boolean
+          id?: string
+          orchard_id?: string
+          picker_id?: string
+          reason?: string | null
+          requested_by?: string | null
+          start_date?: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_orchard_id_fkey"
+            columns: ["orchard_id"]
+            isOneToOne: false
+            referencedRelation: "orchards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_picker_id_fkey"
+            columns: ["picker_id"]
+            isOneToOne: false
+            referencedRelation: "pickers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1808,6 +2072,28 @@ export type Database = {
       unlock_account: {
         Args: { target_email: string; unlock_reason_text?: string }
         Returns: boolean
+      }
+      set_conversation_muted: {
+        Args: { p_conversation_id: string; p_muted: boolean }
+        Returns: boolean
+      }
+      update_conversation: {
+        Args: {
+          p_add?: string[] | null
+          p_conversation_id: string
+          p_name?: string | null
+          p_remove?: string[] | null
+        }
+        Returns: Json
+      }
+      update_my_profile: {
+        Args: {
+          p_avatar_url?: string | null
+          p_full_name?: string | null
+          p_phone?: string | null
+          p_preferred_locale?: string | null
+        }
+        Returns: Json
       }
     }
     Enums: {

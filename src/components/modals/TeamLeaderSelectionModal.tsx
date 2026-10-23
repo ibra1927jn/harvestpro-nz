@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { databaseService } from '../../services/database.service';
 import { userService } from '../../services/user.service';
 import { logger } from '@/utils/logger';
 import { useToast } from '@/hooks/useToast';
@@ -39,6 +38,8 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
     const { t } = useTranslation();
     const [staff, setStaff] = useState<StaffInfo[]>([]);
     const [loading, setLoading] = useState(false);
+    const [loadFailed, setLoadFailed] = useState(false);
+    const [reloadKey, setReloadKey] = useState(0);
     const [assigning, setAssigning] = useState(false);
     const [filter, setFilter] = useState<StaffFilter>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -56,25 +57,31 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
         return () => clearTimeout(timer);
     }, []);
 
+    // Personal real con cuenta (team leaders y runners activos). Antes iba por
+    // la fachada databaseService y un fallo de carga se quedaba en «0 staff»
+    // como si no hubiera nadie (auditoría 2026-10-23, E): ahora se dice y se reintenta.
     useEffect(() => {
+        let cancelled = false;
         const fetchStaff = async () => {
             setLoading(true);
+            setLoadFailed(false);
             try {
                 const [leaders, runners] = await Promise.all([
-                    databaseService.getAvailableTeamLeaders(),
-                    databaseService.getAvailableRunners(),
+                    userService.getAvailableTeamLeaders(),
+                    userService.getAvailableRunners(),
                 ]);
-
-                const allStaff = mergeStaff(leaders, runners);
-                setStaff(allStaff);
+                const active = <T extends { is_active?: boolean | null }>(rows: T[]) => rows.filter(r => r.is_active !== false);
+                if (!cancelled) setStaff(mergeStaff(active(leaders), active(runners)));
             } catch (error) {
                 logger.error("Error loading staff:", error);
+                if (!cancelled) setLoadFailed(true);
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
         fetchStaff();
-    }, []);
+        return () => { cancelled = true; };
+    }, [reloadKey]);
 
     // Filter by role, then by search query
     const filteredStaff = useMemo(
@@ -102,7 +109,7 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
 
         for (const userId of selectedIds) {
             try {
-                await databaseService.assignUserToOrchard(userId, orchardId);
+                await userService.assignUserToOrchard(userId, orchardId);
                 successCount++;
             } catch (error) {
                 logger.error(`Error assigning staff ${userId}:`, error);
@@ -235,6 +242,11 @@ const TeamLeaderSelectionModal: React.FC<TeamLeaderSelectionModalProps> = ({
                         <div className="text-center py-8">
                             <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                             <p className="text-sm text-text-muted">{t('staff.loading')}</p>
+                        </div>
+                    ) : loadFailed ? (
+                        <div role="alert" className="text-center py-8 text-red-700">
+                            <p className="text-sm font-medium mb-2">{t('staff.load_failed')}</p>
+                            <button type="button" onClick={() => setReloadKey(k => k + 1)} className="text-sm font-bold underline">{t('common.retry')}</button>
                         </div>
                     ) : filteredStaff.length === 0 ? (
                         <div className="text-center py-8 text-text-muted">

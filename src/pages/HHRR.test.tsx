@@ -29,17 +29,17 @@ vi.mock('@/services/offline.service', () => ({
 }));
 
 vi.mock('@/services/hhrr.service', () => ({
-    fetchHRSummary: vi.fn().mockResolvedValue({
-        activeWorkers: 42,
-        pendingContracts: 3,
-        payrollThisWeek: 15000,
-        complianceAlerts: 1,
+    loadHRDashboard: vi.fn().mockResolvedValue({
+        summary: {
+            activeWorkers: 42,
+            pendingContracts: 3,
+            payrollThisWeek: 15000,
+            complianceAlerts: 1,
+        },
+        employees: [{ id: 'e1', name: 'Worker A', role: 'picker', status: 'active' }],
+        payroll: [],
+        alerts: [],
     }),
-    fetchEmployees: vi.fn().mockResolvedValue([
-        { id: 'e1', name: 'Worker A', role: 'picker', status: 'active' },
-    ]),
-    fetchPayroll: vi.fn().mockResolvedValue([]),
-    fetchComplianceAlerts: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('@/components/views/hhrr/EmployeesTab', () => ({

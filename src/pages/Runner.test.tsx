@@ -76,10 +76,6 @@ vi.mock('../components/views/runner/RunnersView', () => ({
   default: () => <div>Runners View</div>,
 }));
 const loaded = vi.hoisted(() => new Set<string>());
-vi.mock('../components/modals/QualityRatingModal', () => {
-  loaded.add('quality');
-  return { default: () => <div>Quality Modal</div> };
-});
 vi.mock('../components/modals/ScannerModal', () => {
   loaded.add('scanner');
   return { default: () => <div>Scanner Modal</div> };
@@ -90,8 +86,8 @@ vi.mock('@/components/ui/Toast', () => ({
 vi.mock('../components/common/SyncStatusMonitor', () => ({
   default: () => <div>Sync Monitor</div>,
 }));
-vi.mock('@/components/views/manager/TimesheetEditor', () => ({
-  default: () => <div>Timesheet Editor</div>,
+vi.mock('../components/views/runner/MyTimesheetView', () => ({
+  default: () => <div>My Timesheet View</div>,
 }));
 vi.mock('@/components/ui/ComponentErrorBoundary', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -118,7 +114,7 @@ describe('Runner Page', () => {
 
   it('loads the scanner up front, so it opens without signal later', async () => {
     render(<Runner />);
-    await waitFor(() => expect([...loaded].sort()).toEqual(['quality', 'scanner']));
+    await waitFor(() => expect([...loaded].sort()).toEqual(['scanner']));
     expect(screen.queryByText('Scanner Modal')).toBeNull();
   });
 

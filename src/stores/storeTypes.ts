@@ -109,6 +109,8 @@ export interface OrchestratorSlice {
     // 🔧 U9: Changed from scalar to list to prevent event squashing
     recentQcInspections: Record<string, unknown>[];
     recentTimesheetUpdates: Record<string, unknown>[];
+    /** Hora (ms) del último cambio de daily_attendance llegado en vivo; 0 = ninguno */
+    attendanceChangedAt: number;
     // Orchestrator actions
     setGlobalState: (data: Partial<HarvestStoreState>) => void;
     fetchGlobalData: () => Promise<void>;

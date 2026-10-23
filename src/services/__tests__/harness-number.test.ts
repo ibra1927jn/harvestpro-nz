@@ -6,7 +6,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { pickerService } from '../picker.service';
 import { pickerCrudRepository } from '@/repositories/picker-crud.repository';
-import { pickerRepository } from '@/repositories/picker.repository';
 import { processPicker } from '../sync-processors/picker.processor';
 
 describe('harness number ↔ pickers.harness_number', () => {
@@ -19,7 +18,6 @@ describe('harness number ↔ pickers.harness_number', () => {
             { id: 'p1', picker_id: 'PK001', name: 'Alice', status: 'active', safety_verified: true, current_row: 1, harness_number: 'H-17' },
             { id: 'p2', picker_id: 'PK002', name: 'Bob', status: 'active', safety_verified: true, current_row: 1, harness_number: null },
         ] as never);
-        vi.spyOn(pickerRepository, 'getPerformanceToday').mockResolvedValue([] as never);
 
         const crew = await pickerService.getPickersByTeam('tl-1');
 

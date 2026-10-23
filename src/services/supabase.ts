@@ -9,6 +9,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { getConfig } from './config.service';
 import { AUTH_KEY_PREFIX, resolveAuthTabId } from './authStorageKey';
+import { pushAwareFetch } from './pushKick';
 
 // Get configuration (will throw in production if env vars missing)
 const config = getConfig();
@@ -35,6 +36,10 @@ export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON
     params: {
       eventsPerSecond: 10,
     },
+  },
+  // Tras escribir un evento que avisa a otros, despierta send-push (pushKick.ts)
+  global: {
+    fetch: pushAwareFetch(() => supabase.functions.invoke('send-push', { body: { action: 'flush' } })),
   },
 });
 

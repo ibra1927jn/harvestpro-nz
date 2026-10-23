@@ -150,8 +150,14 @@ vi.mock('@/components/common/NotificationPanel', () => ({
 vi.mock('@/components/ui/ThemeToggle', () => ({
   default: () => <div>Theme</div>,
 }));
+// «Mi cuenta» (revisión 2026-10-21, #10): el avatar la abre; antes abría Ajustes del día
+vi.mock('@/hooks/useAvatarUrl', () => ({ useAvatarSignedUrl: () => null, useUserAvatarUrl: () => null }));
+vi.mock('@/components/common/account/AccountSheet', () => ({
+  default: () => <div role="dialog" aria-label="My account">Account</div>,
+}));
 
 import Manager from './Manager';
+import { fireEvent } from '@testing-library/react';
 
 describe('Manager Page', () => {
   it('renders without crashing', () => {
@@ -167,5 +173,12 @@ describe('Manager Page', () => {
   it('renders the dashboard view by default', () => {
     render(<Manager />);
     expect(screen.getByTestId('dashboard-view')).toBeTruthy();
+  });
+
+  it('opens My account from the header avatar (not the day settings modal)', async () => {
+    render(<Manager />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open my account' }));
+    expect(await screen.findByRole('dialog', { name: 'My account' })).toBeTruthy();
+    expect(screen.queryByText('Day Settings')).toBeNull();
   });
 });

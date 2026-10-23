@@ -24,6 +24,15 @@ export type AttendancePayload = {
     check_out?: string;
     attendanceId?: string;  // for optimistic lock on checkout
     verifiedBy?: string;
+    /**
+     * Pase de lista sin red (useAttendance → rollCall.service): la acción, el
+     * tramo (en check_in, el id generado en el móvil) y la hora del móvil. Va
+     * por manage-attendance con las mismas reglas que con red. Sin `action` =
+     * formato antiguo (check_in/check_out sueltos).
+     */
+    action?: 'check_in' | 'check_out' | 'break_start' | 'break_end';
+    attendance_id?: string;
+    at?: string;
 };
 
 // Phase 2: Offline-first payloads for HR, Logistics, Payroll
@@ -81,19 +90,74 @@ export type PickerPayload = {
 
 // 🔧 L31: QC inspection payload for offline-first quality control
 export type QCInspectionPayload = {
+    /** id generado en el móvil (el mismo en cada reintento) */
+    id?: string;
     orchard_id: string;
     picker_id: string;
     inspector_id: string;
     grade: 'A' | 'B' | 'C' | 'reject';
     notes?: string | null;
     photo_url?: string | null;
+    /** Criterios marcados ({ladder: 'ok'|'warn'|'bad', ...}); null = solo nota */
+    criteria?: Partial<Record<'ladder' | 'tree_damage' | 'fruit_on_ground' | 'bucket_fill' | 'size' | 'damaged_fruit', 'ok' | 'warn' | 'bad'>> | null;
+    /** 0-100 calculado de los criterios */
+    score?: number | null;
+    /** Fila donde estaba la persona al inspeccionarla */
+    row_number?: number | null;
+    /** Bienestar (aparte de la nota): ¿sabe qué y cómo recoge? */
+    informed?: boolean | null;
+    /** Bienestar: ¿está a gusto en el equipo? */
+    comfortable?: boolean | null;
+    wellbeing_notes?: string | null;
+    /**
+     * Foto hecha sin cobertura: espera cifrada en pending_files (id = este) y se
+     * sube a photo_path (almacén qc-photos) antes de guardar la inspección.
+     */
+    photo_file_id?: string | null;
+    photo_path?: string | null;
 };
 
-export type SyncPayload = ScanPayload | MessagePayload | AttendancePayload | ContractPayload | TransportPayload | TimesheetPayload | PickerPayload | QCInspectionPayload;
+// Bins del runner sin cobertura: alta de un bin escaneado y cambios de estado.
+// El id del bin se genera en el móvil: reintentar el alta no crea otro.
+export type BinPayload = {
+    action: 'register' | 'status';
+    bin_id: string;
+    orchard_id?: string;
+    bin_code?: string;
+    /** Estado en la BD: empty | partial | full | collected */
+    status?: 'empty' | 'partial' | 'full' | 'collected';
+    /** Hora en que se llenó (la del móvil al marcarlo, no la de la subida) */
+    filled_at?: string | null;
+};
+
+// Ausencia pedida por el team leader desde el móvil (decisión del dueño 23-10):
+// id generado en el móvil para que reintentar no la duplique
+export type LeaveRequestPayload = {
+    id: string;
+    orchard_id: string;
+    picker_id: string;
+    type: 'annual' | 'sick' | 'bereavement' | 'family_violence' | 'unpaid' | 'day_off' | 'other';
+    start_date: string;
+    end_date: string;
+    half_day: boolean;
+    reason: string | null;
+    requested_by: string;
+};
+
+// Reacción del chat puesta o quitada sin red (se repite sin efecto: idempotente)
+export type ChatReactionPayload = {
+    op: 'add' | 'remove';
+    conversation_id: string;
+    message_id: string;
+    user_id: string;
+    emoji: string;
+};
+
+export type SyncPayload = ChatReactionPayload | BinPayload | LeaveRequestPayload | ScanPayload | MessagePayload | AttendancePayload | ContractPayload | TransportPayload | TimesheetPayload | PickerPayload | QCInspectionPayload;
 
 export interface PendingItem {
     id: string; // UUID (generated client-side)
-    type: 'SCAN' | 'MESSAGE' | 'ATTENDANCE' | 'ASSIGNMENT' | 'CONTRACT' | 'TRANSPORT' | 'TIMESHEET' | 'PICKER' | 'QC_INSPECTION' | 'UNLINK';
+    type: 'SCAN' | 'MESSAGE' | 'ATTENDANCE' | 'ASSIGNMENT' | 'CONTRACT' | 'TRANSPORT' | 'TIMESHEET' | 'PICKER' | 'QC_INSPECTION' | 'UNLINK' | 'BIN' | 'LEAVE_REQUEST' | 'CHAT_REACTION';
     payload: SyncPayload;
     timestamp: number;
     retryCount: number;

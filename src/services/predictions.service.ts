@@ -15,6 +15,7 @@
 import { supabase } from '@/services/supabase';
 import { logger } from '@/utils/logger';
 import { addDaysYMD, dateInNZST, todayNZST } from '@/utils/nzst';
+import { fetchAllRows } from '@/utils/fetchAllRows';
 
 // =============================================
 // TYPES
@@ -100,6 +101,44 @@ function movingAverage(values: number[], window: number): number[] {
   return result;
 }
 
+
+/**
+ * Cubetas por día NZ y nota de un huerto desde una fecha. Lo cuenta el servidor
+ * (RPC bucket_daily_grades): 14 días son ~40.000 cubetas por huerto y antes se
+ * pedían sin paginar → PostgREST devolvía las 1000 más antiguas y la
+ * predicción salía con medio día de datos (prueba de carga 2026-10-21).
+ */
+async function dailyGradeCounts(orchardId: string, sinceIso: string): Promise<{ day: string; grade: string | null; n: number }[]> {
+  const { data, error } = await supabase.rpc('bucket_daily_grades', { p_orchard_id: orchardId, p_since: sinceIso });
+  if (!error && data) {
+    return (data as { day: string; quality_grade: string | null; buckets: number }[]).map(r => ({
+      day: r.day,
+      grade: r.quality_grade,
+      n: Number(r.buckets),
+    }));
+  }
+  // Sin la función en el servidor: lo mismo paginado en el cliente
+  const rows = await fetchAllRows<{ scanned_at: string; quality_grade: string | null }>((from, to) =>
+    supabase
+      .from('bucket_records')
+      .select('scanned_at, quality_grade')
+      .eq('orchard_id', orchardId)
+      .is('deleted_at', null)
+      .gte('scanned_at', sinceIso)
+      .order('id')
+      .range(from, to)
+  ).catch(() => []);
+  const counts = new Map<string, number>();
+  for (const r of rows) {
+    const key = `${dateInNZST(r.scanned_at)}|${r.quality_grade ?? ''}`;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return [...counts.entries()].map(([k, n]) => {
+    const [day, grade] = k.split('|');
+    return { day, grade: grade || null, n };
+  });
+}
+
 // =============================================
 // SERVICE
 // =============================================
@@ -116,14 +155,9 @@ export const predictionsService = {
     const lookbackDays = 14;
     const startDate = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
 
-    const { data: records } = await supabase
-      .from('bucket_records')
-      .select('scanned_at')
-      .eq('orchard_id', orchardId)
-      .gte('scanned_at', startDate.toISOString())
-      .order('scanned_at');
+    const counts = await dailyGradeCounts(orchardId, startDate.toISOString());
 
-    if (!records?.length) {
+    if (!counts.length) {
       return Array.from({ length: daysAhead }, (_, i) => ({
         date: addDaysYMD(todayNZST(), i + 1),
         predicted_buckets: 0,
@@ -131,13 +165,9 @@ export const predictionsService = {
       }));
     }
 
-    // Aggregate by day
+    // Aggregate by day (día NZ)
     const dailyCounts = new Map<string, number>();
-    for (const r of records) {
-      // Día de NZ del escaneo (no el día UTC)
-      const day = dateInNZST(r.scanned_at);
-      dailyCounts.set(day, (dailyCounts.get(day) || 0) + 1);
-    }
+    for (const c of counts) dailyCounts.set(c.day, (dailyCounts.get(c.day) || 0) + c.n);
 
     // Build regression points
     const sortedDays = Array.from(dailyCounts.entries()).sort();
@@ -198,25 +228,18 @@ export const predictionsService = {
   async analyzeQualityTrends(orchardId: string, lookbackDays: number = 7): Promise<QualityTrend[]> {
     const startDate = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
 
-    const { data: records } = await supabase
-      .from('bucket_records')
-      .select('scanned_at, quality_grade')
-      .eq('orchard_id', orchardId)
-      .gte('scanned_at', startDate.toISOString())
-      .order('scanned_at');
+    const counts = await dailyGradeCounts(orchardId, startDate.toISOString());
 
-    if (!records?.length) return [];
+    if (!counts.length) return [];
 
-    // Group by day
+    // Group by day (día NZ)
     const dailyGrades = new Map<string, Map<string, number>>();
-    for (const r of records) {
-      // Día de NZ del escaneo (no el día UTC)
-      const day = dateInNZST(r.scanned_at);
-      if (!dailyGrades.has(day)) dailyGrades.set(day, new Map());
-      const grade = (r.quality_grade || 'ungraded').toUpperCase();
+    for (const c of counts) {
+      if (!dailyGrades.has(c.day)) dailyGrades.set(c.day, new Map());
+      const grade = (c.grade || 'ungraded').toUpperCase();
       const normalized = grade === 'A' ? 'A' : grade === 'B' ? 'B' : grade === 'C' ? 'C' : 'reject';
-      const grades = dailyGrades.get(day)!;
-      grades.set(normalized, (grades.get(normalized) || 0) + 1);
+      const grades = dailyGrades.get(c.day)!;
+      grades.set(normalized, (grades.get(normalized) || 0) + c.n);
     }
 
     const trends: QualityTrend[] = [];

@@ -193,7 +193,7 @@ const WeeklyReportView: React.FC = () => {
             {report.showExportModal && (
                 <ExportModal
                     onClose={() => report.setShowExportModal(false)}
-                    onExportPDF={() => { exportPDF(exportContext); report.setShowExportModal(false); }}
+                    onExportPDF={(sections) => { exportPDF({ ...exportContext, exportSections: sections }); report.setShowExportModal(false); }}
                     onExportCSV={() => { exportCSV(exportContext); report.setShowExportModal(false); }}
                 />
             )}

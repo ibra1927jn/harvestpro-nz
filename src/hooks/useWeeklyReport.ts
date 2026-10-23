@@ -16,9 +16,10 @@ import { analyticsService } from '@/services/analytics.service';
 import { startOfWeekNZ, nzMidnight, nzEndOfDay } from '@/utils/nzst';
 import { TrendDataPoint, DayMeta } from '@/components/charts/TrendLineChart';
 import { logger } from '@/utils/logger';
-import { Picker, VarietyRate } from '@/types';
+import { Picker } from '@/types';
 import { supabase } from '@/services/supabase';
-import { payForRange, pieceRateFor, PAY_RULES } from '@/services/harvestMetrics';
+import { payForRange, pieceRateOn, nzDateOf, PAY_RULES, type DailyPieceRate } from '@/services/harvestMetrics';
+import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
 import { findTeamLeader } from '@/services/harvestMetrics/roster';
 import { fetchAllRows } from '@/utils/fetchAllRows';
 
@@ -90,11 +91,11 @@ export function buildWeekBreakdown(params: {
     crew: ReadonlyArray<Pick<Picker, 'id' | 'name'>>;
     pieceRate: number;
     minWage: number;
-    /** Precios por variedad (variety_rates); sin ellos, pieceRate */
-    varietyRates?: ReadonlyArray<VarietyRate>;
+    /** Precios por día (piece_rates) del rango; sin ellos, pieceRate */
+    dailyRates?: ReadonlyArray<DailyPieceRate>;
     now?: Date;
 }): PickerBreakdown[] {
-    const varietyRates = (params.varietyRates ?? []).map(r => ({ orchardId: r.orchard_id, variety: r.variety, pieceRate: Number(r.piece_rate) }));
+    const dailyRates = params.dailyRates ?? [];
     const minWage = Math.max(params.minWage, PAY_RULES.minWageFloor);
     const rows = payForRange({
         attendance: params.attendance.map(a => ({
@@ -112,7 +113,8 @@ export function buildWeekBreakdown(params: {
             qualityGrade: b.quality_grade,
             orchardId: b.orchard_id,
             variety: b.variety,
-            pieceRate: pieceRateFor({ orchardId: b.orchard_id, variety: b.variety }, { varietyRates, fallback: params.pieceRate }),
+            // Precio del día de la cubeta: un cambio de hoy no reescribe el lunes
+            pieceRate: pieceRateOn(dailyRates, b.orchard_id, b.variety, nzDateOf(b.scanned_at), params.pieceRate),
         })),
         pieceRate: params.pieceRate,
         minWage,
@@ -183,7 +185,7 @@ export function useWeeklyReport(): WeeklyReportData {
                         const todayStr = nzFmt.format(new Date());
                         const weekStart = startOfWeekNZ();
 
-                        const [bucketRows, attendanceRows] = await Promise.all([
+                        const [bucketRows, attendanceRows, dailyRates] = await Promise.all([
                             fetchAllRows<WeekBucketRow>((from, to) => supabase
                                 .from('bucket_records')
                                 .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
@@ -191,6 +193,8 @@ export function useWeeklyReport(): WeeklyReportData {
                                 .is('deleted_at', null)
                                 .gte('scanned_at', nzMidnight(weekStart))
                                 .lte('scanned_at', nzEndOfDay(todayStr))
+                                // (scanned_at, id): el índice ya da el orden, sin reordenar la semana en cada página
+                                .order('scanned_at')
                                 .order('id')
                                 .range(from, to)),
                             fetchAllRows<WeekAttendanceRow>((from, to) => supabase
@@ -202,6 +206,7 @@ export function useWeeklyReport(): WeeklyReportData {
                                 .lte('date', todayStr)
                                 .order('id')
                                 .range(from, to)),
+                            pieceRatesRepository.loadRange(weekStart, todayStr, orchardId).catch(() => [] as DailyPieceRate[]),
                         ]);
 
                         const breakdown = buildWeekBreakdown({
@@ -210,7 +215,7 @@ export function useWeeklyReport(): WeeklyReportData {
                             crew,
                             pieceRate: settings?.piece_rate ?? 6.5,
                             minWage: settings?.min_wage_rate ?? PAY_RULES.minWageFloor,
-                            varietyRates: settings?.variety_rates,
+                            dailyRates,
                         });
                         setPickers(breakdown);
                         logger.info(`[WeeklyReport] Client-side fallback: ${breakdown.length} pickers computed`);

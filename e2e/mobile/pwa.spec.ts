@@ -73,14 +73,14 @@ test.describe('PWA', () => {
     await expect
       .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller), { timeout: 30_000 })
       .toBe(true);
-    // Espera a que el precache termine de verdad (el chunk de tongano está en la caché del SW)
+    // Espera a que el precache termine de verdad (el chunk de francés está en la caché del SW)
     await expect
       .poll(
         () =>
           page.evaluate(async () => {
             for (const name of await caches.keys()) {
               const keys = await (await caches.open(name)).keys();
-              if (keys.some(r => /\/assets\/locale-to-[\w-]+\.js/.test(r.url))) return true;
+              if (keys.some(r => /\/assets\/locale-fr-[\w-]+\.js/.test(r.url))) return true;
             }
             return false;
           }),
@@ -90,10 +90,10 @@ test.describe('PWA', () => {
 
     await context.setOffline(true);
     try {
-      await page.evaluate(() => localStorage.setItem('harvestpro_locale', 'to'));
+      await page.evaluate(() => localStorage.setItem('harvestpro_locale', 'fr'));
       await page.reload();
-      await expect(page.locator('html')).toHaveAttribute('lang', 'to', { timeout: 30_000 });
-      await expect(page.getByText(translations.to['sync.offline']).first()).toBeVisible();
+      await expect(page.locator('html')).toHaveAttribute('lang', 'fr', { timeout: 30_000 });
+      await expect(page.getByText(translations.fr['sync.offline']).first()).toBeVisible();
       await expect(page.getByText(translations.en['sync.offline'], { exact: true })).toHaveCount(0);
     } finally {
       await page.evaluate(() => localStorage.removeItem('harvestpro_locale')).catch(() => undefined);
@@ -103,9 +103,9 @@ test.describe('PWA', () => {
 
   test('language chunk that cannot be downloaded: the app starts in English, no crash', async ({ page, context }) => {
     const errs = collectErrors(page);
-    await context.addInitScript(() => localStorage.setItem('harvestpro_locale', 'to'));
-    // Primera visita (sin SW todavía) y el chunk de tongano no llega
-    await page.route(/\/assets\/locale-to-[\w-]+\.js$/, r => r.abort('internetdisconnected'));
+    await context.addInitScript(() => localStorage.setItem('harvestpro_locale', 'fr'));
+    // Primera visita (sin SW todavía) y el chunk de francés no llega
+    await page.route(/\/assets\/locale-fr-[\w-]+\.js$/, r => r.abort('internetdisconnected'));
     await page.goto('/login');
     await expect(page.locator('input[type="email"]')).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');

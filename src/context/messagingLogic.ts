@@ -14,13 +14,19 @@ export interface ConversationRow {
   type: string;
   participant_ids: string[] | null;
   updated_at: string | null;
+  created_by?: string | null;
+  /** Quién la ha silenciado (migración 20261023050000) */
+  muted_by?: string[] | null;
 }
 
 export interface LastMessageRow {
   conversation_id: string;
   content: string;
   created_at: string;
+  attachment_type?: string | null;
 }
+
+type LastMsg = { content: string; created_at: string; attachment_type?: string | null };
 
 /** Longitud máxima de la vista previa del último mensaje */
 const PREVIEW_MAX_CHARS = 40;
@@ -28,9 +34,17 @@ const PREVIEW_MAX_CHARS = 40;
 // Hora NZ en 24 h (antes con el formato del móvil: "1:05 pm" / "13:05")
 const timeNZ = (iso: string): string => formatNZTime(iso);
 
-/** Total de no leídos a partir del mapa por conversación */
-export function sumUnread(map: Record<string, number>): number {
-  return Object.values(map).reduce((a, b) => a + b, 0);
+/**
+ * Total de no leídos a partir del mapa por conversación. Las conversaciones
+ * silenciadas no cuentan para el total (su número sí sale en la lista).
+ */
+export function sumUnread(map: Record<string, number>, mutedIds?: ReadonlySet<string>): number {
+  return Object.entries(map).reduce((a, [id, n]) => (mutedIds?.has(id) ? a : a + n), 0);
+}
+
+/** Ids de las conversaciones que tengo silenciadas */
+export function mutedIdsOf(groups: ChatGroup[]): Set<string> {
+  return new Set(groups.filter(g => g.muted).map(g => g.id));
 }
 
 /** Participantes de mis conversaciones menos yo (para resolver nombres) */
@@ -43,10 +57,12 @@ export function collectParticipantIds(convs: ConversationRow[], me: string): str
 /** Último mensaje por conversación (la lista llega ordenada del más nuevo al más viejo) */
 export function buildLastMessageMap(
   lastMsgs: LastMessageRow[] | null | undefined
-): Record<string, { content: string; created_at: string }> {
-  const map: Record<string, { content: string; created_at: string }> = {};
+): Record<string, LastMsg> {
+  const map: Record<string, LastMsg> = {};
   for (const m of lastMsgs || []) {
-    if (!map[m.conversation_id]) map[m.conversation_id] = { content: m.content, created_at: m.created_at };
+    if (!map[m.conversation_id]) {
+      map[m.conversation_id] = { content: m.content, created_at: m.created_at, attachment_type: m.attachment_type ?? null };
+    }
   }
   return map;
 }
@@ -65,7 +81,7 @@ export function buildChatGroups(params: {
   conversations: ConversationRow[];
   me: string;
   profileMap: Record<string, string>;
-  lastMsgMap: Record<string, { content: string; created_at: string }>;
+  lastMsgMap: Record<string, LastMsg>;
   unreadMap: Record<string, number>;
 }): ChatGroup[] {
   const { conversations, me, profileMap, lastMsgMap, unreadMap } = params;
@@ -85,8 +101,13 @@ export function buildChatGroups(params: {
       members: c.participant_ids as string[],
       isGroup: c.type === 'group',
       lastMsg: lastMsg ? previewText(lastMsg.content) : '',
+      ...(lastMsg?.attachment_type && !lastMsg.content.trim()
+        ? { lastAttachmentType: lastMsg.attachment_type as ChatGroup['lastAttachmentType'] }
+        : {}),
       time,
       unreadCount: unreadMap[c.id] ?? 0,
+      createdBy: c.created_by ?? null,
+      muted: (c.muted_by || []).includes(me),
     };
   });
 }
@@ -106,12 +127,21 @@ export function withMessageRead(prev: MessagingState, messageId: string, me: str
 
 /** Conversación leída: su contador a 0 y se descuenta del total */
 export function withConversationRead(prev: MessagingState, conversationId: string): MessagingState {
-  const was = prev.chatGroups.find(g => g.id === conversationId)?.unreadCount ?? 0;
+  const group = prev.chatGroups.find(g => g.id === conversationId);
+  // Una silenciada no estaba en el total
+  const was = group?.muted ? 0 : group?.unreadCount ?? 0;
   return {
     ...prev,
     chatGroups: prev.chatGroups.map(g => (g.id === conversationId ? { ...g, unreadCount: 0 } : g)),
     unreadCount: Math.max(0, prev.unreadCount - was),
   };
+}
+
+/** Silenciada / activada por mí: el total de no leídos se recalcula */
+export function withConversationMuted(prev: MessagingState, conversationId: string, muted: boolean): MessagingState {
+  const chatGroups = prev.chatGroups.map(g => (g.id === conversationId ? { ...g, muted } : g));
+  const map = Object.fromEntries(chatGroups.map(g => [g.id, g.unreadCount ?? 0]));
+  return { ...prev, chatGroups, unreadCount: sumUnread(map, mutedIdsOf(chatGroups)) };
 }
 
 /** Aviso confirmado por mí (sin duplicar) */
@@ -131,6 +161,6 @@ export function withUnreadCounts(prev: MessagingState, map: Record<string, numbe
   return {
     ...prev,
     chatGroups: prev.chatGroups.map(g => ({ ...g, unreadCount: map[g.id] ?? 0 })),
-    unreadCount: sumUnread(map),
+    unreadCount: sumUnread(map, mutedIdsOf(prev.chatGroups)),
   };
 }

@@ -37,6 +37,11 @@ const manager2: TranslationDict = {
     'apikeys.requests': '{n} requests',
     'apikeys.last_used': 'Last used {date}',
     'apikeys.expires_on': 'Expires {date}',
+    'close.already_closed': 'Day closed',
+    'close.closed_status': 'Today is closed and locked: no more buckets or timesheet changes for today.',
+    'close.banner_title': 'The day is closed',
+    'close.banner_body': 'The manager closed today. New buckets and timesheet changes for today are not accepted.',
+    'close.scan_blocked': 'The day is closed: this bucket was not recorded',
 };
 
 export default manager2;

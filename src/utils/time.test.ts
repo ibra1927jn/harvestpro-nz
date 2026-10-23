@@ -11,6 +11,7 @@ import {
     getNZMinute,
     getNZShiftBoundaryMs,
     buildShiftSlots,
+    buildShiftSlotsUntilNow,
 } from './time';
 
 // 2026-06-15 12:00Z cae en NZST (+12:00) → NZ 2026-06-16 00:00
@@ -108,5 +109,38 @@ describe('buildShiftSlots', () => {
         const slots = buildShiftSlots('07:00', '08:00', NZDT_UTC);
         // 07:00 NZDT → 2026-02-15T18:00Z
         expect(new Date(slots[0].slotStartMs).toISOString()).toBe('2026-02-15T18:00:00.000Z');
+    });
+});
+
+describe('buildShiftSlotsUntilNow', () => {
+    // Sin hora de fin de turno: la ventana va del inicio hasta la hora actual NZ (incluida)
+    it('builds slots from shift start up to and including the current NZ hour', () => {
+        // NZST: 2026-06-16 00:00 NZ + 10 h 30 → 10:30 NZ
+        const now = new Date(NZST_UTC.getTime() + 10.5 * 3_600_000);
+        const slots = buildShiftSlotsUntilNow('07:00', now);
+        expect(slots.map(s => s.hour)).toEqual([7, 8, 9, 10]);
+        expect(slots[slots.length - 1].slotEndMs).toBeGreaterThan(now.getTime());
+    });
+
+    it('returns only the first slot before the shift has started', () => {
+        // 05:00 NZ
+        const now = new Date(NZST_UTC.getTime() + 5 * 3_600_000);
+        expect(buildShiftSlotsUntilNow('07:00', now).map(s => s.hour)).toEqual([7]);
+    });
+
+    it('grows during the day and never passes midnight', () => {
+        const at15 = new Date(NZDT_UTC.getTime() + 15 * 3_600_000);
+        const at23 = new Date(NZDT_UTC.getTime() + 23.5 * 3_600_000);
+        expect(buildShiftSlotsUntilNow('06:00', at15)).toHaveLength(10); // 6..15
+        const late = buildShiftSlotsUntilNow('06:00', at23);
+        expect(late[late.length - 1].hour).toBe(23);
+    });
+
+    it('uses the NZ offset of the reference day (NZDT)', () => {
+        const now = new Date(NZDT_UTC.getTime() + 8 * 3_600_000); // 08:00 NZDT
+        const slots = buildShiftSlotsUntilNow('07:00', now);
+        // 07:00 NZDT → 2026-02-15T18:00Z
+        expect(new Date(slots[0].slotStartMs).toISOString()).toBe('2026-02-15T18:00:00.000Z');
+        expect(slots.map(s => s.hour)).toEqual([7, 8]);
     });
 });

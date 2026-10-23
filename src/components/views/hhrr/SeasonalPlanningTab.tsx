@@ -4,6 +4,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import { Employee } from '@/services/hhrr.service';
+import { CONTRACT_TYPES, domainOptions } from '@/services/hhrr/hrLogic';
 import FilterBar from '@/components/ui/FilterBar';
 import { formatNZDate } from '@/utils/nzFormat';
 import { roleLabel } from '@/i18n/roleLabel';
@@ -19,8 +20,9 @@ const SeasonalPlanningTab: React.FC<SeasonalPlanningTabProps> = ({ employees }) 
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
 
+    // Tipos de contrato: dominio completo con recuento (solo gente en plantilla)
     const contractTypes = useMemo(() =>
-        [...new Set(employees.map(e => e.contract_type))].sort(),
+        domainOptions(CONTRACT_TYPES, employees.filter(e => e.status !== 'terminated').map(e => e.contract_type)),
         [employees]
     );
 
@@ -29,8 +31,9 @@ const SeasonalPlanningTab: React.FC<SeasonalPlanningTabProps> = ({ employees }) 
     const in60 = new Date(today.getTime() + 60 * 86400000);
     const in90 = new Date(today.getTime() + 90 * 86400000);
 
+    // En plantilla: activos, de permiso y con el alta a medias (fuera solo las bajas)
     const activeEmployees = useMemo(() => employees.filter(e => {
-        const matchActive = e.status === 'active';
+        const matchActive = e.status !== 'terminated';
         const matchSearch = !searchQuery ||
             e.full_name.toLowerCase().includes(searchQuery.toLowerCase());
         const matchType = !activeFilters.contract_type || e.contract_type === activeFilters.contract_type;

@@ -13,36 +13,6 @@ vi.mock('@/repositories/edge-functions.repository', () => ({
 import { fraudDetectionService } from '../fraud-detection.service';
 
 describe('Fraud Detection Service', () => {
-    // =============================================
-    // DISMISSED EXAMPLES (static documentation)
-    // =============================================
-    describe('getDismissedExamples', () => {
-        it('should return array of dismissed scenarios', () => {
-            const dismissed = fraudDetectionService.getDismissedExamples();
-            expect(Array.isArray(dismissed)).toBe(true);
-            expect(dismissed.length).toBeGreaterThan(0);
-        });
-
-        it('should have valid structure', () => {
-            const dismissed = fraudDetectionService.getDismissedExamples();
-            for (const d of dismissed) {
-                expect(d).toHaveProperty('scenario');
-                expect(d).toHaveProperty('reason');
-                expect(d).toHaveProperty('rule');
-                expect(typeof d.scenario).toBe('string');
-                expect(typeof d.reason).toBe('string');
-                expect(typeof d.rule).toBe('string');
-            }
-        });
-
-        it('should include the 3 core rules', () => {
-            const dismissed = fraudDetectionService.getDismissedExamples();
-            const rules = dismissed.map(d => d.rule);
-            expect(rules).toContain('elapsed_velocity');
-            expect(rules).toContain('peer_comparison');
-            expect(rules).toContain('grace_period');
-        });
-    });
 
     // =============================================
     // DEFAULT CONFIG

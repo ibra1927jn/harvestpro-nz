@@ -32,15 +32,17 @@ const mockEdge = edgeFunctionsRepository as unknown as { invoke: ReturnType<type
 // ─── Helpers de mock para el query builder de Supabase ──────────────────────
 
 function makeQueryBuilder(resolveWith: { data: unknown; error: unknown }) {
+    // Encadenable y "thenable": fetchTimesheetAttendance termina en order();
+    // fetchPickerNames (por trozos y paginado) termina en range()
     const builder = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
         is: vi.fn().mockReturnThis(),
         order: vi.fn().mockReturnThis(),
-        in: vi.fn().mockResolvedValue(resolveWith),
+        in: vi.fn().mockReturnThis(),
+        range: vi.fn().mockResolvedValue(resolveWith),
+        then: (onF?: (v: unknown) => unknown, onR?: (r: unknown) => unknown) => Promise.resolve(resolveWith).then(onF, onR),
     };
-    // fetchTimesheetAttendance usa order como última llamada
-    builder.order.mockResolvedValue(resolveWith);
     return builder;
 }
 

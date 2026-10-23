@@ -1,12 +1,20 @@
 /**
  * Smoke tests for team-leader views — renders each view to cover JSX branches
  */
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 
-vi.mock('@/stores/useHarvestStore', () => ({
-  useHarvestStore: () => ({
+const { mockOpenPickerProfile, mockCheckIn, mockCheckOut } = vi.hoisted(() => ({
+  mockOpenPickerProfile: vi.fn(),
+  mockCheckIn: vi.fn().mockResolvedValue(undefined),
+  mockCheckOut: vi.fn().mockResolvedValue(undefined),
+}));
+
+// El mock respeta el selector (useHarvestStore(s => s.x)) y la forma sin selector
+vi.mock('@/stores/useHarvestStore', () => {
+  const state = {
+    openPickerProfile: mockOpenPickerProfile,
     currentUser: { id: 'u1', full_name: 'Test User', role: 'team_leader', orchard_id: 'o1' },
     crew: [
       {
@@ -33,13 +41,31 @@ vi.mock('@/stores/useHarvestStore', () => ({
       },
     ],
     stats: { totalBuckets: 15, payEstimate: 120, tons: 0.3 },
-    settings: { min_buckets_per_hour: 3.6 },
+    settings: {
+      min_buckets_per_hour: 3.6,
+      piece_rate: 7,
+      // Precios de hoy (piece_rates): el general de hoy del huerto
+      piece_rates: [{ orchardId: 'o1', variety: null, effectiveDate: '2000-01-01', pieceRate: 7.25 }],
+    },
+    orchard: { id: 'o1', name: 'Test Orchard', total_rows: 10 },
+    orchardBlocks: [],
+    rowTargets: {},
+    selectedBlockId: null,
+    selectedVariety: 'ALL',
+    setSelectedBlock: vi.fn(),
+    setSelectedVariety: vi.fn(),
+    rowAssignments: [],
+    bucketRecords: [],
+    assignRow: vi.fn(),
     addPicker: vi.fn(),
     removePicker: vi.fn(),
     updatePicker: vi.fn(),
     fetchCrew: vi.fn(),
-  }),
-}));
+  };
+  return {
+    useHarvestStore: (selector?: (st: typeof state) => unknown) => (selector ? selector(state) : state),
+  };
+});
 
 vi.mock('@/hooks/useHarvestMetrics', () => ({
   useHarvestMetrics: () => ({ perPicker: [{ pickerId: 'p1', earned: 80 }, { pickerId: 'p2', earned: 40 }] }),
@@ -58,11 +84,12 @@ vi.mock('@/hooks/useAttendance', () => ({
     loading: false,
     processing: false,
     mergedList: [
-      { id: 'p1', name: 'Alice', avatar: 'AL', isCheckedIn: true, checkInTime: '08:00' },
+      { id: 'p1', name: 'Alice', avatar: 'AL', isPresent: true, attendanceRecord: { id: 'att-1', check_in: '2026-10-13T07:00:00+13:00' } },
+      { id: 'p2', name: 'Bob', avatar: 'BO', isPresent: false },
     ],
-    stats: { present: 1, absent: 0, total: 1 },
-    checkIn: vi.fn(),
-    checkOut: vi.fn(),
+    stats: { present: 1, absent: 1, total: 2 },
+    checkIn: mockCheckIn,
+    checkOut: mockCheckOut,
   }),
 }));
 
@@ -94,12 +121,19 @@ vi.mock('@/context/MessagingContext', () => ({
   }),
 }));
 
+// «Mi cuenta» (la hoja de cuenta común a los 8 roles)
+vi.mock('@/components/common/account/lazyAccountSheet', () => ({
+  LazyAccountSheet: () => <div data-testid="account-sheet" />,
+}));
 vi.mock('../../modals/AddPickerModal', () => ({
   default: () => <div data-testid="add-picker-modal" />,
 }));
-vi.mock('../../modals/PickerDetailsModal', () => ({
-  default: () => <div data-testid="picker-details-modal" />,
-}));
+
+beforeEach(() => {
+  mockOpenPickerProfile.mockClear();
+  mockCheckIn.mockClear();
+  mockCheckOut.mockClear();
+});
 
 describe('HomeView', () => {
   it('renders stats cards', async () => {
@@ -113,6 +147,24 @@ describe('HomeView', () => {
     render(<HomeView />);
     expect(screen.getByText('Alice')).toBeDefined();
   });
+
+  // Auditoría 23-10 A4: el TL ve el precio por cubeta de HOY (piece_rates), no uno fijo
+  it('shows today\'s piece rate of the orchard', async () => {
+    const { default: HomeView } = await import('./HomeView');
+    render(<HomeView />);
+    expect(screen.getByTestId('tl-price-today').textContent).toContain('$7.25');
+  });
+
+  // Auditoría 23-10 B8: antes navegaba a la pestaña 'profile', que ya no existe
+  it('the avatar opens My account instead of a missing profile tab', async () => {
+    const { default: HomeView } = await import('./HomeView');
+    const onNavigate = vi.fn();
+    render(<HomeView onNavigate={onNavigate} />);
+    expect(screen.queryByTestId('account-sheet')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Open my profile' }));
+    expect(await screen.findByTestId('account-sheet')).toBeTruthy();
+    expect(onNavigate).not.toHaveBeenCalledWith('profile');
+  });
 });
 
 describe('AttendanceView', () => {
@@ -121,6 +173,21 @@ describe('AttendanceView', () => {
     render(<AttendanceView />);
     expect(screen.getByText('Alice')).toBeDefined();
   });
+
+  // #7: el nombre abre el cajón de perfil; el botón de fichaje sigue aparte y no se dispara
+  it('tapping the name opens the profile drawer without checking anyone in or out', async () => {
+    const { default: AttendanceView } = await import('./AttendanceView');
+    render(<AttendanceView />);
+    fireEvent.click(screen.getByRole('button', { name: "Open Alice's profile" }));
+    expect(mockOpenPickerProfile).toHaveBeenCalledWith('p1');
+    expect(mockCheckOut).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: "Open Bob's profile" }));
+    expect(mockOpenPickerProfile).toHaveBeenLastCalledWith('p2');
+    expect(mockCheckIn).not.toHaveBeenCalled();
+    // El fichaje sigue teniendo su propio botón
+    expect(screen.getByRole('button', { name: 'Check out Alice' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Check in Bob' })).toBeDefined();
+  });
 });
 
 describe('TeamView', () => {
@@ -128,6 +195,26 @@ describe('TeamView', () => {
     const { default: TeamView } = await import('./TeamView');
     render(<TeamView />);
     expect(screen.getByText('Alice')).toBeDefined();
+  });
+
+  // #7: un solo componente de perfil para TL y manager (el cajón), sin PickerDetailsModal
+  it('tapping a crew card opens the picker drawer (no legacy details modal)', async () => {
+    const { default: TeamView } = await import('./TeamView');
+    render(<TeamView />);
+    fireEvent.click(screen.getByRole('button', { name: "Open Alice's profile" }));
+    expect(mockOpenPickerProfile).toHaveBeenCalledWith('p1');
+    expect(screen.queryByTestId('picker-details-modal')).toBeNull();
+    // Toda la tarjeta también abre el perfil (zona de toque grande)
+    fireEvent.click(screen.getByDisplayValue('P-002').closest('div.cursor-pointer') as HTMLElement);
+    expect(mockOpenPickerProfile).toHaveBeenLastCalledWith('p2');
+  });
+
+  it('typing in the harness field does not open the profile', async () => {
+    const { default: TeamView } = await import('./TeamView');
+    render(<TeamView />);
+    const harness = screen.getAllByPlaceholderText('Assign...')[0];
+    fireEvent.click(harness);
+    expect(mockOpenPickerProfile).not.toHaveBeenCalled();
   });
 
   // Soltar o dar de baja es de RRHH (regla 2026-10-16): sin botón de borrar
@@ -143,14 +230,6 @@ describe('TasksView', () => {
   it('renders without crashing', async () => {
     const { default: TasksView } = await import('./TasksView');
     const { container } = render(<TasksView />);
-    expect(container.firstChild).toBeDefined();
-  });
-});
-
-describe('ProfileView', () => {
-  it('renders user profile', async () => {
-    const { default: ProfileView } = await import('./ProfileView');
-    const { container } = render(<ProfileView />);
     expect(container.firstChild).toBeDefined();
   });
 });

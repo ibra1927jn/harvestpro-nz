@@ -1,63 +1,64 @@
 /**
  * ExportHistoryTab — Payroll Export Log
- * Tracks all payroll exports with format, date, and download info
- * Uses localStorage to persist export history
+ * Historial de exportaciones en el servidor (tabla payroll_exports): quién,
+ * cuándo, semana, formato. Antes vivía en localStorage (otro puesto no lo veía)
+ * y «Delete» borraba sin preguntar (auditoría 2026-10-23, E).
  */
 import { logger } from '@/utils/logger';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '@/i18n';
 import { formatNZD, formatNZDate, formatNZTime } from '@/utils/nzFormat';
+import {
+    payrollExportsRepository,
+    type NewPayrollExport,
+    type PayrollExportRow,
+} from '@/repositories/payroll-exports.repository';
 
-export interface ExportRecord {
-    id: string;
-    format: string;
-    date: string;
-    filename: string;
-    recordCount: number;
-    totalEarnings: number;
-    timestamp: string;
-}
-
-const STORAGE_KEY = 'harvestpro_export_history';
-
-export function logExportToHistory(record: Omit<ExportRecord, 'id' | 'timestamp'>): void {
-    const history = getExportHistory();
-    history.unshift({
-        ...record,
-        id: crypto.randomUUID(),
-        timestamp: new Date().toISOString(),
-    });
-    // Keep last 50
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(0, 50)));
-}
-
-export function getExportHistory(): ExportRecord[] {
+/**
+ * Registra una exportación en el historial del servidor. No lanza: la
+ * exportación ya se descargó; si no se pudo anotar, se devuelve false.
+ */
+export async function logExportToHistory(record: NewPayrollExport): Promise<boolean> {
     try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        await payrollExportsRepository.log(record);
+        return true;
     } catch (e) {
-        logger.warn('[ExportHistory] Failed to parse history:', e);
-        return [];
+        logger.warn('[ExportHistory] Could not log the export on the server:', e);
+        return false;
     }
 }
 
 const ExportHistoryTab: React.FC = () => {
-    const [history, setHistory] = useState<ExportRecord[]>([]);
+    const [history, setHistory] = useState<PayrollExportRow[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const { t } = useTranslation();
 
-    useEffect(() => {
-        setHistory(getExportHistory());
-    }, []);
+    const load = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            setHistory(await payrollExportsRepository.list());
+        } catch (e) {
+            logger.warn('[ExportHistory] Could not load history:', e);
+            setError(t('pay.hist.load_failed'));
+        } finally {
+            setLoading(false);
+        }
+    }, [t]);
 
-    const handleDelete = (id: string) => {
-        const updated = history.filter(h => h.id !== id);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        setHistory(updated);
-    };
+    useEffect(() => { void load(); }, [load]);
 
-    const handleClearAll = () => {
-        if (!confirm(t('pay.hist.confirm_clear'))) return;
-        localStorage.removeItem(STORAGE_KEY);
-        setHistory([]);
+    const handleDelete = async (record: PayrollExportRow) => {
+        if (!window.confirm(t('pay.hist.confirm_delete', { file: record.filename }))) return;
+        setError(null);
+        try {
+            await payrollExportsRepository.remove(record.id);
+            setHistory(prev => prev.filter(h => h.id !== record.id));
+        } catch (e) {
+            logger.warn('[ExportHistory] Delete failed:', e);
+            setError(t('pay.hist.delete_failed'));
+        }
     };
 
     const formatIcon = (format: string) => {
@@ -88,18 +89,13 @@ const ExportHistoryTab: React.FC = () => {
                     <h3 className="text-lg font-bold text-text-main">{t('pay.hist.title')}</h3>
                     <p className="text-xs text-text-muted">{t('pay.hist.count', { n: history.length })}</p>
                 </div>
-                {history.length > 0 && (
-                    <button
-                        onClick={handleClearAll}
-                        className="text-xs text-red-500 hover:text-red-700 font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                    >
-                        {t('pay.hist.clear_all')}
-                    </button>
-                )}
             </div>
 
+            {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>}
+            {loading && <p className="text-sm text-text-muted">{t('pay.hist.loading')}</p>}
+
             {/* Empty State */}
-            {history.length === 0 ? (
+            {loading ? null : history.length === 0 ? (
                 <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-8 text-center">
                     <span aria-hidden="true" className="material-symbols-outlined text-slate-300 text-4xl mb-2 block">history</span>
                     <p className="text-sm text-text-muted">{t('pay.hist.empty')}</p>
@@ -115,19 +111,22 @@ const ExportHistoryTab: React.FC = () => {
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold text-text-main truncate">{record.filename}</p>
                                 <p className="text-xs text-text-muted">
-                                    {record.format.toUpperCase()} • {t('pay.hist.line', { n: record.recordCount, total: formatNZD(record.totalEarnings, 0) })}
+                                    {record.format.toUpperCase()} • {t('pay.hist.line', { n: record.record_count, total: formatNZD(Number(record.total_earnings), 0) })}
+                                </p>
+                                <p className="text-[11px] text-text-muted">
+                                    {t('pay.hist.week', { from: formatNZDate(record.week_start, 'dayMonth'), to: formatNZDate(record.week_end, 'medium') })}
                                 </p>
                             </div>
                             <div className="text-right">
                                 <p className="text-xs text-text-muted">
-                                    {formatNZDate(record.timestamp, 'dayMonth')}
+                                    {formatNZDate(record.exported_at, 'dayMonth')}
                                 </p>
                                 <p className="text-[10px] text-text-muted">
-                                    {formatNZTime(record.timestamp)}
+                                    {formatNZTime(record.exported_at)}
                                 </p>
                             </div>
-                            <button aria-label={t('hr.docs.delete')}
-                                onClick={() => handleDelete(record.id)}
+                            <button aria-label={t('pay.hist.delete_for', { file: record.filename })}
+                                onClick={() => void handleDelete(record)}
                                 className="text-slate-300 hover:text-red-500 transition-colors"
                                 title={t('hr.docs.delete')}
                             >

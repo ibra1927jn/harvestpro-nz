@@ -130,6 +130,8 @@ const shared: TranslationDict = {
     'ui.loading_app': 'Cargando la aplicación',
     'ui.otp_digit': 'Dígito {n} del código',
     'ui.loading': 'Cargando',
+    'nav.runners_now': 'Runners',
+    'nav.my_timesheet': 'Mi hoja',
 };
 
 export default shared;

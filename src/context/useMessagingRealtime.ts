@@ -12,12 +12,17 @@ import { messagingRepository } from '@/repositories/messaging.repository';
 import type { MessagingState } from './messaging.types';
 import { withUnreadCounts } from './messagingLogic';
 
+/** Espera para juntar varios mensajes nuevos en una sola consulta de contadores */
+export const UNREAD_REFRESH_DEBOUNCE_MS = 2000;
+
 export function useMessagingRealtime(params: {
   setState: Dispatch<SetStateAction<MessagingState>>;
   userIdRef: MutableRefObject<string | null>;
   orchardIdRef: MutableRefObject<string | null>;
+  /** Conversaciones silenciadas por mí: sin notificación del sistema */
+  mutedIdsRef?: MutableRefObject<Set<string>>;
 }): void {
-  const { setState, userIdRef, orchardIdRef } = params;
+  const { setState, userIdRef, orchardIdRef, mutedIdsRef } = params;
 
   // Mensajes que no salieron: se envían al abrir la app y al volver la conexión
   useEffect(() => {
@@ -78,21 +83,35 @@ export function useMessagingRealtime(params: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orchardIdRef.current]);
 
-  // Mensajes nuevos (RLS: solo de mis conversaciones) → contadores al día
+  // Mensajes nuevos (RLS: solo de mis conversaciones) → contadores al día.
+  // Varios mensajes seguidos se juntan en una sola consulta de contadores
+  // (antes, cada mensaje del grupo lanzaba my_unread_counts en cada móvil del grupo).
   useEffect(() => {
+    let unreadTimer: ReturnType<typeof setTimeout> | null = null;
+    const refreshUnread = () => {
+      if (unreadTimer) return;
+      unreadTimer = setTimeout(() => {
+        unreadTimer = null;
+        messagingRepository.getUnreadCounts().then(map => {
+          setState(prev => withUnreadCounts(prev, map));
+        }).catch(() => undefined);
+      }, UNREAD_REFRESH_DEBOUNCE_MS);
+    };
     const channel = supabase
       .channel('my-chat-messages')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, payload => {
         const msg = payload.new as { sender_id?: string; content?: string; conversation_id?: string };
         if (!userIdRef.current || msg.sender_id === userIdRef.current) return;
-        messagingRepository.getUnreadCounts().then(map => {
-          setState(prev => withUnreadCounts(prev, map));
-        }).catch(() => undefined);
+        refreshUnread();
+        if (msg.conversation_id && mutedIdsRef?.current.has(msg.conversation_id)) return;
         if (document.hidden && msg.content) {
           void showSystemNotification('New message', msg.content.slice(0, 120), `chat-${msg.conversation_id}`);
         }
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [setState, userIdRef]);
+    return () => {
+      if (unreadTimer) clearTimeout(unreadTimer);
+      supabase.removeChannel(channel);
+    };
+  }, [setState, userIdRef, mutedIdsRef]);
 }

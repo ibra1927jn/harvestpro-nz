@@ -47,6 +47,7 @@ const DrawerBody: React.FC<DrawerBodyProps> = ({ data, pickerId, crew, activeTab
             {/* Profile Header */}
             <ProfileHeader
                 theme={theme}
+                userId={pickerId}
                 displayName={profile.displayName}
                 displayPickerId={profile.displayPickerId}
                 currentStatus={profile.currentStatus}

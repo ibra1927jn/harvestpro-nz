@@ -20,6 +20,9 @@ import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import { UnclosedShiftsAlert } from '@/components/common/UnclosedShiftsAlert';
 import { formatNZNumber, formatNZD, formatNZDate } from '@/utils/nzFormat';
 import { useTranslation } from '@/i18n';
+import { useMessaging } from '@/context/MessagingContext';
+import { CHAT_NAV_ITEM, CHAT_TAB_ID, withChatBadge } from '@/config/navigation/chat.nav';
+import ChatTabView from '@/components/common/messaging/ChatTabView';
 
 const PAYROLL_NAV: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', labelKey: 'nav.dashboard', icon: 'dashboard' },
@@ -27,6 +30,7 @@ const PAYROLL_NAV: NavItem[] = [
     { id: 'wages', label: 'Wage Calculator', labelKey: 'nav.wage_calculator', icon: 'calculate' },
     { id: 'export', label: 'Export', labelKey: 'nav.export', icon: 'download' },
     { id: 'history', label: 'History', labelKey: 'nav.history', icon: 'history' },
+    CHAT_NAV_ITEM,
 ];
 
 const Payroll: React.FC = () => {
@@ -34,10 +38,11 @@ const Payroll: React.FC = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
     const pay = usePayroll();
 
-    const navItems = PAYROLL_NAV.map(item => ({
+    const { unreadCount } = useMessaging();
+    const navItems = withChatBadge(PAYROLL_NAV.map(item => ({
         ...item,
         badge: item.id === 'dashboard' && pay.compliance.workers_below_minimum > 0 ? pay.compliance.workers_below_minimum : undefined,
-    }));
+    })), unreadCount);
 
     if (pay.isLoading && !pay.hasLoadedOnce) {
         return (
@@ -52,6 +57,8 @@ const Payroll: React.FC = () => {
 
     return (
         <ResponsiveLayout navItems={navItems} mobileTabs={navItems} activeTab={activeTab} onTabChange={setActiveTab} title={t('pay.page_title')} subtitle={t('pay.page_subtitle')} accentColor="orange" titleIcon="payments">
+            {/* Chat: sin la cabecera de la semana de pago */}
+            {activeTab === CHAT_TAB_ID ? <ChatTabView /> : (<>
             {/* Semana de pago: la nómina es semanal y se cierra el lunes siguiente */}
             <div className="flex items-center justify-between gap-3 mb-4" data-testid="pay-week-selector">
                 <button type="button" onClick={() => pay.goToWeek(-1)} aria-label={t('pay.prev_week')} className="p-2 rounded-xl hover:bg-slate-100">
@@ -133,6 +140,7 @@ const Payroll: React.FC = () => {
                 {activeTab === 'export' && <ComponentErrorBoundary componentName="Export"><ExportTab pickers={pay.pickers} week={pay.week} isLoading={pay.isLoading} closedAt={pay.closedInfo?.closed_at ?? null} /></ComponentErrorBoundary>}
                 {activeTab === 'history' && <ComponentErrorBoundary componentName="Export History"><ExportHistoryTab /></ComponentErrorBoundary>}
             </div>
+            </>)}
         </ResponsiveLayout>
     );
 };

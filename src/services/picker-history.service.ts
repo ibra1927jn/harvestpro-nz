@@ -7,8 +7,10 @@
 import { pickerHistoryRepository } from '@/repositories/picker-history.repository';
 import { logger } from '@/utils/logger';
 import { nzMidnight } from '@/utils/nzst';
-import { payForRange, pieceRateFor, nzDateOf, PAY_RULES } from '@/services/harvestMetrics/pay';
-import { payRatesRepository, loadOrchardNames } from '@/repositories/pay-rates.repository';
+import { payForRange, pieceRateOn, nzDateOf, PAY_RULES } from '@/services/harvestMetrics/pay';
+import { loadOrchardNames } from '@/repositories/pay-rates.repository';
+import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
+import { countCriteriaFailures, type CriterionFailureCount } from '@/services/qcCriteria';
 
 // --- Types ---
 export interface PickerProfile {
@@ -44,6 +46,12 @@ export interface QualitySummary {
   gradeC: number;
   reject: number;
   score: number; // 0-100, A=100, B=70, C=40, reject=0
+  /**
+   * Criterios con regular / mal en las inspecciones del periodo (solo los que
+   * fallaron alguna vez, el peor primero). Vacío si las inspecciones no traen
+   * criterios (formato anterior).
+   */
+  flaggedCriteria: CriterionFailureCount[];
 }
 
 export interface RiskBadge {
@@ -103,7 +111,9 @@ class PickerHistoryService {
 
       // 6. Get day setups for variety info
       const daySetups = await pickerHistoryRepository.getDaySetupsSince(orchardId, sinceStr);
-      const rates = await payRatesRepository.load().catch(() => ({ varietyRates: [], orchardRates: {} }));
+      // Precio de cada día (piece_rates): un cambio de hoy no reescribe los días pasados
+      const { rates, orchardFallbacks } = await pieceRatesRepository.loadForPay(sinceStr, nzDateOf(new Date()))
+        .catch(() => ({ rates: [], orchardFallbacks: {} as Record<string, number> }));
       const orchardNames = await loadOrchardNames().catch(() => ({} as Record<string, string>));
 
       // --- Compute daily records ---
@@ -139,7 +149,7 @@ class PickerHistoryService {
           attendance: shifts.map(a => ({ pickerId, date, orchardId: a.orchard_id, checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes })),
           buckets: dayBuckets.map(b => ({
             pickerId, scannedAt: b.scanned_at, qualityGrade: b.quality_grade, orchardId: b.orchard_id, variety: b.variety,
-            pieceRate: pieceRateFor({ orchardId: b.orchard_id, variety: b.variety }, { ...rates, fallback }),
+            pieceRate: pieceRateOn(rates, b.orchard_id, b.variety, nzDateOf(b.scanned_at), orchardFallbacks[b.orchard_id ?? ''] ?? fallback),
           })),
           pieceRate: fallback,
           minWage: setup?.min_wage_rate || PAY_RULES.minWageFloor,
@@ -211,9 +221,9 @@ class PickerHistoryService {
     }
   }
 
-  private computeQuality(inspections: Array<{ quality_grade: string | null }>): QualitySummary {
+  private computeQuality(inspections: Array<{ quality_grade: string | null; criteria?: unknown }>): QualitySummary {
     const total = inspections.length;
-    if (total === 0) return { total: 0, gradeA: 0, gradeB: 0, gradeC: 0, reject: 0, score: 0 };
+    if (total === 0) return { total: 0, gradeA: 0, gradeB: 0, gradeC: 0, reject: 0, score: 0, flaggedCriteria: [] };
 
     const gradeA = inspections.filter(
       i => i.quality_grade === 'A' || i.quality_grade === 'good'
@@ -226,8 +236,10 @@ class PickerHistoryService {
       i => i.quality_grade === 'reject' || i.quality_grade === 'bad'
     ).length;
     const score = Math.round((gradeA * 100 + gradeB * 70 + gradeC * 40) / total);
+    // Criterios (null en inspecciones antiguas: countCriteriaFailures los ignora)
+    const flaggedCriteria = countCriteriaFailures(inspections).filter(c => c.total > 0);
 
-    return { total, gradeA, gradeB, gradeC, reject, score };
+    return { total, gradeA, gradeB, gradeC, reject, score, flaggedCriteria };
   }
 
   private computeRiskBadges(

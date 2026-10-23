@@ -15,7 +15,7 @@ vi.mock('@/stores/useHarvestStore', () => ({
 
 import { ExportTab } from './PayrollTabs';
 import { exportService } from '@/services/export.service';
-import { getExportHistory } from './ExportHistoryTab';
+import { payrollExportsRepository } from '@/repositories/payroll-exports.repository';
 
 const WEEK = { start: '2026-10-05', end: '2026-10-11', closesOn: '2026-10-12' };
 const row = (o: Partial<PickerBreakdown>): PickerBreakdown => ({
@@ -40,12 +40,17 @@ describe('ExportTab', () => {
 
     it('al pulsar Xero descarga el fichero con el código de empleado y lo apunta en el historial', () => {
         const download = vi.spyOn(exportService, 'downloadFile').mockImplementation(() => {});
+        const log = vi.spyOn(payrollExportsRepository, 'log').mockResolvedValue({} as never);
         render(<ExportTab pickers={[row({})]} week={WEEK} />);
         fireEvent.click(screen.getByText('Xero'));
         const [content, filename] = download.mock.calls[0];
         expect(filename).toBe('xero-payroll-2026-10-05_to_2026-10-11-DRAFT.csv');
         expect(content).toContain('EMP001,Ana,Minimum Wage Top-Up,7.50');
-        expect(getExportHistory()[0]).toMatchObject({ format: 'xero', recordCount: 1, totalEarnings: 179.63 });
+        // Historial en el servidor (payroll_exports), con la semana exportada
+        expect(log).toHaveBeenCalledWith({
+            week_start: '2026-10-05', week_end: '2026-10-11', format: 'xero',
+            filename: 'xero-payroll-2026-10-05_to_2026-10-11-DRAFT.csv', record_count: 1, total_earnings: 179.63, week_status: 'draft',
+        });
         expect(screen.getByRole('status').textContent).toContain('xero-payroll');
     });
 

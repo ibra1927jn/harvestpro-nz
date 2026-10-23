@@ -309,6 +309,9 @@ BEGIN
     RETURNING id INTO v_id;
     INSERT INTO sec_test.ids VALUES (o || '.att_tl', v_id);
 
+    -- Un contrato activo que ya tuviera la persona en la base local (demo, otras
+    -- pruebas a mano) choca con «uno activo por persona»; dentro del ROLLBACK se aparta
+    UPDATE public.contracts SET status = 'expired' WHERE employee_id = v_runner AND status = 'active';
     INSERT INTO public.contracts (employee_id, orchard_id, type, status, start_date, hourly_rate, created_by)
     VALUES (v_runner, v_orchard, 'seasonal', 'active', v_today - 10, 25.00, v_hr) RETURNING id INTO v_id;
     INSERT INTO sec_test.ids VALUES (o || '.contract', v_id);
@@ -410,6 +413,11 @@ BEGIN
     -- Las semanas ya cerradas en la BD (datos reales) bloquearían los fichajes
     -- de prueba de hoy: dentro de esta transacción (ROLLBACK) se reabren
     UPDATE public.pay_weeks SET status = 'reopened' WHERE status = 'closed';
+    -- Igual con los días cerrados recientes del seed (trg_enforce_closed_day_attendance
+    -- bloquearía los fichajes de prueba de hace unos días). Los cierres de prueba
+    -- (hace 200 y 400 días) se quedan.
+    UPDATE public.day_closures SET status = 'open'
+    WHERE status = 'closed' AND date > (now() AT TIME ZONE 'Pacific/Auckland')::date - 100;
 
     -- Las pruebas usan el valor de producción (2FA exigido en el servidor),
     -- aunque la BD de desarrollo lo tenga apagado (scripts/dev-disable-mfa.sql)

@@ -47,14 +47,14 @@ describe('AnalyticsService.calculateWageStatus', () => {
 describe('AnalyticsService.calculateETA', () => {
     it('returns Complete when target already reached', () => {
         const result = analyticsService.calculateETA(5, 3, 10);
-        expect(result.status).toBe('ahead');
+        expect(result.status).toBe('complete');
         expect(result.eta).toBe('Complete!');
         expect(result.hoursRemaining).toBe(0);
     });
 
-    it('returns behind when velocity is 0', () => {
+    it('returns no_data when velocity is 0', () => {
         const result = analyticsService.calculateETA(1, 10, 0);
-        expect(result.status).toBe('behind');
+        expect(result.status).toBe('no_data');
         expect(result.hoursRemaining).toBe(Infinity);
     });
 
@@ -62,7 +62,7 @@ describe('AnalyticsService.calculateETA', () => {
         const result = analyticsService.calculateETA(0, 1, 72);
         // 1 ton * 72 buckets/ton / 72 velocity = 1 hr
         expect(result.hoursRemaining).toBeCloseTo(1, 1);
-        expect(['ahead', 'on_track', 'behind']).toContain(result.status);
+        expect(result.status).toBe('projected');
     });
 });
 

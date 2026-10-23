@@ -1,4 +1,5 @@
 import { PAY_RULES } from '@/services/harvestMetrics/pay';
+import type { DailyPieceRate } from '@/services/harvestMetrics/pay';
 export enum Role {
   MANAGER = 'manager',
   TEAM_LEADER = 'team_leader',
@@ -38,6 +39,12 @@ export interface AppUser {
   updated_at?: string;
   /** NZ Privacy Act 2020: timestamp when user accepted privacy consent. NULL = pending */
   privacy_consent_at?: string;
+  /** Mi cuenta: ruta de la foto en el almacén privado "avatars" (<uid>/avatar-<ts>.jpg); null = iniciales */
+  avatar_url?: string | null;
+  /** Mi cuenta: teléfono de contacto que escribe la propia persona */
+  phone?: string | null;
+  /** Mi cuenta: idioma preferido de la app (código de Locale) */
+  preferred_locale?: string | null;
 }
 
 export interface Picker {
@@ -100,24 +107,23 @@ export interface HarvestSettings {
   variety?: string;
   /** Hora de inicio de turno (HH:MM, 24h, default: '07:00') */
   shift_start_time?: string;
-  /** Hora de fin de turno (HH:MM, 24h, default: '17:00') */
+  /**
+   * @deprecated Sin uso desde 2026-10-21: no hay hora de fin de turno (cada equipo
+   * y runner termina cuando ficha su salida). La columna sigue en la tabla.
+   */
   shift_end_time?: string;
   /** Horas que dura la confianza de dispositivo MFA (default: 72) */
   mfa_device_trust_ttl_hours?: number;
   /**
-   * Precio por cubeta de cada variedad (tabla variety_rates): los del huerto y
-   * los de la empresa (orchard_id null). Sin precio de variedad, piece_rate.
+   * Precios por cubeta que valen HOY en el huerto (tabla piece_rates, el último
+   * fijado de cada variedad y el general). piece_rate ya es el general de hoy.
+   * El precio de una cubeta: pieceRateOn(piece_rates, huerto, variedad, día, piece_rate).
    */
-  variety_rates?: VarietyRate[];
+  piece_rates?: DailyPieceRate[];
 }
 
-export interface VarietyRate {
-  id?: string;
-  /** null = precio de la empresa para esa variedad */
-  orchard_id: string | null;
-  variety: string;
-  piece_rate: number;
-}
+/** Precio por cubeta fijado un día (piece_rates); ver pieceRateOn en harvestMetrics/pay.ts */
+export type { DailyPieceRate } from '@/services/harvestMetrics/pay';
 
 /** Un tramo de trabajo de hoy (entrada/salida en un huerto) */
 export interface AttendanceShift {
@@ -220,6 +226,8 @@ export interface BucketRecord {
   bucket_count?: number;
   scanned_at?: string; // Added for Manager.tsx compatibility
   row_number?: number;
+  /** Usuario (runner / team leader) que escaneó la cubeta */
+  scanned_by?: string | null;
   // Runtime props from Supabase joins
   created_at?: string;
   picker_name?: string;
@@ -341,6 +349,9 @@ export interface AttendanceRecord {
   verified_by?: string;
   /** Hora del descanso de comida anotada por el team leader */
   break_start?: string | null;
+  /** Fin del descanso (pase de lista); null con break_start = en descanso */
+  break_end?: string | null;
+  break_minutes?: number | null;
 }
 
 export interface LiveProductionStat {

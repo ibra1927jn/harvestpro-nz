@@ -43,6 +43,13 @@ describe('messageOutbox', () => {
         expect(await messageOutbox.pendingCount()).toBe(0);
     });
 
+    it('a reply queued offline goes out with the message it quotes', async () => {
+        await messageOutbox.queue({ ...msg('a', '2026-10-13T10:01:00+13:00'), reply_to_id: 'orig' });
+        sendMessage.mockResolvedValue({});
+        expect(await messageOutbox.flush()).toBe(1);
+        expect(sendMessage.mock.calls[0][3]).toMatchObject({ id: 'a', replyToId: 'orig' });
+    });
+
     it('treats an already-delivered message as sent (no duplicate)', async () => {
         await messageOutbox.queue(msg('a', '2026-10-13T10:01:00+13:00'));
         sendMessage.mockRejectedValue({ code: '23505', message: 'duplicate key' });

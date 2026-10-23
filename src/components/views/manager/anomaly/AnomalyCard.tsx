@@ -12,9 +12,11 @@ interface AnomalyCardProps {
     anomaly: Anomaly;
     index: number;
     onViewProfile: (pickerId: string) => void;
+    /** Descartar como falsa alarma (se guarda; no vuelve a salir) */
+    onDismiss?: (anomaly: Anomaly) => void;
 }
 
-const AnomalyCard: React.FC<AnomalyCardProps> = ({ anomaly, index, onViewProfile }) => {
+const AnomalyCard: React.FC<AnomalyCardProps> = ({ anomaly, index, onViewProfile, onDismiss }) => {
     const { t } = useTranslation();
     const config = ANOMALY_CONFIG[anomaly.type];
     const ruleBadge = RULE_BADGE[anomaly.rule] || RULE_BADGE['elapsed_velocity'];
@@ -71,8 +73,18 @@ const AnomalyCard: React.FC<AnomalyCardProps> = ({ anomaly, index, onViewProfile
                 )}
             </div>
 
-            <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs font-bold text-slate-400 group-hover:text-primary transition-colors">
+            <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center gap-2 text-xs font-bold text-slate-400 group-hover:text-primary transition-colors">
                 <span>{t('fraud.inspect_profile')}</span>
+                {onDismiss && (
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onDismiss(anomaly); }}
+                        aria-label={t('fraud.dismiss_for', { name: anomaly.pickerName })}
+                        className="ml-auto px-2 py-1 rounded-md border border-slate-200 text-slate-500 hover:text-emerald-700 hover:border-emerald-200 hover:bg-emerald-50"
+                    >
+                        {t('fraud.dismiss')}
+                    </button>
+                )}
                 <span aria-hidden="true" className="material-symbols-outlined text-lg">chevron_right</span>
             </div>
         </div>

@@ -3,17 +3,20 @@
  *
  * Shows a compact dropdown in the page header that lets users
  * with access to multiple orchards switch between them.
- * Only renders when the user has 2+ orchards.
+ * Only renders when the user has 2+ orchards and a company / office role
+ * (admin, manager, HR, payroll): field roles cannot change their own orchard
+ * (the server refuses it too: guard_user_changes).
  *
  * @module components/common/OrchardSwitcher
  */
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTranslation } from '@/i18n';
+import { canSwitchOwnOrchard } from '@/config/orchardAccess';
 
 export default function OrchardSwitcher() {
   const { t } = useTranslation();
-  const { orchardId, orchardName, availableOrchards, switchOrchard } = useAuth();
+  const { orchardId, orchardName, availableOrchards, switchOrchard, currentRole, appUser } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -32,8 +35,9 @@ export default function OrchardSwitcher() {
   // devolver availableOrchards undefined. Defensive: tratar como lista vacía.
   const orchards = availableOrchards ?? [];
 
-  // Don't render if user has only one orchard
+  // Don't render if user has only one orchard, or cannot switch it themselves
   if (orchards.length <= 1) return null;
+  if (!canSwitchOwnOrchard(currentRole ?? appUser?.role)) return null;
 
   return (
     <div ref={dropdownRef} className="relative">

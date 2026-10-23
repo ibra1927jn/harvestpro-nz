@@ -31,6 +31,8 @@ import shared from './shared';
 import status from './status';
 import sync from './sync';
 import teamLeader from './teamLeader';
+import account from './account';
+import comms from './comms';
 
 // Claves propias de este idioma (sin heredar de otro: el checker exige todas)
 const es: TranslationDict = {
@@ -66,6 +68,8 @@ const es: TranslationDict = {
     ...status,
     ...sync,
     ...teamLeader,
+    ...account,
+    ...comms,
 };
 
 export default es;

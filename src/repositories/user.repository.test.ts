@@ -8,7 +8,7 @@ import { userRepository2 } from './user.repository';
 function mockChain(result: { data?: unknown; error?: unknown; count?: number }) {
     const chain: Record<string, unknown> = {
         select: vi.fn(() => chain), eq: vi.fn(() => chain), is: vi.fn(() => chain), in: vi.fn(() => chain),
-        order: vi.fn(() => chain), limit: vi.fn(() => chain),
+        order: vi.fn(() => chain), range: vi.fn(() => chain), limit: vi.fn(() => chain),
         then: (onF?: (v: unknown) => unknown, onR?: (r: unknown) => unknown) =>
             Promise.resolve(result).then(onF, onR),
     };

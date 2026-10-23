@@ -99,14 +99,15 @@ describe('simpleMessagingService', () => {
     it('getUsers maps user records to simplified format', async () => {
         vi.spyOn(userRepository2, 'getAll').mockResolvedValue([
             { id: 'u1', full_name: 'Alice', role: 'manager' },
-            { id: 'u2', full_name: null, role: null },
+            { id: 'u2', full_name: null, role: 'logistics' },
+            { id: 'u3', full_name: 'Inactive', role: 'hr_admin', is_active: false },
         ] as never);
 
         const result = await simpleMessagingService.getUsers();
 
         expect(result).toEqual([
             { id: 'u1', name: 'Alice', role: 'manager' },
-            { id: 'u2', name: 'Unknown', role: 'picker' },
+            { id: 'u2', name: 'Unknown', role: 'logistics' },
         ]);
     });
 

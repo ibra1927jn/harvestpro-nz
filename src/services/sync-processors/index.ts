@@ -11,6 +11,9 @@ export { processAttendance } from './attendance.processor';
 export { processPicker } from './picker.processor';
 export { processQCInspection } from './qc-inspection.processor';
 export { processUnlink } from './unlink.processor';
+export { processBin } from './bin.processor';
+export { processLeaveRequest } from './leave.processor';
+export { processChatReaction } from './chat-reaction.processor';
 
 export type {
     ScanPayload,
@@ -21,6 +24,9 @@ export type {
     TimesheetPayload,
     PickerPayload,
     QCInspectionPayload,
+    BinPayload,
+    LeaveRequestPayload,
+    ChatReactionPayload,
     SyncPayload,
     PendingItem,
 } from './types';

@@ -76,21 +76,26 @@ describe('Analytics Service', () => {
         it('should return "Complete!" when target already met', () => {
             const result = analyticsService.calculateETA(10, 10, 50);
             expect(result.eta).toBe('Complete!');
-            expect(result.status).toBe('ahead');
+            expect(result.status).toBe('complete');
             expect(result.hoursRemaining).toBe(0);
         });
 
         it('should return "Complete!" when current exceeds target', () => {
             const result = analyticsService.calculateETA(15, 10, 50);
             expect(result.eta).toBe('Complete!');
-            expect(result.status).toBe('ahead');
+            expect(result.status).toBe('complete');
         });
 
         it('should handle zero velocity', () => {
             const result = analyticsService.calculateETA(5, 10, 0);
             expect(result.eta).toBe('Awaiting data...');
-            expect(result.status).toBe('behind');
+            expect(result.status).toBe('no_data');
             expect(result.hoursRemaining).toBe(Infinity);
+        });
+
+        it('with velocity: status is "projected" (no shift end to compare against)', () => {
+            const result = analyticsService.calculateETA(5, 10, 40);
+            expect(result.status).toBe('projected');
         });
 
         it('should calculate hours remaining correctly', () => {
@@ -170,11 +175,11 @@ describe('Analytics Service', () => {
             expect(result).toEqual([{ hour: '15:00', count: 1 }, { hour: '16:00', count: 1 }]);
         });
 
-        it('computes the ETA and the end of shift in NZ time', () => {
-            // faltan 2 h → 18:30 NZ, después del fin de turno (17:00 NZ)
-            const result = analyticsService.calculateETA(0, 2, 72, 72, '17:00');
+        it('computes the ETA in NZ time (no shift end, so no behind/ahead)', () => {
+            // faltan 2 h → 18:30 NZ
+            const result = analyticsService.calculateETA(0, 2, 72, 72);
             expect(result.eta).toBe('18:30');
-            expect(result.status).toBe('behind');
+            expect(result.status).toBe('projected');
         });
     });
 });

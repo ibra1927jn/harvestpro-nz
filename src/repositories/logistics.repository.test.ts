@@ -8,7 +8,7 @@ import { logisticsRepository } from './logistics.repository';
 function mockChain(result: { data?: unknown; error?: unknown }) {
     const chain: Record<string, unknown> = {
         select: vi.fn(() => chain), eq: vi.fn(() => chain), in: vi.fn(() => chain),
-        order: vi.fn(() => chain), limit: vi.fn(() => chain),
+        order: vi.fn(() => chain), limit: vi.fn(() => chain), is: vi.fn(() => chain), range: vi.fn(() => chain),
         then: (onF?: (v: unknown) => unknown, onR?: (r: unknown) => unknown) =>
             Promise.resolve(result).then(onF, onR),
     };
@@ -47,6 +47,15 @@ describe('logisticsRepository', () => {
             const bins = [{ id: 'b1', status: 'empty' }];
             fromSpy.mockReturnValue(mockChain({ data: bins, error: null }) as never);
             expect(await logisticsRepository.getBinInventory()).toEqual(bins);
+        });
+
+        it('skips retired bins and reads every page with a stable order', async () => {
+            const chain = mockChain({ data: [], error: null });
+            fromSpy.mockReturnValue(chain as never);
+            await logisticsRepository.getBinInventory('o1');
+            expect(chain.is).toHaveBeenCalledWith('deleted_at', null);
+            expect(chain.order).toHaveBeenCalledWith('id');
+            expect(chain.range).toHaveBeenCalledWith(0, 999);
         });
 
         it('throws on error', async () => {

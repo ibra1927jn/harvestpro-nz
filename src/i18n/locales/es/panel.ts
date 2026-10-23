@@ -72,10 +72,6 @@ const panel: TranslationDict = {
     'panel.history.col.earned': 'GANADO',
     'panel.history.daily_output_title': 'Producción diaria (últimos {n} días)',
     // Quality
-    'panel.quality.grade_a': 'Grado A',
-    'panel.quality.grade_b': 'Grado B',
-    'panel.quality.grade_c': 'Grado C',
-    'panel.quality.rejected': 'Rechazado',
     'panel.quality.overall': 'Puntaje de Calidad General',
     'panel.quality.from': 'de {n} inspecciones',
     'panel.quality.none': 'Sin inspecciones de calidad aún',

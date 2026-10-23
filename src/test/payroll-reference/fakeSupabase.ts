@@ -1,7 +1,7 @@
 /**
  * Supabase falso (en memoria) con lo justo para ejecutar computePayroll de la
- * Edge Function en Vitest: from().select().is().eq().in().gte().lte().lt()
- * .order().range() y await. Los filtros comparan fechas/timestamps como
+ * Edge Function en Vitest: from().select().is().eq().in().gte().lte().lt().gt()
+ * .order().range(), rpc('piece_rates_as_of') y await. Los filtros comparan fechas/timestamps como
  * instantes (igual que Postgres), no como texto.
  */
 type Row = Record<string, unknown>;
@@ -28,6 +28,7 @@ class Query implements PromiseLike<{ data: Row[]; error: null }> {
     gte(col: string, v: unknown): this { this.filters.push(r => r[col] != null && cmpValue(r[col]) >= cmpValue(v)); return this; }
     lte(col: string, v: unknown): this { this.filters.push(r => r[col] != null && cmpValue(r[col]) <= cmpValue(v)); return this; }
     lt(col: string, v: unknown): this { this.filters.push(r => r[col] != null && cmpValue(r[col]) < cmpValue(v)); return this; }
+    gt(col: string, v: unknown): this { this.filters.push(r => r[col] != null && cmpValue(r[col]) > cmpValue(v)); return this; }
     order(): this { return this; }
     range(from: number, to: number): this { this.from = from; this.to = to; return this; }
 
@@ -45,10 +46,27 @@ class Query implements PromiseLike<{ data: Row[]; error: null }> {
     }
 }
 
+/** piece_rates_as_of(p_date): por (huerto, variedad) la fila con la mayor effective_date <= p_date */
+function pieceRatesAsOf(rows: Row[], date: string, orchardIds: string[] | null): Row[] {
+    const best = new Map<string, Row>();
+    for (const r of rows) {
+        const d = String(r.effective_date);
+        if (d > date || (orchardIds && !orchardIds.includes(String(r.orchard_id)))) continue;
+        const k = `${String(r.orchard_id)}|${String(r.variety ?? '').trim().toLowerCase()}`;
+        const cur = best.get(k);
+        if (!cur || String(cur.effective_date) < d) best.set(k, r);
+    }
+    return [...best.values()];
+}
+
 export function fakeSupabase(tables: Record<string, Row[]>) {
     return {
         from(table: string) {
             return new Query(tables[table] ?? [], null);
+        },
+        async rpc(name: string, args: Record<string, unknown>) {
+            if (name !== 'piece_rates_as_of') return { data: null, error: { message: `unknown rpc ${name}` } };
+            return { data: pieceRatesAsOf(tables.piece_rates ?? [], String(args.p_date), (args.p_orchard_ids as string[] | null | undefined) ?? null), error: null };
         },
     };
 }

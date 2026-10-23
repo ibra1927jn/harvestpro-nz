@@ -195,7 +195,8 @@ describe('MessagingContext', () => {
             });
 
             expect(mocks.sendMessage).toHaveBeenCalledWith('conv-1', 'user-1', 'Hello!', expect.objectContaining({ id: expect.any(String) }));
-            expect(mocks.updateConversationTimestamp).toHaveBeenCalledWith('conv-1');
+            // conversations.updated_at lo pone un trigger: el cliente ya no lo actualiza
+            expect(mocks.updateConversationTimestamp).not.toHaveBeenCalled();
             expect(response).toEqual(mockMsg);
         });
 
@@ -216,6 +217,24 @@ describe('MessagingContext', () => {
                     recipient_id: 'conv-1',
                 })
             );
+        });
+
+        it('a reply carries reply_to_id online and in the offline queue', async () => {
+            mocks.sendMessage.mockResolvedValueOnce({ id: 'r1', reply_to_id: 'orig' });
+            const { result } = renderHook(() => useMessaging(), { wrapper });
+            act(() => { result.current.setUserId('user-1'); });
+            await act(async () => {
+                await result.current.sendMessage('conv-1', 'Yes', 'normal', { replyToId: 'orig' });
+            });
+            expect(mocks.sendMessage).toHaveBeenLastCalledWith('conv-1', 'user-1', 'Yes', expect.objectContaining({ replyToId: 'orig' }));
+
+            mocks.sendMessage.mockRejectedValueOnce(new Error('Network error'));
+            let queued: { reply_to_id?: string | null; delivery?: string } | null = null;
+            await act(async () => {
+                queued = await result.current.sendMessage('conv-1', 'Later', 'normal', { replyToId: 'orig' });
+            });
+            expect(mocks.messageQueueAdd).toHaveBeenLastCalledWith(expect.objectContaining({ content: 'Later', reply_to_id: 'orig' }));
+            expect(queued).toMatchObject({ reply_to_id: 'orig', delivery: 'pending' });
         });
 
         it('adds optimistic message to state immediately', async () => {

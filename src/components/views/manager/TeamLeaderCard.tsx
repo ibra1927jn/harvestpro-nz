@@ -1,10 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { Picker, HarvestSettings } from '../../../types';
 import { useHarvestStore } from '@/stores/useHarvestStore';
-import { avatarUrl } from '@/utils/avatarUrl';
+import UserAvatar from '@/components/common/account/UserAvatar';
 import { logger } from '@/utils/logger';
 import { useTranslation } from '@/i18n';
 import { ElsewhereBadge } from '@/components/common/ElsewhereBadge';
+import type { LeaveRequest } from '@/services/leave.service';
+import { PresenceBadge } from '@/components/common/PresenceBadge';
+import { countPresence, presenceOf } from '@/services/presence';
 
 interface TeamLeaderCardProps {
     leader: Picker;
@@ -13,9 +16,11 @@ interface TeamLeaderCardProps {
     settings: HarvestSettings | null;
     staggerIndex?: number;
     onRemoveUser?: (userId: string) => Promise<void>;
+    /** Ausencia aprobada de hoy por persona (Equipos: «De permiso») */
+    leaveToday?: ReadonlyMap<string, LeaveRequest>;
 }
 
-const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectUser, settings, staggerIndex = 0, onRemoveUser }) => {
+const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectUser, settings, staggerIndex = 0, onRemoveUser, leaveToday }) => {
     const { t } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
     const [unlinking, setUnlinking] = useState<string | null>(null);
@@ -37,6 +42,9 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
             .map(ra => ra.row_number);
         return [...new Set(rows)].sort((a, b) => a - b);
     };
+
+    // Presencia del equipo (cabecera): fichados y en descanso ahora
+    const teamPresence = countPresence(crew.map(m => presenceOf(m, !!leaveToday?.has(m.id))));
 
     // Calculate Team Stats
     const totalBuckets = crew.reduce((acc, p) => acc + (p.total_buckets_today || 0), 0) + (leader.total_buckets_today || 0);
@@ -79,13 +87,13 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                     onClick={(e) => { e.stopPropagation(); onSelectUser(leader); }}
                     title={t('mgr.view_profile_of', { name: leader.name })}
                 >
-                    <div className="w-14 h-14 rounded-full bg-slate-100 overflow-hidden border-2 border-border-light group-hover/avatar:border-primary group-hover/avatar:shadow-md transition-all">
-                        <img
-                            src={avatarUrl(leader.name, { background: '0f172a', color: 'fff' })}
-                            alt={leader.name}
-                            className="w-full h-full object-cover"
-                        />
-                    </div>
+                    {/* Foto de la cuenta del team leader (Mi cuenta) o iniciales */}
+                    <UserAvatar
+                        name={leader.name}
+                        userId={leader.id}
+                        className="w-14 h-14 rounded-full bg-slate-900 text-white border-2 border-border-light group-hover/avatar:border-primary group-hover/avatar:shadow-md transition-all"
+                        textClassName="text-lg"
+                    />
                     {/* Profile hint on hover */}
                     <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity shadow-sm">
                         <span aria-hidden="true" className="material-symbols-outlined text-[12px]">person</span>
@@ -101,6 +109,10 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                         <span>{crew.length === 1
                             ? t('teams.members_count_one').replace('{n}', '1')
                             : t('teams.members_count_other').replace('{n}', String(crew.length))}</span>
+                        <span>•</span>
+                        <span data-testid={`team-presence-${leader.id}`} className="normal-case">
+                            {t('comms.team_presence', { in: teamPresence.on_shift + teamPresence.on_break, total: crew.length, brk: teamPresence.on_break, leave: teamPresence.on_leave })}
+                        </span>
                         {leaderRows.length > 0 && (
                             <>
                                 <span>•</span>
@@ -151,9 +163,12 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                         onClick={(e) => { e.stopPropagation(); onSelectUser(leader); }}
                         className="flex items-center gap-3 p-3 bg-white rounded-xl border border-primary/20 cursor-pointer hover:border-primary transition-colors group"
                     >
-                        <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden">
-                            <img src={avatarUrl(leader.name)} alt={t('mgr.avatar_of', { name: leader.name })} className="w-full h-full object-cover" />
-                        </div>
+                        <UserAvatar
+                            name={leader.name}
+                            userId={leader.id}
+                            className="w-10 h-10 rounded-full bg-slate-900 text-white"
+                            textClassName="text-sm"
+                        />
                         <div className="flex-1">
                             <p className="font-bold text-text-main text-sm">{leader.name} ({t('mgr.lead')})</p>
                             <p className="text-[10px] text-primary font-bold uppercase">{t('teams.view_profile')}</p>
@@ -175,12 +190,23 @@ const TeamLeaderCard: React.FC<TeamLeaderCardProps> = ({ leader, crew, onSelectU
                                     onClick={(e) => { e.stopPropagation(); onSelectUser(member); }}
                                     className="flex items-center gap-3 flex-1 min-w-0"
                                 >
-                                    <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden flex-shrink-0">
-                                        <img src={avatarUrl(member.name)} alt={t('mgr.avatar_of', { name: member.name })} className="w-full h-full object-cover" />
-                                    </div>
+                                    <UserAvatar
+                                        name={member.name}
+                                        userId={member.id}
+                                        className="w-10 h-10 rounded-full bg-slate-100 text-slate-700"
+                                        textClassName="text-sm"
+                                    />
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-text-main text-sm truncate">{member.name}</p>
                                         {member.elsewhere && <div className="mt-0.5 max-w-full overflow-hidden"><ElsewhereBadge person={member} /></div>}
+                                        {/* Presencia de hoy (fichajes en vivo + ausencias aprobadas) */}
+                                        <div className="mt-0.5">
+                                            <PresenceBadge
+                                                testId={`presence-${member.id}`}
+                                                presence={presenceOf(member, !!leaveToday?.has(member.id))}
+                                                leaveTypeLabel={leaveToday?.get(member.id) ? t(`leave.type.${leaveToday.get(member.id)!.type}`) : undefined}
+                                            />
+                                        </div>
                                         <div className="flex justify-between items-center mt-0.5">
                                             <div className="flex items-center gap-1.5">
                                                 <span className="text-[10px] text-slate-400 font-mono">{member.picker_id || '---'}</span>

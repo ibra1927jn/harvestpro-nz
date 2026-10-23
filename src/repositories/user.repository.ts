@@ -2,6 +2,7 @@
  * User Repository — Domain queries for users table
  */
 import { supabase } from '@/services/supabase';
+import { fetchInChunks } from '@/utils/fetchInChunks';
 
 /** Persona de la empresa para RRHH */
 export interface StaffMember {
@@ -46,9 +47,14 @@ export const userRepository2 = {
     /** Nombres por id: plantilla (pickers) y, si no está, cuentas de la app (oficina) */
     async getNamesByIds(ids: string[]): Promise<Record<string, string>> {
         if (ids.length === 0) return {};
-        const [{ data: staff }, { data: users }] = await Promise.all([
-            supabase.from('pickers').select('id, name').in('id', ids),
-            supabase.from('users').select('id, full_name').in('id', ids),
+        // Por trozos: alertas de RRHH con muchas personas daban 414 (URL larga)
+        const [staff, users] = await Promise.all([
+            fetchInChunks(ids, (chunk, from, to) =>
+                supabase.from('pickers').select('id, name').in('id', chunk).order('id').range(from, to),
+            ).catch(() => [] as { id: string; name: string | null }[]),
+            fetchInChunks(ids, (chunk, from, to) =>
+                supabase.from('users').select('id, full_name').in('id', chunk).order('id').range(from, to),
+            ).catch(() => [] as { id: string; full_name: string | null }[]),
         ]);
         const out: Record<string, string> = {};
         for (const u of users || []) out[u.id] = u.full_name || 'Unknown';

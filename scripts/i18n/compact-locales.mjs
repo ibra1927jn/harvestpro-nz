@@ -1,9 +1,9 @@
 /**
  * compact-locales — en el build, cada idioma se emite como un array de textos en
- * el orden de las claves inglesas, sin repetir las 1600+ claves en los 7 idiomas.
+ * el orden de las claves inglesas, sin repetir las 1600+ claves en todos los idiomas.
  * Las claves van una sola vez, en el diccionario inglés (bundle principal).
  *
- * Ahorra ~37 KB sin comprimir por idioma (~220 KB en el precache del service
+ * Ahorra ~37 KB sin comprimir por idioma (también en el precache del service
  * worker) y algo de gzip en cada chunk de idioma. El resultado es el mismo
  * objeto clave → texto: lo comprueba scripts/i18n/compact-locales.test.ts
  * comparando con los ficheros fuente. En dev y en los tests se usa el TS original.
@@ -12,7 +12,7 @@ import { buildSync } from 'esbuild';
 import { join } from 'node:path';
 import { normalizePath } from 'vite';
 
-export const LOCALES = ['en', 'es', 'mi', 'sm', 'hi', 'to', 'tl'];
+export const LOCALES = ['en', 'es', 'fr'];
 
 /** Evalúa src/i18n/locales/<lang>/index.ts (con sus imports) → { clave: texto }. */
 export function evaluateLocale(localesDir, lang) {

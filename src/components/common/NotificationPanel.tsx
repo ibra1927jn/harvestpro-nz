@@ -11,6 +11,9 @@ import { useMessaging } from '@/context/MessagingContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTranslation } from '@/i18n';
 import { relativeTime } from '@/i18n/relativeTime';
+import { useQcAlerts } from '@/hooks/useQcAlerts';
+import { useHarvestStore } from '@/stores/useHarvestStore';
+import { gradeLongLabel } from '@/components/views/qc/gradeLabel';
 
 export interface AppNotification {
     id: string;
@@ -35,6 +38,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClos
     const { appUser } = useAuth();
     const panelRef = useRef<HTMLDivElement>(null);
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
+    // Avisos de calidad (rechazo o criterio «mal») del equipo / huerto: tocar abre el cajón del picker
+    const qc = useQcAlerts();
+    const openPickerProfile = useHarvestStore(s => s.openPickerProfile);
+    const qcItems = qc.alerts.slice(0, 5);
 
     // Build notification feed from broadcasts + system alerts
     useEffect(() => {
@@ -96,9 +103,17 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClos
         notifications
             .filter(n => !n.read && n.id.startsWith('broadcast-'))
             .forEach(n => void acknowledgeBroadcast(n.id.replace('broadcast-', '')));
-    }, [notifications, acknowledgeBroadcast]);
+        qc.markAllSeen();
+    }, [notifications, acknowledgeBroadcast, qc]);
 
-    const unreadNotifs = notifications.filter(n => !n.read).length;
+    const qcUnseen = qc.unseenCount;
+    const unreadNotifs = notifications.filter(n => !n.read).length + qcUnseen;
+
+    const openQcAlert = (id: string, pickerId: string) => {
+        qc.markSeen([id]);
+        openPickerProfile(pickerId);
+        onClose();
+    };
 
     const typeIcon = (type: AppNotification['type']) => {
         switch (type) {
@@ -149,7 +164,34 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ onViewAll, onClos
 
             {/* Notification list */}
             <div className="max-h-64 overflow-y-auto">
-                {notifications.map(notif => (
+                {qcItems.map(alert => {
+                    const unseen = !qc.seen.has(alert.id);
+                    const criteria = alert.badCriteria.map(k => t(`qc.crit.${k}`)).join(', ');
+                    return (
+                        <button
+                            key={`qc-${alert.id}`}
+                            type="button"
+                            data-testid={`qc-alert-${alert.id}`}
+                            onClick={() => openQcAlert(alert.id, alert.pickerId)}
+                            className={`w-full text-left flex items-start gap-3 px-4 py-3 border-b border-slate-50 transition-colors ${unseen ? 'bg-red-50/60' : 'hover:bg-slate-50'}`}
+                        >
+                            <div className="size-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-red-100 text-red-600">
+                                <span aria-hidden="true" className="material-symbols-outlined text-[18px]">grading</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className={`text-sm ${unseen ? 'font-bold text-slate-800' : 'font-medium text-slate-700'} truncate`}>
+                                    {t('comms.qc_alert_title', { name: alert.pickerName })}
+                                </p>
+                                <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">
+                                    {gradeLongLabel(t, alert.grade)}{criteria ? ` · ${t('comms.qc_alert_failed', { criteria })}` : ''}
+                                </p>
+                                <p className="text-[10px] text-slate-400 mt-1">{relativeTime(t, alert.createdAt)}</p>
+                            </div>
+                            {unseen && <span className="size-2 rounded-full bg-red-500 mt-2 flex-shrink-0"></span>}
+                        </button>
+                    );
+                })}
+                {notifications.filter(n => !(n.id === 'welcome' && qcItems.length > 0)).map(notif => (
                     <div key={notif.id}
                         className={`flex items-start gap-3 px-4 py-3 border-b border-slate-50 last:border-0 transition-colors ${!notif.read ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
                     >

@@ -156,6 +156,12 @@ export const gatewayService = {
     _toError(gwError: GatewayError): Error {
         const err = new Error(gwError.message);
         err.name = `GatewayError:${gwError.type}`;
+        // Estado HTTP real de la respuesta (readableError lo pone): la cola sin red
+        // distingue un rechazo del servidor (4xx) de un fallo pasajero
+        const original = gwError.originalError as { status?: unknown } | undefined;
+        if (typeof original?.status === 'number') {
+            Object.assign(err, { status: original.status });
+        }
         return err;
     },
 

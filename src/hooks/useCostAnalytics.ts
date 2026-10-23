@@ -24,7 +24,7 @@ export interface TeamCost {
 }
 
 export function useCostAnalytics() {
-    const { locale } = useTranslation();
+    const { locale, t } = useTranslation();
     const orchardId = useHarvestStore(s => s.orchard?.id);
     const settings = useHarvestStore(s => s.settings);
     const crew = useHarvestStore(s => s.crew);
@@ -39,24 +39,38 @@ export function useCostAnalytics() {
 
     const breakEven = settings?.piece_rate;
 
-    // Tendencia histórica 7 días — sólo este fetch sigue siendo async
+    // Los ajustes de pago que necesita la tendencia (precio y mínimo; los precios
+    // de cada día los carga getDailyPay desde piece_rates)
+    const pieceRate = settings?.piece_rate;
+    const minWageRate = settings?.min_wage_rate;
+
+    // Tendencia histórica 7 días — sólo este fetch sigue siendo async.
+    // Coste por cubeta de cada día = pago del día (complemento incluido) / cubetas,
+    // con el mismo cálculo que la nómina (getDailyPay). Sin ajustes de pago aún
+    // cargados no se pide nada: el gráfico enseña su estado vacío.
     useEffect(() => {
-        if (!orchardId) { setIsLoading(false); return; }
+        if (!orchardId || pieceRate === undefined || minWageRate === undefined) { setIsLoading(false); return; }
         setIsLoading(true);
 
-        // costPerBin = [] hasta que se implemente daily_attendance+harvest_settings query.
-        // TrendLineChart muestra empty state limpio cuando el array está vacío.
         const load = async () => {
             const nzFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' });
             const endDateNZ = nzFmt.format(new Date());
             const startDateNZ = nzFmt.format(new Date(Date.now() - 6 * 86_400_000));
-            const trends = await analyticsService.getDailyTrendsV2(orchardId, startDateNZ, endDateNZ);
-            setCostTrend(trends.costPerBin);
+            const trends = await analyticsService.getDailyTrendsV2(
+                orchardId, startDateNZ, endDateNZ, pieceRate,
+                { piece_rate: pieceRate, min_wage_rate: minWageRate },
+            );
+            // La etiqueta del eje es el día de la semana en el idioma de la app; la fecha va en meta
+            const weekdayFmt = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'Pacific/Auckland' });
+            setCostTrend(trends.costPerBin.map(p => ({
+                ...p,
+                label: p.meta?.date === endDateNZ ? t('dashboard.wage.today') : weekdayFmt.format(new Date(`${p.label}T12:00:00+12:00`)),
+            })));
         };
         load()
             .catch(e => logger.warn('[CostAnalytics] Trends failed:', e))
             .finally(() => setIsLoading(false));
-    }, [orchardId, locale]);
+    }, [orchardId, locale, t, pieceRate, minWageRate]);
 
     // Mapear PickerMetrics → PickerBreakdown para compatibilidad con UI existente
     const pickers = useMemo<PickerBreakdown[]>(() =>
