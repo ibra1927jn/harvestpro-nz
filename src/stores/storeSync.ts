@@ -323,6 +323,23 @@ async function loadBins(set: StoreSetter, orchardId: string): Promise<void> {
 
 /* ── Realtime Subscriptions ─────────────── */
 
+/** Espera para juntar varios cambios de bins en una lectura (igual que Logística) */
+export const BINS_REALTIME_DEBOUNCE_MS = 2000;
+let binsRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Un bin cambió (Logística lo puso vacío / lleno / recogido, lo dio de alta o
+ * de baja, u otro runner lo escaneó): se relee la lista, una vez por ráfaga.
+ */
+function scheduleBinsRefresh(orchardId: string, get: StoreGetter, set: StoreSetter): void {
+  if (binsRefreshTimer) return;
+  binsRefreshTimer = setTimeout(() => {
+    binsRefreshTimer = null;
+    if (get().orchard?.id !== orchardId) return;
+    void loadBins(set, orchardId).then(() => { binsLoadedAt = Date.now(); });
+  }, BINS_REALTIME_DEBOUNCE_MS);
+}
+
 /**
  * Vuelve a leer los precios por cubeta que valen hoy (piece_rates) y los pone
  * en los ajustes del store: el TL y el runner ven el precio nuevo sin recargar.
@@ -443,6 +460,25 @@ export function setupRealtimeSubscriptions(
           rowAssignments: applyRowAssignmentEvent(state.rowAssignments, record, payload.eventType),
         }));
         logger.info(`[Store] Realtime row_assignment ${payload.eventType}: row ${record.row_number}`);
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'bins',
+        filter: `orchard_id=eq.${orchardId}`,
+      },
+      payload => {
+        // Baja de Logística: fuera ya (la recarga conserva los bins solo del móvil,
+        // y uno dado de baja ya no viene del servidor)
+        const row = payload.new as { id?: string; deleted_at?: string | null } | null;
+        if (row?.id && row.deleted_at) {
+          set(state => ({ inventory: state.inventory.filter(b => b.id !== row.id) }));
+        }
+        if (document.hidden) return;
+        scheduleBinsRefresh(orchardId, get, set);
       }
     )
     .on(
