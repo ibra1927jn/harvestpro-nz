@@ -48,6 +48,13 @@ Version: 9.9.0
 - `supabase/functions/_shared/` — pay-rules.ts (idéntico a src/services/harvestMetrics/pay.ts, lo vigila pay-parity.test.ts), payroll-calc.ts, security.ts, scan-time.ts, cors.ts
 - `supabase/seeds/` — seeds locales (orden: seed_00_local_bootstrap → seed_2weeks_local → seed_role_users)
 - 35 tablas, RLS en todas, 2FA (aal2) exigido por política para roles privilegiados
+- Fichajes (`daily_attendance`): los leen manager/RRHH/admin del huerto, nómina de la empresa, el TL su equipo
+  (y gente sin equipo del huerto) y cada uno lo suyo. Runner, QC y logística saben quién está fichado con
+  `presence_today(huerto)` (sin horas ni pago; el store la relee cada minuto, migración 20261024021000).
+- Hora de fichajes y cubetas: la del servidor; la del móvil solo desde la cola sin red, corregida con el
+  desfase medido y nunca del futuro (`_shared/device-time.ts`, `_shared/scan-time.ts`; el desfase queda en
+  `*_clock_skew_ms`). Tramos de más de 14 h sin corregir: se pagan 14 h y no se aprueban
+  (`PAY_RULES.maxUnreviewedShiftHours`, trigger `trg_require_long_shift_correction`).
 
 ### Offline
 - Dexie IndexedDB con sync queue (13 tipos con processor; LEAVE_REQUEST: ausencias que pide el team leader sin red;

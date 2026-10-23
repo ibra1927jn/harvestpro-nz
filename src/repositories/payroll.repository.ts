@@ -58,7 +58,7 @@ export const payrollRepository = {
             .from('daily_attendance')
             // CRIT-1 FIX: hours_worked column does NOT exist in daily_attendance.
             // Hours are calculated as diff(check_out - check_in) in the service layer.
-            .select('id, picker_id, date, check_in, check_out, break_start, break_minutes, verified_by, rejected_at, rejection_reason, orchard_id, updated_at')
+            .select('id, picker_id, date, check_in, check_out, break_start, break_minutes, verified_by, rejected_at, rejection_reason, orchard_id, updated_at, corrected_at')
             .eq('orchard_id', orchardId)
             .eq('date', date)
             .is('deleted_at', null)
@@ -79,7 +79,7 @@ export const payrollRepository = {
             fetchInChunks(pickerIds, (ids, from, to) =>
                 supabase
                     .from('daily_attendance')
-                    .select('id, picker_id, orchard_id, check_in, check_out, break_start, break_minutes')
+                    .select('id, picker_id, orchard_id, check_in, check_out, break_start, break_minutes, corrected_at')
                     .in('picker_id', ids)
                     .eq('date', date)
                     .is('deleted_at', null)
@@ -99,7 +99,7 @@ export const payrollRepository = {
             ).catch(() => []),
         ]);
         return {
-            shifts: (shifts || []) as { id: string; picker_id: string; orchard_id: string | null; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null }[],
+            shifts: (shifts || []) as { id: string; picker_id: string; orchard_id: string | null; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null; corrected_at: string | null }[],
             buckets: (buckets || []) as { picker_id: string; orchard_id: string | null; variety: string | null; scanned_at: string; quality_grade: string | null }[],
         };
     },

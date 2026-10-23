@@ -114,7 +114,7 @@ const payroll: TranslationDict = {
     'pay.err.close': 'No se pudo cerrar la semana.',
     'pay.err.reopen': 'No se pudo reabrir la semana.',
     'pay.ts.open_shift_no_approve': 'Turno abierto (aún sin salida): se podrá aprobar cuando se cierre',
-    'pay.ts.approve_all_skipped': '{count} turnos abiertos sin aprobar (aún sin salida)',
+    'pay.ts.approve_all_skipped': '{count} sin aprobar (abiertos, o de más de 14 h sin corregir)',
     'pay.ts.reject_reason_label': 'Motivo del rechazo',
     'pay.ts.reject_reason_placeholder': '¿Qué hay que corregir?',
     'pay.ts.reject_reason_hint': '{n}/{max} caracteres (mínimo 3)',
@@ -125,6 +125,8 @@ const payroll: TranslationDict = {
     'pay.hist.confirm_delete': '¿Borrar {file} del historial de exportaciones? El archivo en sí no se toca.',
     'pay.hist.delete_for': 'Borrar {file} del historial',
     'pay.hist.delete_failed': 'No se borró. Inténtalo otra vez.',
+    'pay.ts.long_shift_no_approve': 'Más de 14 h sin corregir: solo se pagan 14 h. Corrige la hora de salida en la hoja de horas antes de aprobarla',
+    'pay.ts.long_open_shift': 'Abierto desde hace más de 14 h (¿salida olvidada?): solo se pagan 14 h hasta corregirlo',
 };
 
 export default payroll;

@@ -236,6 +236,7 @@ export type Database = {
       }
       bucket_records: {
         Row: {
+          clock_skew_ms: number | null
           bin_id: string | null
           block_row_id: string | null
           coords: Json | null
@@ -254,6 +255,7 @@ export type Database = {
           version: number | null
         }
         Insert: {
+          clock_skew_ms?: number | null
           bin_id?: string | null
           block_row_id?: string | null
           coords?: Json | null
@@ -272,6 +274,7 @@ export type Database = {
           version?: number | null
         }
         Update: {
+          clock_skew_ms?: number | null
           bin_id?: string | null
           block_row_id?: string | null
           coords?: Json | null
@@ -553,6 +556,8 @@ export type Database = {
       }
       daily_attendance: {
         Row: {
+          check_in_clock_skew_ms: number | null
+          check_out_clock_skew_ms: number | null
           check_in: string | null
           break_end: string | null
           break_minutes: number
@@ -582,6 +587,8 @@ export type Database = {
           version: number | null
         }
         Insert: {
+          check_in_clock_skew_ms?: number | null
+          check_out_clock_skew_ms?: number | null
           check_in?: string | null
           break_end?: string | null
           break_minutes?: number
@@ -611,6 +618,8 @@ export type Database = {
           version?: number | null
         }
         Update: {
+          check_in_clock_skew_ms?: number | null
+          check_out_clock_skew_ms?: number | null
           check_in?: string | null
           break_end?: string | null
           break_minutes?: number
@@ -1624,6 +1633,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      presence_today: {
+        Args: { p_orchard_id: string }
+        Returns: {
+          picker_id: string
+          present: boolean
+          since: string | null
+          on_break: boolean
+          on_leave: boolean
+          checked_in_today: boolean
+          left_at: string | null
+          elsewhere_orchard_id: string | null
+          elsewhere_orchard_name: string | null
+        }[]
+      }
       check_in_picker: {
         Args: {
           p_orchard_id: string

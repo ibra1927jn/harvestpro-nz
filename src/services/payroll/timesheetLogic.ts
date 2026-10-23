@@ -4,13 +4,13 @@
  * Reparto de horas del día por tramo, fila de hoja de horas, asignación de
  * cubetas a tramos y fila de la hoja diaria con pago. La usa payroll.service.
  */
-import { shiftHours, dayPay, PAY_RULES, minWageFloorOn, type PayDay } from '@/services/harvestMetrics/pay';
+import { shiftHours, shiftNeedsReview, correctionCovers, dayPay, PAY_RULES, minWageFloorOn, type PayDay } from '@/services/harvestMetrics/pay';
 import type { DailyTimesheetRecord, TimesheetEntry } from './payroll.types';
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 /** Horas por encima de las cuales una hoja de horas pide revisión */
-const REVIEW_HOURS_THRESHOLD = 14;
+const REVIEW_HOURS_THRESHOLD = PAY_RULES.maxUnreviewedShiftHours;
 
 /**
  * Horas de cada tramo cerrado = su parte de las horas pagables del día
@@ -46,22 +46,29 @@ export interface AttendanceForTimesheet {
   rejection_reason?: string | null;
   orchard_id: string;
   updated_at?: string;
+  /** Corregida a mano (manage-attendance correct): un tramo largo ya está revisado */
+  corrected_at?: string | null;
 }
 
 /**
  * Fila de hoja de horas. Horas = su parte del día (cálculo único); si no hay
  * cálculo del día, las del propio tramo. Turno sin salida → 0 h hasta que se
- * cierre. Revisar: turno abierto de un día pasado, o más de 14 h.
+ * cierre. Revisar: turno abierto de un día pasado, o más de 14 h. Más de 14 h
+ * sin corregir (abierto o cerrado) = long_shift: no se aprueba y se pagan 14 h.
  */
 export function buildTimesheetEntry(
   a: AttendanceForTimesheet,
   pickerName: string | undefined,
   hoursFromDay: number | undefined,
-  todayNZ: string
+  todayNZ: string,
+  now: Date = new Date()
 ): TimesheetEntry {
+  // Solo cuenta la corrección hecha después de la salida (correctionCovers)
+  const corrected = correctionCovers(a.corrected_at, a.check_out);
   const shift = a.check_out && hoursFromDay === undefined
-    ? shiftHours({ checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes })
+    ? shiftHours({ checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes, corrected })
     : null;
+  const longShift = shiftNeedsReview({ checkIn: a.check_in, checkOut: a.check_out, corrected }, now);
   const hoursWorked = a.check_out ? (hoursFromDay ?? shift?.hours ?? 0) : 0;
   const staleOpen = !!a.check_in && !a.check_out && a.date < todayNZ;
   return {
@@ -80,7 +87,8 @@ export function buildTimesheetEntry(
     rejection_reason: a.rejection_reason ?? null,
     orchard_id: a.orchard_id,
     updated_at: a.updated_at,
-    requires_review: staleOpen || hoursWorked > REVIEW_HOURS_THRESHOLD,
+    requires_review: staleOpen || longShift || hoursWorked > REVIEW_HOURS_THRESHOLD,
+    ...(longShift ? { long_shift: true } : {}),
   };
 }
 
