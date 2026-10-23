@@ -56,7 +56,8 @@ test('team leader sees the team and the row history', async ({ page }) => {
     await page.getByRole('button', { name: 'Open menu' }).click();
     await page.locator('div.fixed.inset-0 nav button[aria-label="Map"]').click();
   }
-  const history = page.getByText("My team's rows");
+  // El texto sale también en la leyenda del mapa: el historial es el encabezado
+  const history = page.getByRole('heading', { name: "My team's rows" });
   await history.scrollIntoViewIfNeeded();
   await expect(history).toBeVisible();
   await snap(page, test.info(), 'lead-row-history');

@@ -15,6 +15,7 @@ import { analyticsService } from '@/services/analytics.service';
 import { todayNZST, toNZST } from '@/utils/nzst';
 import { logger } from '@/utils/logger';
 import { useTranslation } from '@/i18n';
+import { blockRowNumbers } from '@/utils/blockRows';
 
 type DateRange = 'today' | 'last7days' | 'last30days';
 
@@ -132,11 +133,9 @@ export const HeatMapView: React.FC = () => {
                 // Filter by selected block if one is chosen
                 let densities = analytics.density_by_row;
                 if (selectedBlock) {
-                    const blockStart = selectedBlock.startRow;
-                    const blockEnd = blockStart + selectedBlock.totalRows - 1;
-                    densities = densities.filter(
-                        d => d.row_number >= blockStart && d.row_number <= blockEnd
-                    );
+                    // Filas reales del bloque (puede tener huecos)
+                    const blockRows = new Set(blockRowNumbers(selectedBlock));
+                    densities = densities.filter(d => blockRows.has(d.row_number));
                 }
 
                 setRowDensities(densities);
@@ -177,7 +176,7 @@ export const HeatMapView: React.FC = () => {
         // Create entries for ALL rows in the block, filling missing ones with zeros
         const densityMap = new Map(rowDensities.map(d => [d.row_number, d]));
         const allRows: RowDensity[] = [];
-        for (let i = selectedBlock.startRow; i < selectedBlock.startRow + selectedBlock.totalRows; i++) {
+        for (const i of blockRowNumbers(selectedBlock)) {
             allRows.push(densityMap.get(i) || {
                 row_number: i,
                 total_buckets: 0,

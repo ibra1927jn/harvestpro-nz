@@ -34,9 +34,11 @@ function markOnboardingCompleted(): void {
 interface OnboardingWizardProps {
     /** Callback cuando el onboarding se completa o se salta */
     onComplete: () => void;
+    /** El huerto no tiene filas: ir a «Estructura del huerto» */
+    onOpenStructure?: () => void;
 }
 
-const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete }) => {
+const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onOpenStructure }) => {
     const { t } = useTranslation();
     const [showWizard, setShowWizard] = useState(false);
 
@@ -60,6 +62,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete }) => {
             <ManagerSetupWizard
                 onComplete={handleWizardComplete}
                 onCancel={() => setShowWizard(false)}
+                onOpenStructure={onOpenStructure ? () => { markOnboardingCompleted(); onOpenStructure(); } : undefined}
             />
         );
     }

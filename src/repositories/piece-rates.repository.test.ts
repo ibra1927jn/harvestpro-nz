@@ -123,4 +123,17 @@ describe('pieceRatesRepository', () => {
         ], error: null }) as never);
         expect(await pieceRatesRepository.loadOrchardVarieties('o1')).toEqual(['Braeburn', 'Royal Gala']);
     });
+
+    it('loadOrchardVarieties: solo filas de bloques activos de la temporada activa (no las de temporadas cerradas)', async () => {
+        const calls: Call[] = [];
+        fromSpy.mockReturnValue(chain({ data: [], error: null }, calls) as never);
+        await pieceRatesRepository.loadOrchardVarieties('o1');
+        expect(calls).toEqual(expect.arrayContaining([
+            { method: 'eq', args: ['orchard_blocks.orchard_id', 'o1'] },
+            { method: 'is', args: ['orchard_blocks.deleted_at', null] },
+            { method: 'eq', args: ['orchard_blocks.harvest_seasons.status', 'active'] },
+            { method: 'is', args: ['deleted_at', null] },
+            { method: 'order', args: ['id'] },
+        ]));
+    });
 });
