@@ -3,6 +3,16 @@
  */
 import { supabase } from '@/services/supabase';
 import { nowNZST } from '@/utils/nzst';
+import type { ChatAttachment } from '@/services/chat-attachments.service';
+
+/** Persona de una conversación (panel de info del chat) */
+export interface ChatParticipant {
+    id: string;
+    full_name: string | null;
+    role: string | null;
+    avatar_url: string | null;
+    is_active: boolean | null;
+}
 
 /** Mensajes que se cargan al abrir una conversación (los más recientes) */
 export const CHAT_HISTORY_LIMIT = 300;
@@ -13,7 +23,7 @@ export const messagingRepository = {
         conversationId: string,
         senderId: string,
         content: string,
-        opts?: { id?: string; createdAt?: string }
+        opts?: { id?: string; createdAt?: string; attachment?: ChatAttachment }
     ) {
         // id y hora del móvil: un reenvío no duplica y conserva cuándo se escribió
         const { data, error } = await supabase
@@ -24,6 +34,13 @@ export const messagingRepository = {
                 content,
                 ...(opts?.id ? { id: opts.id } : {}),
                 ...(opts?.createdAt ? { created_at: opts.createdAt } : {}),
+                ...(opts?.attachment ? {
+                    attachment_path: opts.attachment.path,
+                    attachment_type: opts.attachment.type,
+                    attachment_name: opts.attachment.name ?? null,
+                    attachment_size: opts.attachment.size,
+                    duration_ms: opts.attachment.duration_ms ?? null,
+                } : {}),
             }])
             .select()
             .single();
@@ -169,6 +186,39 @@ export const messagingRepository = {
         return out;
     },
 
+    /** Personas de una conversación con su rol y foto (panel de info) */
+    async getParticipants(ids: string[]): Promise<ChatParticipant[]> {
+        if (ids.length === 0) return [];
+        const { data, error } = await supabase
+            .from('users')
+            .select('id, full_name, role, avatar_url, is_active')
+            .in('id', ids)
+            .order('full_name');
+        if (error) throw error;
+        return (data || []) as ChatParticipant[];
+    },
+
+    /**
+     * Grupo: renombrar y añadir / quitar personas (RPC update_conversation:
+     * solo quien lo creó, un manager o un admin). undefined = no tocar.
+     */
+    async updateConversation(conversationId: string, changes: { name?: string; add?: string[]; remove?: string[] }) {
+        const { data, error } = await supabase.rpc('update_conversation', {
+            p_conversation_id: conversationId,
+            p_name: changes.name ?? null,
+            p_add: changes.add && changes.add.length ? changes.add : null,
+            p_remove: changes.remove && changes.remove.length ? changes.remove : null,
+        });
+        if (error) throw error;
+        return data as { id: string; name: string | null; type: string; participant_ids: string[]; created_by: string | null };
+    },
+
+    /** Silenciar / activar una conversación para mí */
+    async setMuted(conversationId: string, muted: boolean): Promise<void> {
+        const { error } = await supabase.rpc('set_conversation_muted', { p_conversation_id: conversationId, p_muted: muted });
+        if (error) throw error;
+    },
+
     /** Get last messages for conversation IDs */
     /**
      * Último mensaje de cada conversación (una fila por conversación, RPC
@@ -178,6 +228,6 @@ export const messagingRepository = {
     async getLastMessages(conversationIds: string[]) {
         const { data, error } = await supabase.rpc('last_messages', { p_conversation_ids: conversationIds });
         if (error) return [];
-        return (data || []) as Array<{ conversation_id: string; content: string; created_at: string }>;
+        return (data || []) as Array<{ conversation_id: string; content: string; created_at: string; attachment_type?: string | null }>;
     },
 };

@@ -379,25 +379,40 @@ export type Database = {
       }
       chat_messages: {
         Row: {
+          attachment_name: string | null
+          attachment_path: string | null
+          attachment_size: number | null
+          attachment_type: string | null
           content: string
           conversation_id: string
           created_at: string | null
+          duration_ms: number | null
           id: string
           read_by: string[] | null
           sender_id: string
         }
         Insert: {
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_size?: number | null
+          attachment_type?: string | null
           content: string
           conversation_id: string
           created_at?: string | null
+          duration_ms?: number | null
           id?: string
           read_by?: string[] | null
           sender_id: string
         }
         Update: {
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_size?: number | null
+          attachment_type?: string | null
           content?: string
           conversation_id?: string
           created_at?: string | null
+          duration_ms?: number | null
           id?: string
           read_by?: string[] | null
           sender_id?: string
@@ -515,6 +530,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           id: string
+          muted_by: string[]
           name: string | null
           participant_ids: string[]
           type: string
@@ -524,6 +540,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
+          muted_by?: string[]
           name?: string | null
           participant_ids?: string[]
           type: string
@@ -533,6 +550,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
+          muted_by?: string[]
           name?: string | null
           participant_ids?: string[]
           type?: string
@@ -2002,6 +2020,19 @@ export type Database = {
       unlock_account: {
         Args: { target_email: string; unlock_reason_text?: string }
         Returns: boolean
+      }
+      set_conversation_muted: {
+        Args: { p_conversation_id: string; p_muted: boolean }
+        Returns: boolean
+      }
+      update_conversation: {
+        Args: {
+          p_add?: string[] | null
+          p_conversation_id: string
+          p_name?: string | null
+          p_remove?: string[] | null
+        }
+        Returns: Json
       }
       update_my_profile: {
         Args: {

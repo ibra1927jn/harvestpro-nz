@@ -146,11 +146,12 @@ const MessagingSidebar: React.FC<Props> = ({
                                             </div>
                                             <div className="flex items-center gap-1.5">
                                                 {chat.isGroup && <span className="text-[10px] text-slate-400">👥 {chat.members.length}</span>}
-                                                <p className="text-xs text-slate-400 truncate">{chat.lastMsg || t('chat.no_messages')}</p>
+                                                {chat.muted && <span role="img" aria-label={t('chat.muted')} title={t('chat.muted')} className="material-symbols-outlined text-[13px] text-slate-400">notifications_off</span>}
+                                                <p className="text-xs text-slate-400 truncate">{chat.lastMsg || (chat.lastAttachmentType ? t(`chat.attachment.${chat.lastAttachmentType}`) : t('chat.no_messages'))}</p>
                                             </div>
                                         </div>
                                         {(unreadCounts[chat.id] || (chat.unreadCount ?? 0)) > 0 && (
-                                            <span className="shrink-0 size-5 rounded-full bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center animate-scale-in">
+                                            <span className={`shrink-0 size-5 rounded-full ${chat.muted ? 'bg-slate-300' : 'bg-indigo-500'} text-white text-[10px] font-bold flex items-center justify-center animate-scale-in`}>
                                                 {(unreadCounts[chat.id] || chat.unreadCount || 0) > 9 ? '9+' : (unreadCounts[chat.id] || chat.unreadCount)}
                                             </span>
                                         )}
