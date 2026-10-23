@@ -100,7 +100,7 @@ const manager3: TranslationDict = {
     'msetup.rate_hint': 'Cuenta solo desde hoy; los días anteriores conservan su precio. Se cambia luego en Ajustes.',
     'msetup.varieties': 'Variedad de las filas',
     'msetup.varieties_hint': 'Una variedad por bloque (vale para todas sus filas). Los precios por variedad la usan.',
-    'msetup.no_blocks': 'Este huerto aún no tiene bloques ni filas. Pide a un admin que los cargue; las variedades se ponen después.',
+    'msetup.no_blocks': 'Este huerto aún no tiene bloques ni filas. Móntalos primero (temporada, bloques y filas); luego eliges aquí la variedad de cada bloque.',
     'msetup.block_rows': '{name} ({n} filas)',
     'msetup.variety_of': 'Variedad de {name}',
     'msetup.teams_note': 'Equipos: vincula team leaders y runners en Equipos → Link Staff. Las cuentas nuevas las invita un admin o RRHH.',
