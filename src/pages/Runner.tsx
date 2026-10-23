@@ -27,14 +27,12 @@ const loadWarehouse = () => import('@/components/views/runner/WarehouseView');
 const loadMessaging = () => import('@/components/views/runner/MessagingView');
 const loadTimesheet = () => import('@/components/views/runner/MyTimesheetView');
 const loadScanner = () => import('@/components/modals/ScannerModal');
-const loadQuality = () => import('@/components/modals/QualityRatingModal');
 const LogisticsView = React.lazy(loadLogistics);
 const RunnersView = React.lazy(loadRunners);
 const WarehouseView = React.lazy(loadWarehouse);
 const MessagingView = React.lazy(loadMessaging);
 const MyTimesheetView = React.lazy(loadTimesheet);
 const ScannerModal = React.lazy(loadScanner);
-const QualityRatingModal = React.lazy(loadQuality);
 
 /**
  * Precarga lo que el runner usa en el campo. Sin esto, si se quedaba sin
@@ -44,7 +42,7 @@ const QualityRatingModal = React.lazy(loadQuality);
  */
 export function preloadRunnerModules(): Promise<unknown> {
   return Promise.all(
-    [loadScanner, loadQuality, loadLogistics, loadRunners, loadWarehouse, loadMessaging, loadTimesheet].map(load =>
+    [loadScanner, loadLogistics, loadRunners, loadWarehouse, loadMessaging, loadTimesheet].map(load =>
       load().catch(() => undefined)
     )
   );
@@ -152,15 +150,6 @@ const Runner = () => {
             onBatchScan={codes => runner.handleScanComplete(codes)}
             scanType={runner.scanType || 'BUCKET'}
             batchMode={runner.scanType === 'BUCKET'}
-          />
-        </Suspense>
-      )}
-      {runner.qualityScan?.step === 'QUALITY' && (
-        <Suspense fallback={<TabLoader />}>
-          <QualityRatingModal
-            scannedCode={runner.qualityScan.code}
-            onRate={runner.submitQuality}
-            onCancel={() => runner.setQualityScan(null)}
           />
         </Suspense>
       )}

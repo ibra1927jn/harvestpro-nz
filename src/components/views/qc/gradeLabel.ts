@@ -3,7 +3,7 @@
  *
  * A/B/C/reject son notas de CÓMO RECOGE la persona (Bien / Aceptable / A
  * corregir / Grave), no calidades de fruta: «exportación / nacional / proceso»
- * son de la cubeta (QualityRatingModal) y no se usan aquí.
+ * eran de la cubeta (un modal del runner que nunca se mostraba y se quitó el 2026-10-23).
  */
 import type { TFunction } from '@/i18n';
 

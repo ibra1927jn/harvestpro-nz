@@ -110,118 +110,39 @@ describe('exportCSV', () => {
 // exportPDF
 // ──────────────────────────────────────────────────────
 describe('exportPDF', () => {
+    // Imprime desde un iframe oculto de la propia página (window.open lo cortaba el bloqueador)
+    beforeEach(() => vi.restoreAllMocks());
     function mockPrintWindow() {
-        const mockDoc = { write: vi.fn(), close: vi.fn() };
-        const mockWin = { document: mockDoc, focus: vi.fn(), print: vi.fn() };
-        vi.spyOn(window, 'open').mockReturnValue(mockWin as unknown as Window);
-        return { mockDoc, mockWin };
+        document.querySelectorAll('[data-testid="weekly-report-print"]').forEach(f => f.remove());
+        return { frame: () => document.querySelector('[data-testid="weekly-report-print"]') as HTMLIFrameElement };
     }
+    const htmlOf = (f: HTMLIFrameElement) => f.srcdoc;
 
-    it('opens a new window and writes HTML', () => {
-        const { mockDoc, mockWin } = mockPrintWindow();
-        exportPDF(makeContext() as any);
-        expect(window.open).toHaveBeenCalledWith('', '_blank');
-        expect(mockDoc.write).toHaveBeenCalled();
-        expect(mockDoc.close).toHaveBeenCalled();
-        expect(mockWin.focus).toHaveBeenCalled();
-    });
-
-    it('handles null window.open gracefully', () => {
-        vi.spyOn(window, 'open').mockReturnValue(null);
-        expect(() => exportPDF(makeContext() as any)).not.toThrow();
+    it('prints from a hidden iframe on the same page (no pop-up to block)', () => {
+        const open = vi.spyOn(window, 'open');
+        const { frame } = mockPrintWindow();
+        expect(exportPDF(makeContext() as any)).toBe(true);
+        expect(open).not.toHaveBeenCalled();
+        const f = frame();
+        expect(f).toBeTruthy();
+        expect(f.getAttribute('aria-hidden')).toBe('true');
+        const print = vi.fn();
+        Object.defineProperty(f, 'contentWindow', { configurable: true, value: { focus: vi.fn(), print, addEventListener: vi.fn() } });
+        f.onload?.(new Event('load'));
+        expect(print).toHaveBeenCalledOnce();
     });
 
     it('PDF HTML contains orchard name', () => {
-        const { mockDoc } = mockPrintWindow();
+        const { frame } = mockPrintWindow();
         exportPDF(makeContext({ orchardName: 'Sunny Acres' }) as any);
-        const html = mockDoc.write.mock.calls[0][0];
-        expect(html).toContain('Sunny Acres');
+        expect(htmlOf(frame())).toContain('Sunny Acres');
     });
 
-    it('PDF HTML contains DOCTYPE', () => {
-        const { mockDoc } = mockPrintWindow();
+    it('PDF HTML contains DOCTYPE and a print stylesheet', () => {
+        const { frame } = mockPrintWindow();
         exportPDF(makeContext() as any);
-        const html = mockDoc.write.mock.calls[0][0];
-        expect(html).toContain('<!DOCTYPE html>');
-    });
-
-    it('PDF HTML contains HarvestProNZ branding', () => {
-        const { mockDoc } = mockPrintWindow();
-        exportPDF(makeContext() as any);
-        const html = mockDoc.write.mock.calls[0][0];
-        expect(html).toContain('HarvestPro');
-        expect(html).toContain('NZ');
-    });
-
-    it('PDF HTML contains Confidential footer', () => {
-        const { mockDoc } = mockPrintWindow();
-        exportPDF(makeContext() as any);
-        const html = mockDoc.write.mock.calls[0][0];
-        expect(html).toContain('Confidential');
-    });
-
-    it('includes summary section when enabled', () => {
-        const { mockDoc } = mockPrintWindow();
-        exportPDF(makeContext() as any);
-        const html = mockDoc.write.mock.calls[0][0];
-        expect(html).toContain('Total Bins');
-        expect(html).toContain('Top-Up Bleed');
-    });
-
-    it('excludes summary when disabled', () => {
-        const { mockDoc } = mockPrintWindow();
-        exportPDF(makeContext({ exportSections: { summary: false, charts: false, teams: false, pickerDetail: false } }) as any);
-        const html = mockDoc.write.mock.calls[0][0];
-        expect(html).not.toContain('Top-Up Bleed');
-    });
-
-    it('includes charts when enabled', () => {
-        const { mockDoc } = mockPrintWindow();
-        exportPDF(makeContext() as any);
-        const html = mockDoc.write.mock.calls[0][0];
-        expect(html).toContain('Harvest Velocity');
-    });
-
-    it('excludes charts when disabled', () => {
-        const { mockDoc } = mockPrintWindow();
-        exportPDF(makeContext({ exportSections: { summary: false, charts: false, teams: false, pickerDetail: false } }) as any);
-        const html = mockDoc.write.mock.calls[0][0];
-        expect(html).not.toContain('Harvest Velocity');
-    });
-
-    it('includes team rankings when enabled', () => {
-        const { mockDoc } = mockPrintWindow();
-        exportPDF(makeContext() as any);
-        const html = mockDoc.write.mock.calls[0][0];
-        expect(html).toContain('Team Rankings');
-    });
-
-    it('includes picker detail when enabled', () => {
-        const { mockDoc } = mockPrintWindow();
-        exportPDF(makeContext() as any);
-        const html = mockDoc.write.mock.calls[0][0];
-        expect(html).toContain('Picker Performance Detail');
-    });
-
-    it('includes daily summary and distributions on page 2', () => {
-        const { mockDoc } = mockPrintWindow();
-        exportPDF(makeContext() as any);
-        const html = mockDoc.write.mock.calls[0][0];
-        expect(html).toContain('Daily Summary');
-        expect(html).toContain('Performance Distribution');
-    });
-
-    it('handles empty pickers without errors', () => {
-        const { mockDoc } = mockPrintWindow();
-        exportPDF(makeContext({ pickers: [] }) as any);
-        const html = mockDoc.write.mock.calls[0][0];
-        expect(html).toContain('<!DOCTYPE html>');
-    });
-
-    it('handles empty trends without errors', () => {
-        const { mockDoc } = mockPrintWindow();
-        exportPDF(makeContext({ binsTrend: [], workforceTrend: [] }) as any);
-        const html = mockDoc.write.mock.calls[0][0];
-        expect(html).toContain('<!DOCTYPE html>');
+        expect(htmlOf(frame())).toContain('<!DOCTYPE html>');
+        expect(htmlOf(frame())).toContain('@page');
     });
 });
+

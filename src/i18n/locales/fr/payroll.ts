@@ -121,6 +121,12 @@ const payroll: TranslationDict = {
     'pay.ts.reject_reason_placeholder': 'Que faut-il corriger ?',
     'pay.ts.reject_reason_hint': '{n}/{max} caractères (au moins 3)',
     'pay.ts.reject_confirm': 'Refuser',
+    'pay.hist.loading': 'Chargement de l’historique…',
+    'pay.hist.load_failed': 'Impossible de charger l’historique des exports.',
+    'pay.hist.week': 'Semaine {from} → {to}',
+    'pay.hist.confirm_delete': 'Supprimer {file} de l’historique des exports ? Le fichier lui-même n’est pas touché.',
+    'pay.hist.delete_for': 'Supprimer {file} de l’historique',
+    'pay.hist.delete_failed': 'Non supprimé. Réessayez.',
 };
 
 export default payroll;

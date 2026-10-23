@@ -155,6 +155,23 @@ const hr: TranslationDict = {
     'hr.agenda.load_failed': 'Couldn\'t load the agenda',
     'hr.agenda.not_saved': 'Couldn\'t save the leave',
     'hr.agenda.breaks_reminder': 'Breaks: paid {rest}-min rest every {restEvery} h and a {meal}-min meal break at {mealAt} h. There is no shift end: each person clocks out themselves.',
+    'hr.file.open': 'Open {name}\'s file',
+    'hr.file.contract': 'Contract',
+    'hr.file.from': 'From',
+    'hr.file.to': 'Until',
+    'hr.file.open_ended': 'Open-ended',
+    'hr.file.rate': 'Hourly rate',
+    'hr.file.signed_copy': 'Signed copy',
+    'hr.file.yes': 'Yes',
+    'hr.file.no': 'Missing',
+    'hr.file.missing': 'What\'s missing',
+    'hr.file.loading': 'Loading documents and leave…',
+    'hr.file.load_failed': 'Could not load documents and leave.',
+    'hr.file.documents': 'Documents ({n})',
+    'hr.file.no_documents': 'No documents uploaded',
+    'hr.file.expires': 'Expires {date}',
+    'hr.file.leave': 'Leave ({n})',
+    'hr.file.no_leave': 'No leave recorded',
 };
 
 export default hr;

@@ -29,6 +29,16 @@ const fraud: TranslationDict = {
     'fraud.rule_elapsed_desc': 'Mide cubetas ÷ tiempo desde última recolección. Cubetas acumuladas bajo árboles = normal. Pico imposible post-recolección = alerta.',
     'fraud.rule_peer_desc': 'Compara a cada recolector con sus compañeros de fila. Si todos son rápidos = buen árbol. Si SOLO una persona va rápido = sospechoso.',
     'fraud.rule_grace_desc': 'Primeros 90 min = calentamiento. Escaleras, fruta fría, sin tractores aún. El sistema observa silenciosamente.',
+    'fraud.dismissed_today': 'Descartadas hoy',
+    'fraud.dismissed_count': '{n} anomalías descartadas como falsa alarma',
+    'fraud.dismissed_none': 'Hoy no se ha descartado nada.',
+    'fraud.dismissed_reason': 'Motivo: {reason}',
+    'fraud.dismissed_no_reason': 'Sin motivo',
+    'fraud.undo_dismiss': 'Deshacer',
+    'fraud.dismiss': 'Descartar',
+    'fraud.dismiss_for': 'Descartar {name} como falsa alarma',
+    'fraud.dismiss_prompt': '¿Por qué es falsa alarma para {name}? (opcional)',
+    'fraud.dismiss_failed': 'No se guardó. Inténtalo otra vez.',
 };
 
 export default fraud;

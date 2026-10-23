@@ -10,10 +10,11 @@ import { vehiclesForTransport } from './logisticsLogic';
 import type { Tractor, BinInventory } from '@/services/logistics-dept.service';
 
 const assignVehicleToRequest = vi.fn();
+const cancelTransportRequest = vi.fn();
 vi.mock('@/services/logistics-dept.service', async (orig) => ({
     ...(await orig<typeof import('@/services/logistics-dept.service')>()),
     assignVehicleToRequest: (...a: unknown[]) => assignVehicleToRequest(...a),
-    cancelTransportRequest: vi.fn(),
+    cancelTransportRequest: (...a: unknown[]) => cancelTransportRequest(...a),
     completeTransportRequest: vi.fn(),
 }));
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ appUser: { id: 'u1' } }) }));
@@ -135,5 +136,20 @@ describe('Assigning a vehicle to a transport request', () => {
         expect(names.some(n => n.includes('Fork 1'))).toBe(false);
         fireEvent.change(screen.getByLabelText('Vehicle type'), { target: { value: 'forklift' } });
         expect([...(screen.getByLabelText('Select vehicle') as HTMLSelectElement).options].some(o => o.textContent?.includes('Fork 1'))).toBe(true);
+    });
+});
+
+describe('Cancel request asks first', () => {
+    it('only cancels after confirming', () => {
+        const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
+        render(<RequestsTab requests={[{
+            id: 'r1', requested_by: 'u2', requester_name: 'Ana', zone: 'A1', bins_count: 2, priority: 'normal',
+            status: 'pending', created_at: '2026-10-23T09:00:00+13:00', updated_at: 'v1',
+        }]} tractors={[]} />);
+        fireEvent.click(screen.getByTitle('Cancel request'));
+        expect(cancelTransportRequest).not.toHaveBeenCalled();
+        fireEvent.click(screen.getByTitle('Cancel request'));
+        expect(cancelTransportRequest).toHaveBeenCalledWith('r1', 'v1');
+        confirm.mockRestore();
     });
 });

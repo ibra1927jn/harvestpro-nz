@@ -85,6 +85,9 @@ const RequestsTab: React.FC<RequestsTabProps> = ({ requests, tractors = [], onRe
     };
 
     const handleCancel = (requestId: string, updatedAt?: string) => {
+        // Cancelar no se deshace: se pregunta antes (auditoría 2026-10-23, E)
+        const req = requests.find(r => r.id === requestId);
+        if (!window.confirm(t('logi.req.confirm_cancel', { zone: req?.zone ?? '', bins: req?.bins_count ?? 0 }))) return;
         cancelTransportRequest(requestId, updatedAt);
         showToast(t('logi.toast.cancelled'), 'error');
         onRefresh?.();

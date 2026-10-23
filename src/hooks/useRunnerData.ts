@@ -47,7 +47,6 @@ export interface UseRunnerDataResult {
   showScanner: boolean;
   scanType: 'BIN' | 'BUCKET';
   toast: { message: string; type: 'success' | 'error' | 'info' | 'warning'; announcement?: string } | null;
-  qualityScan: { code: string; step: 'SCAN' | 'QUALITY' } | null;
   setSelectedBinId: (id: string | undefined) => void;
   setShowScanner: (show: boolean) => void;
   setToast: (
@@ -57,8 +56,6 @@ export interface UseRunnerDataResult {
   handleBroadcast: (message: string) => Promise<void>;
   handleRequestRefill: () => Promise<void>;
   handleScanComplete: (scannedData: string | string[]) => void;
-  submitQuality: (grade: 'A' | 'B' | 'C' | 'reject') => Promise<void>;
-  setQualityScan: (scan: { code: string; step: 'SCAN' | 'QUALITY' } | null) => void;
 }
 
 export function useRunnerData(): UseRunnerDataResult {
@@ -100,9 +97,6 @@ export function useRunnerData(): UseRunnerDataResult {
     /** Texto completo para lector de pantalla (nombre del picker, sin cobertura) */
     announcement?: string;
   } | null>(null);
-  const [qualityScan, setQualityScan] = useState<{ code: string; step: 'SCAN' | 'QUALITY' } | null>(
-    null
-  );
 
   // Poll for pending uploads — 5s interval, pauses when tab is hidden
   useEffect(() => {
@@ -278,8 +272,9 @@ export function useRunnerData(): UseRunnerDataResult {
           return; // ignora los que no están checked in
         }
 
-        // Para la máxima velocidad en Batch Mode, asignamos calidad 'A' por defecto.
-        // (La integración original abría un modal bloqueando el progreso).
+        // La nota de calidad la da QC (inspecciones de qc_inspections), no el runner:
+        // la cubeta se guarda con 'A' y el runner no califica (decisión 2026-10-23;
+        // el QualityRatingModal nunca se mostraba y se quitó).
         savedFor.push(picker.name || picker.picker_id || code);
         saves.push(addBucket({
           picker_id: code,
@@ -303,25 +298,6 @@ export function useRunnerData(): UseRunnerDataResult {
     [scanType, rawInventory, crew, addBucket, orchard?.id, rowOf, selectedBinId, setBinStatus, setGlobalState, confirmSaved, t, dayClosed]
   );
 
-  const submitQuality = useCallback(
-    async (grade: 'A' | 'B' | 'C' | 'reject') => {
-      if (!qualityScan) return;
-      const { code } = qualityScan;
-      setQualityScan(null);
-      logger.debug(`[Runner] Scanning bucket with bin_id: ${selectedBinId}`);
-
-      const picker = crew.find(p => p.id === code || p.picker_id === code);
-      confirmSaved([addBucket({
-        picker_id: code,
-        quality_grade: grade,
-        timestamp: nowNZST(),
-        orchard_id: orchard?.id || 'offline_pending',
-        row_number: picker ? rowOf(picker.id, picker.current_row) : undefined,
-        bin_id: selectedBinId || null,
-      })], [picker?.name || code]);
-    },
-    [qualityScan, selectedBinId, addBucket, orchard?.id, crew, rowOf, confirmSaved]
-  );
 
   // Calculate real inventory data from context
   // Llenado del bin activo: al llegar a la capacidad pasa a lleno y se suelta
@@ -364,7 +340,6 @@ export function useRunnerData(): UseRunnerDataResult {
     showScanner,
     scanType,
     toast,
-    qualityScan,
     setSelectedBinId,
     setShowScanner,
     setToast,
@@ -372,7 +347,5 @@ export function useRunnerData(): UseRunnerDataResult {
     handleBroadcast,
     handleRequestRefill,
     handleScanComplete,
-    submitQuality,
-    setQualityScan,
   };
 }

@@ -113,6 +113,7 @@ const manager3: TranslationDict = {
     'msetup.err.rate': 'Escribe el precio por cubeta de hoy (mayor que $0)',
     'msetup.err.no_orchard': 'Aún no hay huerto cargado. Vuelve a intentarlo en un momento.',
     'msetup.err.save': 'No se guardó: {error}',
+    'staff.load_failed': 'No se pudo cargar el personal. Revisa la conexión y reinténtalo.',
 };
 
 export default manager3;

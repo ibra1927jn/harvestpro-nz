@@ -29,6 +29,16 @@ const fraud: TranslationDict = {
     'fraud.rule_elapsed_desc': 'Mesure seaux ÷ temps depuis le dernier ramassage. Des seaux accumulés sous les arbres = normal. Un pic impossible après le ramassage = alerte.',
     'fraud.rule_peer_desc': 'Compare chaque cueilleur à ses voisins de rang. Si tout le monde va vite = bon arbre. Si UNE SEULE personne fonce = suspect.',
     'fraud.rule_grace_desc': 'Les 90 premières minutes = mise en route. Échelles, fruits froids, pas encore de tracteurs. Le système observe sans rien signaler, sauf une cadence impossible.',
+    'fraud.dismissed_today': 'Écartées aujourd’hui',
+    'fraud.dismissed_count': '{n} anomalies écartées comme fausses alertes',
+    'fraud.dismissed_none': 'Rien d’écarté aujourd’hui.',
+    'fraud.dismissed_reason': 'Motif : {reason}',
+    'fraud.dismissed_no_reason': 'Sans motif',
+    'fraud.undo_dismiss': 'Annuler',
+    'fraud.dismiss': 'Écarter',
+    'fraud.dismiss_for': 'Écarter {name} comme fausse alerte',
+    'fraud.dismiss_prompt': 'Pourquoi est-ce une fausse alerte pour {name} ? (facultatif)',
+    'fraud.dismiss_failed': 'Non enregistré. Réessayez.',
 };
 
 export default fraud;

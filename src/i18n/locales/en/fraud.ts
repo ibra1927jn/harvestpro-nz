@@ -29,6 +29,16 @@ const fraud: TranslationDict = {
     'fraud.rule_elapsed_desc': 'Measures buckets ÷ time since last collection. Accumulated buckets under trees = normal. Impossible after-pickup spike = alert.',
     'fraud.rule_peer_desc': 'Compares each picker to their row mates. If everyone is fast = good tree. If ONLY one person is racing = suspicious.',
     'fraud.rule_grace_desc': 'First 90 min = warmup. Ladders, cold fruit, no tractors yet. System observes silently, only flags impossible velocity.',
+    'fraud.dismissed_today': 'Dismissed today',
+    'fraud.dismissed_count': '{n} anomalies dismissed as false alarms',
+    'fraud.dismissed_none': 'Nothing dismissed today.',
+    'fraud.dismissed_reason': 'Reason: {reason}',
+    'fraud.dismissed_no_reason': 'No reason given',
+    'fraud.undo_dismiss': 'Undo',
+    'fraud.dismiss': 'Dismiss',
+    'fraud.dismiss_for': 'Dismiss {name} as a false alarm',
+    'fraud.dismiss_prompt': 'Why is this a false alarm for {name}? (optional)',
+    'fraud.dismiss_failed': 'Not saved. Try again.',
 };
 
 export default fraud;

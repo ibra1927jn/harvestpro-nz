@@ -9,7 +9,6 @@ import { useHarvestStore } from '@/stores/useHarvestStore';
 import { logger } from '@/utils/logger';
 import { useToast } from '@/hooks/useToast';
 import ModalOverlay from '@/components/ui/ModalOverlay';
-import { DEFAULT_START_TIME } from '../../types';
 import { useTranslation } from '@/i18n';
 
 export interface NewPickerData {
@@ -44,8 +43,6 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
     const [name, setName] = useState('');
     const [idNumber, setIdNumber] = useState('');
     const [harnessNumber, setHarnessNumber] = useState('');
-    const [startTime, setStartTime] = useState(DEFAULT_START_TIME);
-    const [assignedRow, setAssignedRow] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { showToast } = useToast();
 
@@ -59,7 +56,7 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
     const allSafetyChecksPassed = safetyChecks.hazards && safetyChecks.branches && safetyChecks.tractorMovement;
 
     const handleAdd = async () => {
-        if (!name || !idNumber || !harnessNumber || !startTime) return;
+        if (!name || !idNumber || !harnessNumber) return;
 
         setIsSubmitting(true);
         try {
@@ -138,20 +135,9 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
                                 className="w-full px-4 py-3 rounded-xl border-2 border-border-light focus:border-primary outline-none font-mono uppercase text-text-main bg-white transition-colors" />
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-xs font-bold text-text-muted uppercase mb-2 block">{t('addPicker.start_time')} *</label>
-                            <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} title={t('addPicker.start_time')}
-                                className="w-full px-4 py-3 rounded-xl border-2 border-border-light focus:border-primary outline-none text-text-main bg-white transition-colors" />
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-text-muted uppercase mb-2 block">{t('addPicker.row_optional')}</label>
-                            <input type="number" value={assignedRow} onChange={(e) => setAssignedRow(e.target.value)}
-                                placeholder={t('runner.scanner.code_example', { code: '12' })}
-                                className="w-full px-4 py-3 rounded-xl border-2 border-border-light focus:border-primary outline-none text-text-main bg-white transition-colors" />
-                        </div>
-                    </div>
-
+                    {/* Sin «hora de inicio» ni «fila»: se pedían y no se guardaban (auditoría
+                        2026-10-23, E). La entrada la marca el pase de lista y la fila la asigna
+                        el manager / team leader. */}
                     {/* SAFETY INDUCTION (Simplified) */}
                     <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5">
                         <div className="flex items-center gap-3 mb-4">
@@ -181,7 +167,7 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
                         </label>
                     </div>
                     <button onClick={handleAdd}
-                        disabled={!name || !idNumber || !harnessNumber || !startTime || isSubmitting || !allSafetyChecksPassed}
+                        disabled={!name || !idNumber || !harnessNumber || isSubmitting || !allSafetyChecksPassed}
                         className="w-full mt-6 py-4 gradient-primary glow-primary text-white rounded-xl font-bold uppercase tracking-widest disabled:bg-surface-tertiary disabled:shadow-none disabled:cursor-not-allowed active:scale-95 transition-all">
                         {isSubmitting ? t('addPicker.adding') : t('addPicker.submit')}
                     </button>

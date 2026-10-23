@@ -113,6 +113,7 @@ const manager3: TranslationDict = {
     'msetup.err.rate': 'Enter today\'s price per bucket (above $0)',
     'msetup.err.no_orchard': 'No orchard is loaded yet. Try again in a moment.',
     'msetup.err.save': 'Not saved: {error}',
+    'staff.load_failed': 'Could not load staff. Check the connection and try again.',
 };
 
 export default manager3;

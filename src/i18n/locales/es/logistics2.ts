@@ -65,6 +65,7 @@ const logistics2: TranslationDict = {
     'logi.bins.save_failed': 'No se guardó: {error}',
     'logi.req.no_forklifts': 'Cualquiera menos carretillas',
     'logi.req.all_types': 'Todos los tipos',
+    'logi.req.confirm_cancel': '¿Cancelar la solicitud de transporte de la zona {zone} ({bins} bins)? No se puede deshacer.',
 };
 
 export default logistics2;

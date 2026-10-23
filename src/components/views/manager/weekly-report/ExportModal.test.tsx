@@ -43,6 +43,13 @@ describe('ExportModal', () => {
         expect(onExportPDF).toHaveBeenCalled();
     });
 
+    it('passes the sections ticked in the modal to the PDF (they used to be ignored)', () => {
+        render(<ExportModal onClose={onClose} onExportPDF={onExportPDF} onExportCSV={onExportCSV} />);
+        fireEvent.click(screen.getByText('Team Rankings'));
+        fireEvent.click(screen.getByText('Generate PDF'));
+        expect(onExportPDF).toHaveBeenLastCalledWith({ summary: true, charts: true, teams: false, pickerDetail: true });
+    });
+
     it('switches to CSV format', () => {
         render(<ExportModal onClose={onClose} onExportPDF={onExportPDF} onExportCSV={onExportCSV} />);
         fireEvent.click(screen.getByText('CSV (Excel)'));

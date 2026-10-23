@@ -6,20 +6,12 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act, waitFor } from '@testing-library/react';
 
-vi.mock('../../services/database.service', () => ({
-    databaseService: {
-        getStaffWithoutOrchard: vi.fn().mockResolvedValue([
-            { id: 's1', full_name: 'Alice Staff', role: 'team_leader', orchard_id: null },
-            { id: 's2', full_name: 'Bob Staff', role: 'runner', orchard_id: null },
-        ]),
-        getOrchardStaff: vi.fn().mockResolvedValue([
-            { id: 's3', full_name: 'Charlie Leader', role: 'team_leader', orchard_id: 'o1' },
-        ]),
-    },
-}));
-
+const getLeaders = vi.fn();
+const getRunners = vi.fn();
 vi.mock('../../services/user.service', () => ({
     userService: {
+        getAvailableTeamLeaders: (...a: unknown[]) => getLeaders(...a),
+        getAvailableRunners: (...a: unknown[]) => getRunners(...a),
         assignUserToOrchard: vi.fn().mockResolvedValue(undefined),
         unassignUserFromOrchard: vi.fn().mockResolvedValue(undefined),
     },
@@ -51,7 +43,29 @@ describe('TeamLeaderSelectionModal Integration', () => {
         onRemoveUser: vi.fn().mockResolvedValue(undefined),
     };
 
-    beforeEach(() => vi.clearAllMocks());
+    beforeEach(() => {
+        vi.clearAllMocks();
+        getLeaders.mockResolvedValue([
+            { id: 's1', full_name: 'Alice Staff', role: 'team_leader', orchard_id: null, is_active: true },
+            { id: 's9', full_name: 'Gone Leader', role: 'team_leader', orchard_id: null, is_active: false },
+        ]);
+        getRunners.mockResolvedValue([{ id: 's2', full_name: 'Bob Staff', role: 'runner', orchard_id: 'o1', is_active: true }]);
+    });
+
+    it('lists the real active staff (Link Staff used to say "0 staff")', async () => {
+        render(React.createElement(TeamLeaderSelectionModal, defaultProps));
+        expect(await screen.findByText('Alice Staff')).toBeDefined();
+        expect(screen.getByText('Bob Staff')).toBeDefined();
+        expect(screen.queryByText('Gone Leader')).toBeNull();
+    });
+
+    it('says the list could not load (with retry) instead of "no staff"', async () => {
+        getLeaders.mockRejectedValueOnce(new Error('offline'));
+        render(React.createElement(TeamLeaderSelectionModal, defaultProps));
+        expect(await screen.findByRole('alert')).toBeDefined();
+        await act(async () => { screen.getByText('Retry').click(); });
+        expect(await screen.findByText('Alice Staff')).toBeDefined();
+    });
 
     it('renders modal overlay', async () => {
         render(React.createElement(TeamLeaderSelectionModal, defaultProps));

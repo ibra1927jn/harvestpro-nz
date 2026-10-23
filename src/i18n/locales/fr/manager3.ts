@@ -113,6 +113,7 @@ const manager3: TranslationDict = {
     'msetup.err.rate': 'Saisissez le prix du seau d’aujourd’hui (supérieur à 0 $)',
     'msetup.err.no_orchard': 'Aucun verger n’est encore chargé. Réessayez dans un instant.',
     'msetup.err.save': 'Non enregistré : {error}',
+    'staff.load_failed': 'Impossible de charger le personnel. Vérifiez la connexion et réessayez.',
 };
 
 export default manager3;

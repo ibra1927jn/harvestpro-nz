@@ -121,7 +121,6 @@ describe('useRunnerData', () => {
     it('has initial state values', () => {
         const { result } = renderHook(() => useRunnerData());
         expect(result.current.showScanner).toBe(false);
-        expect(result.current.qualityScan).toBeNull();
         expect(result.current.toast).toBeNull();
     });
 
@@ -165,7 +164,6 @@ describe('useRunnerData', () => {
         const { result } = renderHook(() => useRunnerData());
         expect(typeof result.current.handleScanClick).toBe('function');
         expect(typeof result.current.handleScanComplete).toBe('function');
-        expect(typeof result.current.submitQuality).toBe('function');
         expect(typeof result.current.handleBroadcast).toBe('function');
     });
 });
