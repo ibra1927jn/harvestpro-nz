@@ -377,6 +377,52 @@ export type Database = {
           },
         ]
       }
+      chat_message_reactions: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          emoji: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id?: string
+          created_at?: string
+          emoji: string
+          message_id: string
+          user_id?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          emoji?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_message_reactions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_message_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           attachment_name: string | null
@@ -389,6 +435,7 @@ export type Database = {
           duration_ms: number | null
           id: string
           read_by: string[] | null
+          reply_to_id: string | null
           sender_id: string
         }
         Insert: {
@@ -402,6 +449,7 @@ export type Database = {
           duration_ms?: number | null
           id?: string
           read_by?: string[] | null
+          reply_to_id?: string | null
           sender_id: string
         }
         Update: {
@@ -415,6 +463,7 @@ export type Database = {
           duration_ms?: number | null
           id?: string
           read_by?: string[] | null
+          reply_to_id?: string | null
           sender_id?: string
         }
         Relationships: [
