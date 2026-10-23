@@ -1,9 +1,9 @@
 /**
  * send-push: entrega real a un "servicio push" falso que levanta el test.
  *
- * - send_to_user llega al destinatario (antes leía sus suscripciones con el
- *   cliente de quien envía y RLS las ocultaba: nunca se enviaba nada).
- * - Solo a gente del huerto de quien envía (igual que broadcast).
+ * - flush reparte la bandeja notification_outbox (la rellenan los triggers):
+ *   respeta los tipos silenciados por dispositivo y no avisa a cuentas de baja.
+ * - Ningún cliente manda texto libre a otra persona (send_to_user y broadcast ya no existen).
  * - Una suscripción caducada (410) se borra.
  *
  * Necesita que el runtime tenga VAPID_* (el runtime privado de
@@ -78,42 +78,63 @@ Deno.test({ name: 'send-push', ...testOpts, fn: async t => {
             assert(got[0].bytes > 86, 'encrypted payload present')
         })
 
-        await t.step('send_to_user delivers to the recipient\'s devices', async () => {
+        // Un aviso en la bandeja (lo que haría un trigger) y un «flush» lo entrega
+        const queue = async (recipient: TempUser, type: string, params: Record<string, unknown>): Promise<string> => {
+            const { data } = must(await service.from('notification_outbox').insert({
+                recipient_id: recipient.id, type, params, dedupe_key: `test:${crypto.randomUUID()}`,
+            }).select('id').single(), 'notification_outbox.insert')
+            return (data as { id: string }).id
+        }
+        const outboxRow = async (id: string) => {
+            const { data } = must(await service.from('notification_outbox').select('sent_at, last_error').eq('id', id).single(), 'outbox row')
+            return data as { sent_at: string | null; last_error: string | null }
+        }
+
+        await t.step('flush delivers a queued notice to the recipient\'s devices', async () => {
             hits.clear()
-            const r = await call('send-push', {
-                token: manager.token, body: { action: 'send_to_user', user_id: runner.id, title: 'Row 4', body: 'Bin full' },
-            })
+            const id = await queue(runner, 'broadcast', { title: 'Rain', content: 'Stop picking' })
+            const r = await call('send-push', { token: manager.token, body: { action: 'flush' } })
             assertEquals(r.status, 200, show(r))
-            assertEquals(r.json.sent, 1, show(r))
+            assert((r.json.delivered as number) >= 1, show(r))
             assertEquals((hits.get(runnerPath) ?? []).length, 1)
+            assert((await outboxRow(id)).sent_at, 'marked as sent')
         })
 
-        await t.step('send_to_user outside the sender\'s orchard → 403, nothing sent', async () => {
+        await t.step('a device that muted that kind of notice gets nothing', async () => {
             hits.clear()
-            const r = await call('send-push', {
-                token: manager.token, body: { action: 'send_to_user', user_id: outsider.id, title: 'x', body: 'y' },
-            })
-            assertEquals(r.status, 403, show(r))
-            assertEquals(hits.size, 0)
+            must(await service.from('push_subscriptions').update({ muted_types: ['transport'] }).eq('user_id', runner.id), 'mute')
+            const id = await queue(runner, 'transport_completed', { zone: 'Z1' })
+            const r = await call('send-push', { token: runner.token, body: { action: 'flush' } })
+            assertEquals(r.status, 200, show(r))
+            assertEquals(hits.get(runnerPath), undefined)
+            assertEquals((await outboxRow(id)).last_error, 'muted')
+            must(await service.from('push_subscriptions').update({ muted_types: [] }).eq('user_id', runner.id), 'unmute')
         })
 
-        await t.step('broadcast only reaches active people in the sender\'s orchard', async () => {
+        await t.step('a deactivated account gets nothing', async () => {
             hits.clear()
-            const r = await call('send-push', {
-                token: manager.token, body: { action: 'broadcast', role: 'runner', title: 'Rain', body: 'Stop picking' },
-            })
-            assertEquals(r.status, 200, show(r))
-            assertEquals(r.json.sent, 1, show(r))
-            assertEquals((hits.get(runnerPath) ?? []).length, 1)
+            const id = await queue(former, 'broadcast', { title: 'x' })
+            await call('send-push', { token: manager.token, body: { action: 'flush' } })
+            assertEquals(hits.get(formerPath), undefined)
+            assertEquals((await outboxRow(id)).last_error, 'recipient inactive')
+        })
+
+        await t.step('no client can push free text to someone else', async () => {
+            hits.clear()
+            for (const body of [
+                { action: 'send_to_user', user_id: outsider.id, title: 'x', body: 'y' },
+                { action: 'broadcast', role: 'runner', title: 'x', body: 'y' },
+            ]) {
+                const r = await call('send-push', { token: manager.token, body })
+                assertEquals(r.status, 400, show(r))
+            }
             assertEquals(hits.get(outsiderPath), undefined)
-            assertEquals(hits.get(formerPath), undefined, 'deactivated account got a broadcast')
         })
 
         await t.step('an expired subscription (410) is removed', async () => {
             const gonePath = await subscribe(runner, 'gone')
-            const r = await call('send-push', {
-                token: manager.token, body: { action: 'send_to_user', user_id: runner.id, title: 'x', body: 'y' },
-            })
+            await queue(runner, 'broadcast', { title: 'x' })
+            const r = await call('send-push', { token: manager.token, body: { action: 'flush' } })
             assertEquals(r.status, 200, show(r))
             const { data } = must(await service.from('push_subscriptions').select('endpoint').eq('user_id', runner.id), 'subs')
             assertEquals(data!.map(s => new URL(s.endpoint).pathname), [runnerPath])
