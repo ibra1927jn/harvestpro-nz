@@ -154,7 +154,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
         broadcasts: [broadcast, ...prev.broadcasts],
       }));
       // 📊 PostHog: Track broadcast sent
-      analytics.trackBroadcast((targetRoles || [Role.TEAM_LEADER, Role.RUNNER]).length, priority);
+      analytics.trackBroadcast(broadcast.target_roles.length, priority);
       return true;
     } catch (error) {
       logger.error('[MessagingContext] Error sending broadcast:', error);

@@ -37,6 +37,10 @@ vi.mock('@/services/offline.service', () => ({
 vi.mock('@/services/config.service', () => ({
   getConfig: () => ({ SUPABASE_URL: 'x', SUPABASE_ANON_KEY: 'k' }),
 }));
+// La campana cuenta también los avisos de calidad (store del huerto): sin Supabase real
+vi.mock('@/services/supabase', () => ({
+  supabase: { auth: { getSession: vi.fn() }, from: vi.fn(), channel: vi.fn(), removeChannel: vi.fn(), getChannels: vi.fn(() => []) },
+}));
 // Foto propia: enlace firmado (null = iniciales); sin Supabase en este test
 vi.mock('@/hooks/useAvatarUrl', () => ({
   useAvatarSignedUrl: (path: string | null | undefined) => (path ? `signed:${path}` : null),

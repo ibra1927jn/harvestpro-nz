@@ -41,7 +41,7 @@ const Toast: React.FC<ToastProps> = ({ message, announcement, type = 'info', onC
     };
 
     return (
-        <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce-in ${className}`}>
+        <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-[300] animate-bounce-in ${className}`}>
             <div className={`${bgColors[type]} text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3 min-w-[300px]`}>
                 <span aria-hidden="true" className="material-symbols-outlined">{icons[type]}</span>
                 <span className="font-bold text-sm tracking-wide flex-1">{message}</span>

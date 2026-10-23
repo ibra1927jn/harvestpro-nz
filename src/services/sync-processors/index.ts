@@ -11,6 +11,7 @@ export { processAttendance } from './attendance.processor';
 export { processPicker } from './picker.processor';
 export { processQCInspection } from './qc-inspection.processor';
 export { processUnlink } from './unlink.processor';
+export { processLeaveRequest } from './leave.processor';
 
 export type {
     ScanPayload,
@@ -21,6 +22,7 @@ export type {
     TimesheetPayload,
     PickerPayload,
     QCInspectionPayload,
+    LeaveRequestPayload,
     SyncPayload,
     PendingItem,
 } from './types';

@@ -5,9 +5,13 @@ import { selectTeamOf, isPresentToday } from '@/services/harvestMetrics/roster';
 import AddPickerModal from '../../modals/AddPickerModal';
 import { ElsewhereBadge } from '@/components/common/ElsewhereBadge';
 import { useTranslation } from '@/i18n';
+import Toast from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
 
 const TeamView = () => {
     const { t } = useTranslation();
+    // Alta de picker: confirmación al guardar (el modal se cierra)
+    const { toast, showToast, hideToast } = useToast();
     const {
         crew,
         addPicker,
@@ -40,6 +44,7 @@ const TeamView = () => {
 
     return (
         <div className="relative">
+            {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
             <div className="sticky top-0 z-30 bg-white/70 backdrop-blur-xl border-b border-white/50 pb-3 pt-4 shadow-[0_4px_30px_-5px_rgba(0,0,0,0.05)]">
                 <div className="flex items-center justify-between px-5 py-3">
                     <div className="flex items-center gap-3">
@@ -193,7 +198,10 @@ const TeamView = () => {
             {isAddModalOpen && (
                 <AddPickerModal
                     onClose={() => setIsAddModalOpen(false)}
-                    onAdd={addPicker}
+                    onAdd={async p => {
+                        await addPicker(p);
+                        showToast(t('comms.picker_added', { name: p.name }), 'success');
+                    }}
                 />
             )}
         </div>

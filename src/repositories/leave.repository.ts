@@ -45,6 +45,19 @@ export const leaveRepository = {
             .range(start, end));
     },
 
+    /** Lo que pidió una persona (el team leader) desde una fecha, lo más nuevo primero */
+    async listRequestedBy(userId: string, sinceYmd: string): Promise<LeaveRequestRow[]> {
+        return fetchAllRows<LeaveRequestRow>((start, end) => supabase
+            .from('leave_requests')
+            .select(COLUMNS)
+            .eq('requested_by', userId)
+            .is('deleted_at', null)
+            .gte('end_date', sinceYmd)
+            .order('created_at', { ascending: false })
+            .order('id')
+            .range(start, end));
+    },
+
     /** Nueva ausencia. Lanza el error para que la pantalla lo diga. */
     async insert(row: NewLeaveRequest): Promise<LeaveRequestRow> {
         const { data, error } = await supabase

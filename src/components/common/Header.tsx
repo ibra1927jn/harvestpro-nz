@@ -10,7 +10,7 @@ import { useAvatarSignedUrl } from '@/hooks/useAvatarUrl';
 import UserAvatar from './account/UserAvatar';
 import { LazyAccountSheet as AccountSheet } from './account/lazyAccountSheet';
 import { logger } from '@/utils/logger';
-import { useMessaging } from '@/context/MessagingContext';
+import { useNotificationBadge } from '@/hooks/useNotificationBadge';
 import { useNavigate } from 'react-router-dom';
 import { offlineService } from '@/services/offline.service';
 import NotificationPanel from './NotificationPanel';
@@ -36,7 +36,8 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { t } = useTranslation();
   const { appUser, signOut } = useAuth();
-  const { unreadCount } = useMessaging();
+  // Campana: chat sin leer + avisos (calidad, avisos del huerto) sin ver
+    const unreadCount = useNotificationBadge();
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);

@@ -205,7 +205,8 @@ const ContractsTab: React.FC<ContractsTabProps> = ({ employees, summary, onRefre
             {toast && (
                 <div role="status" className={`fixed top-4 right-4 z-[100] px-5 py-3.5 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] text-sm font-extrabold tracking-tight flex items-center gap-3 backdrop-blur-md border ${TOAST_STYLES[toast.type]}`}>
                     <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
-                        {toast.type === 'success' ? 'check_circle' : 'warning'}
+                        {/* Icono según el tipo (un error salía con el de aviso) */}
+                        {toast.type === 'success' ? 'check_circle' : toast.type === 'error' ? 'error' : 'warning'}
                     </span>
                     {toast.message}
                 </div>

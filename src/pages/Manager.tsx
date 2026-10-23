@@ -41,6 +41,8 @@ import Header from '@/components/common/Header';
 // Modals
 import BroadcastModal from '@/components/views/manager/BroadcastModal';
 import RowAssignmentModal from '@/components/views/manager/RowAssignmentModal';
+import Toast from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
 
 /* ── Lazy loading fallback ─────────────────────────── */
 const TabLoader = () => {
@@ -79,6 +81,8 @@ const Manager = () => {
 
   const openPickerProfile = useHarvestStore(s => s.openPickerProfile);
   const { t } = useTranslation();
+  // Confirmaciones de la página (asignar fila: el modal ya se ha cerrado)
+  const { toast, showToast, hideToast } = useToast();
 
   const isDesktop = useMediaQuery('(min-width: 768px)');
 
@@ -240,11 +244,13 @@ const Manager = () => {
   /* ── Shared Modals ──────────────────────────────────── */
   const renderModals = () => (
     <>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
       {showBroadcast && <BroadcastModal onClose={() => setShowBroadcast(false)} />}
       {showAssignment.show && (
         <RowAssignmentModal
           initialRow={showAssignment.row}
           onClose={() => setShowAssignment({ show: false, row: 1 })}
+          onAssigned={rows => showToast(t('comms.rows_assigned', { rows: rows.join(', ') }), 'success')}
           onViewPicker={picker => {
             setShowAssignment({ show: false, row: 1 });
             openPickerProfile(picker.id);

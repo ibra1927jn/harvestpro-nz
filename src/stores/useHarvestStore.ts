@@ -63,6 +63,7 @@ export const useHarvestStore = create<HarvestStoreState>()(
       lastSyncAt: null,
       recentQcInspections: [],
       recentTimesheetUpdates: [],
+      attendanceChangedAt: 0,
 
       // === ORCHESTRATOR ACTIONS ===
       setGlobalState: data => set(data),

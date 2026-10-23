@@ -16,7 +16,7 @@ import { logger } from '@/utils/logger';
 import { type Bin, type Picker } from '@/types/app.types';
 import { createTransportRequest } from '@/services/logistics-dept.service';
 import { binService, bucketsInBin } from '@/services/bin.service';
-import { MAX_BUCKETS_PER_BIN } from '@/types/app.types';
+import { MAX_BUCKETS_PER_BIN, Role } from '@/types/app.types';
 import { bucketSavedAnnouncement, isOnlineNow } from './runnerAnnouncements';
 import { useTranslation } from '@/i18n';
 
@@ -133,7 +133,8 @@ export function useRunnerData(): UseRunnerDataResult {
   const handleBroadcast = useCallback(
     async (message: string) => {
       feedbackService.vibrate(50);
-      const ok = await sendBroadcast('Runner Request', message, 'normal');
+      // Igual que antes del cambio de destinatarios por defecto: a team leaders y runners
+      const ok = await sendBroadcast('Runner Request', message, 'normal', [Role.TEAM_LEADER, Role.RUNNER]);
       setToast(ok
         ? { message: t('runner.toast.broadcast_sent'), type: 'success' }
         : { message: t('runner.toast.broadcast_failed'), type: 'error' });

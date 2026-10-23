@@ -281,3 +281,26 @@ export function mergeBins(serverBins: Bin[], local: Bin[] | undefined): Bin[] {
   const localOnly = (local || []).filter(b => !serverIds.has(b.id) && b.bin_code);
   return [...serverBins, ...localOnly];
 }
+
+/* ── Ajustes del huerto en vivo ───────────── */
+
+/** Campos de harvest_settings que llegan en vivo (el precio va por piece_rates) */
+const LIVE_SETTINGS_FIELDS = ['min_buckets_per_hour', 'target_tons', 'min_wage_rate', 'variety', 'shift_start_time'] as const;
+
+/**
+ * Aplica una fila de harvest_settings llegada por realtime: meta, mínimo y
+ * objetivo cambian; el precio (piece_rate / piece_rates) se queda como está.
+ */
+export function applyHarvestSettingsChange<S extends object>(settings: S, row: Record<string, unknown> | null | undefined): S {
+  if (!row) return settings;
+  const next = { ...settings } as Record<string, unknown>;
+  let changed = false;
+  for (const key of LIVE_SETTINGS_FIELDS) {
+    if (!(key in row)) continue;
+    const raw = row[key];
+    const value = key === 'variety' || key === 'shift_start_time' ? raw : raw == null ? raw : Number(raw);
+    if (value === undefined || (typeof value === 'number' && Number.isNaN(value))) continue;
+    if (next[key] !== value) { next[key] = value; changed = true; }
+  }
+  return changed ? (next as unknown as S) : settings;
+}

@@ -8,6 +8,7 @@ import { selectTeamOf, selectPresentPickers } from '@/services/harvestMetrics/ro
 import { UnclosedShiftsAlert } from '@/components/common/UnclosedShiftsAlert';
 import { useTranslation } from '@/i18n';
 import { formatNZD, formatNZDate } from '@/utils/nzFormat';
+import { TeamQualityTodayCard } from './TeamQualityTodayCard';
 import { useTodayPieceRate, rowOfTeam } from '@/hooks/useTodayPieceRate';
 
 const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
@@ -151,6 +152,9 @@ const HomeView = ({ onNavigate }: { onNavigate?: (tab: string) => void }) => {
                         </p>
                     </div>
                 </div>
+
+                {/* Calidad de mi equipo hoy (inspecciones de QC, en vivo) */}
+                <TeamQualityTodayCard />
 
                 {/* MY CREW LIST */}
                 <section>

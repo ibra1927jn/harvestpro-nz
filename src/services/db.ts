@@ -80,7 +80,8 @@ export interface QueuedSyncItem {
     | 'TIMESHEET'
     | 'PICKER'
     | 'QC_INSPECTION'
-    | 'UNLINK';
+    | 'UNLINK'
+    | 'LEAVE_REQUEST';
   payload: Record<string, unknown>;
   timestamp: number;
   retryCount: number;
