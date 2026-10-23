@@ -1,72 +1,55 @@
 /**
- * push.repository.test.ts — Tests for push subscription repository
+ * push.repository — alta por RPC (un dispositivo = una cuenta), baja y tipos silenciados.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const rpc = vi.fn();
+const eq = vi.fn();
+const del = vi.fn(() => ({ eq }));
+const update = vi.fn((_: unknown) => ({ eq }));
+const from = vi.fn((_: string) => ({ delete: del, update }));
+
+vi.mock('@/services/supabase', () => ({
+    supabase: {
+        rpc: (...a: unknown[]) => rpc(...a),
+        from: (t: string) => from(t),
+    },
+}));
+
 import { pushRepository } from './push.repository';
-
-// ── Mock Supabase ──
-vi.mock('@/services/supabase', () => {
-    const mockUpsert = vi.fn().mockResolvedValue({ error: null });
-    const mockEq2 = vi.fn().mockResolvedValue({ error: null });
-    const mockEq1 = vi.fn(() => ({ eq: mockEq2 }));
-    const mockDelete = vi.fn(() => ({ eq: mockEq1 }));
-
-    return {
-        supabase: {
-            from: vi.fn(() => ({
-                upsert: mockUpsert,
-                delete: mockDelete,
-            })),
-        },
-    };
-});
-
-// Import after mock
-import { supabase } from '@/services/supabase';
 
 describe('pushRepository', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        rpc.mockResolvedValue({ error: null });
+        eq.mockResolvedValue({ error: null });
     });
 
-    describe('upsert', () => {
-        it('calls supabase.from(push_subscriptions).upsert with correct data', async () => {
-            const record = {
-                user_id: 'u-1',
-                endpoint: 'https://push.example.com/sub1',
-                keys_p256dh: 'p256dh-key',
-                keys_auth: 'auth-key',
-                user_agent: 'Mozilla/5.0',
-            };
-
-            const result = await pushRepository.upsert(record);
-
-            expect(supabase.from).toHaveBeenCalledWith('push_subscriptions');
-            expect(result.error).toBeNull();
+    it('registers the device through register_push_subscription', async () => {
+        const res = await pushRepository.register({
+            endpoint: 'https://push.example.com/1', keys_p256dh: 'p', keys_auth: 'a', user_agent: 'UA', muted_types: ['transport'],
         });
-
-        it('returns error when upsert fails', async () => {
-            const dbError = { message: 'DB error' };
-            const mockChain = supabase.from('push_subscriptions') as { upsert: ReturnType<typeof vi.fn> };
-            mockChain.upsert.mockResolvedValueOnce({ error: dbError });
-
-            const result = await pushRepository.upsert({
-                user_id: 'u-1',
-                endpoint: 'https://push.example.com/sub1',
-                keys_p256dh: 'key',
-                keys_auth: 'key',
-                user_agent: 'agent',
-            });
-
-            expect(result.error).toEqual(dbError);
+        expect(res.error).toBeNull();
+        expect(rpc).toHaveBeenCalledWith('register_push_subscription', {
+            p_endpoint: 'https://push.example.com/1', p_p256dh: 'p', p_auth: 'a', p_user_agent: 'UA', p_muted_types: ['transport'],
         });
     });
 
-    describe('delete', () => {
-        it('calls supabase.from(push_subscriptions).delete().eq().eq()', async () => {
-            await pushRepository.delete('u-1', 'https://push.example.com/sub1');
+    it('returns the server error message', async () => {
+        rpc.mockResolvedValue({ error: { message: 'Invalid push endpoint' } });
+        const res = await pushRepository.register({ endpoint: 'x', keys_p256dh: 'p', keys_auth: 'a', user_agent: '', muted_types: [] });
+        expect(res.error?.message).toBe('Invalid push endpoint');
+    });
 
-            expect(supabase.from).toHaveBeenCalledWith('push_subscriptions');
-        });
+    it('deletes the subscription of this device by endpoint', async () => {
+        await pushRepository.delete('https://push.example.com/1');
+        expect(from).toHaveBeenCalledWith('push_subscriptions');
+        expect(eq).toHaveBeenCalledWith('endpoint', 'https://push.example.com/1');
+    });
+
+    it('saves the muted notification types of this device', async () => {
+        await pushRepository.setMutedTypes('https://push.example.com/1', ['qc_reject']);
+        expect(update.mock.calls[0][0]).toMatchObject({ muted_types: ['qc_reject'] });
+        expect(eq).toHaveBeenCalledWith('endpoint', 'https://push.example.com/1');
     });
 });

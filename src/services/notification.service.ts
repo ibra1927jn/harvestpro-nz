@@ -10,6 +10,27 @@ import { showSystemNotification } from '@/utils/systemNotification';
 
 type AlertType = 'visa_expiry' | 'qc_reject' | 'transport' | 'attendance';
 
+const ALERT_TYPES: readonly AlertType[] = ['visa_expiry', 'qc_reject', 'transport', 'attendance'];
+
+/** Casillas desmarcadas = tipos que el servidor no debe mandar a este dispositivo */
+export function mutedTypesOf(types: Partial<Record<AlertType, boolean>>): AlertType[] {
+    return ALERT_TYPES.filter(type => types[type] === false);
+}
+
+/**
+ * Avisos push (con la app cerrada): se cargan aparte (push.service) para no
+ * engordar el arranque. Si falla, quedan los avisos locales.
+ */
+async function syncPush(on: boolean): Promise<void> {
+    try {
+        const { pushService } = await import('./push.service');
+        if (on) await pushService.enable(mutedTypesOf(getPrefs().types));
+        else await pushService.disable();
+    } catch (e) {
+        logger.warn('[NotificationService] Push sync failed:', e);
+    }
+}
+
 interface NotificationPrefs {
     enabled: boolean;
     types: Record<AlertType, boolean>;
@@ -221,12 +242,32 @@ async function setEnabled(enabled: boolean): Promise<boolean> {
         prefs.enabled = true;
         savePrefs(prefs);
         startChecking();
+        // También con la app cerrada: suscripción push de este dispositivo
+        await syncPush(true);
         return true;
     } else {
         prefs.enabled = false;
         savePrefs(prefs);
         stopChecking();
+        await syncPush(false);
         return true;
+    }
+}
+
+/**
+ * Al entrar con sesión: si los avisos estaban activados, vuelven a arrancar los
+ * locales y se renueva la suscripción push si el navegador la cambió.
+ */
+async function resume(): Promise<void> {
+    if (!getPrefs().enabled) return;
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    startChecking();
+    try {
+        const { pushService } = await import('./push.service');
+        pushService.listenForRenewals(() => mutedTypesOf(getPrefs().types));
+        await pushService.resync(mutedTypesOf(getPrefs().types));
+    } catch (e) {
+        logger.warn('[NotificationService] Push resync failed:', e);
     }
 }
 
@@ -237,6 +278,12 @@ function setAlertTypes(types: Partial<Record<AlertType, boolean>>): void {
     const prefs = getPrefs();
     prefs.types = { ...prefs.types, ...types };
     savePrefs(prefs);
+    // El servidor respeta los tipos por dispositivo (push_subscriptions.muted_types)
+    if (prefs.enabled) {
+        void import('./push.service')
+            .then(({ pushService }) => pushService.setMutedTypes(mutedTypesOf(prefs.types)))
+            .catch(e => logger.warn('[NotificationService] Could not save push types:', e));
+    }
 }
 
 /**
@@ -258,6 +305,7 @@ export const notificationService = {
     setAlertTypes,
     sendTest,
     startChecking,
+    resume,
     stopChecking,
     checkAlerts,
 };

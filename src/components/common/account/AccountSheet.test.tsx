@@ -61,6 +61,7 @@ vi.mock('@/services/notification.service', () => ({
     },
 }));
 vi.mock('@/services/config.service', () => ({ getConfig: () => ({ APP_VERSION: '9.9.0-test' }) }));
+vi.mock('@/services/push.service', () => ({ pushService: { unavailableReason: () => null, isRegistered: () => false } }));
 vi.mock('@/hooks/useMFA', () => ({ useMFA: () => h.mfa }));
 vi.mock('@/components/MFASetup', () => ({
     MFASetup: ({ onComplete, friendlyName }: { onComplete: () => void; friendlyName: string }) => (

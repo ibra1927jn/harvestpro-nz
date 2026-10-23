@@ -53,6 +53,12 @@ const settings2: TranslationDict = {
     'pieceRates.price_aria': 'Precio por cubeta hoy: {name}',
     'pieceRates.clear': 'Deshacer hoy',
     'pieceRates.none': 'No hay variedades en las filas de este huerto.',
+    'settings.push.active': 'Activadas en este dispositivo, también con la app cerrada.',
+    'settings.push.ios_install': 'En iPhone y iPad los avisos con la app cerrada solo llegan si la app está instalada: Compartir → Añadir a pantalla de inicio, y ábrela desde ahí.',
+    'settings.push.unsupported': 'Este navegador no recibe avisos con la app cerrada: solo mientras está abierta.',
+    'settings.push.not_configured': 'Los avisos con la app cerrada aún no están configurados en este servidor: solo mientras la app está abierta.',
+    'settings.push.denied': 'Las notificaciones están bloqueadas para esta web. Permítelas en los ajustes del navegador.',
+    'settings.push.open_only': 'Solo con la app abierta: no se pudo registrar este dispositivo para los avisos. Vuelve a intentarlo con cobertura.',
 };
 
 export default settings2;

@@ -53,6 +53,12 @@ const settings2: TranslationDict = {
     'pieceRates.price_aria': 'Prix par seau aujourd’hui : {name}',
     'pieceRates.clear': 'Annuler aujourd’hui',
     'pieceRates.none': 'Aucune variété dans les rangs de ce verger.',
+    'settings.push.active': 'Activées sur cet appareil, même quand l’app est fermée.',
+    'settings.push.ios_install': 'Sur iPhone et iPad, les alertes app fermée n’arrivent que si l’app est installée : Partager → Sur l’écran d’accueil, puis ouvrez-la depuis là.',
+    'settings.push.unsupported': 'Ce navigateur ne reçoit pas d’alertes quand l’app est fermée : seulement quand elle est ouverte.',
+    'settings.push.not_configured': 'Les alertes app fermée ne sont pas encore configurées sur ce serveur : seulement quand l’app est ouverte.',
+    'settings.push.denied': 'Les notifications sont bloquées pour ce site. Autorisez-les dans les réglages du navigateur.',
+    'settings.push.open_only': 'Seulement quand l’app est ouverte : impossible d’enregistrer cet appareil pour les alertes. Réessayez avec du réseau.',
 };
 
 export default settings2;

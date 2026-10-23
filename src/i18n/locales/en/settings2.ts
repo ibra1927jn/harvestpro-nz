@@ -53,6 +53,12 @@ const settings2: TranslationDict = {
     'pieceRates.price_aria': 'Price per bucket today: {name}',
     'pieceRates.clear': 'Undo today',
     'pieceRates.none': 'No varieties found in this orchard\'s rows.',
+    'settings.push.active': 'On for this device, also when the app is closed.',
+    'settings.push.ios_install': 'On iPhone and iPad, alerts with the app closed only arrive if the app is installed: Share → Add to Home Screen, then open it from there.',
+    'settings.push.unsupported': 'This browser cannot receive alerts with the app closed: only while it is open.',
+    'settings.push.not_configured': 'Alerts with the app closed are not set up on this server yet: only while the app is open.',
+    'settings.push.denied': 'Notifications are blocked for this site. Allow them in the browser settings.',
+    'settings.push.open_only': 'Only while the app is open: this device could not be registered for alerts. Try again with signal.',
 };
 
 export default settings2;

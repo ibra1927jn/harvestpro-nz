@@ -73,7 +73,9 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          // woff2: fuentes autoalojadas (Inter + iconos) precacheadas → arranque offline con iconos
+          // Avisos push (mostrar y abrir al tocar) en el mismo service worker
+          importScripts: ['/sw-push.js'],
+          // woff2:fuentes autoalojadas (Inter + iconos) precacheadas → arranque offline con iconos
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
           globIgnores: [
             // informe del bundle (rollup-plugin-visualizer), ~700 KB: no es parte de la app

@@ -27,6 +27,7 @@ import { SettingsSection, FormField, ReadonlyField, ToggleRow } from './settings
 import { DailyPieceRatesEditor } from './settings/DailyPieceRatesEditor';
 import { LockedField, ComplianceTargetField, OrchardSelector } from './settings/SettingsFields';
 import { roleLabel } from '@/i18n/roleLabel';
+import { PushStatusHint } from '@/components/common/PushStatusHint';
 
 
 const SettingsView: React.FC = () => {
@@ -156,6 +157,7 @@ const SettingsView: React.FC = () => {
             {/* ── Notifications ────────────────────────── */}
             <SettingsSection icon="notifications_active" iconBg="bg-amber-50" iconColor="text-amber-600" title={t('settings.notifications')} subtitle={t('settings.notif.subtitle')} accentColor="border-l-amber-500" stagger={5}>
                 <ToggleRow label={t('settings.notif.enable')} description={t('settings.notif.enable_desc')} checked={s.notifEnabled} onChange={s.handleNotifToggle} icon="notifications" />
+                <PushStatusHint enabled={s.notifEnabled} />
                 {s.notifEnabled && (
                     <>
                         <div className="border-t border-slate-100 pt-3 mt-1">

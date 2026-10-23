@@ -17,6 +17,7 @@ import { useTranslation, SUPPORTED_LOCALES, type Locale } from '@/i18n';
 import { roleLabel } from '@/i18n/roleLabel';
 import { accountService, type AccountErrorCode } from '@/services/account.service';
 import { notificationService } from '@/services/notification.service';
+import { PushStatusHint } from '@/components/common/PushStatusHint';
 import { getConfig } from '@/services/config.service';
 import { findTeamLeader, selectTeamOf } from '@/services/harvestMetrics/roster';
 import { AVATAR_INPUT_TYPES, DISPLAY_NAME_MAX, DISPLAY_NAME_MIN, PHONE_MAX } from '@/schemas/account.schemas';
@@ -357,6 +358,7 @@ const AccountSheet: React.FC<AccountSheetProps> = ({ onClose }) => {
                         onChange={v => void toggleNotifications(v)}
                         icon="notifications_active"
                     />
+                    <PushStatusHint enabled={notifEnabled} />
                 </AccountSection>
 
                 {/* Cerrar sesión + versión */}
