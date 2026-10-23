@@ -109,7 +109,8 @@ export interface QueuedSyncItem {
     | 'TIMESHEET'
     | 'PICKER'
     | 'QC_INSPECTION'
-    | 'UNLINK';
+    | 'UNLINK'
+    | 'BIN';
   payload: Record<string, unknown>;
   timestamp: number;
   retryCount: number;

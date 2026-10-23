@@ -100,11 +100,24 @@ export type QCInspectionPayload = {
     wellbeing_notes?: string | null;
 };
 
-export type SyncPayload = ScanPayload | MessagePayload | AttendancePayload | ContractPayload | TransportPayload | TimesheetPayload | PickerPayload | QCInspectionPayload;
+// Bins del runner sin cobertura: alta de un bin escaneado y cambios de estado.
+// El id del bin se genera en el móvil: reintentar el alta no crea otro.
+export type BinPayload = {
+    action: 'register' | 'status';
+    bin_id: string;
+    orchard_id?: string;
+    bin_code?: string;
+    /** Estado en la BD: empty | partial | full | collected */
+    status?: 'empty' | 'partial' | 'full' | 'collected';
+    /** Hora en que se llenó (la del móvil al marcarlo, no la de la subida) */
+    filled_at?: string | null;
+};
+
+export type SyncPayload = BinPayload | ScanPayload | MessagePayload | AttendancePayload | ContractPayload | TransportPayload | TimesheetPayload | PickerPayload | QCInspectionPayload;
 
 export interface PendingItem {
     id: string; // UUID (generated client-side)
-    type: 'SCAN' | 'MESSAGE' | 'ATTENDANCE' | 'ASSIGNMENT' | 'CONTRACT' | 'TRANSPORT' | 'TIMESHEET' | 'PICKER' | 'QC_INSPECTION' | 'UNLINK';
+    type: 'SCAN' | 'MESSAGE' | 'ATTENDANCE' | 'ASSIGNMENT' | 'CONTRACT' | 'TRANSPORT' | 'TIMESHEET' | 'PICKER' | 'QC_INSPECTION' | 'UNLINK' | 'BIN';
     payload: SyncPayload;
     timestamp: number;
     retryCount: number;

@@ -70,7 +70,7 @@ export function useRunnerData(): UseRunnerDataResult {
   const { sendBroadcast } = useMessaging();
   const setGlobalState = useHarvestStore(state => state.setGlobalState);
 
-  // Cambia el estado de un bin en pantalla al momento y en el servidor
+  // Cambia el estado de un bin en pantalla al momento; al servidor va por la cola offline
   const setBinStatus = useCallback(
     (binId: string, status: Bin['status']) => {
       const inv = useHarvestStore.getState().inventory;
@@ -82,7 +82,7 @@ export function useRunnerData(): UseRunnerDataResult {
         ),
       });
       binService.updateBinStatus(binId, status).catch(e =>
-        logger.warn('[Runner] Bin status not saved on server:', e)
+        logger.warn('[Runner] Bin status not queued:', e)
       );
     },
     [setGlobalState]

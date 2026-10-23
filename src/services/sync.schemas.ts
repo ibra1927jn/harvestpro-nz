@@ -96,6 +96,21 @@ export const QCInspectionPayloadSchema = z.object({
   wellbeing_notes: z.string().max(500).nullable().optional(),
 });
 
+/** Bins del runner: alta (id del móvil) o cambio de estado */
+export const BinPayloadSchema = z
+  .object({
+    action: z.enum(['register', 'status']),
+    bin_id: z.string().uuid(),
+    orchard_id: z.string().uuid().optional(),
+    bin_code: z.string().min(1).max(100).optional(),
+    status: z.enum(['empty', 'partial', 'full', 'collected']).optional(),
+    filled_at: z.string().nullable().optional(),
+  })
+  .refine(p => p.action !== 'register' || (!!p.orchard_id && !!p.bin_code), {
+    message: 'register needs orchard_id and bin_code',
+  })
+  .refine(p => p.action !== 'status' || !!p.status, { message: 'status change needs status' });
+
 export const UnlinkPayloadSchema = z.object({
   userId: z.string(),
 });
