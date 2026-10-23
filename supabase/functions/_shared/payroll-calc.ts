@@ -4,7 +4,7 @@
  * close-pay-week (foto de lo que se paga al cerrar la semana), así ambos dan
  * exactamente las mismas cifras.
  */
-import { payForRange, pieceRateOn, nzDateOf, isNZPublicHoliday, PAY_RULES, type PayDay, type PickerRangePay } from './pay-rules.ts'
+import { payForRange, pieceRateOn, nzDateOf, isNZPublicHoliday, PAY_RULES, correctionCovers, type PayDay, type PickerRangePay } from './pay-rules.ts'
 import { loadDailyPieceRates } from './piece-rates.ts'
 import { fetchAllRows } from './fetch-all-rows.ts'
 import { fetchInChunks } from './fetch-in-chunks.ts'
@@ -209,7 +209,7 @@ export async function computePayroll(
     const attendance = await fetchAllRows((from, to) => {
         const q = supabase
             .from('daily_attendance')
-            .select('picker_id, orchard_id, date, check_in, check_out, break_start, break_minutes')
+            .select('picker_id, orchard_id, date, check_in, check_out, break_start, break_minutes, corrected_at')
             .is('deleted_at', null)
             // Un día más por cada lado: las cubetas de después de medianoche son
             // del turno que las cubre (que puede ser del día anterior o del siguiente)
@@ -222,7 +222,7 @@ export async function computePayroll(
     //    - horas del día = suma de tramos − un descanso de 30 min NO pagado
     //    - complemento al mínimo POR DÍA (un día bueno no tapa uno malo)
     //    - festivos (Holidays Act 2003 s.50): mínimo × 1.5 ese día
-    type Att = { picker_id: string; orchard_id: string | null; date: string; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null }
+    type Att = { picker_id: string; orchard_id: string | null; date: string; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null; corrected_at: string | null }
     type Ev = { picker_id: string; orchard_id: string | null; variety: string | null; scanned_at: string; quality_grade: string | null }
     // Huerto pedido: solo las personas que trabajaron en él en el rango (con
     // todos sus tramos y cubetas, de cualquier huerto)
@@ -243,6 +243,8 @@ export async function computePayroll(
         checkOut: a.check_out,
         breakStart: a.break_start,
         breakMinutes: a.break_minutes,
+        // Hoja corregida: un tramo de más de 14 h se paga entero (si no, el tope)
+        corrected: correctionCovers(a.corrected_at, a.check_out),
     }))
     const bucketRows = ((events ?? []) as Ev[]).filter(e => !atOrchard || atOrchard.has(e.picker_id)).map(e => ({
         pickerId: e.picker_id,

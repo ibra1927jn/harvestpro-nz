@@ -31,6 +31,8 @@ export const bucketLedgerService = {
                 bin_id: event.bin_id,
                 scanned_by: event.scanned_by,
                 scanned_at: event.scanned_at,
+                // Hora del móvil al enviar: el servidor mide el desfase, corrige y lo apunta
+                ...(event.scanned_at ? { client_now: Date.now() } : {}),
             });
 
             if (error) throw new Error(error.message);

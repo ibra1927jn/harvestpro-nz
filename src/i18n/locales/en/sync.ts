@@ -67,6 +67,8 @@ const sync: TranslationDict = {
     'dlq.discard_all': 'Discard All ({n})',
     'dlq.desc': 'Monitor and manage failed sync items. Errors are classified by severity.',
     'dlq.none': 'No failed sync items.',
+    'sync.reason.day_closed': 'the day was already closed when it was sent. Ask the manager or an admin to add it in Timesheet',
+    'sync.reason.pay_week_closed': 'the pay week was already closed when it was sent. Ask payroll to reopen it or add it by hand',
 };
 
 export default sync;

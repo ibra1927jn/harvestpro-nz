@@ -45,7 +45,12 @@ export interface RefShift {
     checkOut: string | null;
     breakStart?: string | null;
     breakMinutes?: number | null;
+    /** Hoja corregida: un tramo de más de 14 h se paga entero */
+    corrected?: boolean;
 }
+
+/** R-tope (ronda 24-10): un tramo sin corregir cuenta como mucho 14 h desde su entrada */
+const MAX_UNREVIEWED_MS = 14 * 3_600_000;
 
 export interface RefBucket {
     pickerId: string;
@@ -223,6 +228,7 @@ export function referencePay(shifts: ReadonlyArray<RefShift>, buckets: ReadonlyA
                 }
                 seg.end = last;
             }
+            if (!seg.shift.corrected && seg.end - seg.start > MAX_UNREVIEWED_MS) seg.end = seg.start + MAX_UNREVIEWED_MS;
         }
     }
 

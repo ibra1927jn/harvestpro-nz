@@ -67,6 +67,8 @@ const sync: TranslationDict = {
     'dlq.discard_all': 'Descartar todo ({n})',
     'dlq.desc': 'Revisa y gestiona los envíos fallidos. Los errores se clasifican por gravedad.',
     'dlq.none': 'No hay envíos fallidos.',
+    'sync.reason.day_closed': 'el día ya estaba cerrado cuando se envió. Pide al encargado o a un admin que lo añada en la hoja de horas',
+    'sync.reason.pay_week_closed': 'la semana de pago ya estaba cerrada cuando se envió. Pide a nómina que la reabra o lo añada a mano',
 };
 
 export default sync;

@@ -132,6 +132,9 @@ const shared: TranslationDict = {
     'ui.loading': 'Loading',
     'nav.runners_now': 'Runners',
     'nav.my_timesheet': 'My hours',
+    'unclosed.summary_long_one': '{n} shift with no check-out, from a past day or open for more than 14 h ({people}). At most 14 h are paid until fixed.',
+    'unclosed.summary_long_other': '{n} shifts with no check-out, from past days or open for more than 14 h ({people}). At most 14 h are paid until fixed.',
+    'unclosed.row_long': '{name} — open since {time} ({orchard}), more than 14 h',
 };
 
 export default shared;

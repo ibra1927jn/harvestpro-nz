@@ -46,11 +46,16 @@ FROM unnest(ARRAY['A.inactive_runner', 'A.inactive_team_leader']) AS w;
 -- La app lee la fila propia para saber que la cuenta está de baja
 SELECT sec_test.sees('A.inactive_runner', 'deactivated: still reads own profile row', $$SELECT 1 FROM users WHERE id = auth.uid()$$, 1);
 -- Las cuentas activas siguen igual
-SELECT sec_test.sees(w, 'active: reads own orchard pickers, buckets and attendance',
+SELECT sec_test.sees('A.team_leader', 'active: reads own orchard pickers, buckets and attendance',
     $$SELECT 1 FROM pickers WHERE id = {A.picker}
       UNION ALL SELECT 1 FROM bucket_records WHERE id = {A.bucket}
-      UNION ALL SELECT 1 FROM daily_attendance WHERE id = {A.att}$$, 3)
-FROM unnest(ARRAY['A.runner', 'A.team_leader', 'A.qc_inspector']) AS w;
+      UNION ALL SELECT 1 FROM daily_attendance WHERE id = {A.att}$$, 3);
+-- Runner y QC: fichajes ajenos no (20261024021000); quién está, con presence_today
+SELECT sec_test.sees(w, 'active: reads own orchard pickers, buckets and presence',
+    $$SELECT 1 FROM pickers WHERE id = {A.picker}
+      UNION ALL SELECT 1 FROM bucket_records WHERE id = {A.bucket}
+      UNION ALL SELECT 1 FROM presence_today({A}) WHERE picker_id = {A.picker}$$, 3)
+FROM unnest(ARRAY['A.runner', 'A.qc_inspector']) AS w;
 
 -- ── Baja = ban en Auth y sesiones cerradas, por cualquier vía ───────────────
 SELECT sec_test.returns('A.runner', 'before: not banned, one open session', $$SELECT sec_test.ban_state({A.runner})$$, 'false|1');

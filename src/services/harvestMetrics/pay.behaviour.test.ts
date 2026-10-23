@@ -20,6 +20,7 @@ describe('PAY_RULES (NZ law constants)', () => {
             mealBreakAfterHours: 4,
             minWageFloor: 23.95,
             publicHolidayMultiplier: 1.5,
+            maxUnreviewedShiftHours: 14,
             timeZone: 'Pacific/Auckland',
         });
     });
