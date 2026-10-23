@@ -49,7 +49,7 @@ Version: 9.9.0
 - 35 tablas, RLS en todas, 2FA (aal2) exigido por política para roles privilegiados
 
 ### Offline
-- Dexie IndexedDB con sync queue (10 tipos con processor)
+- Dexie IndexedDB con sync queue (11 tipos con processor; LEAVE_REQUEST: ausencias que pide el team leader sin red)
 - Encrypt-before-write con AES-256-GCM
 - Dead letter queue para items fallidos
 - Cross-tab mutex via Web Locks API
