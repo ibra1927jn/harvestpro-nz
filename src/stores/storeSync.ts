@@ -18,6 +18,7 @@ import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
 import { pieceRateOn } from '@/services/harvestMetrics/pay';
 import {
   applyAttendanceRecord,
+  applyHarvestSettingsChange,
   applyElsewhere,
   applyRowAssignmentEvent,
   deltaSinceISO,
@@ -444,6 +445,15 @@ export function setupRealtimeSubscriptions(
         // porque al volver a la app la sincronización ligera no relee los ajustes)
         logger.info('[Store] Realtime piece_rates change');
         void refreshTodayPieceRates(orchardId, get, set);
+      }
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'harvest_settings', filter: `orchard_id=eq.${orchardId}` },
+      payload => {
+        // Meta, mínimo y objetivo del manager al TL y al runner sin recargar (el precio, por piece_rates)
+        set(state => ({ settings: applyHarvestSettingsChange(state.settings, payload.new as Record<string, unknown>) }));
+        get().recalculateIntelligence();
       }
     )
     .subscribe(status => logger.info(`[Store] Realtime subscription: ${status}`));
