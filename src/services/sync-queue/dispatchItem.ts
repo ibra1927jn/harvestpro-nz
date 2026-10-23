@@ -2,7 +2,6 @@
  * Envía un elemento de la cola a su procesador, validando antes el payload con Zod.
  */
 import { bucketLedgerService } from '../bucket-ledger.service';
-import { simpleMessagingService } from '../simple-messaging.service';
 import { userService } from '../user.service';
 import { toNZST } from '@/utils/nzst';
 import type { QueuedSyncItem } from '../db';
@@ -21,7 +20,14 @@ export type SyncSchemas = typeof import('../sync.schemas');
 
 type Handler = (item: QueuedSyncItem, schemas: SyncSchemas) => Promise<unknown>;
 
-const HANDLERS: Record<QueuedSyncItem['type'], Handler> = {
+/**
+ * Sin 'MESSAGE': el chat va por messageOutbox y ese procesador llamaba
+ * sendMessage(receiverId, content, type) con la firma (conversationId,
+ * senderId, content), así que nunca funcionó (auditoría 2026-10-23, punto 7).
+ * Un elemento antiguo de ese tipo que quede en un móvil va a la cola de
+ * fallidos como tipo desconocido (runQueuePass), no se pierde en silencio.
+ */
+const HANDLERS: Partial<Record<QueuedSyncItem['type'], Handler>> = {
   SCAN: (item, s) => {
     // 🔧 BUG-3 fix: validar el payload antes de procesarlo
     const scanData = s.ScanPayloadSchema.parse(item.payload);
@@ -34,10 +40,6 @@ const HANDLERS: Record<QueuedSyncItem['type'], Handler> = {
   ASSIGNMENT: (item, s) => {
     const assignData = s.AssignmentPayloadSchema.parse(item.payload);
     return userService.assignUserToOrchard(assignData.userId, assignData.orchardId);
-  },
-  MESSAGE: (item, s) => {
-    const msgData = s.MessagePayloadSchema.parse(item.payload);
-    return simpleMessagingService.sendMessage(msgData.receiverId, msgData.content, msgData.type || 'direct');
   },
   // Procesadores extraídos (Strategy), con validación Zod
   CONTRACT: (item, s) => processContract(s.ContractPayloadSchema.parse(item.payload), item.updated_at),

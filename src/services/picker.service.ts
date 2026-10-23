@@ -1,36 +1,28 @@
 import { Picker } from '../types';
-import type { SupabasePerformanceStat } from '../types/database.types';
 import { withOptimisticLock } from './optimistic-lock.service';
 import { logger } from '@/utils/logger';
 import { PickerSchema, safeParseArray } from '@/schemas/zod.schemas';
 import { pickerCrudRepository } from '@/repositories/picker-crud.repository';
-import { pickerRepository } from '@/repositories/picker.repository';
 
 export const pickerService = {
     async getPickersByTeam(teamLeaderId?: string, orchardId?: string): Promise<Picker[]> {
+        // Sin pickers_performance_today: la vista filtraba users.role='picker' (no
+        // existe) y devolvía siempre 0, y se pedía en cada pase de lista junto a un
+        // count de diagnóstico (auditoría 2026-10-23, punto 7). Las cubetas de hoy
+        // las calcula el store con bucket_records.
         const data = await pickerCrudRepository.query(teamLeaderId, orchardId);
-        const perfData = await pickerRepository.getPerformanceToday();
-
-        if (!data || data.length === 0) {
-            const count = await pickerCrudRepository.getTotalCount();
-            logger.warn(`[getPickersByTeam] DIAGNOSTIC: Total pickers in database: ${count}. Orchard filter might be too restrictive.`);
-        } else {
-            logger.info('[getPickersByTeam] Registered Picker IDs:', data.map(p => p.picker_id).join(', '));
-        }
 
         // Plantilla: los archivados no se pueden fichar (antes fichar los reactivaba)
         const validPickers = safeParseArray(PickerSchema, data || [])
             .filter(p => p.status !== 'archived' && p.id !== teamLeaderId);
         return validPickers.map((p) => {
-            const perf = perfData?.find((stat: SupabasePerformanceStat) => stat.picker_id === p.id);
-
             return {
                 id: p.id,
                 picker_id: p.picker_id || p.id,
                 name: p.name || 'Unknown',
                 avatar: (p.name || '??').substring(0, 2).toUpperCase(),
                 hours: 0,
-                total_buckets_today: perf?.total_buckets || 0,
+                total_buckets_today: 0,
                 current_row: p.current_row || 0,
                 status: (p.status !== 'archived' && p.status !== 'inactive' ? 'active' : 'inactive') as 'active' | 'break' | 'issue',
                 safety_verified: p.safety_verified,

@@ -71,6 +71,7 @@ export interface QueuedSyncItem {
   id: string;
   type:
     | 'SCAN'
+    /** Antiguo (sin procesador desde 2026-10-23): si queda alguno va a fallidos */
     | 'MESSAGE'
     | 'ATTENDANCE'
     | 'ASSIGNMENT'

@@ -24,12 +24,6 @@ export const AssignmentPayloadSchema = z.object({
   orchardId: z.string(),
 });
 
-export const MessagePayloadSchema = z.object({
-  receiverId: z.string(),
-  content: z.string(),
-  type: z.string().optional(),
-});
-
 // 🔧 BUG-3 fix continued: Zod schemas for remaining sync payload types
 export const ContractPayloadSchema = z.object({
   action: z.enum(['create', 'update']),

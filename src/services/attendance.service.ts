@@ -1,8 +1,7 @@
 import { logger } from '@/utils/logger';
 import { todayNZST } from '@/utils/nzst';
-import type { SupabasePicker, SupabasePerformanceStat } from '../types/database.types';
+import type { SupabasePicker } from '../types/database.types';
 import { attendanceRepository } from '@/repositories/attendance.repository';
-import { pickerRepository } from '@/repositories/picker.repository';
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
 import { analytics } from '@/config/analytics';
 import type { CorrectBatchResponse } from '@/schemas/api.schemas';
@@ -71,21 +70,16 @@ export const attendanceService = {
     }
   },
 
-  async getTodayPerformance(orchardId?: string) {
-    return pickerRepository.getPerformanceToday(orchardId);
-  },
-
   // 4. Get Active Pickers for Live Ops (Runner View)
   async getActivePickersForLiveOps(orchardId: string) {
     const today = todayNZST();
 
     const attendanceData = await attendanceRepository.getActivePickers(orchardId, today);
-    const perfData = await pickerRepository.getPerformanceToday(orchardId);
+    // (Sin pickers_performance_today: vista rota, siempre 0; auditoría 2026-10-23)
 
     return (attendanceData || []).map((record: unknown) => {
       const rec = record as Record<string, unknown>;
       const p = rec.pickers as SupabasePicker;
-      const perf = perfData?.find((stat: SupabasePerformanceStat) => stat.picker_id === p.id);
 
       const checkInTime = rec.check_in as string | null;
       let hoursWorked = 0;
@@ -101,7 +95,7 @@ export const attendanceService = {
         name: p.name || 'Unknown',
         avatar: (p.name || '??').substring(0, 2).toUpperCase(),
         hours: hoursWorked,
-        total_buckets_today: perf?.total_buckets || 0,
+        total_buckets_today: 0,
         current_row: p.current_row || 0,
         status: (p.status !== 'archived' && p.status !== 'inactive' ? 'active' : 'inactive') as
           | 'active'

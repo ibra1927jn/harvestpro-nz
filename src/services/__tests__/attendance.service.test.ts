@@ -19,20 +19,17 @@ vi.mock('@/utils/nzst', () => ({
 
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
 import { attendanceRepository } from '@/repositories/attendance.repository';
-import { pickerRepository } from '@/repositories/picker.repository';
 import { attendanceService } from '../attendance.service';
 
 describe('attendanceService', () => {
     let mockInvoke: ReturnType<typeof vi.spyOn>;
     let mockGetDailyWithPickers: ReturnType<typeof vi.spyOn>;
     let mockGetByDateWithPickers: ReturnType<typeof vi.spyOn>;
-    let mockGetPerformanceToday: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
         mockInvoke = vi.spyOn(edgeFunctionsRepository, 'invoke').mockResolvedValue({ data: null, error: null });
         mockGetDailyWithPickers = vi.spyOn(attendanceRepository, 'getDailyWithPickers').mockResolvedValue([]);
         mockGetByDateWithPickers = vi.spyOn(attendanceRepository, 'getByDateWithPickers').mockResolvedValue([]);
-        mockGetPerformanceToday = vi.spyOn(pickerRepository, 'getPerformanceToday').mockResolvedValue([]);
     });
 
     // ═══════════════════════════════
@@ -136,31 +133,6 @@ describe('attendanceService', () => {
             mockInvoke.mockResolvedValue({ data: null, error: { message: 'Attendance record not found' } });
 
             await expect(attendanceService.checkOutPicker('bad-id')).rejects.toThrow('Attendance record not found');
-        });
-    });
-
-    // ═══════════════════════════════
-    // getTodayPerformance (read-only, via repository)
-    // ═══════════════════════════════
-    describe('getTodayPerformance', () => {
-        it('fetches performance for specific orchard', async () => {
-            const perfData = [
-                { picker_id: 'p-1', total_buckets: 10, orchard_id: 'orchard-1' },
-            ];
-            mockGetPerformanceToday.mockResolvedValue(perfData);
-
-            const result = await attendanceService.getTodayPerformance('orchard-1');
-
-            expect(mockGetPerformanceToday).toHaveBeenCalledWith('orchard-1');
-            expect(result).toEqual(perfData);
-        });
-
-        it('fetches all performance when no orchardId', async () => {
-            mockGetPerformanceToday.mockResolvedValue([]);
-
-            await attendanceService.getTodayPerformance();
-
-            expect(mockGetPerformanceToday).toHaveBeenCalledWith(undefined);
         });
     });
 

@@ -14,15 +14,6 @@ export const pickerRepository = {
         if (error) throw error;
     },
 
-    /** Get performance view for today */
-    async getPerformanceToday(orchardId?: string) {
-        let query = supabase.from('pickers_performance_today').select('*');
-        if (orchardId) query = query.eq('orchard_id', orchardId);
-        const { data, error } = await query;
-        if (error) throw error;
-        return data || [];
-    },
-
     /** Get picker names by IDs */
     async getNamesByIds(ids: string[]): Promise<Record<string, string>> {
         if (ids.length === 0) return {};
