@@ -30,15 +30,7 @@ SELECT sec_test.allow('A.runner2', 'starts a conversation',
 SELECT sec_test.deny('A.runner2', 'cannot create a conversation between other people',
     $$INSERT INTO conversations (type, participant_ids, created_by) VALUES ('direct', ARRAY[{A.manager}::text, {A.runner}::text], auth.uid())$$);
 
--- ── messages (mensajes directos antiguos: A.dm = runner A → jefe de equipo A) ─
-SELECT sec_test.sees(w, 'reads own direct message', $$SELECT 1 FROM messages WHERE id = {A.dm}$$, 1)
-FROM unnest(ARRAY['A.runner', 'A.team_leader']) AS w;
-SELECT sec_test.sees(w, 'cannot read other people''s direct messages', $$SELECT 1 FROM messages WHERE id = {A.dm}$$, 0)
-FROM unnest(ARRAY['anon', 'A.runner2', 'A.manager', 'A.admin', 'B.manager']) AS w;
-SELECT sec_test.deny(w, 'cannot delete other people''s direct messages', $$DELETE FROM messages WHERE id = {A.dm}$$)
-FROM unnest(ARRAY['A.runner2', 'A.manager', 'B.manager']) AS w;
-SELECT sec_test.deny('A.runner2', 'cannot send as someone else',
-    $$INSERT INTO messages (sender_id, receiver_id, content) VALUES ({A.manager}, {A.runner}, 'fake')$$);
+-- La tabla antigua de mensajes directos (messages) se borró en 20261024030000: todo va por chat_messages
 
 -- ── broadcasts (avisos a todo el huerto: solo manager/admin) ─────────────────
 SELECT sec_test.allow('A.manager', 'sends a broadcast to own orchard',

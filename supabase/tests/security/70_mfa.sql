@@ -53,8 +53,6 @@ SELECT sec_test.deny('A.admin@aal1', 'aal1: cannot change an orchard',
     $$UPDATE orchards SET name = name WHERE id = {A}$$);
 SELECT sec_test.deny('A.manager@aal1', 'aal1: cannot mark a chat read',
     $$SELECT mark_conversation_read({A.conv})$$);
-SELECT sec_test.deny('A.manager@aal1', 'aal1: cannot unlock accounts',
-    $$SELECT unlock_account('sectest.locked@example.test')$$);
 
 -- Lo que la app necesita para mostrar la pantalla de 2FA
 SELECT sec_test.sees(w, 'aal1: reads own profile row', $$SELECT 1 FROM users WHERE id = auth.uid()$$, 1)

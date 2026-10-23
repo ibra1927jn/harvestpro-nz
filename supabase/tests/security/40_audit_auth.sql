@@ -31,25 +31,19 @@ FROM unnest(ARRAY['anon', 'A.runner']) AS w;
 SELECT sec_test.deny(w, 'cannot purge old audit logs', $$SELECT cleanup_old_audit_logs()$$)
 FROM unnest(ARRAY['anon', 'A.runner', 'A.manager']) AS w;
 
--- ── account_locks / login_attempts ──────────────────────────────────────────
-SELECT sec_test.deny(w, 'cannot lock someone''s account',
-    $$INSERT INTO account_locks (email, locked_until, locked_by_system) VALUES ('manager@harvestpro.nz', now() + interval '1 day', true)$$)
-FROM unnest(ARRAY['anon', 'A.runner', 'A.team_leader']) AS w;
-SELECT sec_test.sees(w, 'cannot read account locks', $$SELECT 1 FROM account_locks WHERE email = 'sectest.locked@example.test'$$, 0)
-FROM unnest(ARRAY['anon', 'A.runner']) AS w;
-SELECT sec_test.sees('A.manager', 'reads account locks', $$SELECT 1 FROM account_locks WHERE email = 'sectest.locked@example.test'$$, 1);
-SELECT sec_test.sees(w, 'cannot read login attempts', $$SELECT 1 FROM login_attempts$$, 0)
-FROM unnest(ARRAY['anon', 'A.runner']) AS w;
--- Ya no hay bloqueo de la app (20261018000000): nadie registra intentos y ninguna cuenta sale bloqueada
-SELECT sec_test.deny('anon', 'cannot log login attempts (app lockout removed)', $$INSERT INTO login_attempts (email, success) VALUES ('someone@example.test', true)$$);
-SELECT sec_test.returns('anon', 'no account reports as locked (app lockout removed)', $$SELECT is_account_locked('sectest.locked@example.test')::text$$, 'false');
-SELECT sec_test.deny(w, 'cannot unlock accounts', $$SELECT unlock_account('sectest.locked@example.test', 'x')$$)
-FROM unnest(ARRAY['anon', 'A.runner']) AS w;
-SELECT sec_test.returns('A.manager', 'unlocks an account', $$SELECT unlock_account('sectest.locked@example.test', 'sectest')::text$$, 'true');
-SELECT sec_test.deny(w, 'cannot purge security tables', $$SELECT cleanup_old_login_attempts()$$)
-FROM unnest(ARRAY['anon', 'A.runner']) AS w;
-SELECT sec_test.deny(w, 'cannot purge security tables', $$SELECT cleanup_old_account_locks()$$)
-FROM unnest(ARRAY['anon', 'A.runner']) AS w;
+-- ── Tablas muertas borradas (20261024030000_drop_dead_tables) ───────────────
+-- El bloqueo por intentos de la app se quitó en 20261018000000; sus tablas y
+-- funciones ya no existen (GoTrue limita los intentos de acceso por su cuenta).
+SELECT sec_test.record(to_regclass('public.' || t) IS NULL,
+    'dead table/view ' || t || ' is gone', 'still exists')
+FROM unnest(ARRAY['messages', 'quality_inspections', 'wage_rates', 'sync_conflicts', 'login_attempts',
+                  'account_locks', 'pickers_performance_today']) AS t;
+SELECT sec_test.record(NOT EXISTS (SELECT 1 FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND proname = f),
+    'account-lock function ' || f || '() is gone', 'still exists')
+FROM unnest(ARRAY['is_account_locked', 'get_failed_login_count', 'check_rate_limit', 'unlock_account',
+                  'cleanup_old_login_attempts', 'cleanup_old_account_locks', 'lock_account_on_failures']) AS f;
+SELECT sec_test.record((SELECT health_check() ->> 'status') = 'healthy',
+    'health_check() still works without the dropped tables', 'unhealthy');
 SELECT sec_test.deny(w, 'cannot read server health / row counts', $$SELECT health_check()$$)
 FROM unnest(ARRAY['anon', 'A.runner']) AS w;
 
