@@ -79,6 +79,12 @@ jobs:
           db() { docker exec -i supabase_db_harvestpro-nz psql -X -q -At -v ON_ERROR_STOP=1 -U supabase_admin -d postgres "$@"; }
           # Una fila huérfana (sesión borrada), como las que deja GoTrue: la comprobación avisa y no falla
           db -c "SET session_replication_role = replica; INSERT INTO auth.mfa_amr_claims (id, session_id, created_at, updated_at, authentication_method) VALUES (gen_random_uuid(), gen_random_uuid(), now(), now(), 'password')"
+          # Secretos de Vault del push: la copia los guarda y la recuperación los repone
+          . ./.env.local
+          db -v url='http://supabase_kong_harvestpro-nz:8000' -v key="$SUPABASE_SERVICE_ROLE_KEY" <<'SQL'
+          SELECT vault.create_secret(:'url', 'push_project_url');
+          SELECT vault.create_secret(:'key', 'push_service_role_key');
+          SQL
           # Escrituras mientras se hace la copia: los recuentos van en la instantánea del dump
           ( for i in $(seq 1 150); do db -c "INSERT INTO auth.audit_log_entries (id, payload, created_at) VALUES (gen_random_uuid(), '{}', now())"; done ) &
           writer=$!
@@ -130,6 +136,7 @@ jobs:
           scripts/ci/local-stack.sh reset
           scripts/restore-local.sh "$BACKUP_SH" --fresh-stack
           login bash
+          test "$(docker exec supabase_db_harvestpro-nz psql -X -At -U supabase_admin -d postgres -c "select count(*) from vault.decrypted_secrets where name in ('push_project_url', 'push_service_role_key')")" = 2
           scripts/ci/local-stack.sh reset
           pwsh -NoProfile -File scripts/restore-local.ps1 -Backup "$BACKUP_PS" -FreshStack
           login PowerShell
