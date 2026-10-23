@@ -150,9 +150,11 @@ jobs:
           test "$(db -c "select to_regclass('public.wage_rates') is null and to_regclass('public.messages') is null")" = t
           test "$(db -c "select max(version) from supabase_migrations.schema_migrations")" = "$(ls supabase/migrations/*.sql | xargs -n1 basename | sed 's/_.*//' | sort | tail -1)"
           test "$(db -c 'select count(*) from public.pickers')" = "$(awk -F'\t' '$1 == "public.pickers" { print $2 }' "$dir/row-counts.tsv")"
-      - name: Edge runtime logs
+      - name: Edge runtime and database logs
         if: failure()
-        run: docker logs --tail 300 supabase_edge_runtime_harvestpro-nz || true
+        run: |
+          docker logs --tail 300 supabase_edge_runtime_harvestpro-nz || true
+          docker logs --tail 200 supabase_db_harvestpro-nz || true
 
   e2e:
     runs-on: ubuntu-latest

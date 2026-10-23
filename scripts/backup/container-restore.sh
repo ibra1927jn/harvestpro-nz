@@ -33,6 +33,14 @@ export PGOPTIONS='-c client_min_messages=warning'
 DUMP="$W/database.dump"
 log() { printf '[restore] %s\n' "$*" >&2; }
 sql() { local db="$1"; shift; psql -X -q -At -F $'\t' -v ON_ERROR_STOP=1 -U supabase_admin -d "$db" "$@"; }
+# Tras una carga grande la base puede tardar en aceptar conexiones (p. ej. si se reinicia)
+wait_db() {
+  for _ in $(seq 1 60); do
+    psql -X -q -At -U supabase_admin -d "$1" -c 'select 1' >/dev/null 2>&1 && return 0
+    sleep 2
+  done
+  log "ERROR: database $1 is not answering"; return 1
+}
 
 # Recuentos: compara con la copia (solo las tablas que se cargaron)
 compare_counts() {
@@ -41,7 +49,8 @@ compare_counts() {
   if ! diff <(sort "$expected") <(sort <<<"$now") >"$W/count-diff.txt"; then
     # Tablas que existen solo en un lado (copia de otra versión del esquema) no cuentan como diferencia
     local real
-    real="$(join -t $'\t' -j1 <(sort "$expected") <(sort <<<"$now") | awk -F'\t' '$2 != $3')"
+    real="$(awk -F'\t' 'NR==FNR { want[$1]=$2; next } ($1 in want) && want[$1] != $2 { print $1 "\t" want[$1] "\t" $2 }' \
+      "$expected" <(printf '%s\n' "$now"))"
     if [ -n "$real" ]; then
       log "Row counts differ (table, backup, restored):"
       printf '%s\n' "$real" >&2
@@ -141,8 +150,11 @@ pg_restore -U supabase_admin -d postgres --data-only --disable-triggers --single
 { printf 'auth.schema_migrations\nstorage.migrations\n'; cat "$W/skipped.txt"; } >"$W/not-loaded.txt"
 awk -F'\t' 'NR==FNR { skip[$1]=1; next } !skip[$1]' "$W/not-loaded.txt" "$W/row-counts.tsv" >"$W/expected-counts.tsv"
 status=0
+wait_db postgres
 compare_counts postgres "$W/expected-counts.tsv" || status=1
-report_orphans postgres
+wait_db postgres
+report_orphans postgres || status=1
+wait_db postgres
 
 # Secretos de Vault para despertar send-push desde pg_cron
 if [ -s "$W/vault.tsv" ]; then
