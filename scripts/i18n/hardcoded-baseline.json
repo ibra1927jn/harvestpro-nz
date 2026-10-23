@@ -1,9 +1,5 @@
 {
   "src/components/AuditLogViewer.tsx": 36,
-  "src/components/common/setup-wizard/OrchardStep.tsx": 7,
-  "src/components/common/setup-wizard/RatesStep.tsx": 5,
-  "src/components/common/setup-wizard/SummaryStep.tsx": 9,
-  "src/components/common/SetupWizard.tsx": 13,
   "src/components/manager/OnboardingWizard.tsx": 12,
   "src/components/modals/import-csv/ImportSteps.tsx": 27,
   "src/components/modals/ImportCSVModal.tsx": 10,
