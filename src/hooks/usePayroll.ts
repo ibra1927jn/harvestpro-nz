@@ -15,6 +15,7 @@ import { useAuth } from '@/context/AuthContext';
 import type { PayWeekActionResult } from '@/repositories/payroll.repository';
 import { translate } from '@/i18n';
 import { PAY_RULES } from '@/services/harvestMetrics/pay';
+import { useAttendanceLiveRefresh } from './useAttendanceLiveRefresh';
 
 /** Semana de pago a mostrar por defecto: el lunes se cierra la semana anterior. */
 export function defaultPayWeek(today: string = todayNZST()): PayWeek {
@@ -69,6 +70,12 @@ export function usePayroll() {
         loadPayroll();
         return () => { cancelled = true; };
     }, [orchardId, week, reloadKey]);
+
+    // En vivo (fichajes de hoy o volver a la pestaña), solo si la semana incluye hoy:
+    // recalcular la semana entera como mucho una vez por minuto
+    const today = todayNZST();
+    const weekIsLive = week.start <= today && today <= week.end;
+    useAttendanceLiveRefresh(() => setReloadKey(k => k + 1), { enabled: !!orchardId && weekIsLive });
 
     // Al cambiar de semana se olvida el aviso de la anterior
     useEffect(() => { setCloseResult(null); }, [week]);

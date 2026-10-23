@@ -3,11 +3,16 @@ import { Picker } from '../../../../types';
 import EmptyState from '@/components/ui/EmptyState';
 import { logger } from '@/utils/logger';
 import { useTranslation } from '@/i18n';
+import { PresenceBadge } from '@/components/common/PresenceBadge';
+import { presenceOf } from '@/services/presence';
+import type { LeaveRequest } from '@/services/leave.service';
 
 interface RunnersSectionProps {
     runners: Picker[];
     onSelectUser: (user: Picker) => void;
     onRemoveUser?: (userId: string) => Promise<void>;
+    /** Ausencia aprobada de hoy por persona */
+    leaveToday?: ReadonlyMap<string, LeaveRequest>;
 }
 
 const RUNNER_COLORS = [
@@ -38,7 +43,7 @@ const getStatusInfo = (runner: Picker) => {
     return { dot: 'bg-emerald-400', key: 'teams.status_active' as const };
 };
 
-const RunnersSection: React.FC<RunnersSectionProps> = ({ runners, onSelectUser, onRemoveUser }) => {
+const RunnersSection: React.FC<RunnersSectionProps> = ({ runners, onSelectUser, onRemoveUser, leaveToday }) => {
     const { t } = useTranslation();
     const [unlinking, setUnlinking] = useState<string | null>(null);
     const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -100,6 +105,11 @@ const RunnersSection: React.FC<RunnersSectionProps> = ({ runners, onSelectUser, 
                                     <div>
                                         <h4 className="font-bold text-text-main text-sm">{runner.name}</h4>
                                         <p className="text-xs text-slate-400 font-medium">{t(status.key)} · {t('teams.bucket_runner')}</p>
+                                        <PresenceBadge
+                                            testId={`presence-${runner.id}`}
+                                            presence={presenceOf(runner, !!leaveToday?.has(runner.id))}
+                                            leaveTypeLabel={leaveToday?.get(runner.id) ? t(`leave.type.${leaveToday.get(runner.id)!.type}`) : undefined}
+                                        />
                                     </div>
                                 </div>
 

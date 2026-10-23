@@ -121,11 +121,25 @@ export type BinPayload = {
     filled_at?: string | null;
 };
 
-export type SyncPayload = BinPayload | ScanPayload | MessagePayload | AttendancePayload | ContractPayload | TransportPayload | TimesheetPayload | PickerPayload | QCInspectionPayload;
+// Ausencia pedida por el team leader desde el móvil (decisión del dueño 23-10):
+// id generado en el móvil para que reintentar no la duplique
+export type LeaveRequestPayload = {
+    id: string;
+    orchard_id: string;
+    picker_id: string;
+    type: 'annual' | 'sick' | 'bereavement' | 'family_violence' | 'unpaid' | 'day_off' | 'other';
+    start_date: string;
+    end_date: string;
+    half_day: boolean;
+    reason: string | null;
+    requested_by: string;
+};
+
+export type SyncPayload = BinPayload | LeaveRequestPayload | ScanPayload | MessagePayload | AttendancePayload | ContractPayload | TransportPayload | TimesheetPayload | PickerPayload | QCInspectionPayload;
 
 export interface PendingItem {
     id: string; // UUID (generated client-side)
-    type: 'SCAN' | 'MESSAGE' | 'ATTENDANCE' | 'ASSIGNMENT' | 'CONTRACT' | 'TRANSPORT' | 'TIMESHEET' | 'PICKER' | 'QC_INSPECTION' | 'UNLINK' | 'BIN';
+    type: 'SCAN' | 'MESSAGE' | 'ATTENDANCE' | 'ASSIGNMENT' | 'CONTRACT' | 'TRANSPORT' | 'TIMESHEET' | 'PICKER' | 'QC_INSPECTION' | 'UNLINK' | 'BIN' | 'LEAVE_REQUEST';
     payload: SyncPayload;
     timestamp: number;
     retryCount: number;

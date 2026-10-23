@@ -39,10 +39,9 @@ describe('buildBroadcast', () => {
     expect(bc.acknowledged_by).toEqual([]);
   });
 
-  it('defaults target_roles when not provided', () => {
+  it('defaults to everyone (empty target_roles) when not provided', () => {
     const bc = buildBroadcast('s', 'o1', 'T', 'C', 'normal');
-    expect(bc.target_roles).toContain('team_leader');
-    expect(bc.target_roles).toContain('runner');
+    expect(bc.target_roles).toEqual([]);
   });
 
   it('uses custom target_roles when provided', () => {

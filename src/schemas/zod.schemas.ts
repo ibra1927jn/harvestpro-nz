@@ -138,6 +138,8 @@ const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD');
 
 /** Alta de una ausencia (formulario → insert) */
 export const NewLeaveRequestSchema = z.object({
+    /** Opcional: lo pone el móvil cuando la petición puede ir por la cola sin red */
+    id: z.string().uuid().optional(),
     orchard_id: z.string().uuid(),
     picker_id: z.string().uuid(),
     type: z.enum(LEAVE_TYPES),

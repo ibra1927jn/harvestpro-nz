@@ -1,9 +1,8 @@
 /**
  * Panel de nómina: tarjeta resumen y desglose por picker.
- * (Movido sin cambios de marcado desde PayrollTabs.tsx.)
+ * Todos los trabajadores: los 50 primeros y «Ver todos» (auditoría 23-10, C).
  */
 import React, { useState } from 'react';
-import { TableVirtuoso } from 'react-virtuoso';
 import type { PickerBreakdown } from '@/services/payroll.service';
 import { PayWeekDetail } from './PayWeekDetail';
 import { useTranslation } from '@/i18n';
@@ -20,10 +19,15 @@ export const SummaryCard: React.FC<{ icon: string; iconColor: string; label: str
     </div>
 );
 
+/** Filas del desglose antes de «Ver todos» */
+export const PAYROLL_PAGE_SIZE = 50;
+
 /* ── Dashboard Tab ── */
 export const PayrollDashboard: React.FC<{ pickers: PickerBreakdown[]; settings: { bucket_rate: number; min_wage_rate: number } }> = ({ pickers, settings }) => {
     const [detail, setDetail] = useState<PickerBreakdown | null>(null);
+    const [showAll, setShowAll] = useState(false);
     const { t } = useTranslation();
+    const shown = showAll ? pickers : pickers.slice(0, PAYROLL_PAGE_SIZE);
     return (
     <div className="space-y-4">
         {detail && <PayWeekDetail picker={detail} onClose={() => setDetail(null)} />}
@@ -45,10 +49,11 @@ export const PayrollDashboard: React.FC<{ pickers: PickerBreakdown[]; settings: 
                     <p className="text-[11px] uppercase tracking-widest mt-1">{t('pay.no_data_hint')}</p>
                 </div>
             ) : (
-                <div className="overflow-x-auto dynamic-height rounded-2xl border border-slate-100 bg-white" style={{ '--h': `${Math.min(pickers.length * 48 + 52, 600)}px` } as React.CSSProperties}>
-                    <TableVirtuoso
-                        data={pickers}
-                        fixedHeaderContent={() => (
+                <>
+                <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white" data-testid="payroll-breakdown">
+                    {/* Tabla normal con páginas (antes virtual en una caja de 600 px: solo se veían 12 de 24) */}
+                    <table className="w-full">
+                        <thead>
                             <tr className="border-b border-slate-100/80 text-[10px] text-slate-400 font-bold uppercase tracking-widest bg-slate-50/80 backdrop-blur-md">
                                 <th className="text-left py-3 px-4 font-bold">{t('pay.col.worker')}</th>
                                 <th className="text-right py-3 px-4 font-bold">{t('pay.col.buckets')}</th>
@@ -58,9 +63,11 @@ export const PayrollDashboard: React.FC<{ pickers: PickerBreakdown[]; settings: 
                                 <th className="text-right py-3 px-4 font-bold">{t('hr.pay.total')}</th>
                                 <th className="text-center py-3 px-4 font-bold">{t('hr.status')}</th>
                             </tr>
-                        )}
-                        itemContent={(_index, p) => (
-                            <>
+                        </thead>
+                        <tbody>
+                            {shown.map(p => (
+                                <tr key={p.picker_id} className="border-b border-slate-50 last:border-0">
+                            
                                 <td className="py-3 px-4 font-extrabold text-slate-700 text-sm">
                                     <button type="button" onClick={() => setDetail(p)} className="text-left hover:text-orange-600 hover:underline" title={t('pay.day_detail')}>
                                         {p.picker_name}
@@ -103,10 +110,20 @@ export const PayrollDashboard: React.FC<{ pickers: PickerBreakdown[]; settings: 
                                         </span>
                                     )}
                                 </td>
-                            </>
-                        )}
-                    />
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
+                <div className="flex items-center justify-between mt-3 text-[11px] font-bold text-slate-500" data-testid="payroll-breakdown-footer">
+                    <span>{t('comms.pay_showing', { n: shown.length, total: pickers.length })}</span>
+                    {pickers.length > shown.length && (
+                        <button type="button" onClick={() => setShowAll(true)} className="px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 border border-orange-100 hover:bg-orange-100">
+                            {t('comms.pay_show_all', { total: pickers.length })}
+                        </button>
+                    )}
+                </div>
+                </>
             )}
         </div>
     </div>

@@ -118,3 +118,18 @@ export const BinPayloadSchema = z
 export const UnlinkPayloadSchema = z.object({
   userId: z.string(),
 });
+
+// Ausencia pedida por el team leader sin red (tipo LEAVE_REQUEST). Mismas
+// reglas que NewLeaveRequestSchema; el id lo pone el móvil (reintento idempotente).
+export const LeaveRequestPayloadSchema = z.object({
+  id: z.string().uuid(),
+  orchard_id: z.string().uuid(),
+  picker_id: z.string().uuid(),
+  type: z.enum(['annual', 'sick', 'bereavement', 'family_violence', 'unpaid', 'day_off', 'other']),
+  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  half_day: z.boolean(),
+  reason: z.string().max(500).nullable(),
+  requested_by: z.string().uuid(),
+}).refine(v => v.end_date >= v.start_date, { path: ['end_date'] })
+  .refine(v => !v.half_day || v.start_date === v.end_date, { path: ['half_day'] });

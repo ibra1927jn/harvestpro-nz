@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { logger } from '@/utils/logger';
 import { useToast } from '@/hooks/useToast';
+import Toast from '@/components/ui/Toast';
 import ModalOverlay from '@/components/ui/ModalOverlay';
 import { DEFAULT_START_TIME } from '../../types';
 import { useTranslation } from '@/i18n';
@@ -47,7 +48,8 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
     const [startTime, setStartTime] = useState(DEFAULT_START_TIME);
     const [assignedRow, setAssignedRow] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const { showToast } = useToast();
+    // El error se ve aquí (antes se pedía un toast que nunca se pintaba); el éxito lo enseña la pantalla
+    const { toast, showToast, hideToast } = useToast();
 
     // Safety Induction State (Simplified to boolean logic effectively)
     const [safetyChecks, setSafetyChecks] = useState({
@@ -100,6 +102,7 @@ const AddPickerModal: React.FC<AddPickerModalProps> = ({ onClose, onAdd }) => {
 
     return (
         <ModalOverlay onClose={onClose}>
+            {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
             <div className="p-6 max-h-[85vh] overflow-y-auto">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-black text-text-main">{t('tl.team.add_picker')}</h3>

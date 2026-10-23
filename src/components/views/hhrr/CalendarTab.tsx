@@ -30,6 +30,8 @@ import { statusLabel } from '@/i18n/statusLabel';
 import type { TFunction } from '@/i18n';
 import { useTranslation } from '@/i18n';
 import NewLeaveModal from './agenda/NewLeaveModal';
+import Toast from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
 import {
     addMonths, buildAgendaEvents, eventsOn, firstOfMonth, monthGrid, monthOf, shownInGrid,
     visibleRange, weekOf, type AgendaEvent, type AgendaView,
@@ -87,7 +89,6 @@ const CalendarTab: React.FC<CalendarTabProps> = ({ employees, onChanged }) => {
     const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [notice, setNotice] = useState<string | null>(null);
     const [showNew, setShowNew] = useState(false);
     const [busy, setBusy] = useState(false);
     const [deciding, setDeciding] = useState<{ id: string; action: 'approved' | 'rejected' } | null>(null);
@@ -115,10 +116,9 @@ const CalendarTab: React.FC<CalendarTabProps> = ({ employees, onChanged }) => {
 
     const events = useMemo(() => buildAgendaEvents(employees, leaves, range.from, range.to), [employees, leaves, range]);
 
-    const flash = (message: string) => {
-        setNotice(message);
-        setTimeout(() => setNotice(null), 3000);
-    };
+    // Guardado / decisión: toast arriba (antes una línea dentro de la Agenda que no se veía)
+    const { toast, showToast, hideToast } = useToast();
+    const flash = (message: string) => showToast(message, 'success');
 
     const goPrev = () => setCursor(view === 'month' ? firstOfMonth(addMonths(monthOf(cursor), -1)) : addDaysYMD(cursor, -7));
     const goNext = () => setCursor(view === 'month' ? firstOfMonth(addMonths(monthOf(cursor), 1)) : addDaysYMD(cursor, 7));
@@ -132,7 +132,9 @@ const CalendarTab: React.FC<CalendarTabProps> = ({ employees, onChanged }) => {
             await load();
             onChanged?.();
         } catch (e) {
+            // Toast encima de todo (también del formulario abierto) y el aviso en la Agenda
             setError(e instanceof Error ? e.message : t('hr.agenda.not_saved'));
+            showToast(t('hr.agenda.not_saved'), 'error');
         } finally {
             setBusy(false);
         }
@@ -151,7 +153,9 @@ const CalendarTab: React.FC<CalendarTabProps> = ({ employees, onChanged }) => {
             await load();
             onChanged?.();
         } catch (e) {
+            // Toast encima de todo (también del formulario abierto) y el aviso en la Agenda
             setError(e instanceof Error ? e.message : t('hr.agenda.not_saved'));
+            showToast(t('hr.agenda.not_saved'), 'error');
         } finally {
             setBusy(false);
         }
@@ -203,7 +207,7 @@ const CalendarTab: React.FC<CalendarTabProps> = ({ employees, onChanged }) => {
             </div>
 
             {error && <div role="alert" className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-800">{error}</div>}
-            {notice && <div role="status" className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm font-bold text-emerald-800">{notice}</div>}
+            {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
 
             {/* Vista mes */}
             {view === 'month' && (

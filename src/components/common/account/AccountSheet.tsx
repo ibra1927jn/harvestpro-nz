@@ -25,6 +25,8 @@ import { logger } from '@/utils/logger';
 import type { AppUser } from '@/types';
 import { ToggleRow } from '@/components/views/manager/settings/SettingsFormComponents';
 import UserAvatar from './UserAvatar';
+import Toast from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
 import AccountSecurity from './AccountSecurity';
 import { AccountField, AccountPanel, AccountPrimaryButton, AccountSection, AccountStatusLine, type AccountStatus } from './accountUi';
 
@@ -119,6 +121,9 @@ const AccountSheet: React.FC<AccountSheetProps> = ({ onClose }) => {
     const [fullName, setFullName] = useState(user?.full_name ?? '');
     const [phone, setPhone] = useState(user?.phone ?? '');
     const [detailsBusy, setDetailsBusy] = useState(false);
+    // Guardar nombre / teléfono avisa con un toast (antes una línea bajo el formulario que no se veía)
+    // Los errores siguen junto al formulario (dicen qué campo corregir)
+    const { toast, showToast, hideToast } = useToast();
     const [detailsStatus, setDetailsStatus] = useState<AccountStatus>(null);
     // Si el perfil llega refrescado (otro dispositivo) y aún no se ha tocado el formulario, se refleja
     const detailsDirty = useRef(false);
@@ -137,7 +142,7 @@ const AccountSheet: React.FC<AccountSheetProps> = ({ onClose }) => {
         if (r.ok) {
             detailsDirty.current = false;
             patchUser({ full_name: r.data.full_name ?? fullName.trim(), phone: r.data.phone });
-            setDetailsStatus({ kind: 'ok', text: t('account.details.saved') });
+            showToast(t('account.details.saved'), 'success');
         } else {
             setDetailsStatus(errorStatus(r.error.code));
         }
@@ -192,6 +197,7 @@ const AccountSheet: React.FC<AccountSheetProps> = ({ onClose }) => {
     return (
         <AccountPanel title={t('account.title')} onClose={onClose}>
             <div className="px-4 py-4 space-y-4 pb-10">
+                {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
                 {!isOnline && (
                     <div role="status" className="flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-3 py-2 text-xs font-semibold">
                         <span aria-hidden="true" className="material-symbols-outlined text-[18px]">cloud_off</span>

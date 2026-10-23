@@ -23,6 +23,8 @@ import { useHarvestStore } from '@/stores/useHarvestStore';
 import { setEmployeeActive, type Employee } from '@/services/hhrr.service';
 import { formatNZD } from '@/utils/nzFormat';
 import { useTranslation } from '@/i18n';
+import Toast from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
 
 // Lazy-loaded views (code-split for performance)
 const EmployeesTab = React.lazy(() => import('@/components/views/hhrr/EmployeesTab'));
@@ -40,6 +42,8 @@ const TabLoader = () => (
 
 const HHRR: React.FC = () => {
     const { t } = useTranslation();
+    // Alta de picker: confirmación al guardar
+    const { toast, showToast, hideToast } = useToast();
     const [activeTab, setActiveTab] = useState('employees');
     const { summary, employees, payroll, alerts, isLoading, reload } = useHHRR();
     const addPicker = useHarvestStore(s => s.addPicker);
@@ -108,10 +112,11 @@ const HHRR: React.FC = () => {
                 <SummaryCard icon="warning" iconColor="text-red-500" label={t('hr.compliance_alerts')} value={summary.complianceAlerts} />
             </div>}
 
+            {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
             {showAddPicker && (
                 <AddPickerModal
                     onClose={() => setShowAddPicker(false)}
-                    onAdd={async (p) => { await addPicker(p); reload(); }}
+                    onAdd={async (p) => { await addPicker(p); reload(); showToast(t('comms.picker_added', { name: p.name }), 'success'); }}
                 />
             )}
 

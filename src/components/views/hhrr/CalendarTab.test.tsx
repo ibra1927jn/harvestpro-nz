@@ -145,7 +145,8 @@ describe('CalendarTab (Agenda)', () => {
             orchardId: 'o1', pickerId: 'p2', type: 'sick', startDate: '2026-10-27', endDate: '2026-10-28',
             halfDay: false, reason: 'Flu', requestedBy: 'hr-1', status: 'requested',
         }));
-        await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Leave saved for Ben Kaur'));
+        // Confirmación en un toast
+        expect(await screen.findByText('Leave saved for Ben Kaur')).toBeTruthy();
         expect(onChanged).toHaveBeenCalled();
         expect(mockListInRange).toHaveBeenCalledTimes(2);
     });
@@ -180,7 +181,7 @@ describe('CalendarTab (Agenda)', () => {
         fireEvent.change(within(tue).getByPlaceholderText('Note (optional)'), { target: { value: 'Enjoy' } });
         fireEvent.click(within(tue).getByText('Confirm'));
         await waitFor(() => expect(mockApprove).toHaveBeenCalledWith('l1', 'hr-1', 'Enjoy'));
-        await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Leave approved'));
+        expect(await screen.findByText('Leave approved')).toBeTruthy();
         expect(onChanged).toHaveBeenCalledTimes(1);
 
         // Los botones solo salen el primer día visible de la ausencia (no se repiten el miércoles)
