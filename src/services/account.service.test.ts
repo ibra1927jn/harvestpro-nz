@@ -131,9 +131,13 @@ describe('updateMyDetails / updatePreferredLocale', () => {
     });
 
     it('saves only known locales', async () => {
-        expect(await updatePreferredLocale('fr')).toMatchObject({ ok: false, error: { code: 'INVALID_LOCALE' } });
+        // Idioma retirado (2026-10-21) y código desconocido
+        expect(await updatePreferredLocale('to')).toMatchObject({ ok: false, error: { code: 'INVALID_LOCALE' } });
+        expect(await updatePreferredLocale('xx')).toMatchObject({ ok: false, error: { code: 'INVALID_LOCALE' } });
         expect(await updatePreferredLocale('es')).toMatchObject({ ok: true });
         expect(repo.updateMyProfile).toHaveBeenCalledWith({ preferred_locale: 'es' });
+        expect(await updatePreferredLocale('fr')).toMatchObject({ ok: true });
+        expect(repo.updateMyProfile).toHaveBeenCalledWith({ preferred_locale: 'fr' });
     });
 });
 
