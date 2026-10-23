@@ -34,11 +34,11 @@ describe.skipIf(SKIP)('Role flows — sanity (real Supabase)', () => {
     });
 
     // ── TeamLeader ─────────────────────────────
-    it('team_leader role existe + necesita pickers/row_assignments/daily_attendance', async () => {
+    it('team_leader role existe + necesita pickers/row_assignments/daily_attendance/chat_messages', async () => {
         const { data: users } = await client.from('users').select('id').eq('role', 'team_leader').limit(1);
         expect((users || []).length).toBeGreaterThan(0);
 
-        for (const table of ['pickers', 'row_assignments', 'daily_attendance', 'messages']) {
+        for (const table of ['pickers', 'row_assignments', 'daily_attendance', 'chat_messages']) {
             const { error } = await client.from(table).select('*', { count: 'exact', head: true });
             expect(error, `team_leader necesita ${table}`).toBeNull();
         }
@@ -56,11 +56,11 @@ describe.skipIf(SKIP)('Role flows — sanity (real Supabase)', () => {
     });
 
     // ── QC Inspector ───────────────────────────
-    it('qc_inspector role + necesita qc_inspections/quality_inspections', async () => {
+    it('qc_inspector role + necesita qc_inspections', async () => {
         const { data: users } = await client.from('users').select('id').eq('role', 'qc_inspector').limit(1);
         expect((users || []).length).toBeGreaterThan(0);
 
-        for (const table of ['qc_inspections', 'quality_inspections']) {
+        for (const table of ['qc_inspections']) {
             const { error } = await client.from(table).select('*', { count: 'exact', head: true });
             expect(error, `qc necesita ${table}`).toBeNull();
         }
@@ -81,11 +81,11 @@ describe.skipIf(SKIP)('Role flows — sanity (real Supabase)', () => {
     });
 
     // ── Payroll Admin ──────────────────────────
-    it('payroll_admin role + necesita wage_rates/daily_attendance/bucket_records + harvest_settings.min_wage_rate', async () => {
+    it('payroll_admin role + necesita daily_attendance/bucket_records/variety_rates + harvest_settings.min_wage_rate', async () => {
         const { data: users } = await client.from('users').select('id').eq('role', 'payroll_admin').limit(1);
         expect((users || []).length).toBeGreaterThan(0);
 
-        for (const table of ['wage_rates', 'daily_attendance', 'bucket_records']) {
+        for (const table of ['daily_attendance', 'bucket_records', 'variety_rates']) {
             const { error } = await client.from(table).select('*', { count: 'exact', head: true });
             expect(error, `payroll_admin necesita ${table}`).toBeNull();
         }

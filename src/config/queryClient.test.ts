@@ -58,14 +58,6 @@ describe('queryKeys — factory shape', () => {
     expect(queryKeys.compliance.alerts('o-1')).toEqual(['compliance', 'alerts', 'o-1']);
   });
 
-  it('security.failedAttempts includes limit', () => {
-    expect(queryKeys.security.failedAttempts(50)).toEqual(['security', 'failed', 50]);
-  });
-
-  it('security.locks is a stable tuple', () => {
-    expect(queryKeys.security.locks).toEqual(['security', 'locks']);
-  });
-
   it('pickers.byTeam handles both ids defined', () => {
     expect(queryKeys.pickers.byTeam('tl-1', 'o-1')).toEqual(['pickers', 'team', 'tl-1', 'o-1']);
   });

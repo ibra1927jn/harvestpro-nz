@@ -45,13 +45,6 @@ export const queryKeys = {
         alerts: (orchardId: string) => ['compliance', 'alerts', orchardId] as const,
     },
 
-    // Security
-    security: {
-        all: ['security'] as const,
-        failedAttempts: (limit: number) => ['security', 'failed', limit] as const,
-        locks: ['security', 'locks'] as const,
-    },
-
     // Pickers / Crew
     pickers: {
         all: ['pickers'] as const,
