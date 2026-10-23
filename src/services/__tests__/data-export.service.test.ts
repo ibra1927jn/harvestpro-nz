@@ -56,7 +56,7 @@ vi.mock('@/services/supabase', () => ({
 import { dataExportService } from '../data-export.service';
 
 // ── Helper: configure per-table mock responses ──────
-type TableName = 'users' | 'daily_attendance' | 'bucket_records' | 'privacy_consent_log' | 'messages' | 'chat_messages' | 'audit_logs';
+type TableName = 'users' | 'daily_attendance' | 'bucket_records' | 'privacy_consent_log' | 'chat_messages' | 'audit_logs';
 
 function setupTableMocks(overrides: Partial<Record<TableName, { data: unknown; error: unknown }>> = {}) {
     const defaults: Record<TableName, { data: unknown; error: unknown }> = {
@@ -64,7 +64,6 @@ function setupTableMocks(overrides: Partial<Record<TableName, { data: unknown; e
         daily_attendance:    { data: mockAttendance, error: null },
         bucket_records:        { data: mockScans, error: null },
         privacy_consent_log: { data: mockConsents, error: null },
-        messages:            { data: null, error: null },
         chat_messages:       { data: null, error: null },
         audit_logs:          { data: null, error: null },
     };
@@ -73,9 +72,9 @@ function setupTableMocks(overrides: Partial<Record<TableName, { data: unknown; e
         const response = overrides[table] ?? defaults[table];
         const chain = makeChain(response.data, response.error);
 
-        // messages table uses head:true — override count directly
-        if (table === 'messages' || table === 'chat_messages') {
-            const msgResolved = Promise.resolve({ data: null, error: null, count: table === 'messages' ? 5 : 2 });
+        // chat_messages usa head:true — se devuelve el count directamente
+        if (table === 'chat_messages') {
+            const msgResolved = Promise.resolve({ data: null, error: null, count: 2 });
             const msgChain: Record<string, unknown> = {
                 then: msgResolved.then.bind(msgResolved),
                 catch: msgResolved.catch.bind(msgResolved),
@@ -143,9 +142,10 @@ describe('dataExportService.exportUserData', () => {
         expect(result.consentHistory[0].policy_version).toBe('1.2');
     });
 
-    it('message count adds chat messages and legacy direct messages', async () => {
+    it('message count comes from chat messages only (legacy messages table dropped)', async () => {
         const result = await dataExportService.exportUserData('u1');
-        expect(result.messageCount).toBe(7);
+        expect(result.messageCount).toBe(2);
+        expect(mockFrom.mock.calls.some((args: unknown[]) => args[0] === 'messages')).toBe(false);
     });
 
     it('attendance shows the orchard name, or the id when the name could not be read', async () => {

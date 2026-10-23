@@ -39,7 +39,7 @@ SELECT sec_test.record(
         OR p.prorettype = 'trigger'::regtype
         OR p.proname = ANY (ARRAY[
             -- antes de iniciar sesión / registrarse
-            'check_registration', 'is_account_locked', 'get_failed_login_count', 'check_rate_limit',
+            'check_registration',
             -- usadas dentro de políticas RLS (devuelven NULL/false sin sesión)
             'is_role', 'is_manager', 'is_admin', 'is_manager_or_leader', 'is_logistics_or_manager',
             'is_hr_manager_or_admin', 'can_read_company_payroll', 'is_active_member',
@@ -58,7 +58,7 @@ SELECT sec_test.record(
 FROM pg_proc p
 WHERE p.pronamespace = 'public'::regnamespace
   AND p.proname IN ('check_in_picker', 'check_out_picker', 'correct_attendance', 'get_record_audit_trail',
-                    'cleanup_old_audit_logs', 'cleanup_old_account_locks', 'cleanup_old_login_attempts',
+                    'cleanup_old_audit_logs',
                     'close_payroll_period', 'health_check')
 ORDER BY p.proname;
 
@@ -78,9 +78,7 @@ SELECT sec_test.record(false,
 FROM pg_policies
 WHERE schemaname = 'public'
   AND cmd IN ('INSERT', 'UPDATE', 'DELETE', 'ALL')
-  AND (COALESCE(with_check, qual) = 'true' OR qual = 'true')
-  -- intentos de acceso: se registran antes de tener sesión
-  AND NOT (tablename = 'login_attempts' AND cmd = 'INSERT');
+  AND (COALESCE(with_check, qual) = 'true' OR qual = 'true');
 
 -- 8) 2FA en el servidor: toda tabla de public lleva la política RESTRICTIVE
 --    "Require 2FA for privileged roles" (también las que se creen después;

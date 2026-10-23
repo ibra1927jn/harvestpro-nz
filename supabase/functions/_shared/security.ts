@@ -254,6 +254,14 @@ export const AnomalyInputSchema = z.object({
 });
 
 // Attendance Management
+// Hora del móvil (cola sin red): hora del móvil al ENVIAR (ms) y corrección
+// que ya sumó a `at` con el desfase que conocía. Con ellas el servidor corrige
+// la hora con el desfase medido ahora y lo apunta (_shared/device-time.ts).
+const DeviceClockFields = {
+  client_now: z.number().optional(),
+  clock_skew_ms: z.number().int().optional().nullable(),
+};
+
 export const AttendanceCheckInSchema = z.object({
   action: z.literal('check_in'),
   picker_id: z.string().uuid('picker_id must be a valid UUID'),
@@ -264,6 +272,7 @@ export const AttendanceCheckInSchema = z.object({
   // duplica el turno) y hora del móvil al fichar
   client_id: z.string().uuid('client_id must be a valid UUID').optional(),
   at: z.string().datetime({ offset: true }).optional(),
+  ...DeviceClockFields,
 });
 
 export const AttendanceCheckOutSchema = z.object({
@@ -273,6 +282,7 @@ export const AttendanceCheckOutSchema = z.object({
   // Si el tramo no existe con ese id (la entrada sin red encontró uno abierto),
   // se usa el tramo abierto de hoy de esta persona
   picker_id: z.string().uuid('picker_id must be a valid UUID').optional(),
+  ...DeviceClockFields,
 });
 
 // Descanso desde el pase de lista (inicio y fin), también desde la cola sin red
@@ -281,6 +291,7 @@ export const AttendanceBreakSchema = z.object({
   attendance_id: z.string().uuid('attendance_id must be a valid UUID'),
   at: z.string().datetime({ offset: true }).optional(),
   picker_id: z.string().uuid('picker_id must be a valid UUID').optional(),
+  ...DeviceClockFields,
 });
 
 export const AttendanceCorrectionSchema = z.object({
@@ -340,6 +351,9 @@ export const BucketRecordSchema = z.object({
   bin_id: z.string().optional(),
   scanned_by: z.string().uuid('scanned_by must be a valid UUID').optional(),
   scanned_at: z.string().optional(),
+  // Cola sin red: hora del móvil al enviar (ms) y corrección que ya aplicó
+  client_now: z.number().optional(),
+  clock_skew_ms: z.number().int().optional().nullable(),
 });
 
 // Admin User Management

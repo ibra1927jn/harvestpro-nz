@@ -67,6 +67,13 @@ export const PAY_RULES = {
     minWageFloor: NZ_MIN_WAGE_HISTORY[NZ_MIN_WAGE_HISTORY.length - 1].rate,
     /** Multiplicador del mínimo en festivo trabajado */
     publicHolidayMultiplier: 1.5,
+    /**
+     * Tramo de más de estas horas sin corregir (salida olvidada, móvil sin
+     * red): se marca para revisión, nómina no lo aprueba y solo se pagan estas
+     * horas hasta que alguien corrija la hoja (corrected_at). Corregido, se
+     * paga lo que diga la hoja aunque pase de aquí.
+     */
+    maxUnreviewedShiftHours: 14,
     timeZone: 'Pacific/Auckland',
 } as const;
 
@@ -92,6 +99,8 @@ export interface ShiftInput {
     scanTimes?: ReadonlyArray<string | null | undefined>;
     /** "Ahora", para turnos abiertos. Por defecto new Date() */
     now?: Date;
+    /** Hoja corregida a mano (corrected_at): un tramo largo se paga entero */
+    corrected?: boolean;
 }
 
 export interface ShiftHours {
@@ -102,9 +111,15 @@ export interface ShiftHours {
     /** Minutos de descanso descontados */
     breakMinutes: number;
     source: HoursSource;
+    /**
+     * El tramo pasaba de maxUnreviewedShiftHours sin corregir y se ha cortado
+     * ahí (solo aparece cuando es true)
+     */
+    capped?: true;
 }
 
 const MS_PER_HOUR = 3_600_000;
+const MAX_UNREVIEWED_SHIFT_MS = PAY_RULES.maxUnreviewedShiftHours * MS_PER_HOUR;
 
 function toMs(ts: string | null | undefined): number | null {
     if (!ts) return null;
@@ -164,7 +179,24 @@ export function mealBreakMissing(
 }
 
 /**
- * Horas trabajadas de un picker en un día.
+ * ¿Hay que revisar este tramo antes de pagarlo o aprobarlo? Abierto desde hace
+ * más de maxUnreviewedShiftHours (salida olvidada), o cerrado con más de esas
+ * horas y sin corregir. Sin entrada no hay nada que revisar aquí.
+ */
+export function shiftNeedsReview(
+    shift: { checkIn?: string | null; checkOut?: string | null; corrected?: boolean },
+    now: Date = new Date(),
+): boolean {
+    const inMs = toMs(shift.checkIn);
+    if (inMs === null) return false;
+    const outMs = toMs(shift.checkOut);
+    if (outMs === null) return now.getTime() - inMs > MAX_UNREVIEWED_SHIFT_MS;
+    return !shift.corrected && outMs - inMs > MAX_UNREVIEWED_SHIFT_MS;
+}
+
+/**
+ * Horas trabajadas de un picker en un día. Un tramo (cerrado o abierto) de más
+ * de maxUnreviewedShiftHours sin corregir cuenta solo esas horas (capped).
  */
 export function shiftHours(input: ShiftInput): ShiftHours {
     const breakMinutes = input.breakMinutes ?? PAY_RULES.mealBreakMinutes;
@@ -199,6 +231,10 @@ export function shiftHours(input: ShiftInput): ShiftHours {
         return { hours: 0, grossHours: 0, breakMinutes: 0, source: 'none' };
     }
 
+    // Salida olvidada o tramo larguísimo sin corregir: como mucho el tope
+    const capped = source !== 'scan_estimate' && !input.corrected && endMs - startMs > MAX_UNREVIEWED_SHIFT_MS;
+    if (capped) endMs = startMs + MAX_UNREVIEWED_SHIFT_MS;
+
     const grossHours = (endMs - startMs) / MS_PER_HOUR;
     const deducted = breakToDeduct(startMs, endMs, input.breakStart, breakMinutes);
     const hours = Math.max(0, grossHours - deducted / 60);
@@ -208,6 +244,7 @@ export function shiftHours(input: ShiftInput): ShiftHours {
         grossHours: round2(grossHours),
         breakMinutes: Math.round(deducted),
         source,
+        ...(capped ? { capped: true as const } : {}),
     };
 }
 
@@ -376,6 +413,8 @@ export interface AttendanceRow {
     checkOut?: string | null;
     breakStart?: string | null;
     breakMinutes?: number | null;
+    /** Hoja corregida a mano (corrected_at): un tramo largo se paga entero */
+    corrected?: boolean;
 }
 
 export interface BucketRow {
@@ -451,6 +490,11 @@ export interface PayDay {
     /** Horas estimadas (algún tramo sin cerrar o sin fichaje) */
     estimated: boolean;
     isPublicHoliday: boolean;
+    /**
+     * Algún tramo pasaba de maxUnreviewedShiftHours sin corregir: se ha pagado
+     * solo hasta el tope y hay que revisarlo (solo aparece cuando es true)
+     */
+    needsReview?: true;
 }
 
 export interface PickerRangePay {
@@ -468,6 +512,8 @@ export interface PickerRangePay {
     daysBelowMinimum: number;
     /** Días cuyas horas son estimadas (sin fichaje cerrado): revisar la hoja de horas */
     estimatedDays: number;
+    /** Días con un tramo cortado en el tope de horas (solo aparece si hay alguno) */
+    reviewDays?: number;
     /** Detalle día a día (huerto, horas, cubetas por variedad, pago) */
     dayDetails: PayDay[];
 }
@@ -492,23 +538,26 @@ interface ScanForPay {
  *   la mitad se carga al huerto de salida y la otra mitad al de llegada.
  *   El hueco entre dos tramos del mismo huerto (salió y volvió) no se paga.
  * - Sin tramos: del primer al último escaneo (estimado).
+ * - Un tramo de más de maxUnreviewedShiftHours desde su entrada y sin corregir
+ *   cuenta solo hasta el tope (needsReview).
  */
 function dayHours(
     rows: ReadonlyArray<AttendanceRow>,
     scans: ReadonlyArray<ScanForPay>,
     isToday: boolean,
     nowMs: number,
-): { hours: number; breakMinutes: number; travelMinutes: number; segments: PaySegment[]; estimated: boolean } {
+): { hours: number; breakMinutes: number; travelMinutes: number; segments: PaySegment[]; estimated: boolean; needsReview: boolean } {
     const sorted = [...rows]
         .filter(r => toMs(r.checkIn) !== null)
         .sort((a, b) => (toMs(a.checkIn) ?? 0) - (toMs(b.checkIn) ?? 0));
 
     if (sorted.length === 0) {
         const h = shiftHours({ scanTimes: scans.map(s => s.ts) });
-        return { hours: h.hours, breakMinutes: h.breakMinutes, travelMinutes: 0, segments: [], estimated: h.source !== 'none' };
+        return { hours: h.hours, breakMinutes: h.breakMinutes, travelMinutes: 0, segments: [], estimated: h.source !== 'none', needsReview: false };
     }
 
     let estimated = false;
+    let needsReview = false;
     const ranges: { start: number; end: number; row: AttendanceRow; contained: boolean }[] = [];
     // Fin más tardío hasta ahora: un tramo que se solapa con el anterior (error
     // al corregir la hoja) empieza donde acabó aquel; si no, el rato solapado
@@ -535,6 +584,11 @@ function dayHours(
                 .reduce((m, s) => Math.max(m, s.ms), start);
             end = last;
             estimated = true;
+        }
+        // Tope de horas sin corregir, contado desde la entrada real
+        if (!r.corrected && end - rawStart > MAX_UNREVIEWED_SHIFT_MS) {
+            end = rawStart + MAX_UNREVIEWED_SHIFT_MS;
+            needsReview = true;
         }
         // Tramo entero dentro de otro: no cuenta (tampoco para trayectos)
         const contained = coveredUntil > rawStart && end <= coveredUntil;
@@ -591,6 +645,7 @@ function dayHours(
         travelMinutes: Math.round(totalTravelMs / 60_000),
         segments,
         estimated,
+        needsReview,
     };
 }
 
@@ -785,6 +840,7 @@ function payDayOf(date: string, rows: AttendanceRow[], dayScans: ScanForPay[], c
         belowMinimum: p.belowMinimum,
         estimated: h.estimated || hasStaleOpen,
         isPublicHoliday: holiday,
+        ...(h.needsReview ? { needsReview: true as const } : {}),
     };
 }
 
@@ -806,6 +862,7 @@ function addDay(acc: PickerRangePay, day: PayDay): void {
     acc.days += 1;
     if (day.belowMinimum) acc.daysBelowMinimum += 1;
     if (day.estimated) acc.estimatedDays += 1;
+    if (day.needsReview) acc.reviewDays = (acc.reviewDays ?? 0) + 1;
     acc.dayDetails.push(day);
 }
 

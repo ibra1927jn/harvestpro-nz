@@ -99,8 +99,8 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
     const pending = timesheets.filter(ts => !ts.is_verified && !ts.is_rejected);
     // «Aprobar todas»: solo las hojas cerradas (con salida); una por una eran
     // cientos de clics al día con una cuadrilla grande
-    const completePending = pending.filter(ts => !!ts.check_out);
-    // Turnos abiertos: no se aprueban hasta tener salida
+    const completePending = pending.filter(ts => !!ts.check_out && !ts.long_shift);
+    // Turnos abiertos y de más de 14 h sin corregir: no se aprueban todavía
     const openPending = pending.length - completePending.length;
     const [isApprovingAll, setIsApprovingAll] = useState(false);
     const handleApproveAll = async () => {
@@ -199,9 +199,13 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                                     <span className="text-slate-300">→</span>
                                     <span>{nzClock(ts.check_out, t('common.active'))}</span>
                                 </div>
-                                {!ts.check_out && (
-                                    <p id={`open-shift-${ts.id}`} className="mb-3 text-[11px] font-medium text-amber-700">{t('pay.ts.open_shift_no_approve')}</p>
-                                )}
+                                {!ts.check_out ? (
+                                    <p id={`open-shift-${ts.id}`} className="mb-3 text-[11px] font-medium text-amber-700">
+                                        {t(ts.long_shift ? 'pay.ts.long_open_shift' : 'pay.ts.open_shift_no_approve')}
+                                    </p>
+                                ) : ts.long_shift ? (
+                                    <p id={`open-shift-${ts.id}`} data-testid="ts-long-shift" className="mb-3 text-[11px] font-medium text-red-700">{t('pay.ts.long_shift_no_approve')}</p>
+                                ) : null}
                                 {rejecting?.id === ts.id ? (
                                     <RejectReasonForm
                                         id={ts.id}
@@ -214,8 +218,8 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => handleApprove(ts.id, ts.picker_name)}
-                                        disabled={!ts.check_out}
-                                        aria-describedby={!ts.check_out ? `open-shift-${ts.id}` : undefined}
+                                        disabled={!ts.check_out || !!ts.long_shift}
+                                        aria-describedby={!ts.check_out || ts.long_shift ? `open-shift-${ts.id}` : undefined}
                                         className="flex-1 py-2.5 rounded-xl bg-emerald-50 text-emerald-600 text-[11px] uppercase tracking-widest font-bold hover:bg-emerald-500 hover:text-white transition-all duration-300 flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-50 disabled:hover:text-emerald-600"
                                     >
                                         <span aria-hidden="true" className="material-symbols-outlined text-[16px]">check</span>{t('pay.ts.approve')}

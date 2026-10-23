@@ -78,4 +78,17 @@ describe('DesktopLayout', () => {
         );
         expect(screen.getByTestId('child-content')).toBeTruthy();
     });
+
+    it('header stacks above the page content so the notification panel is not covered', () => {
+        const { container } = render(
+            <DesktopLayout navItems={navItems} activeTab="dashboard" onTabChange={onTabChange} title="Admin Portal">
+                <div className="relative z-10">Card</div>
+            </DesktopLayout>
+        );
+        // backdrop-blur crea un contexto de apilamiento: sin z-index propio, las
+        // tarjetas con z-10 tapaban el panel de la campana (auditoría 2026-10-23)
+        const header = container.querySelector('header');
+        expect(header?.className).toMatch(/\brelative\b/);
+        expect(header?.className).toMatch(/\bz-40\b/);
+    });
 });

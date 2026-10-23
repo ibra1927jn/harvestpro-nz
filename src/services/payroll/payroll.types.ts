@@ -79,6 +79,11 @@ export interface TimesheetEntry {
   orchard_id: string;
   updated_at?: string; // For optimistic locking on approval
   requires_review?: boolean; // Turno abierto de un día pasado o > 14 h
+  /**
+   * Más de 14 h (abierto o cerrado) sin corregir: no se aprueba hasta corregirlo
+   * y solo se pagan 14 h (PAY_RULES.maxUnreviewedShiftHours)
+   */
+  long_shift?: boolean;
 }
 
 /** Registro completo de timesheet diario con produccion y earnings */

@@ -20,8 +20,9 @@ import { fetchInChunks } from '../_shared/fetch-in-chunks.ts'
  * - Quien aprueba / rechaza es SIEMPRE quien llama (el verified_by del cuerpo
  *   no cuenta).
  * - Semana de pago cerrada: no se cambia nada (409).
- * - Turno sin salida: no se aprueba (409 SHIFT_OPEN); rechazar pide motivo
- *   de 3 a 200 caracteres.
+ * - Turno sin salida: no se aprueba (409 SHIFT_OPEN); turno de más de 14 h
+ *   sin corregir tampoco (409 LONG_SHIFT, trigger de la BD); rechazar pide
+ *   motivo de 3 a 200 caracteres.
  * - Cada decisión queda en audit_logs.
  */
 serve(async (req) => {
@@ -118,6 +119,9 @@ serve(async (req) => {
             if (reviewErr.code === '42501') throw new AuthError(reviewErr.message, 403)
             if (reviewErr.message?.includes('SHIFT_OPEN')) {
                 throw new AuthError('SHIFT_OPEN: this shift has no check-out yet and cannot be approved', 409)
+            }
+            if (reviewErr.message?.includes('LONG_SHIFT')) {
+                throw new AuthError('LONG_SHIFT: this shift is longer than 14 hours and has not been corrected. Fix the check-out time in Timesheet before approving it.', 409)
             }
             if (reviewErr.message?.includes('REJECTION_REASON')) {
                 throw new AuthError('REJECTION_REASON: a rejection needs a reason of 3 to 200 characters', 400)

@@ -132,6 +132,9 @@ const shared: TranslationDict = {
     'ui.loading': 'Chargement',
     'nav.runners_now': 'Runners',
     'nav.my_timesheet': 'Mes heures',
+    'unclosed.summary_long_one': '{n} poste sans départ, d’un jour passé ou ouvert depuis plus de 14 h ({people}). 14 h au plus sont payées jusqu’à la correction.',
+    'unclosed.summary_long_other': '{n} postes sans départ, de jours passés ou ouverts depuis plus de 14 h ({people}). 14 h au plus sont payées jusqu’à la correction.',
+    'unclosed.row_long': '{name} — ouvert depuis {time} ({orchard}), plus de 14 h',
 };
 
 export default shared;

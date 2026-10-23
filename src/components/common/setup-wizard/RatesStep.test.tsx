@@ -1,67 +1,38 @@
 /**
- * RatesStep — setup wizard step 3.
+ * RatesStep — paso 3: precio, variedad principal y hora de inicio
  */
+import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import RatesStep from './RatesStep';
-import { INITIAL_DATA, VARIETIES } from './wizard.types';
+import { VARIETIES } from './wizard.types';
+import { sampleWizardData } from './testData';
 
 describe('RatesStep', () => {
-    it('renderiza select variety + inputs piece_rate + start_time', () => {
-        const { container } = render(<RatesStep data={INITIAL_DATA} onUpdate={() => {}} />);
-        expect(container.querySelector('select')).not.toBeNull();
-        const timeInput = container.querySelector('input[type="time"]');
-        const numInput = container.querySelector('input[type="number"]');
-        expect(timeInput).not.toBeNull();
-        expect(numInput).not.toBeNull();
+    it('shows the current values and suggests the known varieties', () => {
+        const { container } = render(<RatesStep data={sampleWizardData} onUpdate={() => {}} />);
+        expect((screen.getByLabelText('Primary Variety') as HTMLInputElement).value).toBe('Lapin');
+        expect((screen.getByLabelText('Piece Rate ($/bucket)') as HTMLInputElement).value).toBe('1.85');
+        expect((screen.getByLabelText('Default Start Time') as HTMLInputElement).value).toBe('06:30');
+        expect(container.querySelectorAll('#wizard-rate-varieties option')).toHaveLength(VARIETIES.length);
     });
 
-    it('variety select tiene todas las opciones de VARIETIES', () => {
-        const { container } = render(<RatesStep data={INITIAL_DATA} onUpdate={() => {}} />);
-        const options = container.querySelectorAll('option');
-        expect(options).toHaveLength(VARIETIES.length);
-    });
-
-    it('cambio de variety dispara onUpdate', () => {
+    it('accepts any variety typed (not only the cherry list)', () => {
         const onUpdate = vi.fn();
-        const { container } = render(<RatesStep data={INITIAL_DATA} onUpdate={onUpdate} />);
-        const select = container.querySelector('select')!;
-        fireEvent.change(select, { target: { value: 'Kordia' } });
-        expect(onUpdate).toHaveBeenCalledWith('variety', 'Kordia');
+        render(<RatesStep data={sampleWizardData} onUpdate={onUpdate} />);
+        fireEvent.change(screen.getByLabelText('Primary Variety'), { target: { value: 'Royal Gala' } });
+        expect(onUpdate).toHaveBeenCalledWith('variety', 'Royal Gala');
     });
 
-    it('piece_rate parseFloat con fallback 0 cuando NaN', () => {
+    it('piece rate: number, 0 when not a number', () => {
         const onUpdate = vi.fn();
-        const { container } = render(<RatesStep data={INITIAL_DATA} onUpdate={onUpdate} />);
-        const numInput = container.querySelector('input[type="number"]') as HTMLInputElement;
-        fireEvent.change(numInput, { target: { value: 'abc' } });
+        render(<RatesStep data={sampleWizardData} onUpdate={onUpdate} />);
+        const rate = screen.getByLabelText('Piece Rate ($/bucket)');
+        fireEvent.change(rate, { target: { value: '2.35' } });
+        expect(onUpdate).toHaveBeenCalledWith('piece_rate', 2.35);
+        fireEvent.change(rate, { target: { value: 'abc' } });
         expect(onUpdate).toHaveBeenCalledWith('piece_rate', 0);
-    });
-
-    it('piece_rate acepta float', () => {
-        const onUpdate = vi.fn();
-        const { container } = render(<RatesStep data={INITIAL_DATA} onUpdate={onUpdate} />);
-        const numInput = container.querySelector('input[type="number"]') as HTMLInputElement;
-        fireEvent.change(numInput, { target: { value: '2.25' } });
-        expect(onUpdate).toHaveBeenCalledWith('piece_rate', 2.25);
-    });
-
-    it('start_time pasa el valor tal cual', () => {
-        const onUpdate = vi.fn();
-        const { container } = render(<RatesStep data={INITIAL_DATA} onUpdate={onUpdate} />);
-        const timeInput = container.querySelector('input[type="time"]') as HTMLInputElement;
-        fireEvent.change(timeInput, { target: { value: '07:30' } });
-        expect(onUpdate).toHaveBeenCalledWith('start_time', '07:30');
-    });
-
-    it('valores de data se muestran', () => {
-        const data = {
-            ...INITIAL_DATA,
-            rates: { variety: 'Kordia', piece_rate: 2.5, start_time: '06:00' },
-        };
-        const { container } = render(<RatesStep data={data} onUpdate={() => {}} />);
-        expect((container.querySelector('select') as HTMLSelectElement).value).toBe('Kordia');
-        expect((container.querySelector('input[type="number"]') as HTMLInputElement).value).toBe('2.5');
-        expect((container.querySelector('input[type="time"]') as HTMLInputElement).value).toBe('06:00');
+        fireEvent.change(screen.getByLabelText('Default Start Time'), { target: { value: '07:15' } });
+        expect(onUpdate).toHaveBeenCalledWith('start_time', '07:15');
     });
 });

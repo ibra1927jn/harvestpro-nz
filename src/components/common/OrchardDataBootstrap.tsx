@@ -21,8 +21,11 @@ export const OrchardDataBootstrap = () => {
         const key = `${appUser.id}|${appUser.orchard_id ?? ''}`;
         if (loadedFor.current === key) return;
         loadedFor.current = key;
+        // Quién es (el rol decide si la presencia sale de los fichajes o de
+        // presence_today; el id firma las cubetas guardadas sin red)
+        useHarvestStore.setState({ currentUser: { id: appUser.id, name: appUser.full_name, role: appUser.role } });
         fetchGlobalData(appUser.orchard_id || undefined);
-    }, [appUser?.id, appUser?.orchard_id, fetchGlobalData]);
+    }, [appUser?.id, appUser?.orchard_id, appUser?.full_name, appUser?.role, fetchGlobalData]);
 
     return null;
 };

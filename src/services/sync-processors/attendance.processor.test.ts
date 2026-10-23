@@ -172,8 +172,10 @@ describe('processAttendance — roll call queued without signal', () => {
   it('check_in goes to manage-attendance with the phone shift id and time', async () => {
     const spy = vi.spyOn(attendanceService, 'checkInPicker').mockResolvedValue(undefined as never);
     const { processAttendance } = await import('./attendance.processor');
-    await processAttendance({ action: 'check_in', picker_id: 'p-1', orchard_id: 'o-1', attendance_id: 'c-1', at: '2026-10-23T08:00:00.000Z' });
-    expect(spy).toHaveBeenCalledWith('p-1', 'o-1', undefined, { clientId: 'c-1', at: '2026-10-23T08:00:00.000Z' });
+    await processAttendance({ action: 'check_in', picker_id: 'p-1', orchard_id: 'o-1', attendance_id: 'c-1', at: '2026-10-23T08:00:00.000Z', clock_skew_ms: 180_000 });
+    expect(spy).toHaveBeenCalledWith('p-1', 'o-1', undefined, {
+      clientId: 'c-1', at: '2026-10-23T08:00:00.000Z', skewApplied: 180_000, pickerId: 'p-1',
+    });
   });
 
   it('breaks and check-out use the shift and fall back to the person', async () => {
@@ -182,8 +184,9 @@ describe('processAttendance — roll call queued without signal', () => {
     const { processAttendance } = await import('./attendance.processor');
     await processAttendance({ action: 'break_end', picker_id: 'p-1', orchard_id: 'o-1', attendance_id: 'c-1', at: 'T' });
     await processAttendance({ action: 'check_out', picker_id: 'p-1', orchard_id: 'o-1', attendance_id: 'c-1', at: 'T' });
-    expect(brk).toHaveBeenCalledWith('break_end', 'c-1', { at: 'T', pickerId: 'p-1' });
-    expect(out).toHaveBeenCalledWith('c-1', { at: 'T', pickerId: 'p-1' });
+    // Elementos guardados antes de apuntar la corrección: 0
+    expect(brk).toHaveBeenCalledWith('break_end', 'c-1', { at: 'T', pickerId: 'p-1', skewApplied: 0 });
+    expect(out).toHaveBeenCalledWith('c-1', { at: 'T', pickerId: 'p-1', skewApplied: 0 });
   });
 
   it('a server refusal (4xx) becomes a rejection; a 503 stays retryable', async () => {

@@ -2,8 +2,8 @@
  * nz-law.ts — New Zealand Employment Law Constants
  *
  * ⚠️ These are LEGAL FLOOR values, NOT operational rates.
- * Operational wage rates are configured per job type in the database
- * (wage_rates table) and editable from Admin/HR Settings.
+ * Las tarifas operativas están en la base: harvest_settings (por hora / mínimo)
+ * y variety_rates / piece_rates (por cubeta), editables desde Ajustes del manager.
  *
  * Update this file annually when NZ Minimum Wage Orders change:
  * https://www.employment.govt.nz/hours-and-wages/pay/minimum-wage/minimum-wage-rates
@@ -52,9 +52,8 @@ export const NZ_KIWISAVER_RATES = [0.03, 0.035, 0.04, 0.06, 0.08, 0.10] as const
 export const NZ_KIWISAVER_EMPLOYER_MIN = 0.035;
 
 /**
- * Default wage rates per job type — these are the DB fallback values
- * used when the `wage_rates` table hasn't been configured yet.
- * Admin/HR updates these via the Settings → Wage Rates panel.
+ * Tarifas por hora orientativas por puesto (referencia; la tabla wage_rates
+ * y su panel se borraron por no usarse, migración 20261024030000).
  */
 export const NZ_DEFAULT_WAGE_RATES: WageRateDefaults = {
   picker:           PAY_RULES.minWageFloor,  // Minimum wage floor (Minimum Wage Order 2026)

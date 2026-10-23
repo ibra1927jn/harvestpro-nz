@@ -6,6 +6,7 @@ import { fetchAllRows } from '@/utils/fetchAllRows';
 import { todayNZST } from '@/utils/nzst';
 import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
 import { pieceRateOn, type DailyPieceRate } from '@/services/harvestMetrics/pay';
+import type { PresenceRow } from '@/stores/storeSyncLogic';
 
 export const storeSyncRepository = {
     /** Get first orchard */
@@ -66,6 +67,17 @@ export const storeSyncRepository = {
             .is('deleted_at', null)
             .neq('orchard_id', orchardId);
         return (data ?? []) as unknown as { picker_id: string; orchard_id: string; check_in: string | null; orchards: { name: string | null } | null }[];
+    },
+
+    /**
+     * Quién está fichado hoy en el huerto, sin horas ni pago (presence_today):
+     * lo usan los roles que no leen los fichajes de todos (runner, QC,
+     * logística, y el team leader para la gente que no es de su equipo).
+     */
+    async getPresenceToday(orchardId: string): Promise<PresenceRow[]> {
+        const { data, error } = await supabase.rpc('presence_today', { p_orchard_id: orchardId });
+        if (error) throw error;
+        return (data ?? []) as PresenceRow[];
     },
 
     /** Get bucket records since a date — returns query builder for delta chaining */

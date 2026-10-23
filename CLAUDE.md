@@ -42,12 +42,19 @@ Version: 9.9.0
 - `src/constants/` — nz-law.ts (compliance legal NZ)
 
 ### Supabase
-- `supabase/migrations/` — 90 migraciones (las viejas en archive/ no se aplican)
+- `supabase/migrations/` — 90+ migraciones (las viejas en archive/ no se aplican)
 - `supabase/functions/` — 12 Edge Functions: approve-timesheet, calculate-payroll, check-compliance, close-pay-week, detect-anomalies, manage-admin, manage-attendance, provision-orchard, record-bucket, send-push, submit-audit-log, api-v1 (api-v1 sin tabla api_keys todavía)
 - Push: triggers → `notification_outbox` → `send-push` (flush) → `public/sw-push.js`; ver `docs/push-notifications.md`
 - `supabase/functions/_shared/` — pay-rules.ts (idéntico a src/services/harvestMetrics/pay.ts, lo vigila pay-parity.test.ts), payroll-calc.ts, security.ts, scan-time.ts, cors.ts
 - `supabase/seeds/` — seeds locales (orden: seed_00_local_bootstrap → seed_2weeks_local → seed_role_users)
 - 35 tablas, RLS en todas, 2FA (aal2) exigido por política para roles privilegiados
+- Fichajes (`daily_attendance`): los leen manager/RRHH/admin del huerto, nómina de la empresa, el TL su equipo
+  (y gente sin equipo del huerto) y cada uno lo suyo. Runner, QC y logística saben quién está fichado con
+  `presence_today(huerto)` (sin horas ni pago; el store la relee cada minuto, migración 20261024021000).
+- Hora de fichajes y cubetas: la del servidor; la del móvil solo desde la cola sin red, corregida con el
+  desfase medido y nunca del futuro (`_shared/device-time.ts`, `_shared/scan-time.ts`; el desfase queda en
+  `*_clock_skew_ms`). Tramos de más de 14 h sin corregir: se pagan 14 h y no se aprueban
+  (`PAY_RULES.maxUnreviewedShiftHours`, trigger `trg_require_long_shift_correction`).
 
 ### Offline
 - Dexie IndexedDB con sync queue (13 tipos con processor; LEAVE_REQUEST: ausencias que pide el team leader sin red;
@@ -76,6 +83,12 @@ Version: 9.9.0
 - BD: `scripts/test-db-security.sh` (RLS, SECURITY DEFINER; supabase/tests/security/*.sql con ROLLBACK).
 - E2E Playwright: ~31 specs en e2e/ (`npm run test:e2e`) y 9 móviles en e2e/mobile
   (`npm run test:e2e:mobile`, puerto 3000 o `MOBILE_PORT`; reutiliza un servidor ya levantado).
+- «Empresa desde cero»: `npm run test:e2e:fresh` (playwright.fresh.config.ts, e2e/fresh-company.spec.ts):
+  alta del primer admin → temporada, bloques y filas → invitaciones → registro de manager/TL/runner →
+  fichaje → cubeta → el manager la ve. Base vacía (CI): alta real por /signup. Base con la demo: crea un
+  huerto aparte con la clave de servicio y al final borra solo lo suyo (`E2E_FRESH_KEEP=1` lo deja).
+  Necesita psql (`DB_URL`), 2FA apagado (VITE_MFA_ENFORCE=false + scripts/dev-disable-mfa.sql; si no, se
+  salta) y `E2E_BASE_URL` / `PW_CHROMIUM_PATH` opcionales.
 - `npm run perf:budget` tras `vite build`: tamaño inicial por ruta, chunks prohibidos, precache SW.
 - Storybook para componentes UI
 
@@ -119,16 +132,40 @@ Version: 9.9.0
 
 ## CI/CD
 - 2 workflows en .github/workflows/: ci.yml, security.yml
-- CI: lint → test (5 shards) → build. Sin despliegue automático.
+- CI: lint → test (5 shards) → build. Sin despliegue automático. Solo corre en `pull_request` (y push a main).
+- Trabajos con Supabase local real (`supabase start` en el runner, CLI 2.120.0, vía `scripts/ci/local-stack.sh start`:
+  migraciones + seeds `seed_00_local_bootstrap`, `seed_2weeks_local`, `seed_role_users`, `seed_today_local`, claves
+  VAPID de prueba en `supabase/functions/.env` y `.env.local` con las claves locales):
+  - `edge-functions`: tests Deno de `supabase/functions/tests/` contra las funciones del checkout, copia y
+    restauración con `backup-local.sh` y `backup-local.ps1` (pwsh), y recuperación completa en una base vacía.
+  - `e2e`: `npm run test:e2e:smoke` (suite móvil, Pixel 7: login de los 8 roles con 2FA real, cubeta del runner
+    con y sin red, nota de QC, equipo del TL, aprobar/rechazar de nómina; build real + `vite preview` en :3000) y,
+    si existe el script, `npm run test:e2e:fresh` («empresa desde cero») tras `local-stack.sh reset`.
+  - `android-apk`: `vite build` + `cap sync android` + `gradlew assembleDebug` (JDK 21); APK sin firmar como artefacto.
+- En local (con tu Supabase ya levantado y `.env.local`; NO uses `local-stack.sh`, es para máquinas vacías):
+  `npm run test:functions`, `npm run test:e2e:smoke` (reutiliza un servidor en :3000 si lo hay),
+  `cd android && ./gradlew assembleDebug` tras `npx vite build && npx cap sync android`.
 - Entorno real: Supabase local en Docker (`supabase start`) + `npm run dev`. Los deploys a Hetzner y Vercel se retiraron el 2026-10-10.
 - Seeds para local, en orden: seed_00_local_bootstrap → seed_2weeks_local → seed_role_users
 - Security: OWASP ZAP scan
 - Tests en CI necesitan VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY como env vars (placeholders OK)
 
+## Copias de seguridad locales
+- `scripts/backup-local.ps1` (Windows) / `scripts/backup-local.sh`: `pg_dump` dentro del contenedor + archivos de
+  Storage + recuento de filas, en una carpeta con fecha; guarda las 14 últimas. Solo lee.
+- `scripts/restore-local.(ps1|sh)`: por defecto restaura en una base aparte (`harvestpro_restore_check`) y compara
+  recuentos; `-FreshStack` / `--fresh-stack` carga la copia en un Supabase nuevo y vacío.
+- Programarlo cada día con el Programador de tareas: `docs/backups-local.md`.
+
 ## Estado actual (2026-10-16)
 - `main` al día (antes la pila de ramas iba 254 commits por delante). Trabajo nuevo: ramas cortas que se fusionan en 1–2 días, nunca apiladas.
 - Sin usuarios reales todavía. Una instalación = una empresa con varios huertos.
 - Auditoría externa y pendientes: `docs/audits/2026-10-16-external-audit.md`.
+- Estructura del huerto (temporadas, bloques, filas): pantalla `components/views/orchard-structure/`
+  (Admin › Orchard setup, cualquier huerto; Manager › Orchard setup, el suyo). Migración
+  20261024010000: sin DELETE (se archiva), número de fila único por temporada, totales de bloque y huerto
+  automáticos, `activate_harvest_season` / `close_harvest_season` / `copy_season_structure` /
+  `add_block_rows`; el asistente de huerto nuevo (`setup_orchard_atomic`) crea temporada, bloques y filas.
 - Reglas de equipos: el team leader solo gestiona su equipo y puede coger a gente sin equipo; mover, soltar, dar de baja o borrar es de RRHH/admin; el manager mueve equipos de fila (migración 20261016000000_picker_team_rules).
 - Nómina: la app calcula bruto y horas y exporta a Xero/PaySauce. El 8% de holiday pay de casuales, PAYE, KiwiSaver, ACC y las nóminas los hace el programa de nóminas (decisión del dueño, 2026-10-16).
 - Salario mínimo: tabla con fechas `NZ_MIN_WAGE_HISTORY` en src/services/harvestMetrics/pay.ts (copiar igual a supabase/functions/_shared/pay-rules.ts). Cada año, cuando se publique el Minimum Wage Order, añadir la fila con fecha 1 de abril. No volver a escribir 23.95 a mano: usar `PAY_RULES.minWageFloor` o `minWageFloorOn(fecha)`.
