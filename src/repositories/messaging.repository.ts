@@ -4,6 +4,39 @@
 import { supabase } from '@/services/supabase';
 import { nowNZST } from '@/utils/nzst';
 import type { ChatAttachment } from '@/services/chat-attachments.service';
+import { fetchInChunks } from '@/utils/fetchInChunks';
+
+/** Reacción guardada (chat_message_reactions) */
+export interface ReactionRow {
+    message_id: string;
+    user_id: string;
+    emoji: string;
+    created_at?: string;
+}
+
+/** Aviso en vivo de una reacción (Broadcast desde la base, trigger chat_reaction_broadcast) */
+export interface ReactionEvent extends ReactionRow {
+    op: 'add' | 'remove';
+}
+
+/**
+ * Suscripción al canal privado de una conversación («chat:<id>»): llamarla la
+ * cierra; sendTyping avisa de que estoy escribiendo (no se guarda en la base).
+ */
+export type ConversationSubscription = (() => void) & {
+    sendTyping: (userId: string) => void;
+};
+
+export interface ConversationHandlers {
+    onReaction?: (event: ReactionEvent) => void;
+    onTyping?: (userId: string) => void;
+}
+
+const isReactionEvent = (p: unknown): p is ReactionEvent => {
+    const r = p as Partial<ReactionEvent> | null;
+    return !!r && (r.op === 'add' || r.op === 'remove')
+        && typeof r.message_id === 'string' && typeof r.user_id === 'string' && typeof r.emoji === 'string';
+};
 
 /** Persona de una conversación (panel de info del chat) */
 export interface ChatParticipant {
@@ -23,7 +56,7 @@ export const messagingRepository = {
         conversationId: string,
         senderId: string,
         content: string,
-        opts?: { id?: string; createdAt?: string; attachment?: ChatAttachment }
+        opts?: { id?: string; createdAt?: string; attachment?: ChatAttachment; replyToId?: string | null }
     ) {
         // id y hora del móvil: un reenvío no duplica y conserva cuándo se escribió
         const { data, error } = await supabase
@@ -34,6 +67,7 @@ export const messagingRepository = {
                 content,
                 ...(opts?.id ? { id: opts.id } : {}),
                 ...(opts?.createdAt ? { created_at: opts.createdAt } : {}),
+                ...(opts?.replyToId ? { reply_to_id: opts.replyToId } : {}),
                 ...(opts?.attachment ? {
                     attachment_path: opts.attachment.path,
                     attachment_type: opts.attachment.type,
@@ -87,16 +121,65 @@ export const messagingRepository = {
         return (data || []).reverse();
     },
 
-    /** Subscribe to new messages (realtime) */
-    subscribe(conversationId: string, onMessage: (payload: unknown) => void) {
+    /**
+     * Canal privado de la conversación («chat:<id>», RLS en realtime.messages:
+     * solo participantes). Un solo canal por conversación abierta para todo:
+     * mensajes nuevos (postgres_changes), reacciones (Broadcast desde la base)
+     * y «Escribiendo…» (Broadcast entre móviles, nada se guarda).
+     */
+    subscribe(conversationId: string, onMessage: (payload: unknown) => void, handlers: ConversationHandlers = {}): ConversationSubscription {
         const channel = supabase
-            .channel(`chat:${conversationId}`)
+            .channel(`chat:${conversationId}`, { config: { private: true, broadcast: { self: false } } })
             .on('postgres_changes', {
                 event: 'INSERT', schema: 'public', table: 'chat_messages',
                 filter: `conversation_id=eq.${conversationId}`
             }, (payload) => onMessage(payload.new))
+            .on('broadcast', { event: 'reaction' }, ({ payload }) => {
+                if (isReactionEvent(payload)) handlers.onReaction?.(payload);
+            })
+            .on('broadcast', { event: 'typing' }, ({ payload }) => {
+                const userId = (payload as { user_id?: unknown } | null)?.user_id;
+                if (typeof userId === 'string') handlers.onTyping?.(userId);
+            })
             .subscribe();
-        return () => { supabase.removeChannel(channel); };
+        const unsubscribe = (() => { supabase.removeChannel(channel); }) as ConversationSubscription;
+        unsubscribe.sendTyping = (userId: string) => {
+            // Sin red o sin canal: se pierde, es solo un aviso
+            void Promise.resolve(channel.send({ type: 'broadcast', event: 'typing', payload: { user_id: userId } }))
+                .catch(() => undefined);
+        };
+        return unsubscribe;
+    },
+
+    /** Reacciones de estos mensajes (en trozos: 300 ids en un .in() da 414) */
+    async getReactions(messageIds: string[]): Promise<ReactionRow[]> {
+        return fetchInChunks<ReactionRow>(messageIds, (chunk, from, to) =>
+            supabase
+                .from('chat_message_reactions')
+                .select('message_id, user_id, emoji, created_at')
+                .in('message_id', chunk)
+                .order('message_id')
+                .order('user_id')
+                .order('emoji')
+                .range(from, to)
+        );
+    },
+
+    /** Poner una reacción mía. Repetirla no falla (reintento de la cola). */
+    async addReaction(messageId: string, emoji: string): Promise<void> {
+        const { error } = await supabase
+            .from('chat_message_reactions')
+            .upsert({ message_id: messageId, emoji }, { onConflict: 'message_id,user_id,emoji', ignoreDuplicates: true });
+        if (error) throw error;
+    },
+
+    /** Quitar una reacción mía (si ya no está, no pasa nada) */
+    async removeReaction(messageId: string, userId: string, emoji: string): Promise<void> {
+        const { error } = await supabase
+            .from('chat_message_reactions')
+            .delete()
+            .match({ message_id: messageId, user_id: userId, emoji });
+        if (error) throw error;
     },
 
     /** Get conversations for a user */

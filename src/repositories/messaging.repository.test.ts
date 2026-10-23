@@ -67,16 +67,101 @@ describe('messagingRepository', () => {
     });
 
     describe('subscribe', () => {
-        it('returns unsubscribe function', () => {
-            const channelMock = {
-                on: vi.fn().mockReturnThis(),
-                subscribe: vi.fn().mockReturnThis(),
+        type Handler = (p: { new?: unknown; payload?: unknown }) => void;
+        function channelMock() {
+            const handlers: Record<string, Handler> = {};
+            const ch = {
+                on: vi.fn((kind: string, filter: { event: string }, cb: Handler) => { handlers[`${kind}:${filter.event}`] = cb; return ch; }),
+                subscribe: vi.fn(() => ch),
+                send: vi.fn().mockResolvedValue('ok'),
             };
-            vi.spyOn(supabase, 'channel').mockReturnValue(channelMock as never);
-            vi.spyOn(supabase, 'removeChannel').mockImplementation(() => ({}) as never);
+            return { ch, handlers };
+        }
+
+        it('opens ONE private channel per conversation and returns an unsubscribe function', () => {
+            const { ch } = channelMock();
+            const channelSpy = vi.spyOn(supabase, 'channel').mockReturnValue(ch as never);
+            const removeSpy = vi.spyOn(supabase, 'removeChannel').mockImplementation(() => ({}) as never);
 
             const unsub = messagingRepository.subscribe('conv-1', vi.fn());
             expect(typeof unsub).toBe('function');
+            expect(channelSpy).toHaveBeenCalledTimes(1);
+            expect(channelSpy).toHaveBeenCalledWith('chat:conv-1', { config: { private: true, broadcast: { self: false } } });
+            unsub();
+            expect(removeSpy).toHaveBeenCalledWith(ch);
+        });
+
+        it('routes new messages, reaction broadcasts and typing to their handlers', () => {
+            const { ch, handlers } = channelMock();
+            vi.spyOn(supabase, 'channel').mockReturnValue(ch as never);
+            const onMessage = vi.fn();
+            const onReaction = vi.fn();
+            const onTyping = vi.fn();
+            messagingRepository.subscribe('conv-1', onMessage, { onReaction, onTyping });
+
+            handlers['postgres_changes:INSERT']({ new: { id: 'm1' } });
+            expect(onMessage).toHaveBeenCalledWith({ id: 'm1' });
+            const ev = { op: 'add', message_id: 'm1', user_id: 'u2', emoji: '👍' };
+            handlers['broadcast:reaction']({ payload: ev });
+            handlers['broadcast:reaction']({ payload: { op: 'nope' } });
+            expect(onReaction).toHaveBeenCalledTimes(1);
+            expect(onReaction).toHaveBeenCalledWith(ev);
+            handlers['broadcast:typing']({ payload: { user_id: 'u2' } });
+            handlers['broadcast:typing']({ payload: {} });
+            expect(onTyping).toHaveBeenCalledTimes(1);
+            expect(onTyping).toHaveBeenCalledWith('u2');
+        });
+
+        it('sendTyping broadcasts on the same channel (never writes to the database)', () => {
+            const { ch } = channelMock();
+            vi.spyOn(supabase, 'channel').mockReturnValue(ch as never);
+            const sub = messagingRepository.subscribe('conv-1', vi.fn());
+            sub.sendTyping('me');
+            expect(ch.send).toHaveBeenCalledWith({ type: 'broadcast', event: 'typing', payload: { user_id: 'me' } });
+            expect(fromSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('reactions', () => {
+        it('getReactions reads in chunks with a stable order', async () => {
+            const chain = mockChain({ data: [{ message_id: 'm1', user_id: 'u1', emoji: '👍' }], error: null });
+            fromSpy.mockReturnValue(chain as never);
+            const ids = Array.from({ length: 250 }, (_, i) => `m${i}`);
+            const rows = await messagingRepository.getReactions(ids);
+            expect(fromSpy).toHaveBeenCalledWith('chat_message_reactions');
+            // 250 ids → 3 trozos (nunca un .in() de 250 uuids: 414)
+            expect((chain.in as ReturnType<typeof vi.fn>).mock.calls.length).toBe(3);
+            expect((chain.in as ReturnType<typeof vi.fn>).mock.calls.every(c => (c[1] as string[]).length <= 100)).toBe(true);
+            expect((chain.order as ReturnType<typeof vi.fn>).mock.calls.slice(0, 3).map(c => c[0])).toEqual(['message_id', 'user_id', 'emoji']);
+            expect(rows).toHaveLength(3);
+        });
+
+        it('addReaction is an idempotent upsert; removeReaction deletes my own', async () => {
+            const chain = { ...mockChain({ data: null, error: null }), upsert: vi.fn(), delete: vi.fn(), match: vi.fn() };
+            chain.upsert.mockReturnValue(chain);
+            chain.delete.mockReturnValue(chain);
+            chain.match.mockReturnValue(chain);
+            fromSpy.mockReturnValue(chain as never);
+            await messagingRepository.addReaction('m1', '👍');
+            expect(chain.upsert).toHaveBeenCalledWith({ message_id: 'm1', emoji: '👍' }, { onConflict: 'message_id,user_id,emoji', ignoreDuplicates: true });
+            await messagingRepository.removeReaction('m1', 'u1', '👍');
+            expect(chain.match).toHaveBeenCalledWith({ message_id: 'm1', user_id: 'u1', emoji: '👍' });
+        });
+
+        it('throws when the server rejects a reaction', async () => {
+            const chain = { ...mockChain({ data: null, error: { code: '42501', message: 'rls' } }), upsert: vi.fn() };
+            chain.upsert.mockReturnValue(chain);
+            fromSpy.mockReturnValue(chain as never);
+            await expect(messagingRepository.addReaction('m1', '👍')).rejects.toMatchObject({ code: '42501' });
+        });
+    });
+
+    describe('sendMessage with a reply', () => {
+        it('sends reply_to_id', async () => {
+            const chain = mockChain({ data: { id: 'm2' }, error: null });
+            fromSpy.mockReturnValue(chain as never);
+            await messagingRepository.sendMessage('c1', 'u1', 'Yes', { id: 'm2', replyToId: 'm1' });
+            expect((chain.insert as ReturnType<typeof vi.fn>).mock.calls[0][0][0]).toMatchObject({ id: 'm2', reply_to_id: 'm1' });
         });
     });
 

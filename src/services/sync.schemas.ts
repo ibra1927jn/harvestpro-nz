@@ -5,6 +5,7 @@
  */
 import { z } from 'zod';
 import { QcCriteriaSchema } from '@/schemas/zod.schemas';
+import { REACTION_EMOJIS } from './chat-reactions.logic';
 
 // 🔧 BUG-3 fix: Zod schemas for sync queue payload validation
 // Replaces unsafe `as unknown as` double-casts that silenced corrupt payloads
@@ -127,3 +128,13 @@ export const LeaveRequestPayloadSchema = z.object({
   requested_by: z.string().uuid(),
 }).refine(v => v.end_date >= v.start_date, { path: ['end_date'] })
   .refine(v => !v.half_day || v.start_date === v.end_date, { path: ['half_day'] });
+
+// Reacción del chat sin red (tipo CHAT_REACTION). Mismo conjunto de emojis que
+// el CHECK de chat_message_reactions.
+export const ChatReactionPayloadSchema = z.object({
+  op: z.enum(['add', 'remove']),
+  conversation_id: z.string().uuid(),
+  message_id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  emoji: z.enum(REACTION_EMOJIS),
+});

@@ -49,8 +49,10 @@ Version: 9.9.0
 - 35 tablas, RLS en todas, 2FA (aal2) exigido por política para roles privilegiados
 
 ### Offline
-- Dexie IndexedDB con sync queue (12 tipos con processor; LEAVE_REQUEST: ausencias que pide el team leader sin red;
-  BIN: alta y estado de bins del runner sin red)
+- Dexie IndexedDB con sync queue (13 tipos con processor; LEAVE_REQUEST: ausencias que pide el team leader sin red;
+  BIN: alta y estado de bins del runner sin red; CHAT_REACTION: reacciones del chat sin red)
+- Chat en vivo: un canal privado por conversación abierta, `chat:<id>` (RLS en realtime.messages, migración
+  20261023070000): mensajes nuevos, reacciones (Broadcast desde la base) y «Escribiendo…» (Broadcast, sin tabla)
 - Archivos sin red (adjuntos y notas de voz del chat, fotos de QC): tabla `pending_files`, cifrados, tope 50 MB
   (`services/pending-uploads.service.ts`); salen con la bandeja del chat / la cola QC_INSPECTION
 - Encrypt-before-write con AES-256-GCM
