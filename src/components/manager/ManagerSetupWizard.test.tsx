@@ -67,9 +67,12 @@ describe('ManagerSetupWizard', () => {
         expect(onComplete).not.toHaveBeenCalled();
     });
 
-    it('without blocks says the admin loads them', () => {
+    it('without blocks links to the orchard setup screen', () => {
         act(() => useHarvestStore.setState({ orchardBlocks: [] }));
-        render(<ManagerSetupWizard onComplete={vi.fn()} onCancel={vi.fn()} />);
+        const onOpenStructure = vi.fn();
+        render(<ManagerSetupWizard onComplete={vi.fn()} onCancel={vi.fn()} onOpenStructure={onOpenStructure} />);
         expect(screen.getByTestId('msetup-no-blocks')).toBeInTheDocument();
+        fireEvent.click(screen.getByTestId('msetup-open-structure'));
+        expect(onOpenStructure).toHaveBeenCalled();
     });
 });

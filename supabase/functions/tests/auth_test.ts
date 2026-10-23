@@ -132,14 +132,16 @@ Deno.test({ name: 'edge functions: auth, roles, validation and CORS', ...testOpt
             await t.step(`${fn}: CORS`, () => checkCors(fn))
         }
 
-        await t.step('send-push: notifying others needs a real admin/manager/team_leader role', async () => {
+        await t.step('send-push: nobody can push free text to another person (only flush / test exist)', async () => {
+            // send_to_user y broadcast se quitaron (f8928560): los avisos salen de
+            // notification_outbox, que rellenan los triggers. Ni un admin real ni
+            // un qc con rol "admin" en user_metadata pueden mandar texto libre.
             const body = { action: 'send_to_user', user_id: runnerSpoofAdmin.id, title: 'x', body: 'y' }
-            // qc con rol "admin" en user_metadata: sigue siendo qc
             const spoofed = await call('send-push', { token: qcAsAdmin, body })
-            assertEquals(spoofed.status, 403, show(spoofed))
-            for (const role of ['runner', 'qc_inspector', 'logistics', 'hr_admin', 'payroll_admin'] as Role[]) {
+            assert(spoofed.status === 400 || spoofed.status === 403, show(spoofed))
+            for (const role of ['admin', 'manager', 'team_leader', 'runner', 'qc_inspector', 'logistics', 'hr_admin', 'payroll_admin'] as Role[]) {
                 const r = await call('send-push', { token: await seededToken(role), body })
-                assertEquals(r.status, 403, `${role}: ${show(r)}`)
+                assert(r.status === 400 || r.status === 403, `${role}: ${show(r)}`)
             }
         })
 

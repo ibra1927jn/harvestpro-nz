@@ -330,7 +330,7 @@ describe('Payroll Service', () => {
             expect(timesheets[1].is_verified).toBe(false);
         });
 
-        it('should NOT cap hours — flags >14h for review instead (L14)', async () => {
+        it('caps an uncorrected shift over 14 h at 14 h and flags it; corrected, pays it all (ronda 24-10)', async () => {
             const longShiftData = [{
                 ...MOCK_ATTENDANCE_DATA[0],
                 check_in: '2026-02-13T04:00:00+13:00',
@@ -344,10 +344,18 @@ describe('Payroll Service', () => {
             );
 
             const timesheets = await payrollService.fetchTimesheets('orchard-001');
-
-            // 🔧 L14: Hours are NOT truncated — they're flagged for review
-            expect(timesheets[0].hours_worked).toBe(16); // sin descanso anotado y sin tope
+            // Antes (L14) no se cortaba; ahora sin corregir se pagan 14 h y no se aprueba
+            expect(timesheets[0].hours_worked).toBe(14);
             expect(timesheets[0].requires_review).toBe(true);
+            expect(timesheets[0].long_shift).toBe(true);
+
+            (supabase.from as Mock) = createMockFrom(
+                { data: [{ ...longShiftData[0], corrected_at: '2026-02-14T00:00:00Z' }], error: null },
+                { data: MOCK_PICKERS_DATA, error: null }
+            );
+            const fixed = await payrollService.fetchTimesheets('orchard-001');
+            expect(fixed[0].hours_worked).toBe(16); // sin descanso anotado
+            expect(fixed[0].long_shift).toBeUndefined();
         });
 
         it('should return empty array on database error', async () => {

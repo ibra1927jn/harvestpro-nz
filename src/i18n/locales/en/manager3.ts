@@ -100,7 +100,7 @@ const manager3: TranslationDict = {
     'msetup.rate_hint': 'Counts from today only; earlier days keep their price. Change it later in Settings.',
     'msetup.varieties': 'Variety of the rows',
     'msetup.varieties_hint': 'One variety per block (applies to all its rows). Prices by variety use it.',
-    'msetup.no_blocks': 'This orchard has no blocks or rows yet. Ask an admin to load them; you can set the varieties later.',
+    'msetup.no_blocks': 'This orchard has no blocks or rows yet. Set them up first (seasons, blocks and rows); then choose the variety of each block here.',
     'msetup.block_rows': '{name} ({n} rows)',
     'msetup.variety_of': 'Variety of {name}',
     'msetup.teams_note': 'Teams: link team leaders and runners in Teams → Link Staff. New accounts are invited by an admin or HR.',

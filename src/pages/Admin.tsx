@@ -26,6 +26,7 @@ import ChatTabView from '@/components/common/messaging/ChatTabView';
 const AdminOrchardsTab = React.lazy(() => import('./admin/AdminOrchardsTab'));
 const AdminUsersTab = React.lazy(() => import('./admin/AdminUsersTab'));
 const AdminComplianceTab = React.lazy(() => import('./admin/AdminComplianceTab'));
+const OrchardStructureView = React.lazy(() => import('@/components/views/orchard-structure/OrchardStructureView'));
 const AuditLogViewer = React.lazy(() => import('@/components/AuditLogViewer').then(m => ({ default: m.AuditLogViewer })));
 
 const TabLoader = () => (
@@ -38,6 +39,8 @@ export default function Admin() {
     const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState<AdminTab>('orchards');
     const [showWizard, setShowWizard] = useState(false);
+    // Huerto cuya estructura se edita (por defecto el primero)
+    const [structureOrchardId, setStructureOrchardId] = useState<string | null>(null);
     const admin = useAdmin();
 
     const { unreadCount } = useMessaging();
@@ -68,7 +71,35 @@ export default function Admin() {
     const renderContent = () => {
         switch (activeTab) {
             case 'orchards':
-                return <AdminOrchardsTab orchards={admin.orchards} onNewOrchard={() => setShowWizard(true)} />;
+                return (
+                    <AdminOrchardsTab
+                        orchards={admin.orchards}
+                        onNewOrchard={() => setShowWizard(true)}
+                        onOpenStructure={id => { setStructureOrchardId(id); setActiveTab('structure'); }}
+                    />
+                );
+            case 'structure': {
+                const current = admin.orchards.find(o => o.id === structureOrchardId) ?? admin.orchards[0] ?? null;
+                return (
+                    <ComponentErrorBoundary componentName="Orchard setup">
+                        <div className="space-y-3">
+                            {admin.orchards.length > 1 && (
+                                <label className="flex items-center gap-2 text-sm text-text-primary">
+                                    {t('admin.structure_pick')}
+                                    <select
+                                        value={current?.id ?? ''}
+                                        onChange={e => setStructureOrchardId(e.target.value)}
+                                        className="px-3 py-1.5 rounded-lg border border-border-light bg-white dark:bg-slate-800 text-sm"
+                                    >
+                                        {admin.orchards.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                                    </select>
+                                </label>
+                            )}
+                            <OrchardStructureView key={current?.id ?? 'none'} orchardId={current?.id} orchardName={current?.name} />
+                        </div>
+                    </ComponentErrorBoundary>
+                );
+            }
             case 'users':
                 return (
                     <AdminUsersTab
@@ -125,7 +156,7 @@ export default function Admin() {
             {/* Setup Wizard Modal */}
             {showWizard && (
                 <SetupWizard
-                    onComplete={() => { setShowWizard(false); admin.reload(); }}
+                    onComplete={id => { setShowWizard(false); admin.reload(); if (id) setStructureOrchardId(id); }}
                     onCancel={() => setShowWizard(false)}
                 />
             )}

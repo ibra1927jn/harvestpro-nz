@@ -114,7 +114,7 @@ const payroll: TranslationDict = {
     'pay.err.close': 'Impossible de clôturer la semaine.',
     'pay.err.reopen': 'Impossible de rouvrir la semaine.',
     'pay.ts.open_shift_no_approve': 'Poste ouvert (pas encore de départ) : il pourra être approuvé une fois clôturé',
-    'pay.ts.approve_all_skipped': '{count} postes ouverts non approuvés (pas encore de départ)',
+    'pay.ts.approve_all_skipped': '{count} non approuvés (ouverts, ou de plus de 14 h sans correction)',
     'pay.ts.reject_reason_label': 'Motif du refus',
     'pay.ts.reject_reason_placeholder': 'Que faut-il corriger ?',
     'pay.ts.reject_reason_hint': '{n}/{max} caractères (au moins 3)',
@@ -125,6 +125,8 @@ const payroll: TranslationDict = {
     'pay.hist.confirm_delete': 'Supprimer {file} de l’historique des exports ? Le fichier lui-même n’est pas touché.',
     'pay.hist.delete_for': 'Supprimer {file} de l’historique',
     'pay.hist.delete_failed': 'Non supprimé. Réessayez.',
+    'pay.ts.long_shift_no_approve': 'Plus de 14 h sans correction : seules 14 h sont payées. Corrigez l’heure de départ dans la feuille d’heures avant de l’approuver',
+    'pay.ts.long_open_shift': 'Ouvert depuis plus de 14 h (départ oublié ?) : seules 14 h sont payées jusqu’à la correction',
 };
 
 export default payroll;

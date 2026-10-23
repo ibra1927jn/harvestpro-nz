@@ -9,6 +9,8 @@ interface RowListViewProps {
     // NUEVAS PROPS DE DATOS
     blockName?: string;
     totalRows?: number;
+    /** Números de fila reales (con huecos); si no se pasan, 1..totalRows */
+    rowNumbers?: number[];
     variety?: string;
     targetYield?: number;
 }
@@ -18,6 +20,7 @@ const RowListView: React.FC<RowListViewProps> = ({
     onRowClick,
     blockName = "Unknown Block",
     totalRows = 20,
+    rowNumbers,
     variety = "Mix",
     targetYield = 1000
 }) => {
@@ -25,7 +28,7 @@ const RowListView: React.FC<RowListViewProps> = ({
     // 1. GENERACIÓN DINÁMICA DE FILAS (Clave para que funcione MP3 vs MP4)
     // Si totalRows viene como 0 o null, usamos 1 por seguridad
     const safeRowCount = Math.max(1, totalRows || 20);
-    const rows = Array.from({ length: safeRowCount }, (_, i) => i + 1);
+    const rows = rowNumbers && rowNumbers.length > 0 ? rowNumbers : Array.from({ length: safeRowCount }, (_, i) => i + 1);
 
     // Agrupar runners por fila para cálculos rápidos
     const runnersByRow = runners.reduce((acc, runner) => {

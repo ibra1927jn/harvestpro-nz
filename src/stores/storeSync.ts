@@ -21,6 +21,9 @@ import {
   applyAttendanceRecord,
   applyHarvestSettingsChange,
   applyElsewhere,
+  applyPresence,
+  elsewhereFromPresence,
+  refreshPresenceOf,
   applyRowAssignmentEvent,
   deltaSinceISO,
   mapPickerWithAttendance,
@@ -30,7 +33,9 @@ import {
   resolveRowAssignments,
   shouldUseDelta,
   type AttendanceRecord,
+  type OpenShiftElsewhere,
   type PickerWithAttendance,
+  type PresenceRow,
   type ServerRowAssignment,
 } from './storeSyncLogic';
 
@@ -163,7 +168,7 @@ export async function fetchOrchardData(
   if (activeOrchard?.id) {
     // Día cerrado: se lee siempre (una fila); así el TL y el runner lo saben al abrir
     await loadDayClosure(set, activeOrchard.id, today);
-    await loadShiftsElsewhere(set, activeOrchard.id, today);
+    await loadShiftsElsewhere(get, set, activeOrchard.id, today);
     if (!light) await get().fetchBlocks(activeOrchard.id);
     await loadRowAssignments(get, set, activeOrchard.id);
     // Bins: al desbloquear solo si hace más de BINS_REFRESH_MS (los bins no
@@ -273,15 +278,68 @@ async function loadDayClosure(set: StoreSetter, orchardId: string, today: string
   }
 }
 
-/** Quién está trabajando ahora en otro huerto (la gente rota entre huertos) */
-async function loadShiftsElsewhere(set: StoreSetter, orchardId: string, today: string): Promise<void> {
+/**
+ * Roles que leen los fichajes de todo el huerto (RLS de daily_attendance,
+ * migración 20261024021000). El resto (team leader fuera de su equipo, runner,
+ * QC, logística) sabe quién está fichado por presence_today, sin horas ni pago,
+ * y no recibe los fichajes por tiempo real: se relee cada PRESENCE_REFRESH_MS.
+ */
+const FULL_ATTENDANCE_ROLES: ReadonlySet<string> = new Set(['admin', 'manager', 'hr_admin', 'payroll_admin']);
+export const PRESENCE_REFRESH_MS = 60_000;
+
+export function needsPresence(role: string | null | undefined): boolean {
+  return !role || !FULL_ATTENDANCE_ROLES.has(role);
+}
+
+/**
+ * Quién está trabajando ahora en otro huerto (la gente rota entre huertos) y,
+ * para quien no lee todos los fichajes, la presencia de hoy (presence_today).
+ */
+async function loadShiftsElsewhere(get: StoreGetter, set: StoreSetter, orchardId: string, today: string): Promise<void> {
+  const withPresence = needsPresence(get().currentUser?.role);
+  const [visible, presence] = await Promise.all([
+    (async (): Promise<OpenShiftElsewhere[]> => {
+      try {
+        return await storeSyncRepository.getOpenShiftsElsewhere(orchardId, today);
+      } catch (e) {
+        logger.warn('[Sync] Could not load shifts in other orchards:', e);
+        return [];
+      }
+    })(),
+    (async (): Promise<PresenceRow[] | null> => {
+      if (!withPresence) return null;
+      try {
+        return await storeSyncRepository.getPresenceToday(orchardId);
+      } catch (e) {
+        logger.warn('[Sync] Could not load presence:', e);
+        return null;
+      }
+    })(),
+  ]);
+  setPresence(set, visible, presence);
+}
+
+function setPresence(set: StoreSetter, visible: OpenShiftElsewhere[], presence: PresenceRow[] | null): void {
+  const seen = new Set(visible.map(v => v.picker_id));
+  const elsewhere = presence
+    ? [...visible, ...elsewhereFromPresence(presence).filter(e => !seen.has(e.picker_id))]
+    : visible;
+  set(s => ({ crew: applyElsewhere(presence ? applyPresence(s.crew, presence) : s.crew, elsewhere) }));
+}
+
+/** Relee solo la presencia (sin red o con error: se queda la anterior) */
+export async function refreshPresence(get: StoreGetter, set: StoreSetter, orchardId: string): Promise<void> {
   try {
-    const elsewhere = await storeSyncRepository.getOpenShiftsElsewhere(orchardId, today);
-    set(s => ({ crew: applyElsewhere(s.crew, elsewhere) }));
+    const presence = await storeSyncRepository.getPresenceToday(orchardId);
+    if (get().orchard?.id !== orchardId) return;
+    set(s => ({ crew: refreshPresenceOf(s.crew, presence) }));
+    get().recalculateIntelligence();
   } catch (e) {
-    logger.warn('[Sync] Could not load shifts in other orchards:', e);
+    logger.warn('[Sync] Could not refresh presence:', e);
   }
 }
+
+let presenceTimer: ReturnType<typeof setInterval> | null = null;
 
 /**
  * Row assignments: el servidor manda (antes solo se pedían si el móvil no
@@ -378,6 +436,16 @@ export function setupRealtimeSubscriptions(
     .filter(ch => ch.topic.includes(`harvest-live-${orchardId}`))
     .forEach(ch => supabase.removeChannel(ch));
   logger.info('[CONN-TRACE] setupRealtimeSubscriptions — WebSocket (no consume connection pool)');
+
+  // Sin acceso a todos los fichajes no llegan por tiempo real: presencia cada minuto
+  if (presenceTimer) clearInterval(presenceTimer);
+  presenceTimer = null;
+  if (needsPresence(get().currentUser?.role)) {
+    presenceTimer = setInterval(() => {
+      if (document.hidden || get().orchard?.id !== orchardId) return;
+      void refreshPresence(get, set, orchardId);
+    }, PRESENCE_REFRESH_MS);
+  }
 
   supabase
     .channel(`harvest-live-${orchardId}`)

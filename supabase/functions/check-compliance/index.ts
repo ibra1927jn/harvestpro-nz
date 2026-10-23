@@ -7,7 +7,7 @@ import {
     checkRateLimit,
     ComplianceCheckSchema,
 } from '../_shared/security.ts'
-import { payForRange, pieceRateOn, nzDateOf, isNZPublicHoliday, PAY_RULES } from '../_shared/pay-rules.ts'
+import { attendanceRowOf, payForRange, pieceRateOn, nzDateOf, isNZPublicHoliday, PAY_RULES } from '../_shared/pay-rules.ts'
 import { loadDailyPieceRates } from '../_shared/piece-rates.ts'
 
 /**
@@ -97,7 +97,7 @@ serve(async (req) => {
         // pasado por otro huerto: el mínimo se comprueba con el día entero)
         const { data: attendance } = await supabase
             .from('daily_attendance')
-            .select('picker_id, orchard_id, check_in, check_out, break_start, break_minutes, date')
+            .select('picker_id, orchard_id, check_in, check_out, break_start, break_minutes, date, corrected_at')
             .eq('date', today)
             .is('deleted_at', null)
             .in('picker_id', picker_ids)
@@ -122,7 +122,7 @@ serve(async (req) => {
             if (s.piece_rate != null) orchardRates[s.orchard_id] = Number(s.piece_rate)
         }
 
-        type AttRow = { picker_id: string; orchard_id: string | null; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null; date: string }
+        type AttRow = { picker_id: string; orchard_id: string | null; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null; date: string; corrected_at: string | null }
         type BktRow = { picker_id: string; orchard_id: string | null; variety: string | null; scanned_at: string; quality_grade: string | null }
         const attRows = (attendance ?? []) as AttRow[]
         const bktRows = (bucketCounts ?? []) as BktRow[]
@@ -144,10 +144,8 @@ serve(async (req) => {
             const violations: ComplianceViolation[] = []
             const shifts = attRows.filter(a => a.picker_id === pickerId)
             const [range] = payForRange({
-                attendance: shifts.map(a => ({
-                    pickerId, date: today, orchardId: a.orchard_id,
-                    checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes,
-                })),
+                // Igual que nómina (tope de 14 h salvo corrección posterior a la salida)
+                attendance: shifts.map(a => ({ ...attendanceRowOf(a), pickerId, date: today })),
                 buckets: bktRows.filter(b => b.picker_id === pickerId).map(b => ({
                     pickerId, scannedAt: b.scanned_at, qualityGrade: b.quality_grade, orchardId: b.orchard_id, variety: b.variety,
                     pieceRate: pieceRateOn(dailyRates, b.orchard_id, b.variety, nzDateOf(b.scanned_at), (b.orchard_id ? orchardRates[b.orchard_id] : undefined) ?? pieceRate),

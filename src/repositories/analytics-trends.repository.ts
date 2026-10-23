@@ -25,7 +25,7 @@ export const analyticsTrendsRepository = {
         const [attendance, buckets] = await Promise.all([
             fetchAllRows<PayInputs['attendance'][number]>((from, to) => supabase
                 .from('daily_attendance')
-                .select('picker_id, orchard_id, date, check_in, check_out, break_start, break_minutes')
+                .select('picker_id, orchard_id, date, check_in, check_out, break_start, break_minutes, corrected_at')
                 .eq('orchard_id', orchardId)
                 .is('deleted_at', null)
                 .gte('date', startDate)

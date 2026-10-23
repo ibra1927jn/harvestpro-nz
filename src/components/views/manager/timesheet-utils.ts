@@ -4,7 +4,7 @@
  * @module views/manager/timesheet-utils
  */
 import { logger } from '@/utils/logger';
-import { mealBreakMissing, shiftHours } from '@/services/harvestMetrics/pay';
+import { mealBreakMissing, shiftHoursOf } from '@/services/harvestMetrics/pay';
 import { todayNZST, nzOffsetOn } from '@/utils/nzst';
 
 /** Attendance record row shape */
@@ -88,19 +88,14 @@ export function nzTimeToIso(dateYMD: string, hhmm: string): string {
  * - Sin salida hoy: hasta ahora.
  */
 export function calculateHours(
-    row: Pick<AttendanceRow, 'check_in' | 'check_out' | 'date' | 'break_start' | 'break_minutes'>,
+    row: Pick<AttendanceRow, 'check_in' | 'check_out' | 'date' | 'break_start' | 'break_minutes'> & { corrected_at?: string | null },
     today: string = todayNZST(),
     now: Date = new Date(),
 ): number | null {
     if (!row.check_in) return null;
     if (!row.check_out && row.date < today) return null;
-    return shiftHours({
-        checkIn: row.check_in,
-        checkOut: row.check_out,
-        breakStart: row.break_start,
-        breakMinutes: row.break_minutes,
-        now,
-    }).hours;
+    // Cálculo único, igual que nómina (tope de 14 h sin corrección posterior a la salida)
+    return shiftHoursOf(row, now).hours;
 }
 
 /**

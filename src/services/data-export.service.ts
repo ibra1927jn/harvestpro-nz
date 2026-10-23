@@ -113,13 +113,11 @@ export const dataExportService = {
         logger.warn('[DataExport] Failed to fetch consent history:', consentsError);
       }
 
-      // 5. Nº de mensajes enviados, sin contenido: chat (chat_messages) + directos antiguos (messages)
-      const messageCounts = await Promise.all(
-        (['chat_messages', 'messages'] as const).map(table =>
-          supabase.from(table).select('id', { count: 'exact', head: true }).eq('sender_id', userId)
-        )
-      );
-      const messageCount = messageCounts.reduce((sum, r) => sum + (r.count ?? 0), 0);
+      // 5. Nº de mensajes enviados, sin contenido (chat_messages; la tabla antigua messages se borró)
+      const { count: messageCount } = await supabase
+        .from('chat_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('sender_id', userId);
 
       const exportData: UserDataExport = {
         exportedAt: new Date().toISOString(),
@@ -148,7 +146,7 @@ export const dataExportService = {
           policy_version: c.policy_version as string,
           consented_at: c.consented_at as string,
         })),
-        messageCount,
+        messageCount: messageCount ?? 0,
       };
 
       // 6. Registro de auditoría. audit_logs.action solo admite INSERT/UPDATE/DELETE/CUSTOM:

@@ -7,7 +7,7 @@
 import { pickerHistoryRepository } from '@/repositories/picker-history.repository';
 import { logger } from '@/utils/logger';
 import { nzMidnight } from '@/utils/nzst';
-import { payForRange, pieceRateOn, nzDateOf, PAY_RULES } from '@/services/harvestMetrics/pay';
+import { attendanceRowOf, payForRange, pieceRateOn, nzDateOf, PAY_RULES } from '@/services/harvestMetrics/pay';
 import { loadOrchardNames } from '@/repositories/pay-rates.repository';
 import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
 import { countCriteriaFailures, type CriterionFailureCount } from '@/services/qcCriteria';
@@ -146,7 +146,7 @@ class PickerHistoryService {
         const setup = daySetups.find((d: { date: string }) => d.date === date);
         const fallback = setup?.piece_rate || 6.5;
         const [pay] = payForRange({
-          attendance: shifts.map(a => ({ pickerId, date, orchardId: a.orchard_id, checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes })),
+          attendance: shifts.map(a => attendanceRowOf({ ...a, picker_id: pickerId, date })),
           buckets: dayBuckets.map(b => ({
             pickerId, scannedAt: b.scanned_at, qualityGrade: b.quality_grade, orchardId: b.orchard_id, variety: b.variety,
             pieceRate: pieceRateOn(rates, b.orchard_id, b.variety, nzDateOf(b.scanned_at), orchardFallbacks[b.orchard_id ?? ''] ?? fallback),

@@ -4,7 +4,7 @@
  * Queries repositories for day_closures, attendance, bucket_records
  */
 import { analyticsTrendsRepository } from '@/repositories/analytics-trends.repository';
-import { payForRange, pieceRateOn, nzDateOf, type DailyPieceRate } from '@/services/harvestMetrics/pay';
+import { attendanceRowOf, payForRange, pieceRateOn, nzDateOf, type DailyPieceRate } from '@/services/harvestMetrics/pay';
 import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
 import { logger } from '@/utils/logger';
 
@@ -82,7 +82,7 @@ export class AnalyticsTrendsService {
         const attByDay = new Map<string, Parameters<typeof payForRange>[0]['attendance'][number][]>();
         for (const a of attendance) {
             const list = attByDay.get(a.date) ?? [];
-            list.push({ pickerId: a.picker_id, date: a.date, orchardId: a.orchard_id, checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes });
+            list.push(attendanceRowOf(a));
             attByDay.set(a.date, list);
         }
         const bktByDay = new Map<string, Parameters<typeof payForRange>[0]['buckets'][number][]>();

@@ -15,7 +15,7 @@ import { todayNZST, nzMidnight, addDaysYMD } from '@/utils/nzst';
 import { userRepository2 } from '@/repositories/user.repository';
 import { contractRepository2 } from '@/repositories/contract.repository';
 import { attendanceRepository } from '@/repositories/attendance.repository';
-import { payForRange, payWeekOf, nzDateOf, pieceRateOn, PAY_RULES, type PickerRangePay } from '@/services/harvestMetrics';
+import { payForRange, payWeekOf, nzDateOf, pieceRateOn, PAY_RULES, correctionCovers, type PickerRangePay } from '@/services/harvestMetrics';
 import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
 import { hrDocumentsRepository, HR_DOCUMENT_TYPE_LABELS } from '@/repositories/hr-documents.repository';
 import { leaveService, onLeaveOn } from '@/services/leave.service';
@@ -228,6 +228,7 @@ async function loadPayWeek(orchardId?: string, minWageFor?: (personId: string) =
       checkOut: a.check_out,
       breakStart: a.break_start,
       breakMinutes: a.break_minutes,
+      corrected: correctionCovers(a.corrected_at, a.check_out),
     }));
   const bucketRows = (buckets || [])
     .filter(b => !b.deleted_at && b.scanned_at)
