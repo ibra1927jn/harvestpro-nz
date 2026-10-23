@@ -137,6 +137,18 @@ Deno.test({ name: 'record-bucket reports rejected and flagged scans so the manag
             assert(Math.abs(Number(data!.clock_skew_ms) + 2 * 3_600_000) < 60_000, `skew ${data!.clock_skew_ms}`)
         })
 
+        await t.step('phone 40 days ahead (skew beyond int range): saved with the corrected time, flagged, skew stored', async () => {
+            const phoneNow = Date.now() + 40 * 86_400_000
+            const s = scan(phoneNow - 10 * 60_000, { clock_skew_ms: 0.5 })
+            const r = await call('record-bucket', { token: runner.token, body: { scans: [s], client_now: phoneNow } })
+            const [x] = r.json.results as Result[]
+            assertEquals(x.status, 'saved', show(r))
+            assert(x.flag?.startsWith('PHONE_CLOCK_AHEAD'), show(r))
+            const { data } = must(await service.from('bucket_records').select('scanned_at, clock_skew_ms').eq('id', s.id).single(), 'read')
+            assert(Math.abs(Date.parse(data!.scanned_at as string) - (Date.now() - 10 * 60_000)) < 2 * 60_000, `stored ${data!.scanned_at}`)
+            assert(Math.abs(Number(data!.clock_skew_ms) + 40 * 86_400_000) < 120_000, `skew ${data!.clock_skew_ms}`)
+        })
+
         await t.step('a scan a couple of minutes ahead is stored with the server time, never in the future', async () => {
             const s = scan(Date.now() + 3 * 60_000)
             const r = await call('record-bucket', { token: runner.token, body: { scans: [s], client_now: Date.now() } })

@@ -9,7 +9,7 @@ import {
     checkRateLimit,
     AttendanceInputSchema,
 } from '../_shared/security.ts'
-import { shiftHours } from '../_shared/pay-rules.ts'
+import { correctionCovers, shiftHours } from '../_shared/pay-rules.ts'
 import { writeAudit } from '../_shared/audit.ts'
 import {
     type AttendanceCaller,
@@ -115,13 +115,14 @@ async function applyCorrection(
     const ci = check_in || existing?.check_in
     const co = check_out || existing?.check_out
     if (ci && co) {
-        // Hoja corregida a mano: un tramo de más de 14 h se paga entero
+        // Hoja corregida a mano: un tramo de más de 14 h se paga entero, si la
+        // corrección es posterior a la salida (la de hoy cubre una salida ya puesta)
         updatePayload.hours_worked = shiftHours({
             checkIn: ci,
             checkOut: co,
             breakStart: break_start !== undefined ? break_start : existing?.break_start,
             breakMinutes: existing?.break_minutes,
-            corrected: true,
+            corrected: correctionCovers(updatePayload.corrected_at as string, co),
         }).hours
     }
 
@@ -194,9 +195,10 @@ interface ShiftRow {
     break_end: string | null
     break_minutes: number | null
     hours_worked: number | null
+    corrected_at: string | null
 }
 
-const SHIFT_COLUMNS = 'id, picker_id, orchard_id, date, check_in, check_out, break_start, break_end, break_minutes, hours_worked'
+const SHIFT_COLUMNS = 'id, picker_id, orchard_id, date, check_in, check_out, break_start, break_end, break_minutes, hours_worked, corrected_at'
 
 /**
  * Se busca con la clave de servicio: el alcance lo comprueba después
@@ -401,11 +403,13 @@ serve(async (req) => {
             // Horas pagables con el cálculo único (descanso de 30 min no pagado)
             let hoursWorked: number | undefined
             if (record.check_in) {
+                // Una corrección anterior a esta salida no la cubre (tope de 14 h)
                 hoursWorked = shiftHours({
                     checkIn: record.check_in,
                     checkOut: nowISO,
                     breakStart: record.break_start,
                     breakMinutes,
+                    corrected: correctionCovers(record.corrected_at, nowISO),
                 }).hours
             }
 
@@ -482,6 +486,7 @@ serve(async (req) => {
                         checkOut: record.check_out,
                         breakStart: record.break_start,
                         breakMinutes: update.break_minutes as number,
+                        corrected: correctionCovers(record.corrected_at, record.check_out),
                     }).hours
                 }
             }

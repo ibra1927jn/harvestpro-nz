@@ -4,7 +4,7 @@
  * revisión y, corregidos, se pagan enteros. Lo demás no cambia.
  */
 import { describe, it, expect } from 'vitest';
-import { shiftHours, shiftNeedsReview, payForRange, PAY_RULES, type AttendanceRow } from './pay';
+import { shiftHours, shiftNeedsReview, payForRange, correctionCovers, attendanceRowOf, shiftHoursOf, PAY_RULES, type AttendanceRow } from './pay';
 
 const t = (date: string, hhmm: string) => `${date}T${hhmm}:00+13:00`;
 const D = '2026-10-06';
@@ -109,5 +109,32 @@ describe('payForRange — turnos olvidados', () => {
         expect(r.buckets).toBe(40);
         expect(r.pieceEarnings).toBe(260);
         expect(r.hours).toBe(PAY_RULES.maxUnreviewedShiftHours);
+    });
+});
+
+describe('a correction only covers the shift if made after the check-out', () => {
+    it('correctionCovers', () => {
+        expect(correctionCovers(t(NEXT, '09:00'), t(NEXT, '02:00'))).toBe(true);
+        expect(correctionCovers(t(NEXT, '02:00'), t(NEXT, '02:00'))).toBe(true);
+        expect(correctionCovers(t(D, '09:00'), t(NEXT, '02:00'))).toBe(false); // corrigió la entrada por la mañana
+        expect(correctionCovers(null, t(NEXT, '02:00'))).toBe(false);
+        expect(correctionCovers(t(D, '09:00'), null)).toBe(false);           // sigue abierto
+    });
+
+    it('TL fixes the check-in in the morning, forgets the check-out, closed 20 h later: still 14 h', () => {
+        const db = {
+            picker_id: 'p1', date: D, orchard_id: 'o1',
+            check_in: t(D, '06:00'), check_out: t(NEXT, '02:00'), corrected_at: t(D, '09:00'),
+        };
+        expect(shiftHoursOf(db).hours).toBe(14);
+        expect(attendanceRowOf(db).corrected).toBe(false);
+        const [r] = payForRange({ attendance: [attendanceRowOf(db)], buckets: [], pieceRate: 6.5, minWage: MIN, isPublicHoliday: () => false, now: new Date(t(NEXT, '12:00')) });
+        expect(r.hours).toBe(14);
+        expect(r.dayDetails[0].needsReview).toBe(true);
+        // Corregida otra vez después de la salida: se paga entera
+        const fixed = { ...db, corrected_at: t(NEXT, '08:00') };
+        expect(shiftHoursOf(fixed).hours).toBe(20);
+        const [f] = payForRange({ attendance: [attendanceRowOf(fixed)], buckets: [], pieceRate: 6.5, minWage: MIN, isPublicHoliday: () => false, now: new Date(t(NEXT, '12:00')) });
+        expect(f.hours).toBe(20);
     });
 });

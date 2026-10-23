@@ -4,7 +4,7 @@
  * Reparto de horas del día por tramo, fila de hoja de horas, asignación de
  * cubetas a tramos y fila de la hoja diaria con pago. La usa payroll.service.
  */
-import { shiftHours, shiftNeedsReview, dayPay, PAY_RULES, minWageFloorOn, type PayDay } from '@/services/harvestMetrics/pay';
+import { shiftHours, shiftNeedsReview, correctionCovers, dayPay, PAY_RULES, minWageFloorOn, type PayDay } from '@/services/harvestMetrics/pay';
 import type { DailyTimesheetRecord, TimesheetEntry } from './payroll.types';
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
@@ -63,7 +63,8 @@ export function buildTimesheetEntry(
   todayNZ: string,
   now: Date = new Date()
 ): TimesheetEntry {
-  const corrected = !!a.corrected_at;
+  // Solo cuenta la corrección hecha después de la salida (correctionCovers)
+  const corrected = correctionCovers(a.corrected_at, a.check_out);
   const shift = a.check_out && hoursFromDay === undefined
     ? shiftHours({ checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes, corrected })
     : null;

@@ -179,6 +179,33 @@ export function mealBreakMissing(
 }
 
 /**
+ * ¿La corrección a mano (corrected_at) cubre este tramo? Solo si se hizo
+ * DESPUÉS de la salida: corregir la entrada por la mañana y olvidar la salida
+ * no da por revisado un tramo que luego se cierra con 20 h. Igual que
+ * public.shift_needs_review en la BD.
+ */
+export function correctionCovers(correctedAt: string | null | undefined, checkOut: string | null | undefined): boolean {
+    const c = toMs(correctedAt);
+    const out = toMs(checkOut);
+    return c !== null && out !== null && c >= out;
+}
+
+/**
+ * Un fichaje tal como viene de daily_attendance (snake_case). Lo usan todas
+ * las pantallas para calcular horas igual que nómina (attendanceRowOf / shiftHoursOf).
+ */
+export interface DbShift {
+    picker_id: string;
+    date: string;
+    orchard_id?: string | null;
+    check_in?: string | null;
+    check_out?: string | null;
+    break_start?: string | null;
+    break_minutes?: number | null;
+    corrected_at?: string | null;
+}
+
+/**
  * ¿Hay que revisar este tramo antes de pagarlo o aprobarlo? Abierto desde hace
  * más de maxUnreviewedShiftHours (salida olvidada), o cerrado con más de esas
  * horas y sin corregir. Sin entrada no hay nada que revisar aquí.
@@ -402,6 +429,35 @@ export function payWeekOf(dateYMD: string): PayWeek {
 }
 
 // ─── Agregado de un rango (semana de pago) ──────────────────────────────────
+
+/** Fichaje de la BD → fila del cálculo de pago (con la corrección que lo cubre) */
+export function attendanceRowOf(r: DbShift): AttendanceRow {
+    return {
+        pickerId: r.picker_id,
+        date: r.date,
+        orchardId: r.orchard_id ?? null,
+        checkIn: r.check_in ?? null,
+        checkOut: r.check_out ?? null,
+        breakStart: r.break_start ?? null,
+        breakMinutes: r.break_minutes ?? null,
+        corrected: correctionCovers(r.corrected_at, r.check_out),
+    };
+}
+
+/** Horas de UN fichaje de la BD con el cálculo único (tope de 14 h incluido) */
+export function shiftHoursOf(
+    r: Pick<DbShift, 'check_in' | 'check_out' | 'break_start' | 'break_minutes' | 'corrected_at'>,
+    now?: Date,
+): ShiftHours {
+    return shiftHours({
+        checkIn: r.check_in,
+        checkOut: r.check_out,
+        breakStart: r.break_start,
+        breakMinutes: r.break_minutes,
+        corrected: correctionCovers(r.corrected_at, r.check_out),
+        now,
+    });
+}
 
 export interface AttendanceRow {
     pickerId: string;

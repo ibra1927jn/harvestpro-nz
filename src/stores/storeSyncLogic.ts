@@ -22,6 +22,7 @@ export interface AttendanceRecord {
   check_out?: string | null;
   break_start?: string | null;
   break_minutes?: number | null;
+  corrected_at?: string | null;
   orchard_id: string;
 }
 
@@ -338,6 +339,7 @@ export function applyAttendanceRecord(p: Picker, record: AttendanceRecord): Pick
     check_out: record.check_out,
     break_start: record.break_start,
     break_minutes: record.break_minutes,
+    corrected_at: record.corrected_at ?? null,
   };
   const others = (p.shifts ?? []).filter(s => !shift.id || s.id !== shift.id);
   const shifts = record.deleted_at ? others : [...others, shift];

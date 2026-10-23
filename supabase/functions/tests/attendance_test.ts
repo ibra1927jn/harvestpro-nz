@@ -429,6 +429,27 @@ Deno.test({ name: 'manage-attendance and approve-timesheet', ...testOpts, fn: as
             assertEquals(ok.status, 200, show(ok))
         })
 
+        await t.step('a check-in corrected in the morning does not exempt a check-out forgotten until the next day', async () => {
+            const late = await makePicker(orchardT)
+            const { data: open } = must(await service.from('daily_attendance').insert({
+                picker_id: late.id, orchard_id: orchardT, date: nzDayBefore(today, 1),
+                check_in: new Date(Date.now() - 22 * 3_600_000).toISOString(), status: 'present',
+            }).select('id').single(), 'open shift')
+            const fix = await call('manage-attendance', {
+                token: managerT.token,
+                body: { action: 'correct', attendance_id: open!.id, check_in: new Date(Date.now() - 21 * 3_600_000).toISOString(), reason: 'Arrived an hour later' },
+            })
+            assertEquals(fix.status, 200, show(fix))
+            const out = await call<{ hours_worked: number }>('manage-attendance', {
+                token: managerT.token, body: { action: 'check_out', attendance_id: open!.id },
+            })
+            assertEquals(out.status, 200, show(out))
+            assertEquals(Number(out.json.hours_worked), 14)
+            const r = await call('approve-timesheet', { token: await seededToken('payroll_admin'), body: { attendance_id: open!.id } })
+            assertEquals(r.status, 409, show(r))
+            assert(r.text.includes('LONG_SHIFT'), show(r))
+        })
+
         await t.step('approve-timesheet: stale copy (optimistic lock) and unknown id → 400', async () => {
             const stale = await call('approve-timesheet', {
                 token: managerT.token,

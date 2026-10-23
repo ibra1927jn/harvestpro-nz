@@ -138,6 +138,8 @@ export interface AttendanceShift {
   check_out?: string | null;
   break_start?: string | null;
   break_minutes?: number | null;
+  /** Corrección a mano: solo cubre el tramo si es posterior a la salida (correctionCovers) */
+  corrected_at?: string | null;
 }
 
 export interface HarvestState {

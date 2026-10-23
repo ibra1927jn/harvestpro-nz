@@ -55,9 +55,15 @@ export function checkScanTime(
  * apuntarlo con el escaneo; si el móvil no mandó client_now, lo que corrigió él.
  */
 export function measuredSkew(serverNow: number, clientNow: number | null, skewApplied: number | null | undefined): number | null {
-    if (clientNow !== null && Number.isFinite(clientNow)) return Math.round(serverNow - clientNow)
-    return skewApplied ? Math.round(skewApplied) : null
+    const raw = clientNow !== null && Number.isFinite(clientNow)
+        ? serverNow - clientNow
+        : typeof skewApplied === 'number' && Number.isFinite(skewApplied) && skewApplied !== 0 ? skewApplied : null
+    if (raw === null) return null
+    // Entero y acotado (±5 años): un reloj imposible no rompe el insert de la cubeta
+    return Math.max(-MAX_RECORDED_SKEW_MS, Math.min(MAX_RECORDED_SKEW_MS, Math.round(raw)))
 }
+
+const MAX_RECORDED_SKEW_MS = 5 * 365 * 86_400_000
 
 function judgeScanTime(
     scannedAt: string,

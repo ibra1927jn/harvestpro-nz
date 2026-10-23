@@ -48,7 +48,7 @@ export const storeSyncRepository = {
         // unido es solo el de hoy EN ESTE huerto: presente aquí = fichado aquí.
         const q = supabase
             .from('pickers')
-            .select(`*, daily_attendance!left(id, check_in, check_out, break_start, break_minutes, orchard_id, deleted_at)`)
+            .select(`*, daily_attendance!left(id, check_in, check_out, break_start, break_minutes, corrected_at, orchard_id, deleted_at)`)
             .eq('daily_attendance.date', today)
             .eq('daily_attendance.orchard_id', orchardId);
         return opts.onlyStaff ? q.eq('status', 'active').is('deleted_at', null) : q;

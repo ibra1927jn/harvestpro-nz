@@ -140,6 +140,21 @@ Deno.test({ name: 'manage-attendance offline roll call and breaks', ...testOpts,
             assertEquals(data!.check_out_clock_skew_ms, 0)
         })
 
+        await t.step('queued from a phone 40 days ahead: corrected, saved (skew fits), not a 500', async () => {
+            const fifth = await makePicker(orchard)
+            must(await service.from('pickers').update({ team_leader_id: leader.id }).eq('id', fifth.id), 'team')
+            const id = crypto.randomUUID()
+            const phoneNow = Date.now() + 40 * 86_400_000
+            const r = await call<Shift>('manage-attendance', {
+                token: leader.token,
+                body: { action: 'check_in', picker_id: fifth.id, orchard_id: orchard, client_id: id, at: new Date(phoneNow - 10 * 60_000).toISOString(), client_now: phoneNow, clock_skew_ms: 0 },
+            })
+            assertEquals(r.status, 200, show(r))
+            const { data } = must(await service.from('daily_attendance').select('check_in, check_in_clock_skew_ms').eq('id', id).single(), 'row')
+            assert(Math.abs(Date.parse(data!.check_in) - (Date.now() - 10 * 60_000)) < 60_000, `check_in ${data!.check_in}`)
+            assert(Math.abs(Number(data!.check_in_clock_skew_ms) + 40 * 86_400_000) < 60_000, `skew ${data!.check_in_clock_skew_ms}`)
+        })
+
         await t.step('a shift left open 16 h is paid 14 h at check-out until corrected', async () => {
             const fourth = await makePicker(orchard)
             must(await service.from('pickers').update({ team_leader_id: leader.id }).eq('id', fourth.id), 'team')

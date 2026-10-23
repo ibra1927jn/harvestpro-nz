@@ -33,7 +33,8 @@ const BatchScanSchema = z.object({
     scanned_by: z.string().regex(UUID_RE).optional().nullable(),
     scanned_at: z.string().min(10),
     /** Corrección (ms) que el móvil ya sumó a scanned_at con el desfase conocido */
-    clock_skew_ms: z.number().int().optional().nullable(),
+    // Sin .int(): un decimal de un móvil raro no debe rechazar la cubeta (se redondea al guardar)
+    clock_skew_ms: z.number().finite().optional().nullable(),
 })
 
 type Report = {
@@ -158,7 +159,7 @@ serve(async (req) => {
             const badgeCache = new Map<string, string | null>()
             const reports: Report[] = []
             const serverNow = Date.now()
-            const clientNow = typeof body.client_now === 'number' ? body.client_now : null
+            const clientNow = typeof body.client_now === 'number' && Number.isFinite(body.client_now) ? body.client_now : null
             // 1.ª pasada: validar y resolver tarjetas; las filas buenas se insertan
             // juntas (1 viaje a la BD en vez de 1 por cubeta). Si el lote falla
             // entero (trigger de día/semana cerrados, dos cubetas en el mismo

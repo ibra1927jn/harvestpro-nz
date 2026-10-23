@@ -259,7 +259,7 @@ export const AnomalyInputSchema = z.object({
 // la hora con el desfase medido ahora y lo apunta (_shared/device-time.ts).
 const DeviceClockFields = {
   client_now: z.number().optional(),
-  clock_skew_ms: z.number().int().optional().nullable(),
+  clock_skew_ms: z.number().finite().optional().nullable(),
 };
 
 export const AttendanceCheckInSchema = z.object({
@@ -353,7 +353,7 @@ export const BucketRecordSchema = z.object({
   scanned_at: z.string().optional(),
   // Cola sin red: hora del móvil al enviar (ms) y corrección que ya aplicó
   client_now: z.number().optional(),
-  clock_skew_ms: z.number().int().optional().nullable(),
+  clock_skew_ms: z.number().finite().optional().nullable(),
 });
 
 // Admin User Management

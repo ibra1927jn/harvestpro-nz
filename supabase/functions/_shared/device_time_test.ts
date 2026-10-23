@@ -1,7 +1,7 @@
 // deno test --allow-all supabase/functions/_shared/device_time_test.ts
 // Hora de los fichajes: la del servidor; la del móvil solo sin red, corregida y nunca del futuro.
 import { assert, assertEquals, assertThrows } from 'https://deno.land/std@0.168.0/testing/asserts.ts'
-import { DeviceTimeError, resolveDeviceTime } from './device-time.ts'
+import { DeviceTimeError, MAX_RECORDED_SKEW_MS, resolveDeviceTime, sanitizeSkew } from './device-time.ts'
 
 const MIN = 60_000
 const NOW = Date.parse('2026-10-24T02:00:00Z')
@@ -41,4 +41,14 @@ Deno.test('impossible times are rejected', () => {
     assertThrows(() => resolveDeviceTime(iso(NOW - 40 * 60 * MIN), NOW, NOW, 0), DeviceTimeError, 'TIME_OUT_OF_RANGE')
     assertThrows(() => resolveDeviceTime('yesterday', NOW), DeviceTimeError)
     assert(true)
+})
+
+Deno.test('skew is stored as a bounded integer, even for absurd clocks', () => {
+    assertEquals(sanitizeSkew(1.6), 2)
+    assertEquals(sanitizeSkew(Number.NaN), null)
+    assertEquals(sanitizeSkew(1e15), MAX_RECORDED_SKEW_MS)
+    assertEquals(sanitizeSkew(-1e15), -MAX_RECORDED_SKEW_MS)
+    // 40 días adelantado: se corrige y el desfase pasa del rango de integer
+    const r = resolveDeviceTime(iso(NOW + 40 * 1440 * MIN - 10 * MIN), NOW, NOW + 40 * 1440 * MIN, 0)
+    assertEquals(r, { at: iso(NOW - 10 * MIN), skewMs: -40 * 1440 * MIN })
 })

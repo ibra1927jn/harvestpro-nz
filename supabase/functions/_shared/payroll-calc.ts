@@ -4,7 +4,7 @@
  * close-pay-week (foto de lo que se paga al cerrar la semana), así ambos dan
  * exactamente las mismas cifras.
  */
-import { payForRange, pieceRateOn, nzDateOf, isNZPublicHoliday, PAY_RULES, type PayDay, type PickerRangePay } from './pay-rules.ts'
+import { payForRange, pieceRateOn, nzDateOf, isNZPublicHoliday, PAY_RULES, correctionCovers, type PayDay, type PickerRangePay } from './pay-rules.ts'
 import { loadDailyPieceRates } from './piece-rates.ts'
 import { fetchAllRows } from './fetch-all-rows.ts'
 import { fetchInChunks } from './fetch-in-chunks.ts'
@@ -244,7 +244,7 @@ export async function computePayroll(
         breakStart: a.break_start,
         breakMinutes: a.break_minutes,
         // Hoja corregida: un tramo de más de 14 h se paga entero (si no, el tope)
-        corrected: !!a.corrected_at,
+        corrected: correctionCovers(a.corrected_at, a.check_out),
     }))
     const bucketRows = ((events ?? []) as Ev[]).filter(e => !atOrchard || atOrchard.has(e.picker_id)).map(e => ({
         pickerId: e.picker_id,

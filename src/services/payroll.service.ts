@@ -12,7 +12,7 @@ import { supabase } from '@/services/supabase';
 import { todayNZST, nzMidnight, nzEndOfDay } from '@/utils/nzst';
 import { PayrollResultSchema, validateResponse } from '@/schemas/api.schemas';
 import { analytics } from '@/config/analytics';
-import { payForRange, payWeekOf, pieceRateOn, nzDateOf, isNZPublicHoliday, PAY_RULES, type PayDay } from '@/services/harvestMetrics/pay';
+import { payForRange, correctionCovers, payWeekOf, pieceRateOn, nzDateOf, isNZPublicHoliday, PAY_RULES, type PayDay } from '@/services/harvestMetrics/pay';
 import type { DailyTimesheetRecord, PayrollResult, TimesheetEntry } from './payroll/payroll.types';
 import {
   assignBucketsToSegments,
@@ -51,7 +51,7 @@ async function computeDayOfPeople(pickerIds: string[], date: string, minWage: nu
     const closed = shifts.filter(s => s.picker_id === id && s.check_in && s.check_out)
       .sort((a, b) => (a.check_in ?? '').localeCompare(b.check_in ?? ''));
     const [range] = payForRange({
-      attendance: closed.map(s => ({ pickerId: id, date, orchardId: s.orchard_id, checkIn: s.check_in, checkOut: s.check_out, breakStart: s.break_start, breakMinutes: s.break_minutes, corrected: !!s.corrected_at })),
+      attendance: closed.map(s => ({ pickerId: id, date, orchardId: s.orchard_id, checkIn: s.check_in, checkOut: s.check_out, breakStart: s.break_start, breakMinutes: s.break_minutes, corrected: correctionCovers(s.corrected_at, s.check_out) })),
       buckets: buckets.filter(b => b.picker_id === id).map(b => ({
         pickerId: id, scannedAt: b.scanned_at, qualityGrade: b.quality_grade, orchardId: b.orchard_id, variety: b.variety,
         pieceRate: pieceRateOn(rates, b.orchard_id, b.variety, nzDateOf(b.scanned_at), orchardFallbacks[b.orchard_id ?? ''] ?? 6.5),
