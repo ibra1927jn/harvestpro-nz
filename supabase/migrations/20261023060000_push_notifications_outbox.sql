@@ -25,8 +25,8 @@
 --   · transporte asignado / completado → quien lo pidió
 --   · nómina rechaza una hoja de horas → team leader del picker (y el picker si tiene cuenta)
 --   · ausencia aprobada / rechazada → quien la pidió
---   · mensaje de chat → participantes (menos quien escribe y quien silenció la conversación);
---     en privado sin el texto. La petición de corrección de horas del runner es un
+--   · mensaje de chat → participantes (menos quien escribe y quien silenció la conversación),
+--     nunca con el texto del mensaje. La petición de corrección de horas del runner es un
 --     mensaje directo a su team leader y a los managers: va por aquí.
 -- Nunca se avisa a quien hizo el cambio, a cuentas desactivadas ni a quien no tiene
 -- ningún dispositivo suscrito (así la bandeja no crece con avisos que nadie recibirá).
@@ -370,8 +370,8 @@ CREATE TRIGGER trg_push_leave_decided
                        AND NEW.requested_by IS NOT NULL)
     EXECUTE FUNCTION public.push_on_leave_decided();
 
--- Chat: participantes menos quien escribe y quien silenció la conversación.
--- En privado (direct) sin el texto: «Nuevo mensaje de X».
+-- Chat: participantes (conversations.participant_ids) menos quien escribe y quien
+-- silenció la conversación. Sin el texto del mensaje: «Nuevo mensaje de X».
 CREATE OR REPLACE FUNCTION public.push_on_chat_message()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -396,12 +396,11 @@ BEGIN
         PERFORM public.enqueue_push(
             v_ids,
             'chat_message',
+            -- Nunca el texto del mensaje (se ve en la pantalla bloqueada): solo quién escribe
             jsonb_build_object(
                 'sender_name', coalesce(v_sender, ''),
                 'conversation_type', v_conv.type,
-                'conversation_name', coalesce(v_conv.name, ''),
-                -- Solo en grupos: un mensaje privado no se enseña en la pantalla bloqueada
-                'preview', CASE WHEN v_conv.type = 'direct' THEN NULL ELSE left(NEW.content, 140) END),
+                'conversation_name', coalesce(v_conv.name, '')),
             'chat:' || NEW.id,
             NULL);
     EXCEPTION WHEN OTHERS THEN

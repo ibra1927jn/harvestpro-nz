@@ -118,17 +118,12 @@ const TEMPLATES: Record<PushType, Dict> = {
     es: p => ({ title: `Ausencia ${LEAVE_STATUS.es(str(p.status))}`, body: `${str(p.picker_name)} · ${shortDate(p.start_date)}–${shortDate(p.end_date)}` }),
     fr: p => ({ title: `Absence ${LEAVE_STATUS.fr(str(p.status))}`, body: `${str(p.picker_name)} · ${shortDate(p.start_date)}–${shortDate(p.end_date)}` }),
   },
-  // En privado nunca el texto (la pantalla bloqueada la ve cualquiera)
+  // Nunca el texto del mensaje (la pantalla bloqueada la ve cualquiera): quién escribe y,
+  // en un grupo, en qué conversación
   chat_message: {
-    en: p => p.conversation_type === 'direct' || !str(p.preview)
-      ? { title: 'HarvestPro', body: `New message from ${str(p.sender_name)}` }
-      : { title: str(p.conversation_name) || 'Group chat', body: `${str(p.sender_name)}: ${str(p.preview)}` },
-    es: p => p.conversation_type === 'direct' || !str(p.preview)
-      ? { title: 'HarvestPro', body: `Nuevo mensaje de ${str(p.sender_name)}` }
-      : { title: str(p.conversation_name) || 'Chat de grupo', body: `${str(p.sender_name)}: ${str(p.preview)}` },
-    fr: p => p.conversation_type === 'direct' || !str(p.preview)
-      ? { title: 'HarvestPro', body: `Nouveau message de ${str(p.sender_name)}` }
-      : { title: str(p.conversation_name) || 'Discussion de groupe', body: `${str(p.sender_name)}\u00a0: ${str(p.preview)}` },
+    en: p => ({ title: p.conversation_type !== 'direct' && str(p.conversation_name) ? str(p.conversation_name) : 'HarvestPro', body: `New message from ${str(p.sender_name)}` }),
+    es: p => ({ title: p.conversation_type !== 'direct' && str(p.conversation_name) ? str(p.conversation_name) : 'HarvestPro', body: `Nuevo mensaje de ${str(p.sender_name)}` }),
+    fr: p => ({ title: p.conversation_type !== 'direct' && str(p.conversation_name) ? str(p.conversation_name) : 'HarvestPro', body: `Nouveau message de ${str(p.sender_name)}` }),
   },
 };
 

@@ -114,17 +114,16 @@ describe('retryDelayMs', () => {
 });
 
 describe('push messages', () => {
-  it('never shows the text of a private message', () => {
+  it('never shows the text of a chat message (direct or group)', () => {
     for (const locale of ['en', 'es', 'fr'] as const) {
-      const out = renderPush('chat_message', { sender_name: 'Mere', conversation_type: 'direct', preview: 'secret' }, locale);
-      expect(out.body).toContain('Mere');
-      expect(out.body).not.toContain('secret');
+      for (const conversation_type of ['direct', 'group']) {
+        const out = renderPush('chat_message', { sender_name: 'Mere', conversation_type, conversation_name: 'Block 3', preview: 'secret' }, locale);
+        expect(out.body).toContain('Mere');
+        expect(`${out.title} ${out.body}`).not.toContain('secret');
+      }
     }
-  });
-
-  it('shows the group message preview', () => {
-    expect(renderPush('chat_message', { sender_name: 'Mere', conversation_type: 'group', conversation_name: 'Block 3', preview: 'Lunch at 12' }, 'en'))
-      .toEqual({ title: 'Block 3', body: 'Mere: Lunch at 12' });
+    expect(renderPush('chat_message', { sender_name: 'Mere', conversation_type: 'group', conversation_name: 'Block 3' }, 'en'))
+      .toEqual({ title: 'Block 3', body: 'New message from Mere' });
   });
 
   it('uses French typography (no-break space before the colon)', () => {

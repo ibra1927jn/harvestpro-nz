@@ -126,8 +126,8 @@ SELECT sec_test.exec_as('A.runner2',
       VALUES ('5ec7e575-0000-4000-8000-00000000c001', auth.uid(), 'Please fix my hours on Monday')$$);
 SELECT sec_test.record(sec_test.outbox_for('A.team_leader', 'chat_message') = 1, 'event: direct chat message → the other participant', NULL);
 SELECT sec_test.record(NOT EXISTS (
-    SELECT 1 FROM public.notification_outbox WHERE type = 'chat_message' AND params->>'preview' IS NOT NULL),
-    'event: a direct message is queued without its text', NULL);
+    SELECT 1 FROM public.notification_outbox WHERE type = 'chat_message' AND params::text LIKE '%fix my hours%'),
+    'event: a chat message is queued without its text', NULL);
 
 -- Silenciada: nadie
 UPDATE public.conversations SET muted_by = ARRAY[sec_test.id_of('A.team_leader')::text]

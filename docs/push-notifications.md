@@ -21,7 +21,7 @@ evento en la base (inspección, aviso, transporte, ausencia, mensaje, rechazo de
 | Transporte asignado / completado | quien lo pidió | Transporte |
 | Nómina rechaza una hoja de horas | team leader del picker (y el picker si tiene cuenta) | Fichajes |
 | Ausencia aprobada / rechazada | quien la pidió | — |
-| Mensaje de chat (incluida la petición de corrección de horas del runner) | participantes, menos quien escribe y quien silenció la conversación; en privado sin el texto | — |
+| Mensaje de chat (incluida la petición de corrección de horas del runner) | participantes (`conversations.participant_ids`), menos quien escribe y quien silenció la conversación; nunca con el texto | — |
 
 - Nunca se avisa a quien hizo el cambio, a cuentas desactivadas ni a quien no tiene un dispositivo suscrito.
 - Las casillas de tipos son por dispositivo (`push_subscriptions.muted_types`) y las aplica `send-push`.
