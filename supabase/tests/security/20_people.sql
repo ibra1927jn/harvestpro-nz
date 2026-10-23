@@ -56,7 +56,8 @@ SELECT sec_test.allow('A.manager', 'assigns a picker to a row', $$UPDATE pickers
 -- ── allowed_registrations (invitaciones: deciden el rol de la cuenta nueva) ─
 SELECT sec_test.sees('anon', 'cannot list invitations', $$SELECT 1 FROM allowed_registrations$$, 0);
 SELECT sec_test.sees('A.runner', 'cannot list other people''s invitations', $$SELECT 1 FROM allowed_registrations WHERE id = {A.invite}$$, 0);
-SELECT sec_test.allow('A.manager', 'invites a runner to own orchard',
+-- Decisión del dueño 2026-10-23: invitan admin y RRHH (20261023040000); el manager ya no
+SELECT sec_test.deny('A.manager', 'cannot invite (only admin and HR invite)',
     $$INSERT INTO allowed_registrations (email, assigned_role, orchard_id) VALUES ('sectest.new1@example.test', 'runner', {A})$$);
 SELECT sec_test.deny('A.manager', 'cannot invite an admin (privilege escalation)',
     $$INSERT INTO allowed_registrations (email, assigned_role, orchard_id) VALUES ('sectest.new2@example.test', 'admin', {A})$$);

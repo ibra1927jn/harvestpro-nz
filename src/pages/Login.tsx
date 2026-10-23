@@ -21,6 +21,7 @@ import RegisterForm from '@/components/auth/RegisterForm';
 import { HeroPanel } from '@/components/auth/login';
 import { useTranslation } from '@/i18n';
 import { authErrorText } from '@/i18n/authErrorText';
+import { inviteEmailFromSearch } from '@/components/common/invitations/invitationLogic';
 
 type AuthMode = 'LOGIN' | 'REGISTER';
 
@@ -40,8 +41,12 @@ const Login: React.FC = () => {
   const { signIn, signUp, resetPassword, isLoading, isAuthenticated, currentRole } = useAuth();
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState<AuthMode>('LOGIN');
-  const [email, setEmail] = useState('');
+  // Enlace de invitación (/login?invite=email): abre «Registrarse» con el email puesto
+  const [inviteEmail] = useState(() =>
+    typeof window !== 'undefined' ? inviteEmailFromSearch(window.location.search) : null
+  );
+  const [mode, setMode] = useState<AuthMode>(inviteEmail ? 'REGISTER' : 'LOGIN');
+  const [email, setEmail] = useState(inviteEmail ?? '');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');

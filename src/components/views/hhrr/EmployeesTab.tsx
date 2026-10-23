@@ -14,6 +14,7 @@ import { roleLabel } from '@/i18n/roleLabel';
 import { statusLabel } from '@/i18n/statusLabel';
 import type { TFunction } from '@/i18n';
 import { useTranslation } from '@/i18n';
+import InvitationsPanel from '@/components/common/invitations/InvitationsPanel';
 
 const ROLE_BADGES: Record<string, string> = {
     team_leader: 'bg-indigo-50 text-indigo-700',
@@ -50,9 +51,11 @@ interface EmployeesTabProps {
     onUpdateEmployee?: (emp: Employee, changes: Partial<Employee>) => Promise<string | null>;
     /** Dar de alta un picker (RRHH) */
     onAddPicker?: () => void;
+    /** Invitaciones de usuarios con cuenta (RRHH; no puede invitar admins) */
+    showInvitations?: boolean;
 }
 
-const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdateEmployee, onAddPicker }) => {
+const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdateEmployee, onAddPicker, showInvitations = false }) => {
     const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = useState('');
     const [saveError, setSaveError] = useState<string | null>(null);
@@ -95,6 +98,7 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({ employees, alerts, onUpdate
                     </button>
                 </div>
             )}
+            {showInvitations && <InvitationsPanel canInviteAdmin={false} />}
             {saveError && (
                 <div role="alert" className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-800">{saveError}</div>
             )}
