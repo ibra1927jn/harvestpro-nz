@@ -162,6 +162,13 @@ describe('AccountSheet', () => {
         expect(await screen.findByRole('dialog', { name: 'My account' })).toBeTruthy();
     });
 
+    it('offers only English, Spanish and French', () => {
+        open();
+        const names = ['English', 'Español', 'Français', 'Te Reo Māori', 'Gagana Samoa', 'हिन्दी', 'Lea Faka-Tonga', 'Filipino'];
+        const offered = names.filter(n => screen.queryByRole('button', { name: new RegExp(n) }) !== null);
+        expect(offered).toEqual(['English', 'Español', 'Français']);
+    });
+
     it('uploads a chosen photo and removes it again', async () => {
         open();
         const input = screen.getByLabelText('Change photo') as HTMLInputElement;

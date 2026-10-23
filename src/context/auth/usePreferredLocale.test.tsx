@@ -55,8 +55,19 @@ describe('usePreferredLocale', () => {
     it('applies again for a different account (new login on the same device)', async () => {
         const { rerender } = render(<Probe userId="u1" preferred="es" />);
         await act(async () => undefined);
-        await act(async () => { rerender(<Probe userId="u2" preferred="to" />); });
+        i18n.locale = 'en'; // u1 cambió a mano a inglés antes de salir
+        await act(async () => { rerender(<Probe userId="u2" preferred="fr" />); });
         expect(i18n.setLocale).toHaveBeenNthCalledWith(1, 'es');
-        expect(i18n.setLocale).toHaveBeenNthCalledWith(2, 'to');
+        expect(i18n.setLocale).toHaveBeenNthCalledWith(2, 'fr');
+    });
+
+    it('a saved language that the app no longer offers (mi, sm, hi, to, tl) is ignored: stays in English', async () => {
+        for (const [n, removed] of ['mi', 'sm', 'hi', 'to', 'tl'].entries()) {
+            const { unmount } = render(<Probe userId={`old-${n}`} preferred={removed} />);
+            await act(async () => undefined);
+            unmount();
+        }
+        expect(i18n.setLocale).not.toHaveBeenCalled();
+        expect(i18n.locale).toBe('en');
     });
 });

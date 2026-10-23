@@ -5,11 +5,7 @@
 import type { Locale, TranslationDict } from '../types';
 import en from './en';
 import es from './es';
-import mi from './mi';
-import sm from './sm';
-import hi from './hi';
-import to from './to';
-import tl from './tl';
+import fr from './fr';
 
-export const allTranslations: Record<Locale, TranslationDict> = { en, es, mi, sm, hi, to, tl };
+export const allTranslations: Record<Locale, TranslationDict> = { en, es, fr };
 export { allTranslations as translations };
