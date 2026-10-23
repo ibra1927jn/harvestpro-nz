@@ -24,6 +24,15 @@ export type AttendancePayload = {
     check_out?: string;
     attendanceId?: string;  // for optimistic lock on checkout
     verifiedBy?: string;
+    /**
+     * Pase de lista sin red (useAttendance → rollCall.service): la acción, el
+     * tramo (en check_in, el id generado en el móvil) y la hora del móvil. Va
+     * por manage-attendance con las mismas reglas que con red. Sin `action` =
+     * formato antiguo (check_in/check_out sueltos).
+     */
+    action?: 'check_in' | 'check_out' | 'break_start' | 'break_end';
+    attendance_id?: string;
+    at?: string;
 };
 
 // Phase 2: Offline-first payloads for HR, Logistics, Payroll

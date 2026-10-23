@@ -14,7 +14,7 @@ const teamLeader: TranslationDict = {
     'tl.attendance.absent': 'Absent',
     'tl.attendance.in_at': 'In: {time}',
     'tl.attendance.break_missing': 'Meal break not recorded',
-    'tl.attendance.break_missing_hint': 'Over 4 h on shift. Record the break time in the Timesheet tab before closing the day.',
+    'tl.attendance.break_missing_hint': 'Over 4 h on shift. Tap Break when they stop (or record it in Timesheet) before closing the day.',
     'tl.attendance.not_checked_in': 'Not checked in',
     'tl.attendance.check_in': 'Check In',
     'tl.attendance.check_out': 'Check Out',
@@ -76,6 +76,22 @@ const teamLeader: TranslationDict = {
     'tl.team.add_picker': 'Add New Picker',
     // Cajón de perfil de persona (Inicio, Equipo y Pase de lista)
     'tl.picker.open_profile': 'Open {name}\'s profile',
+    'tl.attendance.queued_check_in': '{name}: check-in saved on this phone. It will be sent when there is signal.',
+    'tl.attendance.queued_check_out': '{name}: check-out saved on this phone. It will be sent when there is signal.',
+    'tl.attendance.queued_break': '{name}: break saved on this phone. It will be sent when there is signal.',
+    'tl.attendance.pending': 'Waiting for signal',
+    'tl.attendance.queued_count': '{n} change(s) waiting for signal. They are sent in order on their own.',
+    'tl.attendance.break_start': 'Break',
+    'tl.attendance.break_end': 'End break',
+    'tl.attendance.break_start_name': 'Start break for {name}',
+    'tl.attendance.break_end_name': 'End break for {name}',
+    'tl.attendance.on_break': 'On break since {time}',
+    'tl.attendance.break_done': 'Break: {minutes} min',
+    'tl.attendance.sr_break_started': 'Break started for {name}.',
+    'tl.attendance.sr_break_ended': 'Break ended for {name}.',
+    'tl.attendance.break_failed': 'Could not save the break',
+    'tl.attendance.clock_ahead': 'This phone’s clock is {n} min ahead. Times are corrected with the server time, but please set the phone clock right.',
+    'tl.attendance.clock_behind': 'This phone’s clock is {n} min behind. Times are corrected with the server time, but please set the phone clock right.',
 };
 
 export default teamLeader;

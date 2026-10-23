@@ -6,6 +6,29 @@ import { pickerRepository } from '@/repositories/picker.repository';
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
 import { analytics } from '@/config/analytics';
 import type { CorrectBatchResponse } from '@/schemas/api.schemas';
+import { updateClockSkew } from './bucket-upload.service';
+
+/** Pase de lista sin red: id del tramo hecho en el móvil y hora del móvil */
+export interface RollCallTiming {
+  /** check_in: id del tramo generado en el móvil (reintentar no duplica) */
+  clientId?: string;
+  /** Hora del móvil (ya corregida con el desfase medido) */
+  at?: string;
+  /** check_out / descanso: si el tramo del móvil no existe, el abierto de esta persona */
+  pickerId?: string;
+}
+
+export type BreakAction = 'break_start' | 'break_end';
+
+/** Llama a manage-attendance midiendo el desfase del reloj del móvil */
+async function invokeAttendance(body: Record<string, unknown>): Promise<unknown> {
+  const sentAt = Date.now();
+  const { data, error } = await edgeFunctionsRepository.invoke('manage-attendance', body);
+  if (error) throw error instanceof Error ? error : new Error(error.message);
+  const serverTime = (data as { server_time?: unknown } | null)?.server_time;
+  updateClockSkew(typeof serverTime === 'string' ? serverTime : undefined, sentAt, Date.now());
+  return data;
+}
 
 /** Una corrección dentro de un lote: campos opcionales (sin valor = no tocar) */
 export interface AttendanceCorrectionItem {
@@ -30,16 +53,16 @@ export const attendanceService = {
   /**
    * Check in a picker — via Edge Function (server-side)
    */
-  async checkInPicker(pickerId: string, orchardId: string, verifiedBy?: string) {
+  async checkInPicker(pickerId: string, orchardId: string, verifiedBy?: string, timing: RollCallTiming = {}) {
     try {
-      const { data, error } = await edgeFunctionsRepository.invoke('manage-attendance', {
+      const data = await invokeAttendance({
         action: 'check_in',
         picker_id: pickerId,
         orchard_id: orchardId,
         verified_by: verifiedBy,
+        ...(timing.clientId ? { client_id: timing.clientId } : {}),
+        ...(timing.at ? { at: timing.at } : {}),
       });
-
-      if (error) throw new Error(error.message);
       // Esquemas (zod) bajo demanda: no van en el bundle inicial
       const { CheckInResponseSchema, validateResponse } = await import('@/schemas/api.schemas');
       const result = validateResponse(CheckInResponseSchema, data, 'checkInPicker');
@@ -55,18 +78,35 @@ export const attendanceService = {
   /**
    * Check out a picker — via Edge Function (server-side)
    */
-  async checkOutPicker(attendanceId: string) {
+  async checkOutPicker(attendanceId: string, timing: RollCallTiming = {}) {
     try {
-      const { data, error } = await edgeFunctionsRepository.invoke('manage-attendance', {
+      const data = await invokeAttendance({
         action: 'check_out',
         attendance_id: attendanceId,
+        ...(timing.at ? { at: timing.at } : {}),
+        ...(timing.pickerId ? { picker_id: timing.pickerId } : {}),
       });
-
-      if (error) throw new Error(error.message);
       const { CheckOutResponseSchema, validateResponse } = await import('@/schemas/api.schemas');
       return validateResponse(CheckOutResponseSchema, data, 'checkOutPicker');
     } catch (err) {
       logger.error('[Attendance] Check-out via Edge Function failed:', err);
+      throw err;
+    }
+  },
+
+  /** Inicio o fin del descanso de comida desde el pase de lista */
+  async recordBreak(action: BreakAction, attendanceId: string, timing: RollCallTiming = {}) {
+    try {
+      const data = await invokeAttendance({
+        action,
+        attendance_id: attendanceId,
+        ...(timing.at ? { at: timing.at } : {}),
+        ...(timing.pickerId ? { picker_id: timing.pickerId } : {}),
+      });
+      const { BreakResponseSchema, validateResponse } = await import('@/schemas/api.schemas');
+      return validateResponse(BreakResponseSchema, data, 'recordBreak');
+    } catch (err) {
+      logger.error(`[Attendance] ${action} via Edge Function failed:`, err);
       throw err;
     }
   },

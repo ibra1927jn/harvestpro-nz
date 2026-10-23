@@ -44,12 +44,15 @@ Version: 9.9.0
 ### Supabase
 - `supabase/migrations/` — 90 migraciones (las viejas en archive/ no se aplican)
 - `supabase/functions/` — 12 Edge Functions: approve-timesheet, calculate-payroll, check-compliance, close-pay-week, detect-anomalies, manage-admin, manage-attendance, provision-orchard, record-bucket, send-push, submit-audit-log, api-v1 (api-v1 sin tabla api_keys todavía)
+- Push: triggers → `notification_outbox` → `send-push` (flush) → `public/sw-push.js`; ver `docs/push-notifications.md`
 - `supabase/functions/_shared/` — pay-rules.ts (idéntico a src/services/harvestMetrics/pay.ts, lo vigila pay-parity.test.ts), payroll-calc.ts, security.ts, scan-time.ts, cors.ts
 - `supabase/seeds/` — seeds locales (orden: seed_00_local_bootstrap → seed_2weeks_local → seed_role_users)
 - 35 tablas, RLS en todas, 2FA (aal2) exigido por política para roles privilegiados
 
 ### Offline
-- Dexie IndexedDB con sync queue (11 tipos con processor; LEAVE_REQUEST: ausencias que pide el team leader sin red)
+- Dexie IndexedDB con sync queue (11 tipos con processor; LEAVE_REQUEST: ausencias que pide el team leader sin red;
+  ATTENDANCE: pase de lista y descansos sin red vía `rollCall.service`, con id del tramo y hora del móvil;
+  un rechazo 4xx del servidor va directo a la DLQ con su motivo)
 - Encrypt-before-write con AES-256-GCM
 - Dead letter queue para items fallidos
 - Cross-tab mutex via Web Locks API

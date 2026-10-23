@@ -349,6 +349,9 @@ export interface AttendanceRecord {
   verified_by?: string;
   /** Hora del descanso de comida anotada por el team leader */
   break_start?: string | null;
+  /** Fin del descanso (pase de lista); null con break_start = en descanso */
+  break_end?: string | null;
+  break_minutes?: number | null;
 }
 
 export interface LiveProductionStat {

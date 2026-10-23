@@ -24,7 +24,7 @@ vi.mock('@/hooks/useAttendance', () => ({
             { id: 'p3', name: 'Cai Leave', isPresent: false },
         ],
         stats: { present: 1, absent: 2, total: 3 },
-        checkIn: vi.fn(),
+        checkIn: vi.fn().mockResolvedValue({ state: 'saved', attendanceId: 'a' }),
         checkOut: vi.fn(),
     }),
 }));

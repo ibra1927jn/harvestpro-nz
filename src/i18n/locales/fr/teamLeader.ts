@@ -14,7 +14,7 @@ const teamLeader: TranslationDict = {
     'tl.attendance.absent': 'Absents',
     'tl.attendance.in_at': 'Arrivée : {time}',
     'tl.attendance.break_missing': 'Pause repas non enregistrée',
-    'tl.attendance.break_missing_hint': 'Plus de 4 h de poste. Enregistrez l’heure de la pause dans l’onglet Feuille d’heures avant de clôturer la journée.',
+    'tl.attendance.break_missing_hint': 'Plus de 4 h de poste. Touchez « Pause » quand ils s’arrêtent (ou notez-la dans Feuille d’heures) avant de clôturer la journée.',
     'tl.attendance.not_checked_in': 'Arrivée non pointée',
     'tl.attendance.check_in': 'Pointer l’arrivée',
     'tl.attendance.check_out': 'Pointer le départ',
@@ -76,6 +76,22 @@ const teamLeader: TranslationDict = {
     'tl.team.add_picker': 'Ajouter un cueilleur',
     // Cajón de perfil de persona (Inicio, Equipo y Pase de lista)
     'tl.picker.open_profile': 'Ouvrir le profil de {name}',
+    'tl.attendance.queued_check_in': '{name} : arrivée enregistrée sur ce téléphone. Elle sera envoyée dès qu’il y aura du réseau.',
+    'tl.attendance.queued_check_out': '{name} : départ enregistré sur ce téléphone. Il sera envoyé dès qu’il y aura du réseau.',
+    'tl.attendance.queued_break': '{name} : pause enregistrée sur ce téléphone. Elle sera envoyée dès qu’il y aura du réseau.',
+    'tl.attendance.pending': 'En attente de réseau',
+    'tl.attendance.queued_count': '{n} modification(s) en attente de réseau. Elles partent seules, dans l’ordre.',
+    'tl.attendance.break_start': 'Pause',
+    'tl.attendance.break_end': 'Fin de pause',
+    'tl.attendance.break_start_name': 'Commencer la pause de {name}',
+    'tl.attendance.break_end_name': 'Terminer la pause de {name}',
+    'tl.attendance.on_break': 'En pause depuis {time}',
+    'tl.attendance.break_done': 'Pause : {minutes} min',
+    'tl.attendance.sr_break_started': 'Pause commencée pour {name}.',
+    'tl.attendance.sr_break_ended': 'Pause terminée pour {name}.',
+    'tl.attendance.break_failed': 'Impossible d’enregistrer la pause',
+    'tl.attendance.clock_ahead': 'L’horloge de ce téléphone avance de {n} min. Les heures sont corrigées avec celle du serveur, mais réglez l’heure du téléphone.',
+    'tl.attendance.clock_behind': 'L’horloge de ce téléphone retarde de {n} min. Les heures sont corrigées avec celle du serveur, mais réglez l’heure du téléphone.',
 };
 
 export default teamLeader;
