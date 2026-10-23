@@ -5,7 +5,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { settingsService } from '@/services/settings.service';
 import { notificationService } from '@/services/notification.service';
-import { supabase } from '@/services/supabase';
 import { logger } from '@/utils/logger';
 import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
@@ -29,20 +28,6 @@ export interface SettingsFormData {
      * equipo y runner termina cuando ficha su salida (decisión del dueño 2026-10-21).
      */
     shift_start_time: string;
-}
-
-export interface ComplianceToggles {
-    nz_employment_standards: boolean;
-    auto_wage_alerts: boolean;
-    safety_verification: boolean;
-    audit_trail: boolean;
-}
-
-export interface OrchardOption {
-    id: string;
-    name: string;
-    total_rows?: number;
-    varieties?: string;
 }
 
 /** Variedades distintas de las filas del huerto (block_rows), en orden alfabético */
@@ -72,26 +57,13 @@ export function useSettings() {
         shift_start_time: settings?.shift_start_time ?? '07:00',
     });
 
-    const [compliance, setCompliance] = useState<ComplianceToggles>({
-        nz_employment_standards: true,
-        auto_wage_alerts: true,
-        safety_verification: true,
-        audit_trail: true,
-    });
-
-    // Orchard selector: lista de huertos disponibles para este manager
-    const [availableOrchards, setAvailableOrchards] = useState<OrchardOption[]>(
-        orchard ? [{ id: orchard.id, name: orchard.name ?? 'Orchard', total_rows: orchard.total_rows }] : []
-    );
-    // Variedades del huerto: las de sus filas (block_rows), no orchards.crop_type
-    // (un solo texto, vacío en la mayoría de huertos: salía «—» con filas de
-    // Royal Gala y Braeburn). Si el huerto no tiene filas cargadas, el crop_type.
+    // Variedades del huerto: las de sus filas (block_rows). El selector de
+    // huerto de Ajustes se quitó (B5): el cambio de huerto es el OrchardSwitcher
+    // de la cabecera, y guardar con otro huerto elegido chocaba con la RLS.
     const orchardVarieties = useMemo(() => {
         const fromRows = varietiesOfRows(orchardBlocks);
-        if (fromRows.length > 0) return fromRows.join(', ');
-        const found = availableOrchards.find(o => o.id === orchardId);
-        return found?.varieties ?? '—';
-    }, [orchardBlocks, availableOrchards, orchardId]);
+        return fromRows.length > 0 ? fromRows.join(', ') : '—';
+    }, [orchardBlocks]);
 
     // Notification state
     const [notifEnabled, setNotifEnabled] = useState(() => notificationService.getPrefs().enabled);
@@ -142,32 +114,6 @@ export function useSettings() {
         });
     }, [complianceFloor]);
 
-    // Cargar lista de huertos disponibles (para el selector del Issue 4)
-    useEffect(() => {
-        let cancelled = false;
-        async function loadOrchards() {
-            try {
-                const { data, error } = await supabase
-                    .from('orchards')
-                    .select('id, name, total_rows, crop_type')
-                    .is('deleted_at', null)
-                    .order('name');
-                if (error || !data || cancelled) return;
-                const options: OrchardOption[] = data.map((o: { id: string; name: string; total_rows?: number; crop_type?: string }) => ({
-                    id: o.id,
-                    name: o.name,
-                    total_rows: o.total_rows,
-                    varieties: o.crop_type ?? undefined,
-                }));
-                if (options.length > 0) setAvailableOrchards(options);
-            } catch (e) {
-                logger.error('[useSettings] Failed to load orchards:', e);
-            }
-        }
-        void loadOrchards();
-        return () => { cancelled = true; };
-    }, []);
-
     const handleChange = useCallback((field: keyof SettingsFormData, value: string | number) => {
         setFormData(prev => {
             const next = { ...prev, [field]: value };
@@ -214,34 +160,6 @@ export function useSettings() {
             };
         });
     }, []);
-
-    /** Cambia el huerto activo y auto-rellena Total Rows y Variety */
-    const handleOrchardSelect = useCallback((id: string) => {
-        const selected = availableOrchards.find(o => o.id === id);
-        if (!selected) return;
-        // Actualizar el orchard activo en el store (sólo los campos expuestos en Settings)
-        useHarvestStore.setState({ orchard: { id: selected.id, name: selected.name, total_rows: selected.total_rows } });
-        // Cargar los ajustes de ESE huerto: antes el formulario seguía con los del
-        // anterior y al guardar los copiaba encima
-        void settingsService.getHarvestSettings(selected.id).then(s => {
-            if (!s) return;
-            setFormData(prev => ({
-                ...prev,
-                piece_rate: s.piece_rate,
-                min_wage_rate: s.min_wage_rate,
-                min_buckets_per_hour: s.min_buckets_per_hour,
-                target_tons: s.target_tons,
-                variety: s.variety ?? prev.variety,
-            }));
-        }).catch(e => logger.warn('[Settings] Could not load settings for orchard:', e));
-        // Recargar el mapa de bloques para el nuevo orchard
-        void useHarvestStore.getState().fetchBlocks(selected.id);
-        if (selected.varieties) {
-            setFormData(prev => ({ ...prev, variety: selected.varieties as string }));
-        }
-        setHasChanges(true);
-        setSaveStatus('idle');
-    }, [availableOrchards]);
 
     const handleSave = async () => {
         if (!orchardId) return;
@@ -306,14 +224,11 @@ export function useSettings() {
         orchard, currentUser, initials,
         // Form
         formData, handleChange, setGeneralRate,
-        compliance, setCompliance,
         // Permissions & compliance floor
         canEditMinWage,
         complianceFloor,
-        // Orchard selector
-        availableOrchards,
+        // Orchard details
         orchardVarieties,
-        handleOrchardSelect,
         // Save
         isSaving, saveStatus, saveError, hasChanges, handleSave,
         // Notifications

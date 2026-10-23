@@ -6,7 +6,7 @@
  *   useSettings.ts             — Data hook (state, handlers, save logic)
  *   settings/
  *     ├── SettingsFormComponents.tsx — Reusable: SettingsSection, FormField, ReadonlyField, ToggleRow
- *     ├── SettingsFields.tsx     — LockedField, ComplianceTargetField, OrchardSelector
+ *     ├── SettingsFields.tsx     — LockedField, ComplianceTargetField
  *     └── settingsLogic.ts       — Pure helpers (compliance floor clamp, warning text)
  *
  * Responsive layout:
@@ -25,7 +25,7 @@ import { DayClosureButton } from './DayClosureButton';
 import PageHeader from '@/components/ui/PageHeader';
 import { SettingsSection, FormField, ReadonlyField, ToggleRow } from './settings/SettingsFormComponents';
 import { DailyPieceRatesEditor } from './settings/DailyPieceRatesEditor';
-import { LockedField, ComplianceTargetField, OrchardSelector } from './settings/SettingsFields';
+import { LockedField, ComplianceTargetField } from './settings/SettingsFields';
 import { roleLabel } from '@/i18n/roleLabel';
 
 
@@ -123,20 +123,16 @@ const SettingsView: React.FC = () => {
 
             {/* ── Orchard Details ──────────────────────── */}
             <SettingsSection icon="park" iconBg="bg-emerald-50" iconColor="text-emerald-600" title={t('settings.orchard.title')} subtitle={t('settings.orchard.subtitle')} accentColor="border-l-emerald-500" stagger={3}>
-                <OrchardSelector
-                    orchards={s.availableOrchards}
-                    selectedId={s.orchard?.id ?? ''}
-                    onSelect={s.handleOrchardSelect}
-                />
+                {/* Huerto: el de la cabecera (OrchardSwitcher); aquí solo se enseña */}
+                <ReadonlyField label={t('settings.orchard.label')} value={s.orchard?.name ?? '—'} icon="location_on" />
                 <ReadonlyField label={t('settings.orchard.total_rows')} value={String(s.orchard?.total_rows ?? '—')} icon="grid_view" />
                 <ReadonlyField label={t('settings.orchard.varieties')} value={s.orchardVarieties} icon="eco" />
             </SettingsSection>
 
             {/* ── Compliance ──────────────────────────── */}
             <SettingsSection icon="verified_user" iconBg="bg-green-50" iconColor="text-green-600" title={t('settings.compliance.title')} subtitle={t('settings.compliance.subtitle')} accentColor="border-l-green-500" stagger={4}>
-                <ToggleRow label={t('settings.compliance.nz_standards')} description={t('settings.compliance.nz_standards_desc')} checked={s.compliance.nz_employment_standards} onChange={(v) => s.setCompliance(prev => ({ ...prev, nz_employment_standards: v }))} icon="gavel" />
-                <ToggleRow label={t('settings.compliance.wage_alerts')} description={t('settings.compliance.wage_alerts_desc')} checked={s.compliance.auto_wage_alerts} onChange={(v) => s.setCompliance(prev => ({ ...prev, auto_wage_alerts: v }))} icon="notification_important" />
-                <ToggleRow label={t('settings.compliance.safety')} description={t('settings.compliance.safety_desc')} checked={s.compliance.safety_verification} onChange={(v) => s.setCompliance(prev => ({ ...prev, safety_verification: v }))} icon="health_and_safety" />
+                {/* Los 3 interruptores de cumplimiento eran estado local sin efecto (B5): fuera.
+                    El cumplimiento (salario mínimo, descansos) lo aplica siempre el cálculo. */}
                 {/* Audit Trail — siempre activo, no es toggle interactivo */}
                 <div className="flex items-center justify-between py-1">
                     <div className="flex items-start gap-2 flex-1">
@@ -250,20 +246,6 @@ const SettingsView: React.FC = () => {
                             </div>
                         </div>
                         <DayClosureButton />
-                    </div>
-                    <div className="border-t border-red-100 pt-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-start gap-3">
-                                <span aria-hidden="true" className="material-symbols-outlined text-base text-text-muted mt-0.5">delete_sweep</span>
-                                <div>
-                                    <p className="text-sm font-semibold text-text-main">{t('settings.danger.reset_title')}</p>
-                                    <p className="text-xs text-text-muted">{t('settings.danger.reset_desc')}</p>
-                                </div>
-                            </div>
-                            <button className="px-3.5 py-2 text-sm font-semibold text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-all active:scale-[0.96]">
-                                {t('settings.danger.reset_btn')}
-                            </button>
-                        </div>
                     </div>
                 </div>
             </section>
