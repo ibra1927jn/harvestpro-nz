@@ -3,19 +3,24 @@
   Restaura o comprueba una copia hecha con backup-local.ps1 / backup-local.sh.
 
 .DESCRIPTION
-  Modo por defecto (comprobar): restaura la copia en una base APARTE del mismo
-  contenedor (harvestpro_restore_check), compara el recuento de filas de cada
-  tabla con el que se guardó al hacer la copia y borra esa base al terminar.
-  La base de la app no se toca.
+  Misma lógica que restore-local.sh (scripts/backup/container-restore.sh dentro
+  del contenedor de la base).
+
+  Por defecto (comprobar): restaura la copia en una base APARTE
+  (harvestpro_restore_check), compara el recuento de cada tabla con el de la
+  copia, avisa de filas huérfanas y borra esa base. La base de la app no se toca.
 
   -FreshStack (recuperación): tras perder el PC o el volumen de Docker, en un
   Supabase local NUEVO (supabase start, sin datos) carga los datos de public,
-  auth y storage y los archivos de Storage. Se niega si ya hay usuarios o huertos.
+  auth y storage, los archivos de Storage y los secretos de Vault. Se niega si
+  ya hay usuarios o huertos. Si la copia es de un esquema anterior, deja la
+  base en la versión de la copia (supabase db reset --version), carga y aplica
+  después las migraciones que faltan (supabase migration up).
 
   Guía: docs/backups-local.md
 
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File scripts\restore-local.ps1 -Backup "$env:USERPROFILE\HarvestPro-backups\harvestpro_2026-10-24_020000"
+  powershell -ExecutionPolicy Bypass -File scripts\restore-local.ps1 -Backup "$env:USERPROFILE\HarvestPro-backups\harvestpro_2026-10-24_210000"
 .EXAMPLE
   pwsh scripts/restore-local.ps1 -Backup <carpeta> -FreshStack
 #>
@@ -26,25 +31,36 @@ param(
     [switch]$FreshStack,
     [string]$DbContainer,
     [string]$StorageContainer,
+    [string]$SupabaseCli,
     [ValidatePattern('^harvestpro_restore_[a-z0-9_]+$')][string]$CheckDb = 'harvestpro_restore_check'
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $Root = Split-Path -Parent $PSScriptRoot
+# Rutas relativas respecto a la carpeta actual
+$Backup = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Backup)
 
 function Write-Log([string]$Message) { Write-Host "[restore] $Message" }
 function Fail([string]$Message) { Write-Host "[restore] ERROR: $Message"; exit 1 }
 
-# Función simple (sin param()): así -X, -U, -c... llegan tal cual a docker en $args
-# en vez de tomarse como parámetros de PowerShell
+# Función simple (sin param()): -X, -U, -c... llegan tal cual a docker en $args
 function Invoke-Docker {
     # En PowerShell 5, con Stop, cualquier línea de stderr de docker sería un error
     $ErrorActionPreference = 'Continue'
     $dockerArgs = @($args)
     $out = & docker @dockerArgs 2>&1
-    if ($LASTEXITCODE -ne 0) { throw "docker $($dockerArgs -join ' ') failed: $out" }
-    return ($out | Out-String)
+    $text = ($out | ForEach-Object { "$_" }) -join "`n"
+    if ($LASTEXITCODE -ne 0) { throw "docker $($dockerArgs -join ' ') failed: $text" }
+    return $text
+}
+
+# Como Invoke-Docker pero enseña la salida (los avisos del script del contenedor) y devuelve el código
+function Invoke-DockerShown {
+    $ErrorActionPreference = 'Continue'
+    $dockerArgs = @($args)
+    & docker @dockerArgs 2>&1 | ForEach-Object { Write-Host "$_" }
+    return $LASTEXITCODE
 }
 
 $dumpFile = Join-Path $Backup 'database.dump'
@@ -60,51 +76,42 @@ if (-not $DbContainer) {
 }
 $db = $DbContainer
 if (-not $StorageContainer) { $StorageContainer = $db -replace '^supabase_db_', 'supabase_storage_' }
+$work = "/tmp/harvestpro_restore_$([guid]::NewGuid().ToString('N').Substring(0, 8))"
 
-# supabase_admin es el superusuario de la imagen de Supabase (postgres no lo es)
-function Invoke-Sql([string]$Database, [string]$Sql) {
-    $out = $Sql | & docker exec -i $db psql -X -q -At -F "`t" -v ON_ERROR_STOP=1 -U supabase_admin -d $Database
-    if ($LASTEXITCODE -ne 0) { throw "SQL failed on ${Database}" }
-    return @($out | Where-Object { $_ })
+function Invoke-Sql([string]$Sql) {
+    (Invoke-Docker exec -e 'PGOPTIONS=-c client_min_messages=warning' $db psql -X -q -At -U supabase_admin -d postgres -c $Sql).Trim()
 }
 
-function Compare-Counts([string]$Database) {
-    $expected = @(Get-Content -Path $countsFile | Where-Object { $_ })
-    $actual = Invoke-Sql $Database (Get-Content -Raw -Path (Join-Path $Root 'scripts/backup/row-counts.sql'))
-    $diff = @(Compare-Object -ReferenceObject $expected -DifferenceObject $actual)
-    if ($diff.Count -gt 0) {
-        Write-Log 'Row counts differ (<= backup, => restored):'
-        $diff | Sort-Object InputObject | ForEach-Object { Write-Host ("  {0} {1}" -f $_.SideIndicator, $_.InputObject) }
-        return $false
+function Copy-Work {
+    Invoke-Docker exec $db mkdir -p $work | Out-Null
+    foreach ($f in 'container-restore.sh', 'row-counts.sql', 'orphans.sql') {
+        Invoke-Docker cp (Join-Path $Root "scripts/backup/$f") "${db}:$work/$f" | Out-Null
     }
-    $total = ($expected | ForEach-Object { [long]($_ -split "`t")[1] } | Measure-Object -Sum).Sum
-    Write-Log "Row counts match: $($expected.Count) tables, $total rows"
-    return $true
+    Invoke-Docker cp $dumpFile "${db}:$work/database.dump" | Out-Null
+    Invoke-Docker cp $countsFile "${db}:$work/row-counts.tsv" | Out-Null
+    $vault = Join-Path $Backup 'secrets/vault.tsv'
+    if (Test-Path $vault) { Invoke-Docker cp $vault "${db}:$work/vault.tsv" | Out-Null }
 }
 
-$id = [guid]::NewGuid().ToString('N').Substring(0, 8)
-$tmpIn = "/tmp/harvestpro_restore_$id.dump"
-$tmpList = "/tmp/harvestpro_restore_$id.list"
-$ok = $false
-try {
-    Invoke-Docker cp $dumpFile "${db}:$tmpIn" | Out-Null
+function Invoke-SupabaseCli {
+    $cliArgs = @($args)
+    $ErrorActionPreference = 'Continue'
+    Push-Location $Root
+    try {
+        if ($SupabaseCli) { & $SupabaseCli @cliArgs }
+        elseif (Get-Command supabase -ErrorAction SilentlyContinue) { & supabase @cliArgs }
+        else { & npx --yes supabase @cliArgs }
+        if ($LASTEXITCODE -ne 0) { throw "supabase $($cliArgs -join ' ') failed" }
+    }
+    finally { Pop-Location }
+}
 
+try {
     if (-not $FreshStack) {
-        $exists = Invoke-Sql postgres "select count(*) from pg_database where datname = '$CheckDb'"
-        if ($exists[0] -ne '0') { Fail "database $CheckDb already exists (a previous check with -Keep?). Drop it first." }
+        Copy-Work
         Write-Log "Restoring into separate database $CheckDb (the app database is not touched)"
-        Invoke-Sql postgres "create database $CheckDb" | Out-Null
-        try {
-            # pg_cron solo existe en la base postgres: se quitan sus entradas de la lista
-            Invoke-Docker exec $db sh -c "pg_restore -l '$tmpIn' | grep -v -E ' cron | pg_cron ' > '$tmpList'" | Out-Null
-            Invoke-Docker exec $db pg_restore -U supabase_admin -d $CheckDb --exit-on-error -L $tmpList $tmpIn | Out-Null
-            $ok = Compare-Counts $CheckDb
-        }
-        finally {
-            if ($Keep) { Write-Log "Kept database $CheckDb" }
-            else { Invoke-Sql postgres "drop database $CheckDb" | Out-Null }
-        }
-        if (-not $ok) { Fail 'restore check FAILED' }
+        $code = Invoke-DockerShown exec -e "CHECK_DB=$CheckDb" -e "KEEP_DB=$(if ($Keep) { 1 } else { 0 })" $db bash "$work/container-restore.sh" check $work
+        if ($code -ne 0) { Fail 'restore check FAILED' }
         $storageDir = Join-Path $Backup 'storage'
         if (Test-Path $storageDir) { Write-Log "Storage files in backup: $(@(Get-ChildItem -Recurse -File $storageDir).Count)" }
         Write-Log 'Restore check OK'
@@ -112,28 +119,38 @@ try {
     }
 
     # ── FreshStack ──────────────────────────────────────────────────────────
-    $users = (Invoke-Sql postgres 'select count(*) from auth.users')[0]
-    $orchards = (Invoke-Sql postgres 'select count(*) from public.orchards')[0]
-    if ($users -ne '0' -or $orchards -ne '0') {
-        Fail "the database already has data ($users users, $orchards orchards). -FreshStack only loads into a new, empty Supabase."
+    if ((Invoke-Sql 'select count(*) from auth.users') -ne '0' -or (Invoke-Sql 'select count(*) from public.orchards') -ne '0') {
+        Fail 'the database already has data. -FreshStack only loads into a new, empty Supabase.'
     }
-    # Solo datos (el esquema lo crean las migraciones), sin las tablas de versiones de auth y storage
-    Invoke-Docker exec $db sh -c "pg_restore -l '$tmpIn' | grep -E '(TABLE DATA|SEQUENCE SET) (public|auth|storage) ' | grep -v -E ' auth schema_migrations | storage migrations ' > '$tmpList'" | Out-Null
-    Write-Log 'Emptying rows created by the migrations'
-    Invoke-Sql postgres @'
-DO $$
-DECLARE r record;
-BEGIN
-  FOR r IN SELECT n.nspname, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-           WHERE c.relkind IN ('r', 'p') AND NOT c.relispartition AND n.nspname IN ('public', 'auth', 'storage')
-             AND (n.nspname, c.relname) NOT IN (('auth', 'schema_migrations'), ('storage', 'migrations')) LOOP
-    EXECUTE format('TRUNCATE %I.%I CASCADE', r.nspname, r.relname);
-  END LOOP;
-END $$;
-'@ | Out-Null
-    Write-Log "Loading data into $db"
-    Invoke-Docker exec $db pg_restore -U supabase_admin -d postgres --data-only --disable-triggers --single-transaction --exit-on-error -L $tmpList $tmpIn | Out-Null
-    if (-not (Compare-Counts postgres)) { Fail 'restore finished but row counts differ' }
+
+    # Versión del esquema: la de la copia frente a la de esta base y a las migraciones del checkout
+    $migratedDown = $false
+    $migrationsFile = Join-Path $Backup 'migrations.tsv'
+    if ((Test-Path $migrationsFile) -and (Get-Item $migrationsFile).Length -gt 0) {
+        $backupVersions = @(Get-Content $migrationsFile | Where-Object { $_ } | Sort-Object)
+        $backupMax = $backupVersions[-1]
+        $localVersions = @(Get-ChildItem (Join-Path $Root 'supabase/migrations') -Filter '*.sql' | ForEach-Object { ($_.Name -split '_')[0] })
+        $missingHere = @($backupVersions | Where-Object { $localVersions -notcontains $_ })
+        if ($missingHere.Count -gt 0) {
+            Fail "the backup has migrations this checkout does not have ($($missingHere -join ', ')). Update the project (git pull) and try again."
+        }
+        $targetMax = Invoke-Sql 'select max(version) from supabase_migrations.schema_migrations'
+        if ([string]::CompareOrdinal($targetMax, $backupMax) -gt 0) {
+            Write-Log "The backup is from schema $backupMax; this database is at $targetMax."
+            Write-Log "Resetting the empty database to $backupMax, then loading, then applying the newer migrations"
+            Invoke-SupabaseCli db reset --local --no-seed --version $backupMax
+            for ($i = 0; $i -lt 60; $i++) {
+                try { Invoke-Sql 'select 1' | Out-Null; break } catch { Start-Sleep -Seconds 2 }
+            }
+            $migratedDown = $true
+        }
+    }
+    else {
+        Write-Log 'WARNING: old backup without migrations.tsv: loading into the current schema as is'
+    }
+
+    Copy-Work
+    $code = Invoke-DockerShown exec $db bash "$work/container-restore.sh" fresh $work
     $storageDir = Join-Path $Backup 'storage'
     if (Test-Path $storageDir) {
         try {
@@ -141,7 +158,26 @@ END $$;
             Invoke-Docker cp (Join-Path $storageDir '.') "${StorageContainer}:/mnt/" | Out-Null
             Write-Log "Storage files copied back to $StorageContainer"
         }
-        catch { Write-Log "Storage files NOT copied: $($_.Exception.Message)" }
+        catch { Write-Log "WARNING: Storage files NOT copied: $($_.Exception.Message)" }
+    }
+    if ($code -ne 0) { Fail 'data loaded but the check found problems (above)' }
+
+    if ($migratedDown) {
+        Write-Log 'Applying the migrations newer than the backup'
+        Invoke-SupabaseCli migration up --local
+    }
+
+    # Secretos fuera de la base: se reponen solo si faltan en este checkout
+    foreach ($pair in @(@('env.local', '.env.local'), @('functions.env', 'supabase/functions/.env'))) {
+        $src = Join-Path $Backup "secrets/$($pair[0])"
+        $dst = Join-Path $Root $pair[1]
+        if ((Test-Path $src) -and -not (Test-Path $dst)) {
+            Copy-Item $src $dst
+            Write-Log "Restored $($pair[1]) from the backup (restart Supabase / the dev server to pick it up)"
+        }
+        elseif (-not (Test-Path $dst)) {
+            Write-Log "WARNING: $($pair[1]) is missing and the backup has no copy: see .env.example / docs/push-notifications.md"
+        }
     }
     Write-Log 'Fresh-stack restore OK'
 }
@@ -149,5 +185,5 @@ catch {
     Fail $_.Exception.Message
 }
 finally {
-    try { Invoke-Docker exec $db rm -f $tmpIn $tmpList | Out-Null } catch { Write-Verbose 'temp files not removed' }
+    try { Invoke-Docker exec $db bash "$work/container-restore.sh" cleanup $work | Out-Null } catch { Write-Verbose 'work dir not removed' }
 }
