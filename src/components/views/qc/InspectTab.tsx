@@ -7,6 +7,7 @@
  * final (la sugerida viene marcada; tocar una nota guarda la inspección).
  * Sin criterios marcados se guarda solo la nota, como antes.
  */
+import Toast from '@/components/ui/Toast';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { GradeDistribution, InspectionDetails, QCInspection } from '@/services/qc.service';
 import { Picker } from '@/types';
@@ -110,6 +111,9 @@ interface InspectTabProps {
 
 /** Espera antes del avance automático en Turbo: da tiempo a ver el aviso y a cancelarlo */
 const TURBO_ADVANCE_MS = 300;
+
+/** El hook borra la nota guardada a los 3 s */
+const noop = () => undefined;
 
 export default function InspectTab({
     crew, inspections, distribution, selectedPicker, setSelectedPicker,
@@ -256,16 +260,14 @@ export default function InspectTab({
                     <span className="text-sm text-red-800">{gradeError}</span>
                 </div>
             )}
-            {/* Success Toast */}
+            {/* Inspección guardada: toast fijo arriba (la franja de antes quedaba fuera de vista al bajar a la nota) */}
             {lastGrade && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
-                    <span aria-hidden="true" className="material-symbols-outlined text-base text-green-600">check_circle</span>
-                    <span className="text-sm text-green-800">
-                        {t('qc.logged_for', { name: lastGrade.picker }).split('{grade}')[0]}
-                        <strong>{gradeLongLabel(t, lastGrade.grade)}</strong>
-                        {t('qc.logged_for', { name: lastGrade.picker }).split('{grade}')[1] ?? ''}
-                    </span>
-                </div>
+                <Toast
+                    type="success"
+                    message={t('qc.logged_for', { name: lastGrade.picker, grade: gradeLongLabel(t, lastGrade.grade) })}
+                    announcement={t('qc.sr_logged', { grade: gradeLongLabel(t, lastGrade.grade), name: lastGrade.picker })}
+                    onClose={noop}
+                />
             )}
 
             {/* Step 1: Picker Selection */}

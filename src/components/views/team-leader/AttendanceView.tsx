@@ -1,4 +1,3 @@
-import { announce } from '@/services/announcer';
 import { logger } from '@/utils/logger';
 import { useAuth } from '../../../context/AuthContext';
 import { useAttendance } from '../../../hooks/useAttendance';
@@ -49,7 +48,8 @@ const AttendanceView = () => {
     const handleCheckIn = async (picker: Picker) => {
         try {
             await checkIn(picker.id);
-            announce(t('tl.attendance.sr_checked_in', { name: picker.name }));
+            // Toast visible (y lo anuncia al lector de pantalla): antes solo se anunciaba
+            showToast(t('tl.attendance.sr_checked_in', { name: picker.name }), 'success');
         } catch (error: unknown) {
             showToast(noSignal('tl.attendance.no_signal_check_in') || (error as Error).message || t('tl.attendance.check_in_failed'), 'error');
         }
@@ -58,7 +58,7 @@ const AttendanceView = () => {
     const handleCheckOut = async (attendanceId: string, name?: string) => {
         try {
             await checkOut(attendanceId);
-            announce(t('tl.attendance.sr_checked_out', { name: name ?? t('panel.role.picker') }));
+            showToast(t('tl.attendance.sr_checked_out', { name: name ?? t('panel.role.picker') }), 'success');
         } catch (err) {
             // Antes solo iba al log: sin red el botón no hacía nada y nadie se enteraba
             logger.error(err);

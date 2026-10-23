@@ -67,6 +67,13 @@ describe('AttendanceView — leave', () => {
         expect(mocks.refetch).toHaveBeenCalled();
     });
 
+    it('a check-in shows a success toast', async () => {
+        render(<AttendanceView />);
+        fireEvent.click(within(screen.getByTestId('roll-p2')).getByRole('button', { name: /Check In/i }));
+        expect(await screen.findByText('Bea Absent checked in.')).toBeTruthy();
+        expect(screen.getByText('check_circle')).toBeTruthy();
+    });
+
     it('shows the status of what the team leader requested', () => {
         mocks.myItems = [
             { kind: 'queued', leave: { id: 'q1', picker_id: 'p2', type: 'day_off', start_date: '2026-10-24', end_date: '2026-10-24', half_day: false } },

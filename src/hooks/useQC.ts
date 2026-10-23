@@ -14,7 +14,6 @@ import { Picker } from '@/types';
 import { logger } from '@/utils/logger';
 import { supabase } from '@/services/supabase';
 import { useTranslation } from '@/i18n';
-import { gradeLongLabel } from '@/components/views/qc/gradeLabel';
 import { todayNZST } from '@/utils/nzst';
 import { canViewWellbeing } from '@/services/qcAlerts';
 
@@ -128,7 +127,7 @@ export function useQC(): UseQCResult {
 
       if (result) {
         setLastGrade({ grade, picker: selectedPicker.name });
-        announce(t('qc.sr_logged', { grade: gradeLongLabel(t, grade), name: selectedPicker.name }));
+        // El toast de la pantalla lo anuncia al lector de pantalla
         setNotes('');
         // Se añade la inspección guardada sin volver a bajar todas las del día
         // (antes, cada nota recargaba la lista dos veces)

@@ -43,6 +43,8 @@ const comms: TranslationDict = {
     'comms.team_presence': '{in}/{total} हाज़िर · {brk} विश्राम पर · {leave} छुट्टी पर',
     'comms.pay_showing': '{total} में से {n} कर्मचारी दिखाए जा रहे हैं',
     'comms.pay_show_all': 'सब दिखाएँ ({total})',
+    'comms.rows_assigned': 'पंक्ति {rows} सौंपी गई',
+    'comms.picker_added': '{name} को दल में जोड़ा गया',
 };
 
 export default comms;

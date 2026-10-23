@@ -17,6 +17,8 @@ import RowAssignmentModal, { PickerForAssignment } from '../../modals/RowAssignm
 import OrchardMapView from '../manager/OrchardMapView';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import { useTranslation } from '@/i18n';
+import Toast from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
 import { selectTeamOf } from '@/services/harvestMetrics/roster';
 import { selectTeamRowAssignments } from '@/services/harvestMetrics/rowTeams';
 
@@ -24,6 +26,8 @@ const TARGET_BUCKETS_PER_ROW = 60;
 
 const TasksView = () => {
     const { t } = useTranslation();
+    // Confirmación al asignar fila (el modal se cierra; los errores los enseña el modal)
+    const { toast, showToast, hideToast } = useToast();
     const { appUser } = useAuth();
     const { rowAssignments, bucketRecords, assignRow, crew, settings } = useHarvest();
     const { broadcasts } = useMessaging();
@@ -75,6 +79,7 @@ const TasksView = () => {
 
     return (
         <div className="flex flex-col bg-background-light pb-24">
+            {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
             {/* MAPA TÁCTICO — a pantalla completa, la página hace scroll.
                 OrchardMapView trae pt-14 (hueco para la barra de modos del manager,
                 que aquí no existe): se compensa para no dejar un vacío bajo la cabecera. */}
@@ -172,7 +177,10 @@ const TasksView = () => {
             {isModalOpen && (
                 <RowAssignmentModal
                     onClose={() => setIsModalOpen(false)}
-                    onAssign={(row, side, pickers) => assignRow(row, side.toLowerCase() as 'north' | 'south', pickers)}
+                    onAssign={async (row, side, pickers) => {
+                        await assignRow(row, side.toLowerCase() as 'north' | 'south', pickers);
+                        showToast(t('comms.rows_assigned', { rows: String(row) }), 'success');
+                    }}
                     pickers={pickersForAssignment}
                     initialRow={assignRowNumber ?? undefined}
                 />

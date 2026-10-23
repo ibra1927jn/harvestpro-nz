@@ -43,6 +43,8 @@ const comms: TranslationDict = {
     'comms.team_presence': '{in}/{total} ua resitala · {brk} malologa puupuu · {leave} malologa',
     'comms.pay_showing': 'Faʻaali {n} mai le {total} tagata faigaluega',
     'comms.pay_show_all': 'Faʻaali uma ({total})',
+    'comms.rows_assigned': 'Ua tofia le laina {rows}',
+    'comms.picker_added': 'Ua faʻaopoopo {name} i le ʻau',
 };
 
 export default comms;

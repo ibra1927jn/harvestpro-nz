@@ -43,6 +43,8 @@ const comms: TranslationDict = {
     'comms.team_presence': '{in}/{total} kuo lēsisita · {brk} mālōlō nounou · {leave} mālōlō',
     'comms.pay_showing': 'ʻOku fakahā ʻa e {n} ʻi he {total} kau ngāue',
     'comms.pay_show_all': 'Fakahā kotoa ({total})',
+    'comms.rows_assigned': 'Kuo vahe ʻa e laine {rows}',
+    'comms.picker_added': 'Kuo tānaki ʻa {name} ki he kulupu',
 };
 
 export default comms;

@@ -43,6 +43,8 @@ const comms: TranslationDict = {
     'comms.team_presence': '{in}/{total} naka-clock in · {brk} naka-break · {leave} naka-leave',
     'comms.pay_showing': 'Ipinapakita ang {n} sa {total} manggagawa',
     'comms.pay_show_all': 'Ipakita lahat ({total})',
+    'comms.rows_assigned': 'Naitalaga ang row {rows}',
+    'comms.picker_added': 'Naidagdag si {name} sa crew',
 };
 
 export default comms;

@@ -43,6 +43,8 @@ const comms: TranslationDict = {
     'comms.team_presence': '{in}/{total} fichados · {brk} en descanso · {leave} de permiso',
     'comms.pay_showing': 'Mostrando {n} de {total} trabajadores',
     'comms.pay_show_all': 'Ver todos ({total})',
+    'comms.rows_assigned': 'Fila {rows} asignada',
+    'comms.picker_added': '{name} dado de alta en la cuadrilla',
 };
 
 export default comms;

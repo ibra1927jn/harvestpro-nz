@@ -43,6 +43,8 @@ const comms: TranslationDict = {
     'comms.team_presence': '{in}/{total} kua tae · {brk} e whakatā · {leave} i te wehe',
     'comms.pay_showing': 'E whakaatu ana i te {n} o te {total} kaimahi',
     'comms.pay_show_all': 'Whakaaturia katoa ({total})',
+    'comms.rows_assigned': 'Kua tohaina te rārangi {rows}',
+    'comms.picker_added': 'Kua tāpirihia a {name} ki te rōpū',
 };
 
 export default comms;
