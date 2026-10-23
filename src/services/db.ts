@@ -29,6 +29,8 @@ export interface QueuedMessage {
   failure_reason?: string;
   /** Foto, PDF o nota de voz: los bytes esperan cifrados en pending_files (file_id) */
   upload?: QueuedAttachment;
+  /** Respuesta a este mensaje (va antes en la bandeja: sale primero) */
+  reply_to_id?: string;
 }
 
 /** Adjunto de un mensaje en cola */
@@ -112,7 +114,9 @@ export interface QueuedSyncItem {
     | 'QC_INSPECTION'
     | 'UNLINK'
     | 'BIN'
-    | 'LEAVE_REQUEST';
+    | 'LEAVE_REQUEST'
+    /** Reacción del chat sin red */
+    | 'CHAT_REACTION';
   payload: Record<string, unknown>;
   timestamp: number;
   retryCount: number;

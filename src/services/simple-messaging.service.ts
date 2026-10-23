@@ -1,6 +1,6 @@
 
 import { logger } from '@/utils/logger';
-import { messagingRepository } from '@/repositories/messaging.repository';
+import { messagingRepository, type ConversationHandlers, type ConversationSubscription } from '@/repositories/messaging.repository';
 import { userRepository2 } from '@/repositories/user.repository';
 
 export interface ChatMessage {
@@ -16,6 +16,8 @@ export interface ChatMessage {
     attachment_name?: string | null;
     attachment_size?: number | null;
     duration_ms?: number | null;
+    /** Mensaje al que responde (misma conversación) */
+    reply_to_id?: string | null;
 }
 
 /** Roles con pantalla de chat (todos los de la app; los pickers no tienen cuenta con chat) */
@@ -53,10 +55,15 @@ export const simpleMessagingService = {
         });
     },
 
-    subscribeToConversation(conversationId: string, onMessage: (msg: ChatMessage) => void) {
+    /** Canal de la conversación abierta: mensajes, reacciones y «Escribiendo…» */
+    subscribeToConversation(
+        conversationId: string,
+        onMessage: (msg: ChatMessage) => void,
+        handlers: ConversationHandlers = {},
+    ): ConversationSubscription {
         return messagingRepository.subscribe(conversationId, (payload) => {
             onMessage(payload as ChatMessage);
-        });
+        }, handlers);
     },
 
     async getConversations(userId: string): Promise<Conversation[]> {

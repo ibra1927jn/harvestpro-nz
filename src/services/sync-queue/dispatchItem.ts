@@ -15,6 +15,7 @@ import {
   processUnlink,
   processBin,
   processLeaveRequest,
+  processChatReaction,
 } from '../sync-processors';
 import type { AttendancePayload, PickerPayload, QCInspectionPayload } from '../sync-processors';
 
@@ -53,6 +54,7 @@ const HANDLERS: Partial<Record<QueuedSyncItem['type'], Handler>> = {
   UNLINK: (item, s) => processUnlink(s.UnlinkPayloadSchema.parse(item.payload)),
   BIN: (item, s) => processBin(s.BinPayloadSchema.parse(item.payload)),
   LEAVE_REQUEST: (item, s) => processLeaveRequest(s.LeaveRequestPayloadSchema.parse(item.payload)),
+  CHAT_REACTION: (item, s) => processChatReaction(s.ChatReactionPayloadSchema.parse(item.payload)),
 };
 
 /**

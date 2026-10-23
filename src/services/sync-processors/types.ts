@@ -144,11 +144,20 @@ export type LeaveRequestPayload = {
     requested_by: string;
 };
 
-export type SyncPayload = BinPayload | LeaveRequestPayload | ScanPayload | MessagePayload | AttendancePayload | ContractPayload | TransportPayload | TimesheetPayload | PickerPayload | QCInspectionPayload;
+// Reacción del chat puesta o quitada sin red (se repite sin efecto: idempotente)
+export type ChatReactionPayload = {
+    op: 'add' | 'remove';
+    conversation_id: string;
+    message_id: string;
+    user_id: string;
+    emoji: string;
+};
+
+export type SyncPayload = ChatReactionPayload | BinPayload | LeaveRequestPayload | ScanPayload | MessagePayload | AttendancePayload | ContractPayload | TransportPayload | TimesheetPayload | PickerPayload | QCInspectionPayload;
 
 export interface PendingItem {
     id: string; // UUID (generated client-side)
-    type: 'SCAN' | 'MESSAGE' | 'ATTENDANCE' | 'ASSIGNMENT' | 'CONTRACT' | 'TRANSPORT' | 'TIMESHEET' | 'PICKER' | 'QC_INSPECTION' | 'UNLINK' | 'BIN' | 'LEAVE_REQUEST';
+    type: 'SCAN' | 'MESSAGE' | 'ATTENDANCE' | 'ASSIGNMENT' | 'CONTRACT' | 'TRANSPORT' | 'TIMESHEET' | 'PICKER' | 'QC_INSPECTION' | 'UNLINK' | 'BIN' | 'LEAVE_REQUEST' | 'CHAT_REACTION';
     payload: SyncPayload;
     timestamp: number;
     retryCount: number;

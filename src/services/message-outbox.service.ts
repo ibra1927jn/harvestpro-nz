@@ -129,6 +129,7 @@ export const messageOutbox = {
                     await messagingRepository.sendMessage(m.recipient_id, m.sender_id, m.content, {
                         id: m.id,
                         createdAt: m.timestamp,
+                        ...(m.reply_to_id ? { replyToId: m.reply_to_id } : {}),
                         ...(a ? { attachment: { path: a.path, type: a.type, name: a.name, size: a.size, duration_ms: a.duration_ms } } : {}),
                     });
                     await this.remove(m);
