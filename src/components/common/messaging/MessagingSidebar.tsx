@@ -147,7 +147,7 @@ const MessagingSidebar: React.FC<Props> = ({
                                             <div className="flex items-center gap-1.5">
                                                 {chat.isGroup && <span className="text-[10px] text-slate-400">👥 {chat.members.length}</span>}
                                                 {chat.muted && <span role="img" aria-label={t('chat.muted')} title={t('chat.muted')} className="material-symbols-outlined text-[13px] text-slate-400">notifications_off</span>}
-                                                <p className="text-xs text-slate-400 truncate">{chat.lastMsg || (chat.lastAttachmentType ? t(`chat.attachment.${chat.lastAttachmentType}`) : t('chat.no_messages'))}</p>
+                                                <p className="text-xs text-slate-400 truncate">{chat.lastMsg || (chat.lastAttachmentType ? t(`chat.file_kind.${chat.lastAttachmentType}`) : t('chat.no_messages'))}</p>
                                             </div>
                                         </div>
                                         {(unreadCounts[chat.id] || (chat.unreadCount ?? 0)) > 0 && (

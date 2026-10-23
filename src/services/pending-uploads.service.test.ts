@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from './db';
-import { pendingFiles, PENDING_FILES_MAX_BYTES, QueueFullError, blobToArrayBuffer } from './pending-files.service';
+import { pendingFiles, PENDING_FILES_MAX_BYTES, QueueFullError, blobToArrayBuffer } from './pending-uploads.service';
 
 const text = async (b: Blob) => new TextDecoder().decode(await blobToArrayBuffer(b));
 

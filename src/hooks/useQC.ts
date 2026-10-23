@@ -13,7 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Picker } from '@/types';
 import { logger } from '@/utils/logger';
 import { qcRepository } from '@/repositories/qc.repository';
-import { pendingFiles } from '@/services/pending-files.service';
+import { pendingFiles } from '@/services/pending-uploads.service';
 import { useTranslation } from '@/i18n';
 import { gradeLongLabel } from '@/components/views/qc/gradeLabel';
 import { todayNZST } from '@/utils/nzst';

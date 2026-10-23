@@ -28,7 +28,7 @@ export interface QueuedMessage {
   priority?: string;
   failure_reason?: string;
   /** Foto, PDF o nota de voz: los bytes esperan cifrados en pending_files (file_id) */
-  attachment?: QueuedAttachment;
+  upload?: QueuedAttachment;
 }
 
 /** Adjunto de un mensaje en cola */

@@ -18,13 +18,13 @@ export function outboxToMessage(m: OutboxMessage): DBMessage {
         created_at: m.timestamp,
         delivery: m.status,
         ...(m.failure_reason ? { failure_reason: m.failure_reason } : {}),
-        ...(m.attachment ? {
-            attachment_path: m.attachment.path,
-            attachment_type: m.attachment.type,
-            attachment_name: m.attachment.name ?? null,
-            attachment_size: m.attachment.size,
-            duration_ms: m.attachment.duration_ms ?? null,
-            local_file_id: m.attachment.file_id,
+        ...(m.upload ? {
+            attachment_path: m.upload.path,
+            attachment_type: m.upload.type,
+            attachment_name: m.upload.name ?? null,
+            attachment_size: m.upload.size,
+            duration_ms: m.upload.duration_ms ?? null,
+            local_file_id: m.upload.file_id,
         } : {}),
     };
 }

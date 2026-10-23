@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { qcRepository } from '@/repositories/qc.repository';
 import { db } from '../db';
-import { pendingFiles } from '../pending-files.service';
+import { pendingFiles } from '../pending-uploads.service';
 import { processQCInspection } from './qc-inspection.processor';
 import * as schemas from '../sync.schemas';
 

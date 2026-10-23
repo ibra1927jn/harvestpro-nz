@@ -8,7 +8,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { chatAttachmentsService, formatBytes, formatDuration } from '@/services/chat-attachments.service';
-import { pendingFiles } from '@/services/pending-files.service';
+import { pendingFiles } from '@/services/pending-uploads.service';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { useTranslation } from '@/i18n';
 import type { DBMessage } from '@/context/messaging.types';
@@ -66,7 +66,7 @@ const ChatAttachmentView: React.FC<Props> = ({ message, isMe }) => {
     const url = useAttachmentUrl(message.attachment_path, message.local_file_id);
     const [viewing, setViewing] = useState(false);
     const type = message.attachment_type;
-    const name = message.attachment_name || t(`chat.attachment.${type ?? 'image'}`);
+    const name = message.attachment_name || t(`chat.file_kind.${type ?? 'image'}`);
     const sending = message.delivery === 'pending' && (
         <p className={`mt-1 text-[10px] font-bold ${isMe ? 'text-white/80' : 'text-slate-500'}`}>{t('chat.attachment_sending')}</p>
     );

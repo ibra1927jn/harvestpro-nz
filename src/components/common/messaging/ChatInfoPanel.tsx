@@ -35,7 +35,7 @@ interface Props {
 const SharedThumb: React.FC<{ m: DBMessage }> = ({ m }) => {
     const { t } = useTranslation();
     const url = useAttachmentUrl(m.attachment_path, m.local_file_id);
-    const label = m.attachment_name || t(`chat.attachment.${m.attachment_type ?? 'image'}`);
+    const label = m.attachment_name || t(`chat.file_kind.${m.attachment_type ?? 'image'}`);
     if (m.attachment_type === 'image') {
         return url
             ? <a href={url} target="_blank" rel="noopener noreferrer" className="block size-16 rounded-lg overflow-hidden bg-slate-100"><img src={url} alt={label} className="size-full object-cover" /></a>

@@ -9,7 +9,7 @@ import { db, type QueuedMessage } from './db';
 import { encryptRecord, decryptRecord } from './dbCrypto';
 import { messagingRepository } from '@/repositories/messaging.repository';
 import { chatAttachmentsService } from './chat-attachments.service';
-import { pendingFiles } from './pending-files.service';
+import { pendingFiles } from './pending-uploads.service';
 import { logger } from '@/utils/logger';
 
 const isNetworkError = (e: unknown) => {
@@ -93,9 +93,9 @@ export const messageOutbox = {
     },
 
     /** Quita el mensaje de la bandeja y, si llevaba adjunto, su archivo */
-    async remove(m: Pick<QueuedMessage, 'id' | 'attachment'>): Promise<void> {
+    async remove(m: Pick<QueuedMessage, 'id' | 'upload'>): Promise<void> {
         await db.message_queue.delete(m.id);
-        if (m.attachment) await pendingFiles.delete(m.attachment.file_id);
+        if (m.upload) await pendingFiles.delete(m.upload.file_id);
     },
 
     async pendingCount(): Promise<number> {
@@ -116,7 +116,7 @@ export const messageOutbox = {
 
             for (const m of items) {
                 try {
-                    const a = m.attachment;
+                    const a = m.upload;
                     if (a) {
                         // Primero el archivo (subir dos veces la misma ruta no falla), luego el mensaje
                         const blob = await pendingFiles.get(a.file_id);

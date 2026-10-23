@@ -12,7 +12,7 @@
  */
 import React, { createContext, useContext, useState, useRef, useCallback, ReactNode } from 'react';
 import { messageOutbox } from '@/services/message-outbox.service';
-import { pendingFiles, QueueFullError } from '@/services/pending-files.service';
+import { pendingFiles, QueueFullError } from '@/services/pending-uploads.service';
 import {
   attachmentPath,
   chatAttachmentsService,
@@ -199,7 +199,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
       content,
       timestamp,
       priority: 'normal',
-      attachment: { ...attachment, file_id: optimistic.id, mime: file.mime },
+      upload: { ...attachment, file_id: optimistic.id, mime: file.mime },
     });
     // Con red (falló otra cosa) se reintenta ya: si el servidor lo rechaza sale "No enviado"
     if (navigator.onLine) void messageOutbox.flush().catch(() => undefined);

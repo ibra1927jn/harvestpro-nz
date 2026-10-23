@@ -27,7 +27,7 @@ vi.mock('@/utils/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error
 
 import { useQC } from './useQC';
 import { db } from '@/services/db';
-import { pendingFiles, PENDING_FILES_MAX_BYTES } from '@/services/pending-files.service';
+import { pendingFiles, PENDING_FILES_MAX_BYTES } from '@/services/pending-uploads.service';
 
 const setOnline = (v: boolean) => Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => v });
 const photo = () => new Blob(['webp-bytes'], { type: 'image/webp' });

@@ -20,14 +20,14 @@ vi.mock('./chat-attachments.service', () => ({
 
 import { db } from './db';
 import { messageOutbox } from './message-outbox.service';
-import { pendingFiles } from './pending-files.service';
+import { pendingFiles } from './pending-uploads.service';
 
 const queued = async (id: string) => {
     await pendingFiles.put(id, 'chat', new Blob(['voice'], { type: 'audio/webm' }));
     await messageOutbox.queue({
         id, channel_type: 'direct', recipient_id: 'conv-1', sender_id: 'u1', content: '',
         timestamp: '2026-10-23T10:00:00+13:00',
-        attachment: { file_id: id, path: `conv-1/${id}.webm`, type: 'audio', mime: 'audio/webm', size: 5, duration_ms: 4200 },
+        upload: { file_id: id, path: `conv-1/${id}.webm`, type: 'audio', mime: 'audio/webm', size: 5, duration_ms: 4200 },
     });
 };
 
@@ -61,10 +61,10 @@ describe('messageOutbox with attachments', () => {
     it('the attachment details are encrypted in the queue like the text', async () => {
         await queued('m1');
         const raw = await db.message_queue.get('m1');
-        expect(typeof raw?.attachment).toBe('string');
-        expect(String(raw?.attachment)).toMatch(/^v2:/);
+        expect(typeof raw?.upload).toBe('string');
+        expect(String(raw?.upload)).toMatch(/^v2:/);
         const [shown] = await messageOutbox.forConversation('conv-1');
-        expect(shown.attachment?.path).toBe('conv-1/m1.webm');
+        expect(shown.upload?.path).toBe('conv-1/m1.webm');
     });
 
     it('no signal while uploading: message and file stay on the phone', async () => {

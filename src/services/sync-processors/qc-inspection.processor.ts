@@ -1,5 +1,5 @@
 import { qcRepository } from '@/repositories/qc.repository';
-import { pendingFiles } from '../pending-files.service';
+import { pendingFiles } from '../pending-uploads.service';
 import { logger } from '@/utils/logger';
 import type { QCInspectionPayload } from './types';
 

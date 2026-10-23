@@ -260,8 +260,8 @@ const SENSITIVE_FIELDS: Record<string, string[]> = {
   user_cache: ['profile', 'roster'],
   settings_cache: ['settings'],
   bucket_queue: ['scanned_by'],
-  // attachment: nombre del archivo y ruta (los bytes van cifrados en pending_files)
-  message_queue: ['content', 'attachment'],
+  // upload: adjunto (nombre del archivo y ruta; los bytes van cifrados en pending_files)
+  message_queue: ['content', 'upload'],
 };
 
 /**

@@ -44,7 +44,7 @@ vi.mock('@/services/message-outbox.service', () => ({
 
 import { MessagingProvider, useMessaging } from './MessagingContext';
 import { db } from '@/services/db';
-import { pendingFiles, PENDING_FILES_MAX_BYTES } from '@/services/pending-files.service';
+import { pendingFiles, PENDING_FILES_MAX_BYTES } from '@/services/pending-uploads.service';
 
 const wrapper = ({ children }: { children: React.ReactNode }) => <MessagingProvider>{children}</MessagingProvider>;
 const setOnline = (v: boolean) => Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => v });
@@ -95,7 +95,7 @@ describe('sendAttachment', () => {
         expect(await pendingFiles.has(id)).toBe(true);
         expect(mocks.queue).toHaveBeenCalledWith(expect.objectContaining({
             id, recipient_id: 'conv-1', content: '',
-            attachment: expect.objectContaining({ file_id: id, path: `conv-1/${id}.webm`, type: 'audio', mime: 'audio/webm', duration_ms: 4200 }),
+            upload: expect.objectContaining({ file_id: id, path: `conv-1/${id}.webm`, type: 'audio', mime: 'audio/webm', duration_ms: 4200 }),
         }));
     });
 
