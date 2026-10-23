@@ -376,6 +376,8 @@ export function setupRealtimeSubscriptions(
       },
       payload => {
         if (document.hidden) return;
+        // Nómina y fichajes se refrescan con esto (useAttendanceLiveRefresh, como mucho 1/min)
+        set({ attendanceChangedAt: Date.now() });
         const todayStr = todayNZST();
         const attendanceRecord = payload.new as AttendanceRecord;
         if (attendanceRecord && attendanceRecord.date === todayStr) {

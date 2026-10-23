@@ -41,6 +41,8 @@ const comms: TranslationDict = {
     'comms.presence.on_leave': 'ʻI he mālōlō',
     'comms.presence.not_in': 'Teʻeki lēsisita he ʻaho ni',
     'comms.team_presence': '{in}/{total} kuo lēsisita · {brk} mālōlō nounou · {leave} mālōlō',
+    'comms.pay_showing': 'ʻOku fakahā ʻa e {n} ʻi he {total} kau ngāue',
+    'comms.pay_show_all': 'Fakahā kotoa ({total})',
 };
 
 export default comms;

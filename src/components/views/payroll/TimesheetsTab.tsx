@@ -11,6 +11,7 @@ import { logger } from '@/utils/logger';
 import { nzClock } from './payrollTabsLogic';
 import { useTranslation } from '@/i18n';
 import { useLeaveOnDay } from '@/hooks/useLeave';
+import { useAttendanceLiveRefresh } from '@/hooks/useAttendanceLiveRefresh';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 
 /* ── Timesheets Tab ── */
@@ -44,9 +45,10 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
         setTimeout(() => setToast(null), 3000);
     };
 
-    const loadTimesheets = async () => {
+    /** soft: refresco en vivo, sin el indicador de carga (la lista sigue en pantalla) */
+    const loadTimesheets = async (soft = false) => {
         if (!orchardId) { setIsLoading(false); return; }
-        setIsLoading(true);
+        if (!soft) setIsLoading(true);
         const data = await payrollService.fetchTimesheets(orchardId);
         setTimesheets(data);
         setIsLoading(false);
@@ -54,6 +56,8 @@ export const TimesheetsTab: React.FC<{ orchardId?: string }> = ({ orchardId }) =
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { loadTimesheets(); }, [orchardId]);
+    // En vivo: un fichaje nuevo o corregido (realtime de daily_attendance) o volver a la pestaña
+    useAttendanceLiveRefresh(() => { void loadTimesheets(true); }, { enabled: !!orchardId });
 
     /** Semana de pago cerrada: mensaje propio (si no, el genérico) */
     const failureMessage = (err: unknown, fallbackKey: 'pay.ts.approve_failed' | 'pay.ts.reject_failed', name: string) =>

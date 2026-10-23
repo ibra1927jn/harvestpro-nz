@@ -41,6 +41,8 @@ const comms: TranslationDict = {
     'comms.presence.on_leave': 'छुट्टी पर',
     'comms.presence.not_in': 'आज नहीं आए',
     'comms.team_presence': '{in}/{total} हाज़िर · {brk} विश्राम पर · {leave} छुट्टी पर',
+    'comms.pay_showing': '{total} में से {n} कर्मचारी दिखाए जा रहे हैं',
+    'comms.pay_show_all': 'सब दिखाएँ ({total})',
 };
 
 export default comms;

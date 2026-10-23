@@ -21,18 +21,6 @@ vi.mock('@/repositories/attendance.repository', () => ({
   },
 }));
 
-vi.mock('react-virtuoso', () => ({
-  TableVirtuoso: ({ data }: { data: unknown[] }) => (
-    <table data-testid="virtuoso-table">
-      <tbody>
-        <tr>
-          <td>{data?.length ?? 0} rows</td>
-        </tr>
-      </tbody>
-    </table>
-  ),
-}));
-
 import { SummaryCard, PayrollDashboard } from './PayrollTabs';
 
 describe('SummaryCard', () => {
@@ -73,16 +61,16 @@ describe('PayrollDashboard', () => {
         picker_id: 'p1',
         picker_name: 'Alice',
         buckets: 10,
-        hours: 8,
-        piece_pay: 70,
-        hourly_pay: 200,
-        gross_pay: 200,
-        wage_shield: true,
-        rate_per_bucket: 7,
+        hours_worked: 8,
+        piece_rate_earnings: 70,
+        top_up_required: 130,
+        total_earnings: 200,
+        is_below_minimum: true,
       },
     ];
     render(<PayrollDashboard pickers={pickers as never[]} settings={settings} />);
     expect(screen.getByText('Picker Breakdown')).toBeDefined();
+    expect(screen.getByText('Alice')).toBeDefined();
   });
 
   it('renders rate info', () => {

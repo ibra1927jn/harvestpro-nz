@@ -41,6 +41,8 @@ const comms: TranslationDict = {
     'comms.presence.on_leave': 'Naka-leave',
     'comms.presence.not_in': 'Hindi pa pumapasok',
     'comms.team_presence': '{in}/{total} naka-clock in · {brk} naka-break · {leave} naka-leave',
+    'comms.pay_showing': 'Ipinapakita ang {n} sa {total} manggagawa',
+    'comms.pay_show_all': 'Ipakita lahat ({total})',
 };
 
 export default comms;

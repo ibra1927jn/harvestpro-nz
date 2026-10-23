@@ -41,6 +41,8 @@ const comms: TranslationDict = {
     'comms.presence.on_leave': 'I te wehe',
     'comms.presence.not_in': 'Kāore anō kia tae mai',
     'comms.team_presence': '{in}/{total} kua tae · {brk} e whakatā · {leave} i te wehe',
+    'comms.pay_showing': 'E whakaatu ana i te {n} o te {total} kaimahi',
+    'comms.pay_show_all': 'Whakaaturia katoa ({total})',
 };
 
 export default comms;

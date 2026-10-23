@@ -41,6 +41,8 @@ const comms: TranslationDict = {
     'comms.presence.on_leave': 'On leave',
     'comms.presence.not_in': 'Not in today',
     'comms.team_presence': '{in}/{total} in · {brk} on break · {leave} on leave',
+    'comms.pay_showing': 'Showing {n} of {total} workers',
+    'comms.pay_show_all': 'Show all ({total})',
 };
 
 export default comms;

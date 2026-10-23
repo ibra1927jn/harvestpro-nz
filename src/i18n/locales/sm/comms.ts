@@ -41,6 +41,8 @@ const comms: TranslationDict = {
     'comms.presence.on_leave': 'I le malologa',
     'comms.presence.not_in': 'E leʻi resitala i le aso',
     'comms.team_presence': '{in}/{total} ua resitala · {brk} malologa puupuu · {leave} malologa',
+    'comms.pay_showing': 'Faʻaali {n} mai le {total} tagata faigaluega',
+    'comms.pay_show_all': 'Faʻaali uma ({total})',
 };
 
 export default comms;
