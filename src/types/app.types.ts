@@ -76,6 +76,11 @@ export interface Picker {
   shifts?: AttendanceShift[];
   /** Si ahora mismo está trabajando en OTRO huerto de la empresa */
   elsewhere?: { orchard_id: string; orchard_name: string; since?: string | null } | null;
+  /**
+   * En descanso ahora, según presence_today (para quien no puede leer los
+   * fichajes de esta persona: runner, QC, logística, otro equipo)
+   */
+  on_break_now?: boolean;
   archived_at?: string; // Timestamp when picker was archived (soft delete)
 }
 
