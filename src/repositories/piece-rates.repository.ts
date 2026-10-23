@@ -122,12 +122,17 @@ export const pieceRatesRepository = {
         if (error) throw new Error(error.message);
     },
 
-    /** Variedades distintas de las filas del huerto (block_rows) */
+    /**
+     * Variedades distintas de las filas del huerto (block_rows) de su temporada
+     * ACTIVA: las de temporadas cerradas ya no se cosechan y no llevan precio hoy.
+     */
     async loadOrchardVarieties(orchardId: string): Promise<string[]> {
         const rows = await fetchAllRows<{ id: string; variety: string | null }>((a, b) => supabase
             .from('block_rows')
-            .select('id, variety, orchard_blocks!inner(orchard_id)')
+            .select('id, variety, orchard_blocks!inner(orchard_id, deleted_at, harvest_seasons!inner(status))')
             .eq('orchard_blocks.orchard_id', orchardId)
+            .is('orchard_blocks.deleted_at', null)
+            .eq('orchard_blocks.harvest_seasons.status', 'active')
             .is('deleted_at', null)
             .order('id')
             .range(a, b));
