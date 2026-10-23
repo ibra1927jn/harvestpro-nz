@@ -20,7 +20,7 @@
  */
 import { test, expect, type Browser, type Page } from '@playwright/test';
 import {
-    cleanupShared, detectMode, lit, orchardIdByName, provisionLikeSignup, serverEnforcesMfa, sql, type FreshMode,
+    cleanupShared, detectMode, lit, orchardIdByName, orphanCount, provisionLikeSignup, serverEnforcesMfa, sql, type FreshMode,
 } from './fresh-company/db';
 
 const RUN = Date.now().toString(36);
@@ -40,15 +40,29 @@ let mode: FreshMode = 'fresh';
 let orchardId: string | null = null;
 const invites: Record<string, string> = {};
 
+let orphansBefore = 0;
+
 test.beforeAll(() => {
-    test.skip(serverEnforcesMfa(), 'The server enforces 2FA: run with the development settings (scripts/dev-disable-mfa.sql)');
+    const mfaOn = serverEnforcesMfa();
+    // En la CI una precondición que falta es un fallo (si no, el test se saltaría y saldría «verde»)
+    if (mfaOn && process.env.CI) {
+        throw new Error('The server enforces 2FA: the CI job must apply scripts/dev-disable-mfa.sql after the reset');
+    }
+    test.skip(mfaOn, 'The server enforces 2FA: run with the development settings (scripts/dev-disable-mfa.sql)');
     mode = detectMode();
+    if (mode === 'shared') orphansBefore = orphanCount();
 });
 
 test.afterAll(() => {
-    // Solo en la base compartida: borrar lo creado por la prueba
+    // Solo en la base compartida: borrar lo creado por la prueba y comprobar que no queda nada
     if (mode === 'shared' && orchardId && !process.env.E2E_FRESH_KEEP) {
-        cleanupShared(orchardId, Object.values(people).map(p => p.email));
+        const emails = Object.values(people).map(p => p.email);
+        cleanupShared(orchardId, emails);
+        expect(sql(`select count(*) from public.orchards where id = ${lit(orchardId)}`)).toEqual(['0']);
+        expect(sql(`select count(*) from auth.users where lower(email) in (${emails.map(e => lit(e.toLowerCase())).join(', ')})`)).toEqual(['0']);
+        expect(sql(`select count(*) from public.pickers where picker_id = ${lit(PICKER.code)}`)).toEqual(['0']);
+        // Ninguna fila hija huérfana (cubetas, fichajes, filas, chat, auditoría…)
+        expect(orphanCount()).toBe(orphansBefore);
     }
 });
 

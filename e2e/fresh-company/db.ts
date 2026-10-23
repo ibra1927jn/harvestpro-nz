@@ -70,40 +70,83 @@ export function orchardIdByName(name: string): string | null {
     return id ?? null;
 }
 
+/** Claves ajenas de una columna (hijo → padre) de public y auth */
+const FK_SQL = `
+    SELECT con.conrelid::regclass::text AS child, a.attname AS col, con.confrelid::regclass::text AS parent,
+           pa.attname AS pcol,
+           EXISTS (SELECT 1 FROM pg_attribute x WHERE x.attrelid = con.conrelid AND x.attname = 'id' AND NOT x.attisdropped) AS child_has_id
+    FROM pg_constraint con
+    JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = con.conkey[1]
+    JOIN pg_attribute pa ON pa.attrelid = con.confrelid AND pa.attnum = con.confkey[1]
+    JOIN pg_namespace n ON n.oid = (SELECT relnamespace FROM pg_class WHERE oid = con.conrelid)
+    WHERE con.contype = 'f' AND array_length(con.conkey, 1) = 1 AND n.nspname IN ('public', 'auth')`;
+
 /**
- * Borra el huerto de la prueba y las cuentas creadas (solo esos ids). Sin
- * disparadores ni claves ajenas durante el borrado (session_replication_role),
- * así que se borra explícitamente cada tabla que apunta a ellos.
+ * Filas «huérfanas» por clave ajena (el hijo apunta a un padre que no existe).
+ * Sirve para comprobar que la limpieza no deja restos: el total no puede subir.
+ */
+export function orphanCount(): number {
+    const [n] = sql(`
+DO $$
+DECLARE r record; v bigint; v_total bigint := 0;
+BEGIN
+    FOR r IN ${FK_SQL} LOOP
+        EXECUTE format('SELECT count(*) FROM %s c WHERE c.%I IS NOT NULL AND NOT EXISTS (SELECT 1 FROM %s p WHERE p.%I = c.%I)',
+                       r.child, r.col, r.parent, r.pcol, r.col) INTO v;
+        v_total := v_total + v;
+    END LOOP;
+    PERFORM set_config('e2e.orphans', v_total::text, false);
+END $$;
+SELECT current_setting('e2e.orphans');`);
+    return Number(n);
+}
+
+/**
+ * Borra el huerto de la prueba, las cuentas creadas y TODO lo que cuelga de
+ * ellos (siguiendo las claves ajenas hasta el final: cubetas, fichajes,
+ * pickers, filas, chat, auditoría…). Solo esos ids; los datos demo no se tocan.
+ * Se borra sin disparadores (session_replication_role), así que primero se
+ * recoge el árbol completo de filas a borrar.
  */
 export function cleanupShared(orchardId: string, emails: readonly string[]): void {
-    const emailList = emails.map(lit).join(', ');
+    const emailList = emails.map(e => lit(e.toLowerCase())).join(', ');
     sql(`
 DO $$
 DECLARE
-    v_orchard uuid := ${lit(orchardId)};
-    v_users uuid[] := ARRAY(SELECT id FROM auth.users WHERE lower(email) IN (${emailList.toLowerCase()}));
     r record;
+    v_added bigint;
+    v_prev bigint := -1;
+    v_round int := 0;
 BEGIN
+    CREATE TEMP TABLE e2e_del (tbl text, id text, PRIMARY KEY (tbl, id)) ON COMMIT DROP;
+    INSERT INTO e2e_del VALUES ('orchards', ${lit(orchardId)});
+    INSERT INTO e2e_del SELECT 'users', id::text FROM public.users WHERE lower(email) IN (${emailList}) ON CONFLICT DO NOTHING;
+    INSERT INTO e2e_del SELECT 'auth.users', id::text FROM auth.users WHERE lower(email) IN (${emailList}) ON CONFLICT DO NOTHING;
+    INSERT INTO e2e_del SELECT 'allowed_registrations', id::text FROM public.allowed_registrations WHERE lower(email) IN (${emailList}) ON CONFLICT DO NOTHING;
+    -- Hijos de lo recogido, hasta que no salga nada nuevo
+    LOOP
+        v_added := 0;
+        v_round := v_round + 1;
+        FOR r IN ${FK_SQL} LOOP
+            IF r.child_has_id THEN
+                EXECUTE format('INSERT INTO e2e_del SELECT %L, c.id::text FROM %s c WHERE c.%I::text IN (SELECT id FROM e2e_del WHERE tbl = %L) ON CONFLICT DO NOTHING',
+                               r.child, r.child, r.col, r.parent);
+            END IF;
+        END LOOP;
+        SELECT count(*) INTO v_added FROM e2e_del;
+        EXIT WHEN v_added = v_prev OR v_round > 20;
+        v_prev := v_added;
+    END LOOP;
+
     SET LOCAL session_replication_role = replica;
-    DELETE FROM public.block_rows WHERE block_id IN (SELECT id FROM public.orchard_blocks WHERE orchard_id = v_orchard);
-    -- Tablas con orchard_id
-    FOR r IN SELECT c.table_name FROM information_schema.columns c
-             JOIN information_schema.tables t ON t.table_schema = c.table_schema AND t.table_name = c.table_name AND t.table_type = 'BASE TABLE'
-             WHERE c.table_schema = 'public' AND c.column_name = 'orchard_id' AND c.table_name <> 'orchards' LOOP
-        EXECUTE format('DELETE FROM public.%I WHERE orchard_id = $1', r.table_name) USING v_orchard;
+    -- Hojas sin columna id (p. ej. claves compuestas): por su clave ajena
+    FOR r IN ${FK_SQL} LOOP
+        IF NOT r.child_has_id THEN
+            EXECUTE format('DELETE FROM %s c WHERE c.%I::text IN (SELECT id FROM e2e_del WHERE tbl = %L)', r.child, r.col, r.parent);
+        END IF;
     END LOOP;
-    -- Columnas que apuntan a las cuentas de la prueba (public.users / auth.users)
-    FOR r IN SELECT con.conrelid::regclass AS tbl, a.attname AS col
-             FROM pg_constraint con
-             JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = con.conkey[1]
-             WHERE con.contype = 'f' AND con.confrelid IN ('public.users'::regclass, 'auth.users'::regclass)
-               AND array_length(con.conkey, 1) = 1 LOOP
-        EXECUTE format('DELETE FROM %s WHERE %I = ANY ($1)', r.tbl, r.col) USING v_users;
+    FOR r IN SELECT DISTINCT tbl FROM e2e_del LOOP
+        EXECUTE format('DELETE FROM %s t WHERE t.id::text IN (SELECT id FROM e2e_del WHERE tbl = %L)', r.tbl, r.tbl);
     END LOOP;
-    DELETE FROM public.allowed_registrations WHERE lower(email) IN (${emailList.toLowerCase()});
-    DELETE FROM public.users WHERE id = ANY (v_users);
-    DELETE FROM auth.identities WHERE user_id = ANY (v_users);
-    DELETE FROM auth.users WHERE id = ANY (v_users);
-    DELETE FROM public.orchards WHERE id = v_orchard;
 END $$;`);
 }
