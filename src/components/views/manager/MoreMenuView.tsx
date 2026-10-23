@@ -17,6 +17,7 @@ interface MoreMenuItem {
 const MENU_ITEMS: MoreMenuItem[] = [
     { id: 'insights', label: 'nav.insights', icon: 'insights', description: 'mgr.more.insights_desc', color: 'bg-purple-500' },
     { id: 'messaging', label: 'nav.messaging', icon: 'chat', description: 'mgr.more.messaging_desc', color: 'bg-emerald-500' },
+    { id: 'structure', label: 'nav.structure', icon: 'grid_view', description: 'mgr.more.structure_desc', color: 'bg-emerald-600' },
     { id: 'settings', label: 'nav.settings', icon: 'settings', description: 'mgr.more.settings_desc', color: 'bg-slate-500' },
 ];
 

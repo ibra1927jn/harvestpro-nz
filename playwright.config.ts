@@ -46,6 +46,8 @@ const isRemote = ENV === 'staging' || ENV === 'production';
 
 export default defineConfig({
   testDir: './e2e',
+  // «Empresa desde cero» va aparte (npm run test:e2e:fresh): crea y borra su propio huerto
+  testIgnore: ['**/fresh-company.spec.ts'],
   ...(SMOKE_ONLY ? { testMatch: '**/smoke.spec.ts' } : {}),
 
   fullyParallel: !isRemote,

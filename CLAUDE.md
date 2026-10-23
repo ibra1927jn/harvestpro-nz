@@ -76,6 +76,12 @@ Version: 9.9.0
 - BD: `scripts/test-db-security.sh` (RLS, SECURITY DEFINER; supabase/tests/security/*.sql con ROLLBACK).
 - E2E Playwright: ~31 specs en e2e/ (`npm run test:e2e`) y 9 móviles en e2e/mobile
   (`npm run test:e2e:mobile`, puerto 3000 o `MOBILE_PORT`; reutiliza un servidor ya levantado).
+- «Empresa desde cero»: `npm run test:e2e:fresh` (playwright.fresh.config.ts, e2e/fresh-company.spec.ts):
+  alta del primer admin → temporada, bloques y filas → invitaciones → registro de manager/TL/runner →
+  fichaje → cubeta → el manager la ve. Base vacía (CI): alta real por /signup. Base con la demo: crea un
+  huerto aparte con la clave de servicio y al final borra solo lo suyo (`E2E_FRESH_KEEP=1` lo deja).
+  Necesita psql (`DB_URL`), 2FA apagado (VITE_MFA_ENFORCE=false + scripts/dev-disable-mfa.sql; si no, se
+  salta) y `E2E_BASE_URL` / `PW_CHROMIUM_PATH` opcionales.
 - `npm run perf:budget` tras `vite build`: tamaño inicial por ruta, chunks prohibidos, precache SW.
 - Storybook para componentes UI
 
@@ -148,6 +154,11 @@ Version: 9.9.0
 - `main` al día (antes la pila de ramas iba 254 commits por delante). Trabajo nuevo: ramas cortas que se fusionan en 1–2 días, nunca apiladas.
 - Sin usuarios reales todavía. Una instalación = una empresa con varios huertos.
 - Auditoría externa y pendientes: `docs/audits/2026-10-16-external-audit.md`.
+- Estructura del huerto (temporadas, bloques, filas): pantalla `components/views/orchard-structure/`
+  (Admin › Orchard setup, cualquier huerto; Manager › Orchard setup, el suyo). Migración
+  20261024010000: sin DELETE (se archiva), número de fila único por temporada, totales de bloque y huerto
+  automáticos, `activate_harvest_season` / `close_harvest_season` / `copy_season_structure` /
+  `add_block_rows`; el asistente de huerto nuevo (`setup_orchard_atomic`) crea temporada, bloques y filas.
 - Reglas de equipos: el team leader solo gestiona su equipo y puede coger a gente sin equipo; mover, soltar, dar de baja o borrar es de RRHH/admin; el manager mueve equipos de fila (migración 20261016000000_picker_team_rules).
 - Nómina: la app calcula bruto y horas y exporta a Xero/PaySauce. El 8% de holiday pay de casuales, PAYE, KiwiSaver, ACC y las nóminas los hace el programa de nóminas (decisión del dueño, 2026-10-16).
 - Salario mínimo: tabla con fechas `NZ_MIN_WAGE_HISTORY` en src/services/harvestMetrics/pay.ts (copiar igual a supabase/functions/_shared/pay-rules.ts). Cada año, cuando se publique el Minimum Wage Order, añadir la fila con fecha 1 de abril. No volver a escribir 23.95 a mano: usar `PAY_RULES.minWageFloor` o `minWageFloorOn(fecha)`.

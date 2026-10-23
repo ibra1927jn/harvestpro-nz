@@ -33,6 +33,7 @@ const MessagingView = React.lazy(() => import('@/components/views/manager/Messag
 const MapToggleView = React.lazy(() => import('@/components/views/manager/MapToggleView'));
 const InsightsView = React.lazy(() => import('@/components/views/manager/InsightsView'));
 const SettingsView = React.lazy(() => import('@/components/views/manager/SettingsView'));
+const OrchardStructureView = React.lazy(() => import('@/components/views/orchard-structure/OrchardStructureView'));
 
 import { PickerDrawer as PickerProfileDrawer } from '@/components/PickerDrawer';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
@@ -80,6 +81,9 @@ const Manager = () => {
   } = useManagerActions();
 
   const openPickerProfile = useHarvestStore(s => s.openPickerProfile);
+  // Huerto sin bloques/filas en temporada activa: aviso con enlace a «Estructura del huerto»
+  const orchardBlockCount = useHarvestStore(s => (s.orchardBlocks ?? []).length);
+  const blocksLoading = useHarvestStore(s => s.blocksLoading);
   const { t } = useTranslation();
   // Confirmaciones de la página (asignar fila: el modal ya se ha cerrado)
   const { toast, showToast, hideToast } = useToast();
@@ -214,6 +218,15 @@ const Manager = () => {
           </ComponentErrorBoundary>
         );
 
+      case 'structure':
+        return (
+          <ComponentErrorBoundary componentName="Orchard setup">
+            <Suspense fallback={<TabLoader />}>
+              <OrchardStructureView orchardId={orchard?.id} orchardName={orchard?.name} />
+            </Suspense>
+          </ComponentErrorBoundary>
+        );
+
       case 'insights':
       case 'analytics':
       case 'reports':
@@ -260,6 +273,20 @@ const Manager = () => {
     </>
   );
 
+  /* ── Aviso: huerto sin filas (no se puede trabajar el mapa ni los precios por variedad) ── */
+  const renderNoRowsBanner = () => {
+    if (activeTab !== 'dashboard' || blocksLoading || orchardBlockCount > 0 || !orchard?.id) return null;
+    return (
+      <div className="mx-4 mt-4 md:mx-0 md:mt-0 md:mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" data-testid="no-rows-banner">
+        <span aria-hidden="true" className="material-symbols-outlined text-amber-600">grid_view</span>
+        <p className="flex-1 min-w-[12rem]">{t('mgr.no_rows_banner')}</p>
+        <button type="button" onClick={() => setActiveTab('structure')} className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700">
+          {t('mgr.no_rows_cta')}
+        </button>
+      </div>
+    );
+  };
+
   /* ── Broadcast FAB ──────────────────────────────────── */
   const renderBroadcastFAB = () => {
     if (activeTab === 'map' || activeTab === 'messaging') return null;
@@ -285,6 +312,10 @@ const Manager = () => {
           setOnboardingDone(true);
           fetchGlobalData();
         }}
+        onOpenStructure={() => {
+          setOnboardingDone(true);
+          setActiveTab('structure');
+        }}
       />
     );
   }
@@ -302,6 +333,7 @@ const Manager = () => {
           accentColor="#16a34a"
         >
           <div key={activeTab} className="animate-scale-in">
+            {renderNoRowsBanner()}
             {renderContent()}
           </div>
         </DesktopLayout>
@@ -325,6 +357,7 @@ const Manager = () => {
       {/* Content — animate on tab switch */}
       <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto outline-none">
         <div key={activeTab} className="animate-scale-in">
+          {renderNoRowsBanner()}
           {renderContent()}
         </div>
       </main>

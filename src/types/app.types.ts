@@ -25,6 +25,7 @@ export type Tab =
   | 'insights'
   | 'mpi'
   | 'api-keys'
+  | 'structure'
   | 'more';
 
 export interface AppUser {
