@@ -24,6 +24,13 @@ import {
  * Actions:
  * - check_in:      Open a work shift (closes an open one in another orchard)
  * - check_out:     Record checkout time + paid hours (unpaid 30-min break deducted)
+ * - break_start / break_end: meal break from the roll call (one per shift)
+ *
+ * Roll call without signal: the phone queues check_in / check_out / breaks with
+ * the phone time (`at`) and, for check_in, the shift id it generated
+ * (`client_id`). Retrying is idempotent: the same check_in returns the same
+ * shift, a second check_out or break_end changes nothing. Every response carries
+ * `server_time` so the phone can measure its clock skew.
  * - correct:       Timesheet correction with audit trail
  * - correct_batch: The same correction applied to up to 200 timesheets at once
  *                  (one audit row per timesheet, per-item results, a failing
@@ -79,7 +86,7 @@ async function applyCorrection(
     // las horas pagables con el cálculo único (pay-rules.ts)
     const { data: existing, error: fetchExistingErr } = await supabase
         .from('daily_attendance')
-        .select('picker_id, orchard_id, check_in, check_out, break_start, break_minutes')
+        .select('picker_id, orchard_id, check_in, check_out, break_start, break_end, break_minutes')
         .eq('id', attendance_id)
         .single()
 
@@ -88,6 +95,13 @@ async function applyCorrection(
     }
 
     await assertCanTouchPicker(serviceDb, caller, { pickerId: existing.picker_id, orchardId: existing.orchard_id })
+
+    // Descanso corregido a mano: su fin es inicio + minutos anotados (si no,
+    // el pase de lista lo daría por «en descanso»); quitado: sin fin
+    if (break_start === null) updatePayload.break_end = null
+    else if (break_start) {
+        updatePayload.break_end = new Date(Date.parse(break_start) + (existing.break_minutes ?? 30) * 60_000).toISOString()
+    }
 
     const ci = check_in || existing?.check_in
     const co = check_out || existing?.check_out
@@ -135,6 +149,64 @@ async function applyCorrection(
     console.info(`[Attendance] Correction applied: id=${attendance_id}, by=${userId}`)
 }
 
+/** Hora del móvil aceptada: hasta 5 min en el futuro y 36 h en el pasado (cola sin red) */
+const MAX_FUTURE_MS = 5 * 60_000
+const MAX_PAST_MS = 36 * 3_600_000
+
+function resolveAt(at: string | undefined, nowMs = Date.now()): string {
+    if (!at) return new Date(nowMs).toISOString()
+    const ms = Date.parse(at)
+    if (Number.isNaN(ms) || ms > nowMs + MAX_FUTURE_MS || ms < nowMs - MAX_PAST_MS) {
+        throw new AuthError('TIME_OUT_OF_RANGE: the phone time is too far from the server time. Check the phone clock and correct it in Timesheet.', 422)
+    }
+    return new Date(ms).toISOString()
+}
+
+/** Día en Nueva Zelanda de un instante */
+function nzDate(iso: string): string {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' }).format(new Date(iso))
+}
+
+const BREAK_MAX_MINUTES = 120
+
+/** Minutos de descanso entre dos instantes (0–120, lo que admite la tabla) */
+function breakMinutesBetween(startIso: string, endIso: string): number {
+    const minutes = Math.round((Date.parse(endIso) - Date.parse(startIso)) / 60_000)
+    return Math.max(0, Math.min(BREAK_MAX_MINUTES, minutes))
+}
+
+interface ShiftRow {
+    id: string
+    picker_id: string
+    orchard_id: string
+    date: string
+    check_in: string | null
+    check_out: string | null
+    break_start: string | null
+    break_end: string | null
+    break_minutes: number | null
+    hours_worked: number | null
+}
+
+const SHIFT_COLUMNS = 'id, picker_id, orchard_id, date, check_in, check_out, break_start, break_end, break_minutes, hours_worked'
+
+/**
+ * El tramo por id; si no existe y viene picker_id (la entrada sin red se
+ * encontró con un tramo ya abierto y no creó el suyo), el tramo abierto de esa
+ * persona ese día.
+ */
+async function findShift(db: SupabaseLike, id: string, pickerId: string | undefined, at: string): Promise<ShiftRow> {
+    const { data: byId } = await db.from('daily_attendance').select(SHIFT_COLUMNS).eq('id', id).maybeSingle()
+    if (byId) return byId as ShiftRow
+    if (pickerId) {
+        const { data: open } = await db.from('daily_attendance').select(SHIFT_COLUMNS)
+            .eq('picker_id', pickerId).eq('date', nzDate(at)).is('check_out', null).is('deleted_at', null)
+            .order('check_in', { ascending: false }).limit(1).maybeSingle()
+        if (open) return open as ShiftRow
+    }
+    throw new AuthError('SHIFT_NOT_FOUND: this check-in was not found (it may have been deleted).', 404)
+}
+
 /** Lotes de N en paralelo (un lote de 200 secuencial tardaría demasiado) */
 const BATCH_CONCURRENCY = 10
 
@@ -177,12 +249,25 @@ serve(async (req) => {
             }
             await assertCanTouchPicker(admin, caller, { pickerId: picker_id, orchardId: orchard_id })
 
-            // Get today's date in NZST
-            const today = new Intl.DateTimeFormat('en-CA', {
-                timeZone: 'Pacific/Auckland',
-            }).format(new Date())
+            // Hora del fichaje: la del móvil si viene de la cola sin red (validada)
+            const nowISO = resolveAt(input.at)
+            const today = nzDate(nowISO)
+            const serverTime = new Date().toISOString()
 
-            const nowISO = new Date().toISOString()
+            // Reintento desde la cola: ese tramo ya se creó
+            if (input.client_id) {
+                const { data: same } = await admin
+                    .from('daily_attendance')
+                    .select('id, picker_id')
+                    .eq('id', input.client_id)
+                    .maybeSingle()
+                if (same) {
+                    if (same.picker_id !== picker_id) throw new AuthError('client_id belongs to another person', 409)
+                    return jsonResponse({
+                        picker_id, status: 'present', id: same.id, already_checked_in: true, server_time: serverTime,
+                    }, origin)
+                }
+            }
 
             // Tramos: una persona puede trabajar en varios huertos el mismo día
             // (sale de A y entra en B). Como mucho un tramo abierto por día.
@@ -206,6 +291,7 @@ serve(async (req) => {
                     status: 'present',
                     id: open.id,
                     already_checked_in: true,
+                    server_time: serverTime,
                 }, origin)
             }
 
@@ -237,6 +323,7 @@ serve(async (req) => {
             const { data: attendance, error: insertErr } = await supabase
                 .from('daily_attendance')
                 .insert({
+                    ...(input.client_id ? { id: input.client_id } : {}),
                     picker_id,
                     orchard_id,
                     date: today,
@@ -263,23 +350,40 @@ serve(async (req) => {
                 id: attendance.id,
                 already_checked_in: false,
                 closed_shift_id: closedShiftId,
+                server_time: serverTime,
             }, origin)
         }
 
         // ── CHECK OUT ────────────────────────────────
         if (input.action === 'check_out') {
-            const { attendance_id } = input
-            const nowISO = new Date().toISOString()
-
-            // Fetch check-in time
-            const { data: record, error: fetchErr } = await supabase
-                .from('daily_attendance')
-                .select('id, picker_id, orchard_id, check_in, break_start, break_minutes')
-                .eq('id', attendance_id)
-                .single()
-
-            if (fetchErr || !record) throw new Error(`Attendance record not found: ${fetchErr?.message}`)
+            const nowISO = resolveAt(input.at)
+            const serverTime = new Date().toISOString()
+            const record = await findShift(supabase, input.attendance_id, input.picker_id, nowISO)
             await assertCanTouchPicker(admin, caller, { pickerId: record.picker_id, orchardId: record.orchard_id })
+
+            // Reintento desde la cola (o ya lo cerró otro): no se toca
+            if (record.check_out) {
+                return jsonResponse({
+                    id: record.id,
+                    picker_id: record.picker_id,
+                    check_out: record.check_out,
+                    hours_worked: Math.max(0, Number(record.hours_worked ?? 0)),
+                    already_checked_out: true,
+                    server_time: serverTime,
+                }, origin)
+            }
+            if (record.check_in && Date.parse(nowISO) <= Date.parse(record.check_in)) {
+                throw new AuthError('CHECK_OUT_BEFORE_CHECK_IN: the check-out time is before the check-in.', 422)
+            }
+
+            // Descanso empezado y sin terminar: termina al salir
+            const breakUpdate: Record<string, string | number> = {}
+            let breakMinutes = record.break_minutes
+            if (record.break_start && !record.break_end) {
+                breakMinutes = breakMinutesBetween(record.break_start, nowISO)
+                breakUpdate.break_end = nowISO
+                breakUpdate.break_minutes = breakMinutes
+            }
 
             // Horas pagables con el cálculo único (descanso de 30 min no pagado)
             let hoursWorked: number | undefined
@@ -288,7 +392,7 @@ serve(async (req) => {
                     checkIn: record.check_in,
                     checkOut: nowISO,
                     breakStart: record.break_start,
-                    breakMinutes: record.break_minutes,
+                    breakMinutes,
                 }).hours
             }
 
@@ -298,9 +402,10 @@ serve(async (req) => {
                 .update({
                     check_out: nowISO,
                     status: 'present',
+                    ...breakUpdate,
                     ...(hoursWorked !== undefined ? { hours_worked: hoursWorked } : {}),
                 })
-                .eq('id', attendance_id)
+                .eq('id', record.id)
                 .select('id, picker_id, check_out')
                 .single()
 
@@ -314,8 +419,81 @@ serve(async (req) => {
                 id: updated.id,
                 picker_id: updated.picker_id,
                 check_out: updated.check_out,
-                hours_worked: hoursWorked,
+                hours_worked: hoursWorked ?? 0,
+                already_checked_out: false,
+                server_time: serverTime,
             }, origin)
+        }
+
+        // ── BREAK START / END ────────────────────────
+        // Un descanso de comida por tramo, desde el pase de lista
+        if (input.action === 'break_start' || input.action === 'break_end') {
+            const nowISO = resolveAt(input.at)
+            const serverTime = new Date().toISOString()
+            const record = await findShift(supabase, input.attendance_id, input.picker_id, nowISO)
+            await assertCanTouchPicker(admin, caller, { pickerId: record.picker_id, orchardId: record.orchard_id })
+            const reply = (extra: Record<string, unknown>) => jsonResponse({
+                id: record.id, picker_id: record.picker_id, server_time: serverTime, ...extra,
+            }, origin)
+
+            let update: Record<string, string | number>
+            if (input.action === 'break_start') {
+                if (record.break_start && !record.break_end) {
+                    return reply({ break_start: record.break_start, break_end: null, already: true })
+                }
+                if (record.break_start) {
+                    throw new AuthError('BREAK_ALREADY_RECORDED: this shift already has a meal break. Change it in Timesheet.', 409)
+                }
+                if (record.check_out) {
+                    throw new AuthError('SHIFT_CLOSED: this person is already checked out.', 409)
+                }
+                if (record.check_in && Date.parse(nowISO) < Date.parse(record.check_in)) {
+                    throw new AuthError('BREAK_BEFORE_CHECK_IN: the break starts before the check-in.', 422)
+                }
+                update = { break_start: nowISO }
+            } else {
+                if (!record.break_start) {
+                    throw new AuthError('BREAK_NOT_STARTED: there is no break to end.', 409)
+                }
+                if (record.break_end) {
+                    return reply({ break_start: record.break_start, break_end: record.break_end, break_minutes: record.break_minutes, already: true })
+                }
+                const end = Date.parse(nowISO) < Date.parse(record.break_start) ? record.break_start : nowISO
+                update = { break_end: end, break_minutes: breakMinutesBetween(record.break_start, end) }
+                // Ya había salido (anotado después): las horas pagables cambian
+                if (record.check_in && record.check_out) {
+                    update.hours_worked = shiftHours({
+                        checkIn: record.check_in,
+                        checkOut: record.check_out,
+                        breakStart: record.break_start,
+                        breakMinutes: update.break_minutes as number,
+                    }).hours
+                }
+            }
+
+            const { data: saved, error: breakErr } = await supabase
+                .from('daily_attendance')
+                .update(update)
+                .eq('id', record.id)
+                .select('id, break_start, break_end, break_minutes')
+            if (breakErr) throw lockedPeriodError(breakErr.message) ?? new Error(`Failed to save the break: ${breakErr.message}`)
+            if (!saved || saved.length === 0) throw new AuthError('Not allowed to change this timesheet', 403)
+
+            await writeAudit(supabase, {
+                action: input.action,
+                table: 'daily_attendance',
+                recordId: record.id,
+                userId: user.id,
+                oldValues: { break_start: record.break_start, break_end: record.break_end, break_minutes: record.break_minutes },
+                newValues: update,
+            })
+
+            return reply({
+                break_start: saved[0].break_start,
+                break_end: saved[0].break_end,
+                break_minutes: saved[0].break_minutes,
+                already: false,
+            })
         }
 
         // ── CORRECT ──────────────────────────────────

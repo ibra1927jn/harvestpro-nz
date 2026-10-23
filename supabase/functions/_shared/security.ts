@@ -260,11 +260,27 @@ export const AttendanceCheckInSchema = z.object({
   orchard_id: z.string().uuid('orchard_id must be a valid UUID'),
   // Se ignora: quien verifica el fichaje es siempre quien llama (clientes antiguos lo mandan)
   verified_by: z.string().optional(),
+  // Pase de lista sin red: id del tramo generado en el móvil (reintentar no
+  // duplica el turno) y hora del móvil al fichar
+  client_id: z.string().uuid('client_id must be a valid UUID').optional(),
+  at: z.string().datetime({ offset: true }).optional(),
 });
 
 export const AttendanceCheckOutSchema = z.object({
   action: z.literal('check_out'),
   attendance_id: z.string().uuid('attendance_id must be a valid UUID'),
+  at: z.string().datetime({ offset: true }).optional(),
+  // Si el tramo no existe con ese id (la entrada sin red encontró uno abierto),
+  // se usa el tramo abierto de hoy de esta persona
+  picker_id: z.string().uuid('picker_id must be a valid UUID').optional(),
+});
+
+// Descanso desde el pase de lista (inicio y fin), también desde la cola sin red
+export const AttendanceBreakSchema = z.object({
+  action: z.enum(['break_start', 'break_end']),
+  attendance_id: z.string().uuid('attendance_id must be a valid UUID'),
+  at: z.string().datetime({ offset: true }).optional(),
+  picker_id: z.string().uuid('picker_id must be a valid UUID').optional(),
 });
 
 export const AttendanceCorrectionSchema = z.object({
@@ -310,6 +326,7 @@ export const AttendanceBatchCorrectionSchema = z.object({
 export const AttendanceInputSchema = z.discriminatedUnion('action', [
   AttendanceCheckInSchema,
   AttendanceCheckOutSchema,
+  AttendanceBreakSchema,
   AttendanceCorrectionSchema,
   AttendanceBatchCorrectionSchema,
 ]);
