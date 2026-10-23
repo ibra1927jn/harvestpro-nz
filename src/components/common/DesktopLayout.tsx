@@ -193,8 +193,10 @@ const DesktopLayout: React.FC<DesktopLayoutProps> = ({
 
             {/* ── Main Area ── */}
             <div className="flex-1 flex flex-col min-w-0">
-                {/* Header */}
-                <header className="h-16 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
+                {/* Header: relative z-40 para que el panel de notificaciones (dentro
+                    del header) quede por encima de las tarjetas y avisos del panel,
+                    que llevan z-index propio; los modales y cajones (z-50+) siguen encima */}
+                <header className="relative z-40 h-16 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
                     {/* Mobile hamburger */}
                     <button
                         className="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100"

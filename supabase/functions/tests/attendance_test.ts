@@ -27,6 +27,9 @@ Deno.test({ name: 'manage-attendance and approve-timesheet', ...testOpts, fn: as
         const leaderT = await makeUser('team_leader', { orchardId: orchardT })
         const managerT = await makeUser('manager', { orchardId: orchardT })
         const leaderU = await makeUser('team_leader', { orchardId: orchardU })
+        // El TL de otro huerto ya no puede fichar a alguien del equipo de leaderT
+        // (regla del 16-10): la rotación la ficha el manager del huerto U
+        const managerU = await makeUser('manager', { orchardId: orchardU })
         // `picker` es del equipo de leaderT; `other` no tiene equipo
         const picker = await makePicker(orchardT)
         must(await service.from('pickers').update({ team_leader_id: leaderT.id }).eq('id', picker.id), 'picker.team')
@@ -71,9 +74,16 @@ Deno.test({ name: 'manage-attendance and approve-timesheet', ...testOpts, fn: as
         })
 
         let shiftU = ''
-        await t.step('team leader of another orchard checks in a rotating person: previous shift auto-closed', async () => {
-            const r = await call<CheckIn>('manage-attendance', {
+        await t.step('team leader of another orchard cannot check in someone from another team', async () => {
+            const r = await call('manage-attendance', {
                 token: leaderU.token, body: { action: 'check_in', picker_id: picker.id, orchard_id: orchardU },
+            })
+            assertEquals(r.status, 403, show(r))
+        })
+
+        await t.step('manager of another orchard checks in a rotating person: previous shift auto-closed', async () => {
+            const r = await call<CheckIn>('manage-attendance', {
+                token: managerU.token, body: { action: 'check_in', picker_id: picker.id, orchard_id: orchardU },
             })
             assertEquals(r.status, 200, show(r))
             assertEquals(r.json.closed_shift_id, shiftT)
@@ -83,13 +93,13 @@ Deno.test({ name: 'manage-attendance and approve-timesheet', ...testOpts, fn: as
             assert(String(prev!.notes).includes('Auto-closed'))
             const { data: now } = must(await service.from('daily_attendance').select('orchard_id, recorded_by, verified_by').eq('id', shiftU).single(), 'now')
             assertEquals(now!.orchard_id, orchardU)
-            assertEquals(now!.recorded_by, leaderU.id)
+            assertEquals(now!.recorded_by, managerU.id)
             assertEquals(now!.verified_by, null)
         })
 
         await t.step('check_out records the time and paid hours', async () => {
             const r = await call<{ check_out: string; hours_worked: number }>('manage-attendance', {
-                token: leaderU.token, body: { action: 'check_out', attendance_id: shiftU },
+                token: managerU.token, body: { action: 'check_out', attendance_id: shiftU },
             })
             assertEquals(r.status, 200, show(r))
             assertEquals(typeof r.json.hours_worked, 'number')

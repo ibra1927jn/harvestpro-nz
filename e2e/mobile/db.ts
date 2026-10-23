@@ -56,7 +56,6 @@ export function removePicker(pickerId: string): void {
   sql(`delete from public.rejected_scans where picker_id = ${id}`);
   sql(`delete from public.bucket_records where picker_id = ${id}`);
   sql(`delete from public.qc_inspections where picker_id = ${id}`);
-  sql(`delete from public.quality_inspections where picker_id = ${id}`);
   sql(`delete from public.daily_attendance where picker_id = ${id}`);
   sql(`delete from public.pickers where id = ${id}`);
 }

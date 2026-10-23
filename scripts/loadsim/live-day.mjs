@@ -620,7 +620,6 @@ async function teamLeaderDay(d) {
   const loadAttendanceTab = async () => {
     await Promise.all([
       sb.from('pickers').select('*').or(`team_leader_id.eq.${d.id}`),
-      sb.from('pickers_performance_today').select('*'),
       sb.from('daily_attendance').select('*, picker:pickers(name, role, team_leader_id)').eq('orchard_id', d.orchard_id).eq('date', NZ_DATE).is('deleted_at', null),
     ]);
   };

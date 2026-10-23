@@ -576,7 +576,6 @@ const mockRowAssignments = PICKER_DEFS.map(([, , , currentRow, tlId], i) => ({
 
 // ─────────────────────────────────────────────
 // QC INSPECTIONS — 5 checks today
-// Uses quality_inspections schema: quality_grade (not 'grade'), picker_id (not block_row_id)
 // ─────────────────────────────────────────────
 const mockQcInspections = [
   {
@@ -931,7 +930,8 @@ const mockChatMessages = [
 // ─────────────────────────────────────────────
 // PICKERS_PERFORMANCE_TODAY (view for payroll handler)
 // ─────────────────────────────────────────────
-const mockPickersPerformanceToday = mockPickers.slice(0, PICKER_DEFS.length).map((p, i) => {
+/** Rendimiento de hoy por picker: lo usan los mocks de calculate-payroll y check-compliance */
+export const mockPickersPerformanceToday = mockPickers.slice(0, PICKER_DEFS.length).map((p, i) => {
   const [, , buckets, , , , , hoursWage] = PICKER_DEFS[i];
   // Para payroll use 6.5h por defecto; los 3 con wage issue tienen hours=8 para el wage check
   const hours_worked = hoursWage > 0 ? hoursWage : 6.5;
@@ -953,12 +953,10 @@ export const mockDatabase: Record<string, unknown[]> = {
   block_rows:                mockBlockRows,
   users:                     mockUsers,
   pickers:                   mockPickers,
-  pickers_performance_today: mockPickersPerformanceToday,
   bucket_records:            mockBucketRecords,
   daily_attendance:          mockDailyAttendance,
   row_assignments:           mockRowAssignments,
   qc_inspections:            mockQcInspections,
-  quality_inspections:       mockQcInspections,  // alias
   bins:                      mockBins,
   harvest_settings:          mockHarvestSettings,
   day_setups:                mockDaySetups,
@@ -971,13 +969,9 @@ export const mockDatabase: Record<string, unknown[]> = {
   fleet_vehicles:            [],
   transport_requests:        [],
   contracts:                 [],
-  messages:                  [],
-  sync_conflicts:            [],
   bucket_events:             [],
   scanned_stickers:          [],
   push_subscriptions:        [],
-  login_attempts:            [],
-  account_locks:             [],
   audit_logs:                [],
 };
 

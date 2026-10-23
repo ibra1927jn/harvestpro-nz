@@ -42,7 +42,7 @@ Version: 9.9.0
 - `src/constants/` — nz-law.ts (compliance legal NZ)
 
 ### Supabase
-- `supabase/migrations/` — 90 migraciones (las viejas en archive/ no se aplican)
+- `supabase/migrations/` — 90+ migraciones (las viejas en archive/ no se aplican)
 - `supabase/functions/` — 12 Edge Functions: approve-timesheet, calculate-payroll, check-compliance, close-pay-week, detect-anomalies, manage-admin, manage-attendance, provision-orchard, record-bucket, send-push, submit-audit-log, api-v1 (api-v1 sin tabla api_keys todavía)
 - Push: triggers → `notification_outbox` → `send-push` (flush) → `public/sw-push.js`; ver `docs/push-notifications.md`
 - `supabase/functions/_shared/` — pay-rules.ts (idéntico a src/services/harvestMetrics/pay.ts, lo vigila pay-parity.test.ts), payroll-calc.ts, security.ts, scan-time.ts, cors.ts
@@ -119,11 +119,40 @@ Version: 9.9.0
 
 ## CI/CD
 - 2 workflows en .github/workflows/: ci.yml, security.yml
-- CI: lint → test (5 shards) → build. Sin despliegue automático.
+- CI: lint → test (5 shards) → build. Sin despliegue automático. Solo corre en `pull_request` (y push a main).
+- Trabajos con Supabase local real (`supabase start` en el runner, CLI 2.120.0, vía `scripts/ci/local-stack.sh start`:
+  migraciones + seeds `seed_00_local_bootstrap`, `seed_2weeks_local`, `seed_role_users`, `seed_today_local`, claves
+  VAPID de prueba en `supabase/functions/.env` y `.env.local` con las claves locales):
+  - `edge-functions`: tests Deno de `supabase/functions/tests/` contra las funciones del checkout, copia y
+    restauración con `backup-local.sh` y `backup-local.ps1` (pwsh), y recuperación completa en una base vacía.
+  - `e2e`: `npm run test:e2e:smoke` (suite móvil, Pixel 7: login de los 8 roles con 2FA real, cubeta del runner
+    con y sin red, nota de QC, equipo del TL, aprobar/rechazar de nómina; build real + `vite preview` en :3000), y
+    `npm run test:e2e:fresh` («empresa desde cero») tras `local-stack.sh reset` + `disable-mfa` y con
+    `VITE_MFA_ENFORCE=false`; si el spec `e2e/fresh-company.spec.ts` no está en la rama, aviso y se salta; si está
+    y falta el script, falla.
+  - Los tests Deno van al runtime de funciones directo (`FUNCTIONS_URL` en `.env.local`): por kong el CORS no se
+    puede comprobar y en la CI eso es un fallo.
+  - `android-apk`: `vite build` + `cap sync android` + `gradlew assembleDebug` (JDK 21); APK sin firmar como artefacto.
+- En local (con tu Supabase ya levantado y `.env.local`; NO uses `local-stack.sh`, es para máquinas vacías):
+  `npm run test:functions`, `npm run test:e2e:smoke` (reutiliza un servidor en :3000 si lo hay),
+  `cd android && ./gradlew assembleDebug` tras `npx vite build && npx cap sync android`.
 - Entorno real: Supabase local en Docker (`supabase start`) + `npm run dev`. Los deploys a Hetzner y Vercel se retiraron el 2026-10-10.
 - Seeds para local, en orden: seed_00_local_bootstrap → seed_2weeks_local → seed_role_users
 - Security: OWASP ZAP scan
 - Tests en CI necesitan VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY como env vars (placeholders OK)
+
+## Copias de seguridad locales
+- `scripts/backup-local.ps1` (Windows) / `scripts/backup-local.sh`: lanzan `scripts/backup/container-dump.sh` dentro
+  del contenedor (`pg_dump --snapshot` con recuentos, huérfanas y migraciones en la misma instantánea), copian
+  Storage y secretos (Vault, `.env.local`, `supabase/functions/.env`) a una carpeta con fecha y guardan las 14
+  últimas. Copia sospechosa (base vacía o tabla clave a menos de la mitad) → `.suspect`, sin rotar, código 2.
+  `-MirrorDir` / `MIRROR_DIR`: segunda copia en otro disco.
+- `scripts/restore-local.(ps1|sh)` (`scripts/backup/container-restore.sh`): por defecto restaura en una base aparte
+  (`harvestpro_restore_check`), compara recuentos y avisa de huérfanas; `-FreshStack` / `--fresh-stack` carga la
+  copia en un Supabase nuevo y vacío (si la copia es de un esquema anterior: `db reset --version`, datos y
+  `migration up`).
+- `seed_season_simulation.sql` desactiva `trg_push_qc_inspection` mientras mete sus inspecciones (sin push).
+- Programarlo cada día con el Programador de tareas: `docs/backups-local.md`.
 
 ## Estado actual (2026-10-16)
 - `main` al día (antes la pila de ramas iba 254 commits por delante). Trabajo nuevo: ramas cortas que se fusionan en 1–2 días, nunca apiladas.
