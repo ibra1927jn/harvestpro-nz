@@ -102,6 +102,9 @@ test('1 — the first admin signs up and sets up season, blocks and rows', async
             await page.locator('#accept-privacy-checkbox').check();
             await page.locator('#onboarding-submit-btn').click();
             await expect(page.getByText('Welcome to HarvestPro NZ!')).toBeVisible({ timeout: 30_000 });
+            // El alta puede dejar la sesión abierta: se entra de nuevo con usuario y contraseña
+            await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+            await page.context().clearCookies();
             orchardId = orchardIdByName(ORCHARD);
         } else {
             ({ orchardId } = await provisionLikeSignup({ orchardName: ORCHARD, adminName: people.admin.name, email: people.admin.email, password: PASSWORD }));
