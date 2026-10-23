@@ -33,6 +33,7 @@ import sync from './sync';
 import teamLeader from './teamLeader';
 import account from './account';
 import comms from './comms';
+import orchardSetup from './orchardSetup';
 
 // Claves propias de este idioma (sin heredar de otro: el checker exige todas)
 const es: TranslationDict = {
@@ -70,6 +71,7 @@ const es: TranslationDict = {
     ...teamLeader,
     ...account,
     ...comms,
+    ...orchardSetup,
 };
 
 export default es;

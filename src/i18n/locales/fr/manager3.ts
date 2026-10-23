@@ -100,7 +100,7 @@ const manager3: TranslationDict = {
     'msetup.rate_hint': 'Compte uniquement à partir d’aujourd’hui ; les jours précédents gardent leur prix. Modifiable ensuite dans Réglages.',
     'msetup.varieties': 'Variété des rangs',
     'msetup.varieties_hint': 'Une variété par bloc (pour tous ses rangs). Les prix par variété l’utilisent.',
-    'msetup.no_blocks': 'Ce verger n’a pas encore de blocs ni de rangs. Demandez à un admin de les charger ; les variétés se règlent ensuite.',
+    'msetup.no_blocks': 'Ce verger n’a pas encore de blocs ni de rangs. Créez-les d’abord (saison, blocs et rangs) ; choisissez ensuite ici la variété de chaque bloc.',
     'msetup.block_rows': '{name} ({n} rangs)',
     'msetup.variety_of': 'Variété de {name}',
     'msetup.teams_note': 'Équipes : liez les chefs d’équipe et les runners dans Équipes → Link Staff. Les nouveaux comptes sont invités par un admin ou les RH.',

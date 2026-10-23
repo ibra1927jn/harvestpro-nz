@@ -191,9 +191,9 @@ jobs:
       - name: Smoke - every role signs in, one key action per role
         run: npm run test:e2e:smoke
       # Spec «empresa desde cero» (encargo A): base recién migrada, sin seeds
-      # Spec «empresa desde cero» (encargo A, e2e/fresh-company.spec.ts). Mientras el spec no
-      # esté en la rama se avisa y se salta; si el spec está y falta el script, falla.
-      # Configuración de desarrollo: 2FA del servidor apagado y build con VITE_MFA_ENFORCE=false
+      # Spec «empresa desde cero» (encargo A, e2e/fresh-company.spec.ts). Si el spec está y falta el
+      # script, falla. Configuración de desarrollo (sin 2FA): el spec da de alta cuentas por la UI y
+      # no enrola TOTP; con el 2FA del servidor encendido FALLA en la CI (no se salta)
       - name: Company from zero (fresh database)
         env:
           VITE_MFA_ENFORCE: 'false'
@@ -208,7 +208,9 @@ jobs:
           fi
           scripts/ci/local-stack.sh reset
           scripts/ci/local-stack.sh disable-mfa
-          npm run test:e2e:fresh
+          DB_URL="$(sed -n 's/^DB_URL=//p' .env.local)"
+          test "$(psql "$DB_URL" -At -c 'select count(*) from public.orchards')" = "0"
+          DB_URL="$DB_URL" npm run test:e2e:fresh
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -216,6 +218,7 @@ jobs:
           path: |
             playwright-report-mobile/
             playwright-report/
+            playwright-report-fresh/
             test-results-mobile/
             test-results/
           retention-days: 7

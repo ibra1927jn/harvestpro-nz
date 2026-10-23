@@ -50,7 +50,8 @@ FROM unnest(ARRAY['anon', 'A.runner']) AS w;
 -- ── Funciones de usuario: sin sesión no hacen nada ──────────────────────────
 SELECT sec_test.deny('anon', 'cannot call setup_orchard_atomic()', $$SELECT setup_orchard_atomic('X', 'X')$$);
 SELECT sec_test.deny('A.manager', 'cannot create orchards', $$SELECT setup_orchard_atomic('SECTEST-X', 'X')$$);
-SELECT sec_test.allow('A.admin', 'creates an orchard', $$SELECT setup_orchard_atomic('SECTEST-X', 'X')$$);
+-- El salario mínimo lo manda el cliente (minWageFloorOn): sin él no se crea (20261024011000)
+SELECT sec_test.allow('A.admin', 'creates an orchard', $$SELECT setup_orchard_atomic('SECTEST-X', 'X', NULL, 0, '07:00', 6.5, NULL, 23.95)$$);
 SELECT sec_test.deny('anon', 'cannot read unread counts', $$SELECT * FROM my_unread_counts()$$);
 
 -- ── Cuenta dada de baja: pierde los permisos de su rol ──────────────────────
