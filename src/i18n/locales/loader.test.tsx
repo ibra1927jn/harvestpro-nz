@@ -25,7 +25,6 @@ beforeEach(() => {
 
 afterEach(() => {
     vi.doUnmock('./es');
-    vi.doUnmock('./to');
     vi.useRealTimers();
     vi.restoreAllMocks();
     localStorage.removeItem('harvestpro_locale');
@@ -42,25 +41,23 @@ describe('locale registry', () => {
         expect(locales.isLocaleLoaded('es')).toBe(true);
         expect(locales.translations.es?.['common.retry']).toBeTruthy();
         expect(locales.translations.es?.['common.retry']).not.toBe(locales.translations.en['common.retry']);
-        // Solo el pedido: no se cargan todos
-        expect(locales.isLocaleLoaded('hi')).toBe(false);
     });
 
     it('a failed load rejects and can be retried later (back online)', async () => {
         let fail = true;
-        vi.doMock('./to', async (importOriginal) => {
+        vi.doMock('./es', async (importOriginal) => {
             if (fail) throw new Error('Failed to fetch dynamically imported module');
             return importOriginal();
         });
         const { locales } = await fresh();
         // (vitest envuelve el error del mock; en el navegador es "Failed to fetch dynamically imported module")
-        await expect(locales.loadLocale('to')).rejects.toThrow();
-        expect(locales.isLocaleLoaded('to')).toBe(false);
+        await expect(locales.loadLocale('es')).rejects.toThrow();
+        expect(locales.isLocaleLoaded('es')).toBe(false);
 
         fail = false;
         vi.resetModules(); // el mock vuelve a evaluarse en el siguiente import()
-        await expect(locales.loadLocale('to')).resolves.toHaveProperty('sync.offline');
-        expect(locales.isLocaleLoaded('to')).toBe(true);
+        await expect(locales.loadLocale('es')).resolves.toHaveProperty('sync.offline');
+        expect(locales.isLocaleLoaded('es')).toBe(true);
     });
 });
 
@@ -120,10 +117,28 @@ describe('prepareInitialLocale (before first render)', () => {
         await expect(i18n.prepareInitialLocale()).resolves.toBe('en');
         expect(Object.keys(locales.translations)).toEqual(['en']);
     });
+
+    it('a language that was removed from the app (mi, sm, hi, to, tl) falls back to English, no crash', async () => {
+        for (const removed of ['mi', 'sm', 'hi', 'to', 'tl']) {
+            localStorage.setItem('harvestpro_locale', removed);
+            const { i18n, locales } = await fresh();
+            expect(locales.isLocale(removed)).toBe(false);
+            await expect(i18n.prepareInitialLocale()).resolves.toBe('en');
+            expect(i18n.getCurrentLocale()).toBe('en');
+            expect(i18n.translate('common.retry')).toBe('Retry');
+            expect(Object.keys(locales.translations)).toEqual(['en']);
+            // La app arranca en inglés
+            const { unmount } = render(React.createElement(i18n.I18nProvider, null,
+                React.createElement(() => React.createElement('p', null, i18n.useI18n().t('common.retry')))));
+            expect(screen.getByText('Retry')).toBeTruthy();
+            expect(document.documentElement.lang).toBe('en');
+            unmount();
+        }
+    });
 });
 
 describe('setLocale (language switch)', () => {
-    function Switcher({ i18n, to }: { i18n: I18nModule; to: 'es' | 'to' }) {
+    function Switcher({ i18n, to }: { i18n: I18nModule; to: 'es' }) {
         const { t, setLocale, locale } = i18n.useI18n();
         const [result, setResult] = React.useState<string>('');
         return React.createElement('div', null,
@@ -146,9 +161,9 @@ describe('setLocale (language switch)', () => {
     });
 
     it('offline and the chunk is not available: stays in the current language, no crash', async () => {
-        vi.doMock('./to', () => { throw new Error('Failed to fetch dynamically imported module'); });
+        vi.doMock('./es', () => { throw new Error('Failed to fetch dynamically imported module'); });
         const { i18n } = await fresh();
-        render(React.createElement(i18n.I18nProvider, null, React.createElement(Switcher, { i18n, to: 'to' })));
+        render(React.createElement(i18n.I18nProvider, null, React.createElement(Switcher, { i18n, to: 'es' })));
 
         fireEvent.click(screen.getByRole('button', { name: 'switch' }));
         await waitFor(() => expect(screen.getByRole('status').textContent).toBe('false'));

@@ -95,32 +95,3 @@ describe('ES locale: cobertura de claves del diccionario EN', () => {
         ).toBeGreaterThanOrEqual(80);
     });
 });
-
-// ─── Suite 4: otras locales con cobertura propia (mi, sm, hi, tl, to) ────────
-
-const FULL_LOCALES = ['mi', 'sm', 'hi', 'tl', 'to'] as const;
-// Estas locales usan ...en como base — verificamos un subconjunto de claves nav+dashboard
-
-const SPOT_CHECK_KEYS: Array<{ key: string; en: string }> = [
-    { key: 'nav.dashboard',       en: 'Dashboard' },
-    { key: 'nav.teams',           en: 'Teams' },
-    { key: 'dashboard.title',     en: 'Orchard Overview' },
-    { key: 'dashboard.velocity',  en: 'Velocity' },
-    { key: 'common.loading',      en: 'Loading…' },
-];
-
-describe('Locales con cobertura propia (mi/sm/hi/tl/to): nav + dashboard traducidos', () => {
-    for (const locale of FULL_LOCALES) {
-        for (const { key } of SPOT_CHECK_KEYS) {
-            it(`[${locale}] "${key}" está definida explícitamente en el dict (no sólo fallback)`, () => {
-                const dict = translations[locale as keyof typeof translations];
-                // La clave debe existir en el diccionario del locale (decisión consciente del traductor)
-                // Aunque el valor sea igual al EN (p.ej. "Dashboard" en tl), la clave fue puesta a propósito.
-                expect(
-                    key in dict,
-                    `[${locale}] "${key}" no está definida — cayó implícitamente al fallback EN`
-                ).toBe(true);
-            });
-        }
-    }
-});

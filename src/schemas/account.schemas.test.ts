@@ -21,10 +21,13 @@ describe('ProfileDetailsSchema', () => {
 
 describe('PreferredLocaleSchema', () => {
     it('accepts only the app locales', () => {
-        for (const code of ['en', 'es', 'mi', 'sm', 'hi', 'to', 'tl']) {
+        for (const code of ['en', 'es']) {
             expect(PreferredLocaleSchema.safeParse(code).success).toBe(true);
         }
-        expect(PreferredLocaleSchema.safeParse('fr').success).toBe(false);
+        // Idiomas retirados (2026-10-21) y cualquier otro código
+        for (const code of ['mi', 'sm', 'hi', 'to', 'tl', 'xx']) {
+            expect(PreferredLocaleSchema.safeParse(code).success).toBe(false);
+        }
         expect(PreferredLocaleSchema.safeParse('').success).toBe(false);
     });
 });

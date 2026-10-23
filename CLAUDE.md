@@ -4,7 +4,7 @@
 React 19 + TypeScript (strict, no `any`, allowJs: false) + Vite 7 + Tailwind 3
 Supabase (PostgreSQL, Edge Functions, RLS) + Capacitor 8 (Android)
 State: Zustand (7 slices) + Dexie v3 (IndexedDB offline) + TanStack React Query
-Validacion: Zod 4 | Monitoring: Sentry + PostHog (lazy) | i18n: 7 idiomas (en, es, mi, sm, to, hi, tl)
+Validacion: Zod 4 | Monitoring: Sentry + PostHog (lazy) | i18n: 2 idiomas (en, es)
 Crypto: AES-256-GCM via Web Crypto API
 Version: 9.9.0
 

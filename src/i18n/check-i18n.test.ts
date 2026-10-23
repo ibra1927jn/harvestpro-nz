@@ -101,12 +101,12 @@ describe('hard-coded user-visible strings', () => {
 });
 
 describe('this repository', () => {
-    // Si falla: añade la clave en los 7 locales, o usa t() en vez de texto a mano
+    // Si falla: añade la clave en todos los locales, o usa t() en vez de texto a mano
     // (node scripts/i18n/check-i18n.mjs --list <archivo> enseña cuáles).
     it('has every key in every locale, matching placeholders and no new hard-coded text', () => {
         const baseline = JSON.parse(readFileSync(BASELINE_FILE, 'utf8')) as Record<string, number>;
         const r = runChecks({ baseline });
         expect(failures(r)).toEqual([]);
-        expect(r.languages).toEqual(['en', 'es', 'hi', 'mi', 'sm', 'tl', 'to']);
+        expect(r.languages).toEqual(['en', 'es']);
     }, 60_000);
 });
