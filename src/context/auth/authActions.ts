@@ -96,15 +96,44 @@ export async function teardownSession(userId: string | undefined): Promise<void>
   ]);
   // U6: cerrar canales realtime ANTES de borrar la sesión
   supabase.removeAllChannels();
-  await supabase.auth.signOut();
+  // Alcance local a propósito (no 'global'): cada pestaña tiene su propia sesión
+  // (authStorageKey.ts) y 'global' cerraría también los otros móviles de la persona,
+  // que pueden tener fichajes o cubetas sin subir y quedarse sin poder entrar sin
+  // cobertura; MFAGuard además llama a signOut al cancelar el 2FA. Lo que queda en
+  // ESTE dispositivo lo borra wipeLocalData.
+  await supabase.auth.signOut({ scope: 'local' });
 }
 
-/** U6: borra Dexie y localStorage para no filtrar datos en una tablet compartida */
+/**
+ * U6: borra todo lo que la sesión deja en el dispositivo para no filtrar datos en
+ * una tablet compartida: Dexie, la Cache Storage (el service worker guarda ahí
+ * respuestas de la API en `supabase-api-cache`, además de imágenes y chunks),
+ * localStorage y sessionStorage. Cada paso es independiente: si uno falla, los
+ * demás se hacen igual.
+ */
 export async function wipeLocalData(): Promise<void> {
   try {
     await db.delete();
   } catch (e) {
     logger.error('[Auth] Dexie wipe failed:', e);
   }
-  localStorage.clear();
+  try {
+    // Sin contexto seguro (http) no existe `caches`
+    if (typeof caches !== 'undefined') {
+      const names = await caches.keys();
+      await Promise.all(names.map(name => caches.delete(name)));
+    }
+  } catch (e) {
+    logger.error('[Auth] Cache Storage wipe failed:', e);
+  }
+  try {
+    localStorage.clear();
+  } catch (e) {
+    logger.error('[Auth] localStorage wipe failed:', e);
+  }
+  try {
+    sessionStorage.clear();
+  } catch (e) {
+    logger.error('[Auth] sessionStorage wipe failed:', e);
+  }
 }
