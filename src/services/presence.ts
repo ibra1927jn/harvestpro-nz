@@ -10,6 +10,8 @@ export interface PresenceInput {
     check_in?: string | null;
     check_out?: string | null;
     checked_in_today?: boolean;
+    /** En descanso ahora según presence_today (sin acceso a los fichajes) */
+    on_break_now?: boolean;
     break_start?: string | null;
     break_minutes?: number | null;
     status?: string | null;
@@ -27,7 +29,7 @@ export const DEFAULT_BREAK_MINUTES = 30;
 export function presenceOf(p: PresenceInput, onLeave: boolean, now: Date = new Date()): Presence {
     const open = !!p.check_in && !p.check_out;
     if (open) {
-        if (p.status === 'on_break' || p.status === 'break') return 'on_break';
+        if (p.on_break_now || p.status === 'on_break' || p.status === 'break') return 'on_break';
         if (p.break_start) {
             const start = Date.parse(p.break_start);
             const mins = p.break_minutes ?? DEFAULT_BREAK_MINUTES;

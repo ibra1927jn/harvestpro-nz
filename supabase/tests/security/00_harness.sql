@@ -327,17 +327,9 @@ BEGIN
     VALUES (v_id, v_manager, 'SecTest private message ' || o) RETURNING id INTO v_id;
     INSERT INTO sec_test.ids VALUES (o || '.chat', v_id);
 
-    INSERT INTO public.messages (sender_id, receiver_id, content)
-    VALUES (v_runner, v_tl, 'SecTest DM ' || o) RETURNING id INTO v_id;
-    INSERT INTO sec_test.ids VALUES (o || '.dm', v_id);
-
     INSERT INTO public.broadcasts (orchard_id, sender_id, title, content)
     VALUES (v_orchard, v_manager, 'SecTest', 'SecTest broadcast ' || o) RETURNING id INTO v_id;
     INSERT INTO sec_test.ids VALUES (o || '.broadcast', v_id);
-
-    INSERT INTO public.wage_rates (orchard_id, job_type, hourly_rate)
-    VALUES (v_orchard, 'sectest', 24.00) RETURNING id INTO v_id;
-    INSERT INTO sec_test.ids VALUES (o || '.wage', v_id);
 
     INSERT INTO public.variety_rates (orchard_id, variety, piece_rate)
     VALUES (v_orchard, 'SecTestVariety', 7.00) RETURNING id INTO v_id;
@@ -468,10 +460,6 @@ BEGIN
     RETURNING id INTO v_id;
     INSERT INTO sec_test.ids VALUES ('A.qc_photo', v_id);
 END $$;
-
--- Bloqueo de cuenta e intentos de acceso (de un email de prueba)
-INSERT INTO public.account_locks (email, locked_until) VALUES ('sectest.locked@example.test', now() + interval '10 minutes');
-INSERT INTO public.login_attempts (email, success) VALUES ('sectest.locked@example.test', false);
 
 GRANT SELECT ON ALL TABLES IN SCHEMA sec_test TO anon, authenticated;
 

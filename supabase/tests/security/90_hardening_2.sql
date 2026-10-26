@@ -9,11 +9,7 @@ BEGIN;
 \ir 00_harness.sql
 
 -- ── Bloqueo de cuentas ──────────────────────────────────────────────────────
-SELECT sec_test.deny(w, 'cannot log fake failed logins (account lock abuse)',
-    $$INSERT INTO login_attempts (email, success) VALUES ('manager@harvestpro.nz', false)$$)
-FROM unnest(ARRAY['anon', 'A.runner', 'A.manager']) AS w;
-SELECT sec_test.returns('anon', 'no account reports as locked by the app',
-    $$SELECT is_account_locked('manager@harvestpro.nz')::text$$, 'false');
+-- login_attempts y account_locks ya no existen (20261024030000); el trigger tampoco
 SELECT sec_test.record(
     NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_lock_account'),
     'login_attempts: the lock trigger is gone', 'trigger still exists');

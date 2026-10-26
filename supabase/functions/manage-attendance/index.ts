@@ -9,7 +9,7 @@ import {
     checkRateLimit,
     AttendanceInputSchema,
 } from '../_shared/security.ts'
-import { shiftHours } from '../_shared/pay-rules.ts'
+import { correctionCovers, shiftHours } from '../_shared/pay-rules.ts'
 import { writeAudit } from '../_shared/audit.ts'
 import {
     type AttendanceCaller,
@@ -17,6 +17,7 @@ import {
     loadAttendanceCaller,
     lockedPeriodError,
 } from '../_shared/attendance-access.ts'
+import { DeviceTimeError, resolveDeviceTime, type ResolvedTime } from '../_shared/device-time.ts'
 
 /**
  * manage-attendance — Server-side attendance operations
@@ -25,6 +26,12 @@ import {
  * - check_in:      Open a work shift (closes an open one in another orchard)
  * - check_out:     Record checkout time + paid hours (unpaid 30-min break deducted)
  * - break_start / break_end: meal break from the roll call (one per shift)
+ *
+ * Time: the server's, unless the phone sends its own (`at`, roll call queued
+ * without signal). Then the phone time is corrected with the skew measured now
+ * (`client_now`, minus the `clock_skew_ms` the phone already applied), is never
+ * in the future, and the applied skew is stored (check_in_clock_skew_ms /
+ * check_out_clock_skew_ms; breaks: audit_logs). See _shared/device-time.ts.
  *
  * Roll call without signal: the phone queues check_in / check_out / breaks with
  * the phone time (`at`) and, for check_in, the shift id it generated
@@ -83,8 +90,10 @@ async function applyCorrection(
     if (break_start !== undefined) updatePayload.break_start = break_start
 
     // Fila actual: para el alcance (huerto / equipo / propio) y para recalcular
-    // las horas pagables con el cálculo único (pay-rules.ts)
-    const { data: existing, error: fetchExistingErr } = await supabase
+    // las horas pagables con el cálculo único (pay-rules.ts). Con la clave de
+    // servicio: quien corrige puede no LEER fichajes ajenos (RLS, 20261024021000)
+    // y el alcance lo decide assertCanTouchPicker (403), no un «no encontrado».
+    const { data: existing, error: fetchExistingErr } = await serviceDb
         .from('daily_attendance')
         .select('picker_id, orchard_id, check_in, check_out, break_start, break_end, break_minutes')
         .eq('id', attendance_id)
@@ -106,11 +115,14 @@ async function applyCorrection(
     const ci = check_in || existing?.check_in
     const co = check_out || existing?.check_out
     if (ci && co) {
+        // Hoja corregida a mano: un tramo de más de 14 h se paga entero, si la
+        // corrección es posterior a la salida (la de hoy cubre una salida ya puesta)
         updatePayload.hours_worked = shiftHours({
             checkIn: ci,
             checkOut: co,
             breakStart: break_start !== undefined ? break_start : existing?.break_start,
             breakMinutes: existing?.break_minutes,
+            corrected: correctionCovers(updatePayload.corrected_at as string, co),
         }).hours
     }
 
@@ -149,17 +161,14 @@ async function applyCorrection(
     console.info(`[Attendance] Correction applied: id=${attendance_id}, by=${userId}`)
 }
 
-/** Hora del móvil aceptada: hasta 5 min en el futuro y 36 h en el pasado (cola sin red) */
-const MAX_FUTURE_MS = 5 * 60_000
-const MAX_PAST_MS = 36 * 3_600_000
-
-function resolveAt(at: string | undefined, nowMs = Date.now()): string {
-    if (!at) return new Date(nowMs).toISOString()
-    const ms = Date.parse(at)
-    if (Number.isNaN(ms) || ms > nowMs + MAX_FUTURE_MS || ms < nowMs - MAX_PAST_MS) {
-        throw new AuthError('TIME_OUT_OF_RANGE: the phone time is too far from the server time. Check the phone clock and correct it in Timesheet.', 422)
+/** Hora del fichaje: la del servidor, o la del móvil corregida (ver _shared/device-time.ts) */
+function resolveTime(input: { at?: string; client_now?: number; clock_skew_ms?: number | null }): ResolvedTime {
+    try {
+        return resolveDeviceTime(input.at, Date.now(), input.client_now ?? null, input.clock_skew_ms ?? null)
+    } catch (e) {
+        if (e instanceof DeviceTimeError) throw new AuthError(e.message, 422)
+        throw e
     }
-    return new Date(ms).toISOString()
 }
 
 /** Día en Nueva Zelanda de un instante */
@@ -186,11 +195,14 @@ interface ShiftRow {
     break_end: string | null
     break_minutes: number | null
     hours_worked: number | null
+    corrected_at: string | null
 }
 
-const SHIFT_COLUMNS = 'id, picker_id, orchard_id, date, check_in, check_out, break_start, break_end, break_minutes, hours_worked'
+const SHIFT_COLUMNS = 'id, picker_id, orchard_id, date, check_in, check_out, break_start, break_end, break_minutes, hours_worked, corrected_at'
 
 /**
+ * Se busca con la clave de servicio: el alcance lo comprueba después
+ * assertCanTouchPicker (403) y la escritura va con el JWT de quien llama (RLS).
  * El tramo por id; si no existe y viene picker_id (la entrada sin red se
  * encontró con un tramo ya abierto y no creó el suyo), el tramo abierto de esa
  * persona ese día.
@@ -249,8 +261,9 @@ serve(async (req) => {
             }
             await assertCanTouchPicker(admin, caller, { pickerId: picker_id, orchardId: orchard_id })
 
-            // Hora del fichaje: la del móvil si viene de la cola sin red (validada)
-            const nowISO = resolveAt(input.at)
+            // Hora del fichaje: la del servidor; la del móvil corregida si viene de la cola sin red
+            const time = resolveTime(input)
+            const nowISO = time.at
             const today = nzDate(nowISO)
             const serverTime = new Date().toISOString()
 
@@ -328,6 +341,7 @@ serve(async (req) => {
                     orchard_id,
                     date: today,
                     check_in: nowISO,
+                    check_in_clock_skew_ms: time.skewMs,
                     status: 'present',
                     // Quien ficha queda como recorded_by (el verified_by del cuerpo no
                     // cuenta). verified_by es la APROBACIÓN de nómina/manager
@@ -356,9 +370,10 @@ serve(async (req) => {
 
         // ── CHECK OUT ────────────────────────────────
         if (input.action === 'check_out') {
-            const nowISO = resolveAt(input.at)
+            const time = resolveTime(input)
+            const nowISO = time.at
             const serverTime = new Date().toISOString()
-            const record = await findShift(supabase, input.attendance_id, input.picker_id, nowISO)
+            const record = await findShift(admin, input.attendance_id, input.picker_id, nowISO)
             await assertCanTouchPicker(admin, caller, { pickerId: record.picker_id, orchardId: record.orchard_id })
 
             // Reintento desde la cola (o ya lo cerró otro): no se toca
@@ -388,11 +403,13 @@ serve(async (req) => {
             // Horas pagables con el cálculo único (descanso de 30 min no pagado)
             let hoursWorked: number | undefined
             if (record.check_in) {
+                // Una corrección anterior a esta salida no la cubre (tope de 14 h)
                 hoursWorked = shiftHours({
                     checkIn: record.check_in,
                     checkOut: nowISO,
                     breakStart: record.break_start,
                     breakMinutes,
+                    corrected: correctionCovers(record.corrected_at, nowISO),
                 }).hours
             }
 
@@ -401,6 +418,7 @@ serve(async (req) => {
                 .from('daily_attendance')
                 .update({
                     check_out: nowISO,
+                    check_out_clock_skew_ms: time.skewMs,
                     status: 'present',
                     ...breakUpdate,
                     ...(hoursWorked !== undefined ? { hours_worked: hoursWorked } : {}),
@@ -428,9 +446,10 @@ serve(async (req) => {
         // ── BREAK START / END ────────────────────────
         // Un descanso de comida por tramo, desde el pase de lista
         if (input.action === 'break_start' || input.action === 'break_end') {
-            const nowISO = resolveAt(input.at)
+            const time = resolveTime(input)
+            const nowISO = time.at
             const serverTime = new Date().toISOString()
-            const record = await findShift(supabase, input.attendance_id, input.picker_id, nowISO)
+            const record = await findShift(admin, input.attendance_id, input.picker_id, nowISO)
             await assertCanTouchPicker(admin, caller, { pickerId: record.picker_id, orchardId: record.orchard_id })
             const reply = (extra: Record<string, unknown>) => jsonResponse({
                 id: record.id, picker_id: record.picker_id, server_time: serverTime, ...extra,
@@ -467,6 +486,7 @@ serve(async (req) => {
                         checkOut: record.check_out,
                         breakStart: record.break_start,
                         breakMinutes: update.break_minutes as number,
+                        corrected: correctionCovers(record.corrected_at, record.check_out),
                     }).hours
                 }
             }
@@ -485,7 +505,8 @@ serve(async (req) => {
                 recordId: record.id,
                 userId: user.id,
                 oldValues: { break_start: record.break_start, break_end: record.break_end, break_minutes: record.break_minutes },
-                newValues: update,
+                // Hora del móvil: el desfase aplicado queda en la auditoría
+                newValues: time.skewMs !== null ? { ...update, clock_skew_ms: time.skewMs } : update,
             })
 
             return reply({

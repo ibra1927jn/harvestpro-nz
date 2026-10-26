@@ -18,7 +18,7 @@ import { TrendDataPoint, DayMeta } from '@/components/charts/TrendLineChart';
 import { logger } from '@/utils/logger';
 import { Picker } from '@/types';
 import { supabase } from '@/services/supabase';
-import { payForRange, pieceRateOn, nzDateOf, PAY_RULES, type DailyPieceRate } from '@/services/harvestMetrics';
+import { attendanceRowOf, payForRange, pieceRateOn, nzDateOf, PAY_RULES, type DailyPieceRate } from '@/services/harvestMetrics';
 import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
 import { findTeamLeader } from '@/services/harvestMetrics/roster';
 import { fetchAllRows } from '@/utils/fetchAllRows';
@@ -74,6 +74,7 @@ interface WeekAttendanceRow {
     check_out: string | null;
     break_start?: string | null;
     break_minutes?: number | null;
+    corrected_at?: string | null;
 }
 
 interface WeekBucketRow {
@@ -98,15 +99,8 @@ export function buildWeekBreakdown(params: {
     const dailyRates = params.dailyRates ?? [];
     const minWage = Math.max(params.minWage, PAY_RULES.minWageFloor);
     const rows = payForRange({
-        attendance: params.attendance.map(a => ({
-            pickerId: a.picker_id,
-            orchardId: a.orchard_id,
-            date: a.date,
-            checkIn: a.check_in,
-            checkOut: a.check_out,
-            breakStart: a.break_start,
-            breakMinutes: a.break_minutes,
-        })),
+        // Igual que nómina (tope de 14 h salvo corrección posterior a la salida)
+        attendance: params.attendance.map(attendanceRowOf),
         buckets: params.buckets.map(b => ({
             pickerId: b.picker_id,
             scannedAt: b.scanned_at,
@@ -199,7 +193,7 @@ export function useWeeklyReport(): WeeklyReportData {
                                 .range(from, to)),
                             fetchAllRows<WeekAttendanceRow>((from, to) => supabase
                                 .from('daily_attendance')
-                                .select('picker_id, orchard_id, date, check_in, check_out, break_start, break_minutes')
+                                .select('picker_id, orchard_id, date, check_in, check_out, break_start, break_minutes, corrected_at')
                                 .eq('orchard_id', orchardId)
                                 .is('deleted_at', null)
                                 .gte('date', weekStart)

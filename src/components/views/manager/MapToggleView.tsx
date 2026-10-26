@@ -15,6 +15,8 @@ import { HeatMapView } from './HeatMapView';
 import RowListView from './RowListView';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import { useTranslation } from '@/i18n';
+import { useHarvestStore } from '@/stores/useHarvestStore';
+import { blockRowNumbers } from '@/utils/blockRows';
 
 type MapMode = 'tactical' | 'heatmap' | 'list';
 
@@ -48,6 +50,13 @@ const MapToggleView: React.FC<MapToggleViewProps> = ({
 
     // La vista de lista cuenta pickers por fila: pickers trabajando ahora (antes recibía los runners)
     const runners = selectPresentPickers(crew);
+    // Filas reales del huerto (los bloques pueden tener huecos); sin bloques, 1..totalRows
+    const orchardBlocks = useHarvestStore(s => s.orchardBlocks);
+    const rowNumbers = React.useMemo(() => {
+        const all = new Set<number>();
+        for (const b of orchardBlocks ?? []) for (const n of blockRowNumbers(b)) all.add(n);
+        return all.size > 0 ? [...all].sort((a, b) => a - b) : undefined;
+    }, [orchardBlocks]);
 
     return (
         <div className="flex flex-col h-full">
@@ -98,6 +107,7 @@ const MapToggleView: React.FC<MapToggleViewProps> = ({
                                 onRowClick={onRowClick}
                                 blockName={blockName}
                                 totalRows={totalRows}
+                                rowNumbers={rowNumbers}
                             />
                         </ComponentErrorBoundary>
                     )}

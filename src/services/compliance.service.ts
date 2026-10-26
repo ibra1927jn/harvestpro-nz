@@ -2,7 +2,7 @@ import { NZ_DEFAULT_PIECE_RATE } from '@/constants/nz-law';
 import { NZ_MINIMUM_WAGE_2026 } from '@/constants/nz-law';
 
 // B6-01 FIX: Use authoritative NZ law constants — NZ Minimum Wage Order 2026: $23.95/hr
-// Operational rates are configured per job type in wage_rates table (Admin → Settings → Wage Rates)
+// Las tarifas operativas están en harvest_settings / variety_rates (Ajustes del manager)
 const NZ_MINIMUM_WAGE = NZ_MINIMUM_WAGE_2026;
 
 import { nowNZST } from '@/utils/nzst';

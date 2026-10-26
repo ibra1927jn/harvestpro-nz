@@ -7,6 +7,7 @@
  *  - Block rows fetching
  */
 import { supabase } from '@/services/supabase';
+import { fetchInChunks } from '@/utils/fetchInChunks';
 
 export const orchardMapRepository = {
     /** Get active season for an orchard */
@@ -49,14 +50,24 @@ export const orchardMapRepository = {
         return (data ?? []).length;
     },
 
-    /** Get rows for given block IDs */
+    /**
+     * Filas de los bloques. Un huerto grande pasa de 1000 filas (PostgREST corta
+     * ahí sin avisar): se pide por páginas, en orden estable.
+     */
     async getBlockRows(blockIds: string[]) {
-        const { data, error } = await supabase
-            .from('block_rows')
-            .select('id, block_id, row_number, variety, target_buckets')
-            .in('block_id', blockIds)
-            .is('deleted_at', null)
-            .order('row_number', { ascending: true });
-        return { data, error };
+        type Row = { id: string; block_id: string; row_number: number; variety: string | null; target_buckets: number | null };
+        try {
+            const data = await fetchInChunks<Row>(blockIds, (chunk, from, to) => supabase
+                .from('block_rows')
+                .select('id, block_id, row_number, variety, target_buckets')
+                .in('block_id', chunk)
+                .is('deleted_at', null)
+                .order('id')
+                .range(from, to));
+            data.sort((a, b) => a.row_number - b.row_number);
+            return { data, error: null };
+        } catch (error) {
+            return { data: null, error: error as { message: string } };
+        }
     },
 };

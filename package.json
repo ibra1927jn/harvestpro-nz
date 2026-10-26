@@ -19,6 +19,7 @@
     "build-storybook": "storybook build",
     "test:e2e": "npx playwright test",
     "test:e2e:mobile": "playwright test -c playwright.mobile.config.ts",
+    "test:e2e:fresh": "playwright test -c playwright.fresh.config.ts",
     "test:chaos": "cross-env CHAOS_RUNS=300 vitest run src/services/__tests__/chaos --pool=forks --maxWorkers=1",
     "test:chaos:e2e": "cross-env MOBILE_FN_SHIM=force CHAOS_SCANS=30 playwright test -c playwright.mobile.config.ts e2e/mobile/offline-chaos.spec.ts --project=pixel-7",
     "test:chaos:functions": "cross-env CHAOS_ROUNDS=20 deno test --allow-net --allow-env --allow-read --env-file=.env.local supabase/functions/tests/record_bucket_chaos_test.ts",
@@ -31,7 +32,8 @@
     "test:functions": "deno test --allow-net --allow-env --allow-read --env-file=.env.local supabase/functions/tests/",
     "icons:build": "node scripts/icons/build-icon-font.mjs",
     "icons:check": "node scripts/icons/check-icons.mjs",
-    "perf:budget": "node scripts/perf-budget.mjs"
+    "perf:budget": "node scripts/perf-budget.mjs",
+    "test:e2e:smoke": "playwright test -c playwright.mobile.config.ts --project=pixel-7 e2e/mobile/smoke-roles.spec.ts e2e/mobile/runner-offline.spec.ts e2e/mobile/field-roles.spec.ts e2e/mobile/payroll-review.spec.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.2.0",

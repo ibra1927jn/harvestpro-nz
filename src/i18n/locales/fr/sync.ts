@@ -67,6 +67,8 @@ const sync: TranslationDict = {
     'dlq.discard_all': 'Tout écarter ({n})',
     'dlq.desc': 'Suivez et gérez les éléments dont la synchro a échoué. Les erreurs sont classées par gravité.',
     'dlq.none': 'Aucun élément en échec.',
+    'sync.reason.day_closed': 'la journée était déjà clôturée lors de l’envoi. Demandez au responsable ou à un admin de l’ajouter dans la feuille d’heures',
+    'sync.reason.pay_week_closed': 'la semaine de paie était déjà clôturée lors de l’envoi. Demandez à la paie de la rouvrir ou de l’ajouter à la main',
 };
 
 export default sync;

@@ -19,13 +19,14 @@ export const SEVERITY_STYLES: Record<string, string> = {
     low: 'bg-sky-100 text-sky-700 border-sky-200',
 };
 
+/** Claves i18n de los filtros (se pintan con t()) */
 export const FILTER_LABELS: Record<FilterType, string> = {
-    all: 'All Flags',
-    impossible_velocity: 'Impossible Rate',
-    post_collection_spike: 'Post-Pickup',
-    peer_outlier: 'Peer Outlier',
-    off_hours: 'Off Hours',
-    duplicate_proximity: 'Duplicates',
+    all: 'fraud.filter_all',
+    impossible_velocity: 'fraud.filter_impossible_velocity',
+    post_collection_spike: 'fraud.filter_post_collection_spike',
+    peer_outlier: 'fraud.filter_peer_outlier',
+    off_hours: 'fraud.filter_off_hours',
+    duplicate_proximity: 'fraud.filter_duplicate_proximity',
 };
 
 export const RULE_BADGE: Record<string, { label: string; color: string }> = {

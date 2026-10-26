@@ -30,11 +30,13 @@ const mockPayrollResult: PayrollResult = {
 const mockFetchGlobalData = vi.fn().mockResolvedValue(undefined);
 const mockSetDayClosed = vi.fn();
 let storeDayClosed = false;
+// OrchardDataBootstrap lo rellena con el usuario de la sesión; antes se quedaba en null
+let storeUser: { id: string; name: string } | null = { id: 'user-1', name: 'Manager' };
 
 vi.mock('@/stores/useHarvestStore', () => ({
     useHarvestStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
         orchard: { id: 'orchard-1', name: 'Te Puke Orchard' },
-        currentUser: { id: 'user-1', name: 'Manager' },
+        currentUser: storeUser,
         fetchGlobalData: mockFetchGlobalData,
         dayClosed: storeDayClosed,
         setDayClosed: mockSetDayClosed,
@@ -150,6 +152,20 @@ describe('DayClosureButton', () => {
         const toast = screen.getByTestId('toast');
         expect(toast).toHaveTextContent('closed and locked successfully');
         expect(toast).toHaveAttribute('data-type', 'success');
+    });
+
+    it('without the session user in the store (as before the bootstrap set it) nothing is closed', async () => {
+        storeUser = null;
+        try {
+            render(<DayClosureButton />);
+            await user.click(screen.getByRole('button'));
+            await waitFor(() => expect(screen.getByText('Confirm Closure', { exact: false })).toBeInTheDocument());
+            await user.click(screen.getByText('Confirm Closure', { exact: false }));
+            await new Promise(r => setTimeout(r, 20));
+            expect(mockClose).not.toHaveBeenCalled();
+        } finally {
+            storeUser = { id: 'user-1', name: 'Manager' };
+        }
     });
 
     it('shows an error toast when the payroll summary fails', async () => {

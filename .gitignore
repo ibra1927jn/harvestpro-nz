@@ -111,3 +111,9 @@ deno.lock
 # Volcados locales de logs y cambios
 log_*.txt
 ui_changes*.txt
+
+# Copias locales de scripts/backup-local.* (nunca al repo: llevan datos personales)
+/backups/
+# Scripts PowerShell del dueño (Windows) que sí van al repo
+!scripts/backup-local.ps1
+!scripts/restore-local.ps1

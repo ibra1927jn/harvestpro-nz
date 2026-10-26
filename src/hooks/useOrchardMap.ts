@@ -7,6 +7,7 @@ import { useHarvestStore } from '@/stores/useHarvestStore';
 import { getRowProgress } from '@/utils/orchardMapUtils';
 import { binsPerHourForRow } from '@/services/harvestMetrics/perRow';
 import { selectPresentPickers } from '@/services/harvestMetrics/roster';
+import { blockRowNumbers } from '@/utils/blockRows';
 
 export interface RowData {
     rowNum: number;
@@ -120,7 +121,8 @@ export function useOrchardMap(
         const stats: Record<string, BlockStats> = {};
         orchardBlocks.forEach(block => {
             let blockBuckets = 0, blockPickers = 0, blockCompletedRows = 0;
-            for (let row = block.startRow; row < block.startRow + block.totalRows; row++) {
+            const rows = blockRowNumbers(block);
+            for (const row of rows) {
                 const rowBuckets = validBuckets.filter(br => br.row_number === row).length;
                 blockBuckets += rowBuckets;
                 blockPickers += (pickersByRow[row] || []).length;
@@ -131,7 +133,7 @@ export function useOrchardMap(
                 buckets: blockBuckets,
                 activePickers: blockPickers,
                 completedRows: blockCompletedRows,
-                progress: block.totalRows > 0 ? blockCompletedRows / block.totalRows : 0,
+                progress: rows.length > 0 ? blockCompletedRows / rows.length : 0,
             };
         });
         return stats;
@@ -140,8 +142,8 @@ export function useOrchardMap(
     // Row data for selected block
     const rowData = useMemo(() => {
         if (!selectedBlock) return [];
-        return Array.from({ length: selectedBlock.totalRows }, (_, i) => {
-            const rowNum = selectedBlock.startRow + i;
+        // Filas reales del bloque (puede tener huecos)
+        return blockRowNumbers(selectedBlock).map(rowNum => {
             const buckets = validBuckets.filter(br => br.row_number === rowNum).length;
             const pickers = pickersByRow[rowNum] || [];
             const variety = selectedBlock.rowVarieties[rowNum] || 'Unknown';

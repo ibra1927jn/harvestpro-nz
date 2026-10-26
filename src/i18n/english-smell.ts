@@ -121,6 +121,14 @@ export const CANONICAL_TRANSLATIONS: SmellEntry[] = [
     // ── Misc ──────────────────────────────────────────────────────
     { section: 'misc', key: 'timesheet.title', en: 'Timesheet Editor' },
     { section: 'misc', key: 'sync.all_clear',  en: 'All Clear!' },
+
+    // ── Estructura del huerto y huerto nuevo ─────────────────────
+    { section: 'orchard-setup', key: 'nav.structure',          en: 'Orchard setup' },
+    { section: 'orchard-setup', key: 'ostruct.seasons',        en: 'Seasons' },
+    { section: 'orchard-setup', key: 'ostruct.add_block',      en: 'Add block' },
+    { section: 'orchard-setup', key: 'ostruct.mode_range',     en: 'Set a range' },
+    { section: 'orchard-setup', key: 'owiz.title',             en: 'New Orchard Setup' },
+    { section: 'orchard-setup', key: 'owiz.step.structure',    en: 'Season & blocks' },
 ];
 
 /**

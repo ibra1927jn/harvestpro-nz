@@ -1,8 +1,8 @@
 -- =============================================================================
 -- A2: el team leader solo ficha / corrige / borra fichajes de SU equipo o de
 -- gente sin equipo; ya no existe la política que dejaba a manager y team
--- leader cambiar fichajes de cualquier huerto (20261023011000). La lectura de
--- fichajes del huerto no cambia.
+-- leader cambiar fichajes de cualquier huerto (20261023011000). La lectura
+-- quedó limitada por rol en 20261024021000 (ver 99_attendance_privacy.sql).
 -- =============================================================================
 \set ON_ERROR_STOP 1
 BEGIN;
@@ -63,10 +63,13 @@ SELECT sec_test.deny(w, 'cannot close a shift left open in another orchard (the 
     $$UPDATE daily_attendance SET check_out = now() WHERE id = {A.att_rotated}$$)
 FROM unnest(ARRAY['B.manager', 'B.team_leader']) AS w;
 
--- ── Lectura sin cambios: todo el huerto ─────────────────────────────────────
-SELECT sec_test.sees(w, 'still reads attendance of the whole orchard',
-    $$SELECT 1 FROM daily_attendance WHERE id IN ({A.att}, {A.att_free})$$, 2)
-FROM unnest(ARRAY['A.team_leader2', 'A.runner', 'A.qc_inspector']) AS w;
+-- ── Lectura (20261024021000): el TL ve su equipo y la gente sin equipo; ──────
+-- runner y QC ya no leen fichajes ajenos (usan presence_today)
+SELECT sec_test.sees('A.team_leader2', 'reads only the picker without a team (not another team)',
+    $$SELECT 1 FROM daily_attendance WHERE id IN ({A.att}, {A.att_free})$$, 1);
+SELECT sec_test.sees(w, 'no longer reads attendance of the whole orchard',
+    $$SELECT 1 FROM daily_attendance WHERE id IN ({A.att}, {A.att_free})$$, 0)
+FROM unnest(ARRAY['A.runner', 'A.qc_inspector']) AS w;
 
 SELECT sec_test.finish();
 ROLLBACK;

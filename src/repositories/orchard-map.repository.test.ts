@@ -15,6 +15,7 @@ function mockChain(result: { data?: unknown; error?: unknown }) {
         is: vi.fn(() => chain),
         order: vi.fn(() => chain),
         limit: vi.fn(() => chain),
+        range: vi.fn(() => chain),
         then: (onF?: (v: unknown) => unknown, onR?: (r: unknown) => unknown) =>
             Promise.resolve(result).then(onF, onR),
     };
@@ -71,6 +72,22 @@ describe('orchardMapRepository.getBlockRows', () => {
         const res = await orchardMapRepository.getBlockRows(['b1', 'b2']);
         expect(fromSpy).toHaveBeenCalledWith('block_rows');
         expect(res.data).toHaveLength(1);
+    });
+
+    it('pide por páginas en orden estable (más de 1000 filas) y ordena por número de fila', async () => {
+        const chain = mockChain({ data: [{ id: 'r2', block_id: 'b1', row_number: 2 }, { id: 'r1', block_id: 'b1', row_number: 1 }], error: null });
+        fromSpy.mockReturnValue(chain as never);
+        const res = await orchardMapRepository.getBlockRows(['b1']);
+        expect(chain.order).toHaveBeenCalledWith('id');
+        expect(chain.range).toHaveBeenCalledWith(0, 999);
+        expect(res.data?.map(r => r.row_number)).toEqual([1, 2]);
+    });
+
+    it('devuelve el error de la base', async () => {
+        fromSpy.mockReturnValue(mockChain({ data: null, error: { message: 'rls' } }) as never);
+        const res = await orchardMapRepository.getBlockRows(['b1']);
+        expect(res.data).toBeNull();
+        expect(res.error).toBeTruthy();
     });
 
     it('acepta [] sin romper', async () => {

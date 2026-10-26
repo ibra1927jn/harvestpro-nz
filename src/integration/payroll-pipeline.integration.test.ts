@@ -149,8 +149,10 @@ describe('Payroll Pipeline — Integration', () => {
     it('fetchTimesheets flags >14h for review (NZ law compliance)', async () => {
         const entries = await payrollService.fetchTimesheets('o1', '2026-03-10');
         const p3 = entries.find(e => e.picker_id === 'p3');
-        expect(p3!.hours_worked).toBe(17); // sin descanso anotado y sin tope
+        // 17 h sin corregir: se pagan 14 h (tope sin revisión) y no se aprueba hasta corregirlo
+        expect(p3!.hours_worked).toBe(14);
         expect(p3!.requires_review).toBe(true); // > 14h flag
+        expect(p3!.long_shift).toBe(true);
     });
 
     it('fetchTimesheets resolves picker names correctly', async () => {

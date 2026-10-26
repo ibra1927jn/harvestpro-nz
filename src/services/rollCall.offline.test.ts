@@ -61,7 +61,8 @@ describe('rollCallService without signal', () => {
         await rollCallService.record('check_out', { pickerId: 'p1', orchardId: ORCH, attendanceId });
         setOnline(true);
         await syncService._doProcessQueue();
-        expect(api.checkIn).toHaveBeenCalledWith('p1', ORCH, undefined, expect.objectContaining({ clientId: attendanceId }));
+        expect(api.checkIn).toHaveBeenCalledWith('p1', ORCH, undefined, expect.objectContaining({ clientId: attendanceId, skewApplied: 0 }));
+        expect(typeof api.checkIn.mock.calls[0][3].at).toBe('string');
         expect(api.checkOut).toHaveBeenCalledWith(attendanceId, expect.objectContaining({ pickerId: 'p1' }));
         expect(api.checkIn.mock.invocationCallOrder[0]).toBeLessThan(api.checkOut.mock.invocationCallOrder[0]);
         expect(await db.sync_queue.count()).toBe(0);
@@ -95,6 +96,8 @@ describe('rollCallService without signal', () => {
         setOnline(true);
         const saved = await rollCallService.record('check_in', { pickerId: 'p1', orchardId: ORCH });
         expect(saved.state).toBe('saved');
+        // Con red la hora la pone el servidor: no se manda la del móvil
+        expect(api.checkIn.mock.calls[0][3]).toEqual({ clientId: saved.attendanceId });
         api.checkIn.mockImplementationOnce(async () => { throw new TypeError('Failed to fetch'); });
         const queued = await rollCallService.record('check_in', { pickerId: 'p2', orchardId: ORCH });
         expect(queued.state).toBe('queued');
@@ -118,6 +121,19 @@ describe('rollCallService without signal', () => {
 });
 
 describe('phone clock', () => {
+    it('a queued action carries the phone time already corrected and how much was corrected', async () => {
+        setOnline(false);
+        useHarvestStore.setState({ clockSkew: 10 * 60_000 });
+        const before = Date.now();
+        await rollCallService.record('check_in', { pickerId: 'p9', orchardId: ORCH });
+        const [item] = await syncService.getQueue();
+        const p = item.payload as { at: string; clock_skew_ms: number };
+        expect(p.clock_skew_ms).toBe(10 * 60_000);
+        expect(Date.parse(p.at) - before).toBeGreaterThanOrEqual(10 * 60_000 - 1000);
+        useHarvestStore.setState({ clockSkew: 0 });
+        await db.sync_queue.clear();
+    });
+
     it('corrects the time with the measured skew only when it is over 2 minutes', () => {
         const now = Date.parse('2026-10-23T08:00:00Z');
         expect(correctedNow(60_000, now)).toBe('2026-10-23T08:00:00.000Z');

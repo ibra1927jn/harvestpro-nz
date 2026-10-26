@@ -6,7 +6,8 @@
  * manager el primer arranque configura SU huerto: meta del día
  * (harvest_settings.target_tons), precio por cubeta de hoy (piece_rates, solo
  * cuenta desde hoy) y la variedad de las filas de cada bloque (block_rows).
- * Crear huertos sigue en Admin (SetupWizard).
+ * Crear huertos sigue en Admin (SetupWizard). Si el huerto no tiene bloques
+ * ni filas, enlaza a «Estructura del huerto» (temporadas, bloques y filas).
  */
 import React, { useMemo, useRef, useState } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
@@ -21,9 +22,11 @@ import { changedVarieties, dominantVariety, validateSetup, type ManagerSetupForm
 interface ManagerSetupWizardProps {
     onComplete: () => void;
     onCancel: () => void;
+    /** Huerto sin bloques ni filas: abre «Estructura del huerto» */
+    onOpenStructure?: () => void;
 }
 
-const ManagerSetupWizard: React.FC<ManagerSetupWizardProps> = ({ onComplete, onCancel }) => {
+const ManagerSetupWizard: React.FC<ManagerSetupWizardProps> = ({ onComplete, onCancel, onOpenStructure }) => {
     const { t } = useTranslation();
     const dialogRef = useRef<HTMLDivElement>(null);
     useDialogA11y(dialogRef, { onClose: onCancel });
@@ -107,7 +110,16 @@ const ManagerSetupWizard: React.FC<ManagerSetupWizardProps> = ({ onComplete, onC
                         <legend className="text-sm font-semibold text-text-primary">{t('msetup.varieties')}</legend>
                         <p className="text-xs text-text-secondary">{t('msetup.varieties_hint')}</p>
                         {blocks.length === 0 ? (
-                            <p className="text-xs rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800" data-testid="msetup-no-blocks">{t('msetup.no_blocks')}</p>
+                            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800 space-y-2" data-testid="msetup-no-blocks">
+                                <p className="text-xs">{t('msetup.no_blocks')}</p>
+                                {onOpenStructure && (
+                                    <button type="button" onClick={onOpenStructure} data-testid="msetup-open-structure"
+                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700">
+                                        <span aria-hidden="true" className="material-symbols-outlined text-sm">grid_view</span>
+                                        {t('msetup.open_structure')}
+                                    </button>
+                                )}
+                            </div>
                         ) : blocks.map(b => (
                             <label key={b.id} className="flex items-center gap-3 text-sm text-text-primary">
                                 <span className="w-32 shrink-0 truncate">{t('msetup.block_rows', { name: b.name, n: b.totalRows })}</span>

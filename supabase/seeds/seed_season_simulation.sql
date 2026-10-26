@@ -8,7 +8,7 @@
 -- =============================================
 -- Clean existing simulation data (preserve structure)
 DO $$ BEGIN -- Only delete if simulation marker exists
-DELETE FROM public.quality_inspections
+DELETE FROM public.qc_inspections
 WHERE inspector_id IN (
         SELECT id
         FROM public.users
@@ -663,11 +663,24 @@ END $$;
 -- =============================================
 -- 5. QC INSPECTIONS (~1,500 — sample from buckets)
 -- =============================================
+-- Inspecciones de una temporada simulada: sin avisos push (trg_push_qc_inspection
+-- metería ~150 «QC: rechazo» en notification_outbox). Salen en las vistas de QC de
+-- los huertos de la simulación (códigos JP, OCH…), no en los de la demo.
+ALTER TABLE public.qc_inspections DISABLE TRIGGER trg_push_qc_inspection;
 DO $$
 DECLARE v_bucket RECORD;
 v_grade TEXT;
 v_count INTEGER := 0;
-BEGIN FOR v_bucket IN
+v_inspector UUID;
+BEGIN
+-- quality_inspections se borró (20261024030000): las notas van a qc_inspections,
+-- que exige huerto e inspector (un usuario de la simulación, QC si lo hay)
+SELECT id INTO v_inspector
+FROM public.users
+WHERE email LIKE '%@centralpac.sim'
+ORDER BY (role = 'qc_inspector') DESC, id
+LIMIT 1;
+FOR v_bucket IN
 SELECT id,
     picker_id,
     orchard_id,
@@ -704,16 +717,18 @@ ELSIF random() < 0.75 THEN v_grade := 'B';
 ELSIF random() < 0.90 THEN v_grade := 'C';
 ELSE v_grade := 'reject';
 END IF;
-INSERT INTO public.quality_inspections (
-        bucket_id,
+INSERT INTO public.qc_inspections (
+        orchard_id,
         picker_id,
-        quality_grade,
+        inspector_id,
+        grade,
         notes,
         created_at
     )
 VALUES (
-        v_bucket.id,
+        v_bucket.orchard_id,
         v_bucket.picker_id,
+        v_inspector,
         v_grade,
         CASE
             v_grade
@@ -729,6 +744,8 @@ END LOOP;
 RAISE NOTICE 'Inserted % QC inspections',
 v_count;
 END $$;
+-- Vuelve a avisar de las inspecciones nuevas (solo estas del seed van sin push)
+ALTER TABLE public.qc_inspections ENABLE TRIGGER trg_push_qc_inspection;
 -- =============================================
 -- 6. DAILY ATTENDANCE (~6,000)
 -- =============================================
@@ -1119,7 +1136,7 @@ SELECT 'SEASON SIMULATION COMPLETE' AS status,
     ) AS bucket_records,
     (
         SELECT COUNT(*)
-        FROM public.quality_inspections
+        FROM public.qc_inspections
         WHERE picker_id IN (
                 SELECT id
                 FROM public.pickers

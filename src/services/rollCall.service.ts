@@ -9,8 +9,12 @@
  *     la hora del móvil, y se envían solos y en orden al volver la cobertura;
  *   · si ya hay algo de esa persona esperando en la cola, lo nuevo va detrás
  *     (nunca adelanta a lo pendiente).
- * La hora del móvil se corrige con el desfase medido contra el servidor
- * (clockSkew, el mismo que usan las cubetas) cuando pasa de 2 minutos.
+ * Con red la hora la pone el servidor (no se manda `at`). Sin red se guarda la
+ * hora del móvil corregida con el desfase medido contra el servidor (clockSkew,
+ * el mismo que usan las cubetas) cuando pasa de 2 minutos, y la corrección
+ * aplicada (clock_skew_ms); al enviarla, el servidor la vuelve a corregir con
+ * el desfase de ese momento (client_now), nunca la deja en el futuro y apunta
+ * el desfase en el fichaje.
  */
 import { attendanceService } from './attendance.service';
 import { useHarvestStore } from '@/stores/useHarvestStore';
@@ -39,9 +43,14 @@ export interface RollCallResult {
 /** Desfase a partir del cual se corrige la hora y se avisa (como las cubetas) */
 export const CLOCK_SKEW_WARN_MS = 2 * 60 * 1000;
 
+/** Corrección que se aplica a la hora del móvil: el desfase medido si es grande */
+export function appliedSkew(skewMs: number): number {
+    return Math.abs(skewMs) > CLOCK_SKEW_WARN_MS ? skewMs : 0;
+}
+
 /** Hora «buena»: la del móvil más el desfase medido si es grande */
 export function correctedNow(skewMs: number, nowMs = Date.now()): string {
-    return new Date(Math.abs(skewMs) > CLOCK_SKEW_WARN_MS ? nowMs + skewMs : nowMs).toISOString();
+    return new Date(nowMs + appliedSkew(skewMs)).toISOString();
 }
 
 /** ¿No se envió por falta de red? (entonces va a la cola) */
@@ -74,11 +83,12 @@ async function enqueue(payload: AttendancePayload): Promise<void> {
     await syncService.addToQueue('ATTENDANCE', payload);
 }
 
-async function sendLive(action: RollCallAction, payload: Required<Pick<AttendancePayload, 'picker_id' | 'orchard_id' | 'attendance_id' | 'at'>> & { verifiedBy?: string }): Promise<string> {
-    const timing = { at: payload.at, pickerId: payload.picker_id };
+/** Con red: sin hora del móvil, la pone el servidor */
+async function sendLive(action: RollCallAction, payload: Required<Pick<AttendancePayload, 'picker_id' | 'orchard_id' | 'attendance_id'>> & { verifiedBy?: string }): Promise<string> {
+    const timing = { pickerId: payload.picker_id };
     if (action === 'check_in') {
         const res = await attendanceService.checkInPicker(payload.picker_id, payload.orchard_id, payload.verifiedBy, {
-            clientId: payload.attendance_id, at: payload.at,
+            clientId: payload.attendance_id,
         });
         return res.id;
     }
@@ -99,12 +109,16 @@ export const rollCallService = {
     }): Promise<RollCallResult> {
         const attendanceId = action === 'check_in' ? crypto.randomUUID() : params.attendanceId;
         if (!attendanceId) throw new Error('No shift to update');
+        // Hora del móvil (solo cuenta si va a la cola) y la corrección aplicada
+        const skew = useHarvestStore.getState().clockSkew || 0;
+        const nowMs = Date.now();
         const payload = {
             action,
             picker_id: params.pickerId,
             orchard_id: params.orchardId,
             attendance_id: attendanceId,
-            at: correctedNow(useHarvestStore.getState().clockSkew || 0),
+            at: correctedNow(skew, nowMs),
+            clock_skew_ms: appliedSkew(skew),
             verifiedBy: params.recordedBy,
         };
 

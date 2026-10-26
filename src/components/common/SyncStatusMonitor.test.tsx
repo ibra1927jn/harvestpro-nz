@@ -72,6 +72,16 @@ describe('SyncStatusMonitor', () => {
         expect(screen.getByText(/BREAK_LOG — unknown_type: BREAK_LOG/)).toBeInTheDocument();
     });
 
+    it('a roll call queued before the day was closed and sent after says so clearly', async () => {
+        mocks.getDeadLetters.mockResolvedValue([
+            { id: 'q3', type: 'ATTENDANCE', failureReason: 'DAY_CLOSED: this day is closed. Only an admin can change its timesheets.', movedAt: Date.parse('2026-10-13T01:00:00Z') },
+        ]);
+        render(<SyncStatusMonitor />);
+        expect(await screen.findByText(/1 change could not be sent/)).toBeInTheDocument();
+        act(() => { screen.getByRole('button').click(); });
+        expect(screen.getByText(/the day was already closed when it was sent/)).toBeInTheDocument();
+    });
+
     it('renders nothing when online and no pending items', () => {
         const { container } = render(<SyncStatusMonitor />);
         // Should return null when all synced and online

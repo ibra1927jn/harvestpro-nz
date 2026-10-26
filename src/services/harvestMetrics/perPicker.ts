@@ -12,7 +12,7 @@
  *   si no, el general de hoy (piece_rate).
  */
 import type { Picker, BucketRecord, HarvestSettings } from '@/types';
-import { shiftHours, payForRange, pieceRateOn, nzDateOf, type HoursSource, type AttendanceRow, type BucketRow } from './pay';
+import { shiftHours, correctionCovers, payForRange, pieceRateOn, nzDateOf, type HoursSource, type AttendanceRow, type BucketRow } from './pay';
 import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
 export interface PickerMetrics {
@@ -83,6 +83,8 @@ export function computePerPicker(
                 checkOut: s.check_out,
                 breakStart: s.break_start,
                 breakMinutes: s.break_minutes,
+                // Igual que nómina: el tope de 14 h salvo corrección posterior a la salida
+                corrected: correctionCovers('corrected_at' in s ? s.corrected_at : null, s.check_out),
             }));
             const buckets: BucketRow[] = scans.map(r => {
                 // Las cubetas del panel son del día que se mira

@@ -11,7 +11,7 @@
 import { nzMidnight, nzEndOfDay } from '@/utils/nzst';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { payForRange } from '@/services/harvestMetrics/pay';
+import { attendanceRowOf, payForRange } from '@/services/harvestMetrics/pay';
 
 /** Umbral: horas registradas sin scans antes de alertar */
 const HOURS_WITHOUT_SCANS_THRESHOLD = 2;
@@ -44,7 +44,7 @@ export async function checkAttendanceGap(
   const [attendanceRes, scansRes] = await Promise.all([
     supabase
       .from('daily_attendance')
-      .select('orchard_id, check_in, check_out, break_start, break_minutes')
+      .select('orchard_id, check_in, check_out, break_start, break_minutes, corrected_at')
       .eq('picker_id', pickerId)
       .eq('date', date)
       .is('deleted_at', null),
@@ -58,12 +58,12 @@ export async function checkAttendanceGap(
   ]);
 
   // Varios tramos al día: horas con el cálculo único (un descanso, trayecto entre huertos)
-  type Row = { orchard_id: string | null; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null };
+  type Row = { orchard_id: string | null; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null; corrected_at?: string | null };
   const rows = ((attendanceRes.data ?? []) as Row[]).filter(r => !!r.check_in);
   const hasAttendance = rows.length > 0;
   const scanCount = scansRes.count ?? 0;
   const [day] = payForRange({
-    attendance: rows.map(r => ({ pickerId, date, orchardId: r.orchard_id, checkIn: r.check_in, checkOut: r.check_out, breakStart: r.break_start, breakMinutes: r.break_minutes })),
+    attendance: rows.map(r => attendanceRowOf({ ...r, picker_id: pickerId, date })),
     buckets: [],
     pieceRate: 0,
     minWage: 0,

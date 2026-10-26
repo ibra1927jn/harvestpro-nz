@@ -10,13 +10,29 @@ import type { CorrectBatchResponse } from '@/schemas/api.schemas';
 export interface RollCallTiming {
   /** check_in: id del tramo generado en el móvil (reintentar no duplica) */
   clientId?: string;
-  /** Hora del móvil (ya corregida con el desfase medido) */
+  /** Hora del móvil (ya corregida con el desfase medido); solo desde la cola sin red */
   at?: string;
+  /** Corrección (ms) que el móvil ya sumó a `at` */
+  skewApplied?: number;
   /** check_out / descanso: si el tramo del móvil no existe, el abierto de esta persona */
   pickerId?: string;
 }
 
 export type BreakAction = 'break_start' | 'break_end';
+
+/**
+ * Hora del móvil para el servidor: `at`, la corrección ya aplicada y la hora
+ * del móvil al enviar (client_now): con ellas mide el desfase de ahora, corrige
+ * y lo apunta. Sin `at` no se manda nada: la hora la pone el servidor.
+ * Elementos guardados por una versión anterior de la app (sin clock_skew_ms):
+ * su `at` ya venía corregido y no se sabe cuánto, así que se manda sin
+ * client_now y el servidor no lo vuelve a corregir (solo lo acota).
+ */
+function deviceTime(timing: RollCallTiming): Record<string, string | number> {
+  if (!timing.at) return {};
+  if (timing.skewApplied === undefined) return { at: timing.at };
+  return { at: timing.at, client_now: Date.now(), clock_skew_ms: Math.round(timing.skewApplied) };
+}
 
 /** Llama a manage-attendance midiendo el desfase del reloj del móvil */
 async function invokeAttendance(body: Record<string, unknown>): Promise<unknown> {
@@ -65,7 +81,7 @@ export const attendanceService = {
         orchard_id: orchardId,
         verified_by: verifiedBy,
         ...(timing.clientId ? { client_id: timing.clientId } : {}),
-        ...(timing.at ? { at: timing.at } : {}),
+        ...deviceTime(timing),
       });
       // Esquemas (zod) bajo demanda: no van en el bundle inicial
       const { CheckInResponseSchema, validateResponse } = await import('@/schemas/api.schemas');
@@ -87,7 +103,7 @@ export const attendanceService = {
       const data = await invokeAttendance({
         action: 'check_out',
         attendance_id: attendanceId,
-        ...(timing.at ? { at: timing.at } : {}),
+        ...deviceTime(timing),
         ...(timing.pickerId ? { picker_id: timing.pickerId } : {}),
       });
       const { CheckOutResponseSchema, validateResponse } = await import('@/schemas/api.schemas');
@@ -104,7 +120,7 @@ export const attendanceService = {
       const data = await invokeAttendance({
         action,
         attendance_id: attendanceId,
-        ...(timing.at ? { at: timing.at } : {}),
+        ...deviceTime(timing),
         ...(timing.pickerId ? { picker_id: timing.pickerId } : {}),
       });
       const { BreakResponseSchema, validateResponse } = await import('@/schemas/api.schemas');
