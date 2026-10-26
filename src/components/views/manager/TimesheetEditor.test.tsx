@@ -3,7 +3,9 @@
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
+import { useHarvestStore } from '@/stores/useHarvestStore';
+import { LIVE_REFRESH_MIN_MS } from '@/hooks/useAttendanceLiveRefresh';
 
 const mockGetAttendanceByDate = vi.fn();
 const mockCorrectAttendance = vi.fn();
@@ -274,6 +276,30 @@ describe('TimesheetEditor', () => {
         expect(screen.getAllByText('Approved by payroll')).toHaveLength(1);
         expect(screen.getByText('Rejected: Break time missing')).toBeTruthy();
         expect(screen.getByText('Rejected by payroll')).toBeTruthy();
+    });
+
+    // C5: el TL y el manager ven la decisión de Nómina sin salir y volver a entrar
+    it('refreshes live when payroll approves or rejects (realtime of daily_attendance)', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        try {
+            render(<TimesheetEditor orchardId="o1" />);
+            await waitFor(() => screen.getByText('Alice Smith'));
+            expect(screen.queryByText('Rejected: Break time missing')).toBeNull();
+
+            mockGetAttendanceByDate.mockResolvedValue([
+                { ...mockRecords[0], rejected_at: '2026-03-11T09:00:00+13:00', rejection_reason: 'Break time missing' },
+                mockRecords[1], mockRecords[2],
+            ]);
+            act(() => { useHarvestStore.setState({ attendanceChangedAt: Date.now() }); });
+            // Como mucho una recarga por minuto (useAttendanceLiveRefresh)
+            await act(async () => { await vi.advanceTimersByTimeAsync(LIVE_REFRESH_MIN_MS); });
+            await waitFor(() => expect(screen.getByText('Rejected: Break time missing')).toBeTruthy());
+            expect(mockGetAttendanceByDate).toHaveBeenCalledTimes(2);
+            // Recarga suave: la lista no se vacía mientras se recarga
+            expect(screen.getByText('Alice Smith')).toBeTruthy();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('shows no review badge on timesheets nobody reviewed yet', async () => {

@@ -34,6 +34,7 @@ import TimesheetBatchPanel from './TimesheetBatchPanel';
 import DailyTimesheetSummary from './DailyTimesheetSummary';
 import { formatNZDate } from '@/utils/nzFormat';
 import { useTranslation } from '@/i18n';
+import { useAttendanceLiveRefresh } from '@/hooks/useAttendanceLiveRefresh';
 
 interface TimesheetEditorProps {
   orchardId: string;
@@ -75,9 +76,10 @@ export default function TimesheetEditor({ orchardId, pickerIds }: TimesheetEdito
   // DATA LOADING
   // ========================================
 
-  const loadRecords = useCallback(async () => {
+  // soft: recarga en vivo sin vaciar la lista (no se pierde lo que se está editando)
+  const loadRecords = useCallback(async (soft = false) => {
     if (!orchardId) return;
-    setLoading(true);
+    if (!soft) setLoading(true);
     try {
       const data = await attendanceService.getAttendanceByDate(orchardId, selectedDate);
       // Los fichajes borrados no se muestran ni cuentan; con pickerIds, solo esas personas
@@ -100,6 +102,10 @@ export default function TimesheetEditor({ orchardId, pickerIds }: TimesheetEdito
   useEffect(() => {
     loadRecords();
   }, [loadRecords]);
+
+  // En vivo (C5): nómina aprueba o rechaza, o alguien corrige un fichaje
+  // (realtime de daily_attendance), o se vuelve a la pestaña. Como Nómina.
+  useAttendanceLiveRefresh(() => { void loadRecords(true); }, { enabled: !!orchardId });
 
   // ========================================
   // SELECCIÓN MÚLTIPLE / LOTE
