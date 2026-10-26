@@ -4,7 +4,7 @@
  * close-pay-week (foto de lo que se paga al cerrar la semana), así ambos dan
  * exactamente las mismas cifras.
  */
-import { payForRange, pieceRateOn, nzDateOf, isNZPublicHoliday, PAY_RULES, correctionCovers, type PayDay, type PickerRangePay } from './pay-rules.ts'
+import { payForRange, pieceRateOn, nzDateOf, isNZPublicHoliday, minWageFloorOn, PAY_RULES, correctionCovers, type PayDay, type PickerRangePay } from './pay-rules.ts'
 import { loadDailyPieceRates } from './piece-rates.ts'
 import { fetchAllRows } from './fetch-all-rows.ts'
 import { fetchInChunks } from './fetch-in-chunks.ts'
@@ -175,10 +175,13 @@ export async function computePayroll(
     const companyBucketRate = Number(settingsList.find(s => s.piece_rate != null)?.piece_rate ?? 6.5)
     const bucket_rate = own?.piece_rate != null ? Number(own.piece_rate) : companyBucketRate
 
-    // Mínimo: el más alto de la empresa; nunca por debajo del legal
-    // (Minimum Wage Order 2026; la migración 20260412 ya lo corrige en DB).
-    const companyMinWage = Math.max(PAY_RULES.minWageFloor, ...settingsList.map(s => Number(s.min_wage_rate ?? 0)))
+    // Mínimo de la empresa: el más alto configurado. El legal de CADA día lo
+    // pone dayPay (minWageFloorOn(fecha)): aquí no se mete el legal de hoy, o un
+    // Minimum Wage Order nuevo (1 de abril) subiría también los días de marzo de
+    // esa semana y cambiaría semanas ya pagadas al recalcularlas (Fase 2).
+    const companyMinWage = Math.max(0, ...settingsList.map(s => Number(s.min_wage_rate ?? 0)))
     const stored_min_wage = own?.min_wage_rate != null ? Number(own.min_wage_rate) : companyMinWage
+    // Lo que se enseña como «mínimo vigente»: el configurado o, si es menor, el legal de hoy
     const min_wage_rate = Math.max(companyMinWage, PAY_RULES.minWageFloor)
     if (stored_min_wage < PAY_RULES.minWageFloor) {
         console.warn(`[Payroll] COMPLIANCE WARNING: min_wage_rate=${stored_min_wage} < legal floor ${PAY_RULES.minWageFloor}. Using floor.`)
@@ -267,9 +270,9 @@ export async function computePayroll(
     for (const k of (contractRows ?? []) as { employee_id: string; hourly_rate: number | null; start_date: string | null; end_date: string | null }[]) {
         const rate = Number(k.hourly_rate ?? 0)
         const covers = (!k.start_date || k.start_date <= end_date) && (!k.end_date || k.end_date >= start_date)
-        if (covers && rate > min_wage_rate) minWageById.set(k.employee_id, Math.max(rate, minWageById.get(k.employee_id) ?? 0))
+        if (covers && rate > companyMinWage) minWageById.set(k.employee_id, Math.max(rate, minWageById.get(k.employee_id) ?? 0))
     }
-    const minWageOf = (id: string) => minWageById.get(id) ?? min_wage_rate
+    const minWageOf = (id: string) => minWageById.get(id) ?? companyMinWage
 
     // Un cálculo por cada mínimo distinto (casi todos usan el general)
     const groups = new Map<number, Set<string>>()
@@ -331,7 +334,10 @@ export async function computePayroll(
             piece_rate_earnings: r.pieceEarnings,
             holiday_premium: r.holidayPremium,
             hourly_rate: r.hours > 0 ? r2(r.pieceEarnings / r.hours) : 0,
-            minimum_required: r2(hours_ordinary * minWageOf(r.pickerId) + hours_holiday * minWageOf(r.pickerId) * PAY_RULES.publicHolidayMultiplier),
+            // Con el mínimo legal de cada día (un 1 de abril a mitad de semana cuenta)
+            minimum_required: r2(r.dayDetails.reduce((s, d) => s + share(d).hours
+                * Math.max(minWageOf(r.pickerId), minWageFloorOn(d.date))
+                * (d.isPublicHoliday ? PAY_RULES.publicHolidayMultiplier : 1), 0)),
             top_up_required: r.topUp,
             total_earnings: r.total,
             is_below_minimum,
