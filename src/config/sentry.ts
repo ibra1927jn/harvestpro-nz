@@ -1,4 +1,5 @@
 import { logger } from '@/utils/logger';
+import { scrubText, scrubValue } from '@/utils/piiScrub';
 
 /**
  * Sentry diferido: el SDK (@sentry/react, ~145 KB gzip) solo se descarga cuando
@@ -73,6 +74,67 @@ export function initSentry(): Promise<void> {
   return initPromise;
 }
 
+/** Lo que tocamos de un evento de Sentry (forma estable entre versiones del SDK). */
+interface SentryEventLike {
+  message?: string;
+  transaction?: string;
+  logentry?: unknown;
+  exception?: { values?: Array<{ value?: string }> };
+  breadcrumbs?: Array<SentryBreadcrumbLike>;
+  extra?: unknown;
+  contexts?: unknown;
+  tags?: unknown;
+  request?: { cookies?: unknown; url?: string; query_string?: unknown; data?: unknown; headers?: unknown };
+  user?: { id?: string | number; role?: unknown } & Record<string, unknown>;
+}
+
+interface SentryBreadcrumbLike {
+  message?: string;
+  data?: unknown;
+}
+
+/**
+ * Quita datos personales (email, IRD, cuenta bancaria, picker_id, nombres) de un
+ * breadcrumb antes de guardarlo. Muta y devuelve el mismo objeto (contrato de Sentry).
+ */
+export function scrubSentryBreadcrumb<T extends SentryBreadcrumbLike>(breadcrumb: T): T {
+  if (typeof breadcrumb.message === 'string') breadcrumb.message = scrubText(breadcrumb.message);
+  if (breadcrumb.data !== undefined) breadcrumb.data = scrubValue(breadcrumb.data);
+  return breadcrumb;
+}
+
+/**
+ * NZ Privacy Act: ningún evento sale hacia Sentry con email, IRD, cuenta bancaria
+ * o ids de picker. Se limpian mensaje, excepciones, breadcrumbs, extra, contextos,
+ * etiquetas y la petición; del usuario solo quedan el id opaco y el rol.
+ */
+export function scrubSentryEvent<T extends SentryEventLike>(event: T): T {
+  if (typeof event.message === 'string') event.message = scrubText(event.message);
+  if (typeof event.transaction === 'string') event.transaction = scrubText(event.transaction);
+  if (event.logentry !== undefined) event.logentry = scrubValue(event.logentry);
+  for (const ex of event.exception?.values ?? []) {
+    if (typeof ex.value === 'string') ex.value = scrubText(ex.value);
+  }
+  for (const b of event.breadcrumbs ?? []) scrubSentryBreadcrumb(b);
+  if (event.extra !== undefined) event.extra = scrubValue(event.extra);
+  if (event.contexts !== undefined) event.contexts = scrubValue(event.contexts);
+  if (event.tags !== undefined) event.tags = scrubValue(event.tags);
+  if (event.request) {
+    delete event.request.cookies;
+    if (typeof event.request.url === 'string') event.request.url = scrubText(event.request.url);
+    if (event.request.query_string !== undefined)
+      event.request.query_string = scrubValue(event.request.query_string);
+    if (event.request.data !== undefined) event.request.data = scrubValue(event.request.data);
+    if (event.request.headers !== undefined)
+      event.request.headers = scrubValue(event.request.headers);
+  }
+  if (event.user) {
+    const { id, role } = event.user;
+    event.user = role === undefined ? { id } : { id, role };
+  }
+  return event;
+}
+
 async function loadAndInit(): Promise<void> {
   if (!isSentryEnabled()) {
     pending.length = 0;
@@ -109,10 +171,13 @@ async function loadAndInit(): Promise<void> {
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 1.0,
     beforeSend(event) {
-      if (event.request) delete event.request.cookies;
-      if (event.exception?.values?.[0]?.value?.includes('Invalid login credentials')) return null;
+      if (event.exception?.values?.some(v => v.value?.includes('Invalid login credentials')))
+        return null;
       if (event.contexts?.storage) delete event.contexts.storage;
-      return event;
+      return scrubSentryEvent(event);
+    },
+    beforeBreadcrumb(breadcrumb) {
+      return scrubSentryBreadcrumb(breadcrumb);
     },
     ignoreErrors: [
       'top.GLOBALS',
@@ -132,8 +197,9 @@ async function loadAndInit(): Promise<void> {
   logger.info('✅ Sentry initialized (lazy):', import.meta.env.MODE);
 }
 
-export async function setSentryUser(user: { id: string; email?: string; role?: string }) {
-  withSentry(S => S.setUser({ id: user.id, email: user.email, role: user.role }));
+/** Solo id opaco (uuid de auth) y rol: nunca email ni nombre (NZ Privacy Act). */
+export async function setSentryUser(user: { id: string; role?: string }) {
+  withSentry(S => S.setUser({ id: user.id, role: user.role }));
 }
 
 export async function clearSentryUser() {

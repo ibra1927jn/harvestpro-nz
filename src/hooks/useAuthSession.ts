@@ -109,8 +109,9 @@ export async function loadUserProfile(userId: string): Promise<{
   }
 
   // 4. Set up observability
-  setSentryUser({ id: userId, email: userData?.email, role: roleEnum ?? undefined });
-  analytics.identify(userId, { role: roleEnum, orchard_id: orchardId, email: userData?.email });
+  // Solo el uuid opaco de auth: nunca email ni nombre hacia Sentry/PostHog (NZ Privacy Act)
+  setSentryUser({ id: userId, role: roleEnum ?? undefined });
+  analytics.identify(userId, { role: roleEnum, orchard_id: orchardId });
 
   // 5. Build state update
   const stateUpdate: Partial<AuthState> = {

@@ -1,5 +1,6 @@
 import { nowNZST } from '@/utils/nzst';
 import { logger } from '@/utils/logger';
+import { scrubProperties } from '@/utils/piiScrub';
 
 /**
  * PostHog diferido: posthog-js solo se descarga en initPostHog() (tras la primera
@@ -28,9 +29,14 @@ function withPostHog(call: PendingCall): void {
   if (pending.length < MAX_PENDING_ANALYTICS_CALLS) pending.push(call);
 }
 
-/** Las propiedades se evalúan al llamar (timestamps reales), no al reenviar. */
+/**
+ * Las propiedades se evalúan al llamar (timestamps reales), no al reenviar.
+ * NZ Privacy Act: nada de email, IRD, cuenta bancaria, nombres ni picker_id hacia
+ * PostHog; scrubProperties quita esas claves y limpia los textos.
+ */
 function capture(event: string, properties?: Record<string, unknown>): void {
-  withPostHog(ph => ph.capture(event, properties));
+  const clean = scrubProperties(properties);
+  withPostHog(ph => ph.capture(event, clean));
 }
 
 /** Nº de eventos en cola (tests/diagnóstico). */
@@ -97,15 +103,16 @@ export const analytics = {
    * Identify user (set user properties)
    */
   identify(userId: string, properties?: Record<string, unknown>) {
-    withPostHog(ph => ph.identify(userId, properties));
+    // userId debe ser el uuid opaco de auth; las propiedades personales se quitan
+    const clean = scrubProperties(properties);
+    withPostHog(ph => ph.identify(userId, clean));
   },
 
   /**
-   * Track bucket scan
+   * Track bucket scan (sin picker_id: el id del trabajador no sale hacia PostHog)
    */
-  trackBucketScanned(pickerId: string, qualityGrade: string) {
+  trackBucketScanned(qualityGrade: string) {
     capture('bucket_scanned', {
-      picker_id: pickerId,
       quality_grade: qualityGrade,
       timestamp: nowNZST(),
     });
@@ -130,11 +137,10 @@ export const analytics = {
   },
 
   /**
-   * Track picker check-in
+   * Track picker check-in (sin picker_id: el recuento basta para producto)
    */
-  trackCheckIn(pickerId: string) {
+  trackCheckIn() {
     capture('picker_check_in', {
-      picker_id: pickerId,
       timestamp: nowNZST(),
     });
   },
@@ -190,7 +196,8 @@ export const analytics = {
    * Set user properties (for segmentation)
    */
   setUserProperties(properties: Record<string, unknown>) {
-    withPostHog(ph => ph.people?.set(properties));
+    const clean = scrubProperties(properties) ?? {};
+    withPostHog(ph => ph.people?.set(clean));
   },
 
   /**
@@ -241,11 +248,10 @@ export const analytics = {
   },
 
   /**
-   * Track row assignment changes
+   * Track row assignment changes (sin picker_id)
    */
-  trackRowAssignment(pickerId: string, rowNumber: number) {
+  trackRowAssignment(rowNumber: number) {
     capture('row_assigned', {
-      picker_id: pickerId,
       row_number: rowNumber,
     });
   },

@@ -35,7 +35,7 @@ describe('analytics module', () => {
   });
 
   it('analytics.trackBucketScanned is callable', () => {
-    expect(() => analytics.trackBucketScanned('p1', 'A')).not.toThrow();
+    expect(() => analytics.trackBucketScanned('A')).not.toThrow();
   });
 
   it('analytics.trackLogin is callable', () => {
@@ -47,7 +47,7 @@ describe('analytics module', () => {
   });
 
   it('analytics.trackCheckIn is callable', () => {
-    expect(() => analytics.trackCheckIn('p1')).not.toThrow();
+    expect(() => analytics.trackCheckIn()).not.toThrow();
   });
 
   it('analytics.trackSync is callable', () => {
@@ -87,7 +87,7 @@ describe('analytics module', () => {
   });
 
   it('analytics.trackRowAssignment is callable', () => {
-    expect(() => analytics.trackRowAssignment('p1', 5)).not.toThrow();
+    expect(() => analytics.trackRowAssignment(5)).not.toThrow();
   });
 });
 
@@ -128,6 +128,36 @@ describe('cola de PostHog diferido', () => {
       expect.objectContaining({ name: 'LCP', value: 1200 })
     );
     expect(m.pendingAnalyticsCalls()).toBe(0);
+    vi.unstubAllEnvs();
+  });
+});
+
+describe('datos personales (NZ Privacy Act)', () => {
+  it('no manda email, picker_id ni IRD a PostHog', async () => {
+    vi.resetModules();
+    vi.stubEnv('VITE_POSTHOG_KEY', 'phc_test');
+    const ph = (await import('posthog-js')).default;
+    vi.mocked(ph.capture).mockClear();
+    vi.mocked(ph.identify).mockClear();
+    const m = await import('./analytics');
+    await m.initPostHog();
+
+    m.analytics.identify('uuid-1', { role: 'manager', orchard_id: 'o1', email: 'a@test.com' });
+    m.analytics.trackBucketScanned('A');
+    m.analytics.trackCheckIn();
+    m.analytics.trackRowAssignment(5);
+    m.analytics.trackFeature('x', { picker_id: 'p1', note: 'IRD 123-456-789 de b@c.nz' });
+    m.analytics.setUserProperties({ full_name: 'Ana', role: 'runner' });
+
+    expect(ph.identify).toHaveBeenCalledWith('uuid-1', { role: 'manager', orchard_id: 'o1' });
+    const sent = JSON.stringify([
+      vi.mocked(ph.capture).mock.calls,
+      vi.mocked(ph.identify).mock.calls,
+      vi.mocked(ph.people.set).mock.calls,
+    ]);
+    for (const secreto of ['a@test.com', 'picker_id', 'p1', '123-456-789', 'b@c.nz', 'Ana']) {
+      expect(sent).not.toContain(secreto);
+    }
     vi.unstubAllEnvs();
   });
 });

@@ -90,7 +90,7 @@ export const createRowSlice: StateCreator<HarvestStoreState, [], [], RowSlice> =
         `📍 [Store] Rows ${rowNumbers.join(',')} — ${pickerIds.length} pickers updated in Supabase`
       );
       // 📊 PostHog: Track row assignment
-      analytics.trackRowAssignment(pickerIds[0], rowNumbers[0]);
+      analytics.trackRowAssignment(rowNumbers[0]);
     } catch (e) {
       logger.error('❌ [Store] Row assignment not saved:', e);
       set(before);
