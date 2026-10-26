@@ -75,7 +75,7 @@ export const createBucketSlice: StateCreator<
         // cada 5 s por móvil (prueba de carga 2026-10-21).
 
         // 📊 PostHog: Track bucket scan event
-        analytics.trackBucketScanned(bucketData.picker_id, bucketData.quality_grade);
+        analytics.trackBucketScanned(bucketData.quality_grade);
 
         // Recalculate intelligence after adding bucket
         get().recalculateIntelligence();

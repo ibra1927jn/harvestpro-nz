@@ -450,12 +450,12 @@ BEGIN
     INSERT INTO sec_test.who VALUES ('A.invitee', v_id, 'sectest.invite-a@example.test');
 END $$;
 
--- Foto de calidad subida por el inspector de A
+-- Foto de calidad subida por el inspector de A (en la carpeta de su huerto, como useQC.ts)
 DO $$
 DECLARE v_id uuid;
 BEGIN
     INSERT INTO storage.objects (bucket_id, name, owner, owner_id)
-    VALUES ('qc-photos', 'sectest/' || gen_random_uuid() || '.webp', sec_test.id_of('A.qc_inspector'),
+    VALUES ('qc-photos', sec_test.id_of('A')::text || '/sectest/' || gen_random_uuid() || '.webp', sec_test.id_of('A.qc_inspector'),
             sec_test.id_of('A.qc_inspector')::text)
     RETURNING id INTO v_id;
     INSERT INTO sec_test.ids VALUES ('A.qc_photo', v_id);

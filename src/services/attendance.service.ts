@@ -87,7 +87,7 @@ export const attendanceService = {
       const { CheckInResponseSchema, validateResponse } = await import('@/schemas/api.schemas');
       const result = validateResponse(CheckInResponseSchema, data, 'checkInPicker');
       // 📊 PostHog: Track picker check-in event
-      analytics.trackCheckIn(pickerId);
+      analytics.trackCheckIn();
       return result;
     } catch (err) {
       logger.error('[Attendance] Check-in via Edge Function failed:', err);
