@@ -45,19 +45,28 @@
 `main` no recibe nada desde el 2026-10-19. El trabajo del 22 al 24 está en ramas, y la más completa
 es `review/combined-2026-10-24b` (160 commits que `main` no tiene). Hay 108 ramas.
 
-- [ ] Comprobar `review/combined-2026-10-24b` entera: `npm run lint`, `npm run build`, `npm test`,
-      e2e y la app real con cada rol. Arreglar lo que falle.
-- [ ] Repasar lo que queda fuera de ella y decidir:
-  - `docs/manager-review-2026-10-21` (6 commits de revisiones por rol): fusionar, son documentos.
-  - `wip/runner-verify` y `wip/team-leader-verify` (1 commit "sin verificar" cada una): verificar y
-    meter, o descartar.
-  - `docs/wiring-audit-2026-10-23`: fusionar (es la auditoría).
-- [ ] Fusionar a `main` con un PR y CI en verde.
+- [x] Comprobar `review/combined-2026-10-24b` entera: `npm run lint`, `npm run build`, `npm test`,
+      e2e. Arreglar lo que falle. *(2026-10-27: integrada en la rama `integracion/fase-0`; en local
+      lint, `tsc`, build, los guards de tests y los tests de lo tocado; la suite entera, las Edge
+      Functions, el e2e móvil y "empresa desde cero" contra un Supabase real, en la CI del PR #90.)*
+- [ ] Recorrer la app real con cada rol (Ibra, antes o justo después de fusionar).
+- [x] Repasar lo que queda fuera de ella y decidir (`docs/audits/2026-10-27-inventario-ramas.md`):
+  - `docs/manager-review-2026-10-21` (6 commits de revisiones por rol): fusionada en `integracion/fase-0`.
+  - `wip/runner-verify` y `wip/team-leader-verify`: ya estaban hechas en C con otro código; no se
+    meten, se pueden borrar.
+  - `docs/wiring-audit-2026-10-23`: fusionada en `integracion/fase-0`.
+  - Los 4 arreglos de seguridad que faltaban (datos personales a Sentry/PostHog, cerrar sesión,
+    lectura de `harvest_settings`, fotos de QC por huerto): rama `fix/inventario-seguridad`,
+    fusionada en `integracion/fase-0`. Las otras tareas de la clase B siguen apuntadas en el inventario.
+- [ ] Fusionar a `main` con un PR y CI en verde. *(PR #90 abierto desde `integracion/fase-0`;
+      falta que Ibra lo revise y lo fusione.)*
 - [ ] Las ramas de abril (`fix/*-2026-04-22`, `improve/heartbeat-*`, `audit/*`, `lab/*`,
       `archive/2026-04`...): comprobar POR CONTENIDO que su arreglo ya está en `main` (muchas se
       rehicieron en octubre con otro código, por eso git las ve sin fusionar). Lo que falte, se
       apunta como tarea; luego se borran. Antes de borrar, enseñar la lista a Ibra.
-- [ ] Poner al día `PROGRESS.md` (es de abril) y `README.md`. Quitar pendientes que ya no aplican
+      *(Comprobado por contenido: lista de borrado y tareas al final del inventario. Falta que Ibra
+      la apruebe; no se ha borrado ninguna rama.)*
+- [x] Poner al día `PROGRESS.md` (es de abril) y `README.md`. Quitar pendientes que ya no aplican
       (PR #6, desplegar `calculate-payroll` en la nube).
 - **Hecho cuando:** `main` tiene todo el trabajo, CI en verde, y quedan solo las ramas en uso.
 

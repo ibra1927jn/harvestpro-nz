@@ -9,7 +9,7 @@
 ![Android](https://img.shields.io/badge/Android-Capacitor%208-3DDC84?logo=android&logoColor=white)
 ![Status](https://img.shields.io/badge/status-pre--pilot-orange)
 
-> **Status (October 2026):** in active development towards a first pilot, running on a local Supabase stack. It has **no production users yet**. Known gaps are listed openly under [Known gaps](#known-gaps) — see the latest [external audit](docs/audits/2026-10-16-external-audit.md).
+> **Status (27 October 2026):** in active development towards a first pilot, running on a local Supabase stack. It has **no production users yet**. The current work plan is [docs/PLAN_NIVEL.md](docs/PLAN_NIVEL.md) and a short status is in [PROGRESS.md](PROGRESS.md). Known gaps are listed openly under [Known gaps](#known-gaps).
 
 ---
 
@@ -79,11 +79,11 @@ More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | Backend       | Supabase: Postgres with RLS, Auth with TOTP 2FA, Storage, Deno Edge Functions                                               |
 | Mobile        | PWA with service worker, Capacitor 8 for Android                                                                            |
 | Quality       | Vitest, Testing Library, Playwright (desktop and mobile), Stryker mutation testing, SQL security suite, Deno function tests |
-| Observability | Sentry (text masked), PostHog (opt-in)                                                                                      |
+| Observability | Sentry (text masked, PII scrubbed), PostHog (opt-in, no emails or raw worker ids)                                           |
 
 ## Quality, measured
 
-Numbers from the last full run (16 Oct 2026), not targets:
+Numbers from the last full local run (16 Oct 2026), not targets. Since then CI runs lint, the unit tests in 5 shards, the build, the Edge Function tests and the mobile e2e suite against a real local Supabase on every pull request:
 
 | Check                                        | Result                                          |
 | -------------------------------------------- | ----------------------------------------------- |
@@ -140,26 +140,28 @@ By design, the payroll provider handles **the 8% pay-as-you-go holiday pay for c
 
 ## Known gaps
 
-From the [16 October 2026 external audit](docs/audits/2026-10-16-external-audit.md). These are open, not hidden:
+From the [16 October 2026 external audit](docs/audits/2026-10-16-external-audit.md) and the [23 October wiring audit](docs/audits/2026-10-23-wiring-audit.md); the full list of what is left is tracked in [docs/PLAN_NIVEL.md](docs/PLAN_NIVEL.md). These are open, not hidden:
 
 - **Public holidays:** regional anniversary days (e.g. Otago) are missing, and the holiday list only covers 2026–2027.
 - **Public holidays (2):** a holiday on a weekend is only applied on the Monday it is moved to, and an unworked public holiday that would otherwise have been a working day is not paid.
-- **Offline:** check-in and check-out still need signal.
+- **Offline:** roll call, breaks and bucket scans work without signal; other office screens (payroll, HR, setup) need it.
 - **Multi-company:** one installation = one company. Several companies in one database would need a tenant column and stricter policies.
 
 ## Documentation
 
-| Document                                                                                                   | What it covers                                               |
-| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                                                               | How the pieces fit: offline sync, pay engine, security model |
-| [docs/audits/2026-10-16-external-audit.md](docs/audits/2026-10-16-external-audit.md)                       | Latest audit: findings, what was fixed, what is open         |
-| [docs/PATTERNS.md](docs/PATTERNS.md)                                                                       | React and TypeScript patterns used in the codebase           |
-| [docs/MANUAL_OPERACIONES.md](docs/MANUAL_OPERACIONES.md)                                                   | Field manual for team leaders (Spanish)                      |
-| [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)                                                                 | 15-minute demo walkthrough                                   |
-| [docs/DATA_RETENTION_POLICY.md](docs/DATA_RETENTION_POLICY.md)                                             | What is kept and for how long                                |
-| [docs/legal/](docs/legal/)                                                                                 | Privacy policy, terms, data processing agreement (drafts)    |
-| [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY_RULES.md](SECURITY_RULES.md) · [CHANGELOG.md](CHANGELOG.md) | Working rules and history                                    |
-| [docs/archive/](docs/archive/)                                                                             | Earlier audits and retired guides (historical)               |
+| Document                                                                                                   | What it covers                                                                                 |
+| ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                                                               | How the pieces fit: offline sync, pay engine, security model                                   |
+| [docs/PLAN_NIVEL.md](docs/PLAN_NIVEL.md)                                                                   | Current work plan, phase by phase (Spanish)                                                    |
+| [PROGRESS.md](PROGRESS.md)                                                                                 | Short status: done, pending (Spanish)                                                          |
+| [docs/audits/](docs/audits/)                                                                               | Audits: external (16 Oct), load test, role reviews, wiring (23 Oct), branch inventory (27 Oct) |
+| [docs/PATTERNS.md](docs/PATTERNS.md)                                                                       | React and TypeScript patterns used in the codebase                                             |
+| [docs/MANUAL_OPERACIONES.md](docs/MANUAL_OPERACIONES.md)                                                   | Field manual for team leaders (Spanish)                                                        |
+| [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)                                                                 | 15-minute demo walkthrough                                                                     |
+| [docs/DATA_RETENTION_POLICY.md](docs/DATA_RETENTION_POLICY.md)                                             | What is kept and for how long                                                                  |
+| [docs/legal/](docs/legal/)                                                                                 | Privacy policy, terms, data processing agreement (drafts)                                      |
+| [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY_RULES.md](SECURITY_RULES.md) · [CHANGELOG.md](CHANGELOG.md) | Working rules and history                                                                      |
+| [docs/archive/](docs/archive/)                                                                             | Earlier audits and retired guides (historical)                                                 |
 
 ## About this project
 

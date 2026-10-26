@@ -168,10 +168,16 @@ Version: 9.9.0
 - `seed_season_simulation.sql` desactiva `trg_push_qc_inspection` mientras mete sus inspecciones (sin push).
 - Programarlo cada día con el Programador de tareas: `docs/backups-local.md`.
 
-## Estado actual (2026-10-16)
-- `main` al día (antes la pila de ramas iba 254 commits por delante). Trabajo nuevo: ramas cortas que se fusionan en 1–2 días, nunca apiladas.
+## Estado actual (2026-10-27)
+- `main` se quedó en el 2026-10-19; el PR de integración de `integracion/fase-0` (Fase 0 de `docs/PLAN_NIVEL.md`)
+  lo pone al día hasta el 2026-10-27, cuando Ibra lo revise y lo fusione. Trabajo nuevo: ramas cortas que se
+  fusionan en 1–2 días, nunca apiladas.
+- Plan en curso: `docs/PLAN_NIVEL.md` (nada nuevo fuera de él). Resumen corto del estado: `PROGRESS.md`.
 - Sin usuarios reales todavía. Una instalación = una empresa con varios huertos.
-- Auditoría externa y pendientes: `docs/audits/2026-10-16-external-audit.md`.
+- Auditorías: externa `docs/audits/2026-10-16-external-audit.md`, botones y flujos
+  `docs/audits/2026-10-23-wiring-audit.md`, ramas `docs/audits/2026-10-27-inventario-ramas.md`.
+- Datos personales: nada de email, IRD, cuenta bancaria ni `picker_id` en claro a Sentry o PostHog; todo lo que
+  salga pasa por `src/utils/piiScrub.ts` (`beforeSend`/`beforeBreadcrumb` en `config/sentry.ts`, `config/analytics.ts`).
 - Estructura del huerto (temporadas, bloques, filas): pantalla `components/views/orchard-structure/`
   (Admin › Orchard setup, cualquier huerto; Manager › Orchard setup, el suyo). Migración
   20261024010000: sin DELETE (se archiva), número de fila único por temporada, totales de bloque y huerto
