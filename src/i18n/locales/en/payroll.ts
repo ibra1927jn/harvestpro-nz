@@ -110,6 +110,7 @@ const payroll: TranslationDict = {
     'pay.close.close': 'Close pay week',
     'pay.close.yes': 'Yes, close it',
     'pay.close.pending': 'Can\'t close yet: these shifts have no check-out. Fix them in the timesheets first.',
+    'pay.close.unreviewed': 'Can\'t close yet: no hour is paid without review. Approve these shifts in Timesheets (fix the rejected ones and the ones over 14 h first).',
     'pay.err.calc': 'Couldn\'t calculate this week\'s payroll.',
     'pay.err.close': 'Couldn\'t close the week.',
     'pay.err.reopen': 'Couldn\'t reopen the week.',

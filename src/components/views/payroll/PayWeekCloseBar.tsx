@@ -101,9 +101,11 @@ export const PayWeekCloseBar: React.FC<PayWeekCloseBarProps> = ({
                     </div>
                 )}
             </div>
-            {closeResult?.reason === 'ESTIMATED_HOURS' && (
+            {(closeResult?.reason === 'ESTIMATED_HOURS' || closeResult?.reason === 'UNREVIEWED_HOURS') && (
                 <div role="alert" data-testid="pay-week-pending" className="mt-3 text-sm text-red-800">
-                    <p className="font-bold">{t('pay.close.pending')}</p>
+                    <p className="font-bold">
+                        {t(closeResult.reason === 'UNREVIEWED_HOURS' ? 'pay.close.unreviewed' : 'pay.close.pending')}
+                    </p>
                     <ul className="mt-1 list-disc pl-5">
                         {(closeResult.pending ?? []).map(p => (
                             <li key={p.picker_id}>{p.picker_name}: {p.dates.map(d => formatNZDate(d, 'weekdayShort')).join(', ')}</li>

@@ -15,9 +15,18 @@ export interface PayWeekActionResult {
     reopened?: boolean;
     already_closed?: boolean;
     total_earnings?: number;
-    /** No se puede cerrar con horas estimadas: quién y qué días */
-    reason?: 'ESTIMATED_HOURS';
-    pending?: { picker_id: string; picker_name: string; dates: string[] }[];
+    /**
+     * No se puede cerrar: horas estimadas (tramos sin salida) o tramos sin
+     * aprobar / rechazados / de más de 14 h sin corregir. Quién y qué días.
+     */
+    reason?: 'ESTIMATED_HOURS' | 'UNREVIEWED_HOURS';
+    pending?: {
+        picker_id: string;
+        picker_name: string;
+        dates: string[];
+        /** Solo con UNREVIEWED_HOURS: el problema de cada día */
+        issues?: { date: string; issue: 'not_approved' | 'rejected' | 'needs_correction' }[];
+    }[];
 }
 
 export const payrollRepository = {

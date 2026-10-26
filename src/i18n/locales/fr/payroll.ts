@@ -110,6 +110,7 @@ const payroll: TranslationDict = {
     'pay.close.close': 'Clôturer la semaine de paie',
     'pay.close.yes': 'Oui, clôturer',
     'pay.close.pending': 'Clôture impossible pour l’instant : ces postes n’ont pas de départ pointé. Corrigez-les d’abord dans les feuilles d’heures.',
+    'pay.close.unreviewed': 'Clôture impossible pour l’instant : aucune heure n’est payée sans vérification. Approuvez ces postes dans les feuilles d’heures (corrigez d’abord ceux qui sont rejetés ou de plus de 14 h).',
     'pay.err.calc': 'Impossible de calculer la paie de cette semaine.',
     'pay.err.close': 'Impossible de clôturer la semaine.',
     'pay.err.reopen': 'Impossible de rouvrir la semaine.',

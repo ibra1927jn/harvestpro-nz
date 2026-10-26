@@ -110,6 +110,7 @@ const payroll: TranslationDict = {
     'pay.close.close': 'Cerrar semana de pago',
     'pay.close.yes': 'Sí, cerrarla',
     'pay.close.pending': 'Aún no se puede cerrar: estos turnos no tienen salida. Corrígelos primero en las planillas.',
+    'pay.close.unreviewed': 'Aún no se puede cerrar: ninguna hora se paga sin revisar. Aprueba estos turnos en las planillas (antes corrige los rechazados y los de más de 14 h).',
     'pay.err.calc': 'No se pudo calcular la nómina de esta semana.',
     'pay.err.close': 'No se pudo cerrar la semana.',
     'pay.err.reopen': 'No se pudo reabrir la semana.',

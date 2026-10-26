@@ -221,6 +221,53 @@ export function shiftNeedsReview(
     return !shift.corrected && outMs - inMs > MAX_UNREVIEWED_SHIFT_MS;
 }
 
+/** Por qué un tramo aún no se puede pagar */
+export type ShiftReviewIssue =
+    /** Nadie de nómina (o el manager de su huerto) lo ha aprobado */
+    | 'not_approved'
+    /** Rechazado y sin corregir ni volver a aprobar */
+    | 'rejected'
+    /** Más de maxUnreviewedShiftHours sin corregir (o sin salida) */
+    | 'needs_correction';
+
+/** Un fichaje con su estado de revisión (columnas de daily_attendance) */
+export interface ReviewableShift extends DbShift {
+    verified_at?: string | null;
+    rejected_at?: string | null;
+}
+
+/**
+ * Tramos de un rango de días [start, end] (fechas NZ) que todavía no se pueden
+ * pagar: ninguna hora se paga sin revisar (Fase 2). Un tramo se puede pagar
+ * cuando está aprobado (verified_at), no rechazado y, si pasa del tope de horas,
+ * corregido a mano. Corregir una hoja ya aprobada le quita la aprobación (BD,
+ * 20261023012000), así que lo aprobado es siempre lo que se paga. Los fichajes
+ * sin entrada (ausencias) no tienen horas: no cuentan. Un tramo abierto no se
+ * puede aprobar: sale como 'needs_correction' si ya pasó del tope y si no como
+ * 'not_approved'. Un problema por tramo, el más grave primero.
+ */
+export function unreviewedShifts(
+    rows: ReadonlyArray<ReviewableShift>,
+    range: { start: string; end: string },
+    now: Date = new Date(),
+): Array<{ pickerId: string; date: string; issue: ShiftReviewIssue }> {
+    const out: Array<{ pickerId: string; date: string; issue: ShiftReviewIssue }> = [];
+    for (const r of rows) {
+        const date = r.date.slice(0, 10);
+        if (date < range.start || date > range.end || toMs(r.check_in) === null) continue;
+        let issue: ShiftReviewIssue | null = null;
+        if (shiftNeedsReview({ checkIn: r.check_in, checkOut: r.check_out, corrected: correctionCovers(r.corrected_at, r.check_out) }, now)) {
+            issue = 'needs_correction';
+        } else if (r.rejected_at) {
+            issue = 'rejected';
+        } else if (!r.verified_at) {
+            issue = 'not_approved';
+        }
+        if (issue) out.push({ pickerId: r.picker_id, date, issue });
+    }
+    return out.sort((a, b) => a.pickerId.localeCompare(b.pickerId) || a.date.localeCompare(b.date));
+}
+
 /**
  * Horas trabajadas de un picker en un día. Un tramo (cerrado o abierto) de más
  * de maxUnreviewedShiftHours sin corregir cuenta solo esas horas (capped).
