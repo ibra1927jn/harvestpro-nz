@@ -40,7 +40,7 @@ Deno.test({ name: 'close-pay-week', ...testOpts, fn: async t => {
         let lateId = ''
         const body = (action: string, extra: Record<string, unknown> = {}) => ({ action, week_start: monday, ...extra })
         /** Respuesta de close-pay-week */
-        type CloseResult = { closed?: boolean; reason?: string; pending?: { picker_id: string }[]; total_earnings?: number; already_closed?: boolean }
+        type CloseResult = { closed?: boolean; reason?: string; pending?: { picker_id: string; issues?: { date: string; issue: string }[] }[]; total_earnings?: number; already_closed?: boolean }
         const payrollOf = (token: string) => call<PayrollResult & { closed?: unknown }>('calculate-payroll', { token, body: { start_date: monday, end_date: sunday } })
 
         await t.step('only payroll_admin / admin may close', async () => {
@@ -83,23 +83,22 @@ Deno.test({ name: 'close-pay-week', ...testOpts, fn: async t => {
         })
 
         await t.step('will not close until every shift is approved (no hour is paid without review)', async () => {
-            type Pending = { picker_id: string; issues: { date: string; issue: string }[] }
             const review = (id: string, decision: 'approve' | 'reject', reason?: string) =>
                 call('approve-timesheet', { token: payroll.token, body: { attendance_id: id, decision, ...(reason ? { reason } : {}) } })
 
-            const before = await call<CloseResult & { pending?: Pending[] }>('close-pay-week', { token: payroll.token, body: body('close') })
+            const before = await call<CloseResult>('close-pay-week', { token: payroll.token, body: body('close') })
             assertEquals(before.status, 200, show(before))
             assertEquals(before.json.closed, false)
             assertEquals(before.json.reason, 'UNREVIEWED_HOURS')
             assertEquals(before.json.pending?.map(p => p.picker_id).sort(), [picker.id, late.id].sort())
-            assertEquals(before.json.pending?.flatMap(p => p.issues.map(i => i.issue)), ['not_approved', 'not_approved'])
+            assertEquals(before.json.pending?.flatMap(p => (p.issues ?? []).map(i => i.issue)), ['not_approved', 'not_approved'])
 
             // Uno aprobado y el otro rechazado: sigue sin cerrar
             assertEquals((await review(att!.id, 'approve')).status, 200)
             assertEquals((await review(lateId, 'reject', 'Check-out time is wrong')).status, 200)
-            const rejected = await call<CloseResult & { pending?: Pending[] }>('close-pay-week', { token: payroll.token, body: body('close') })
+            const rejected = await call<CloseResult>('close-pay-week', { token: payroll.token, body: body('close') })
             assertEquals(rejected.json.reason, 'UNREVIEWED_HOURS', show(rejected))
-            assertEquals(rejected.json.pending?.map(p => [p.picker_id, p.issues.map(i => i.issue)]), [[late.id, ['rejected']]])
+            assertEquals(rejected.json.pending?.map(p => [p.picker_id, (p.issues ?? []).map(i => i.issue)]), [[late.id, ['rejected']]])
             const { count } = await service.from('pay_weeks').select('id', { count: 'exact', head: true }).eq('week_start', monday)
             assertEquals(count, 0)
 
