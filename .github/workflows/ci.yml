@@ -164,7 +164,10 @@ jobs:
           docker logs --tail 200 supabase_db_harvestpro-nz || true
 
   e2e:
-    runs-on: ubuntu-latest
+    # Fijado a 24.04: desde el 2026-10-26 ubuntu-latest es 26.04 y Playwright 1.58
+    # no instala Chromium ahí ("does not support chromium on ubuntu26.04-x64").
+    # Quitar el pin al subir Playwright a una versión que soporte 26.04.
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
       SUPABASE_CLI_VERSION: 2.120.0
