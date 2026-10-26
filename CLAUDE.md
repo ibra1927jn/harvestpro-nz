@@ -81,6 +81,7 @@ Version: 9.9.0
   SUPABASE_SERVICE_ROLE_KEY).
 - Edge Functions: `npm run test:functions` (Deno, supabase/functions/tests/, necesita .env.local).
 - BD: `scripts/test-db-security.sh` (RLS, SECURITY DEFINER; supabase/tests/security/*.sql con ROLLBACK).
+  Tabla nueva en `public`: añadirla a `99_rls_matrix.sql` (quién lee/crea/cambia/borra, rol por rol) o falla.
 - E2E Playwright: ~31 specs en e2e/ (`npm run test:e2e`) y 9 móviles en e2e/mobile
   (`npm run test:e2e:mobile`, puerto 3000 o `MOBILE_PORT`; reutiliza un servidor ya levantado).
 - «Empresa desde cero»: `npm run test:e2e:fresh` (playwright.fresh.config.ts, e2e/fresh-company.spec.ts):
@@ -188,6 +189,8 @@ Version: 9.9.0
   filas. Los bloques pueden tener huecos: las filas reales son `blockRowNumbers()` (utils/blockRows.ts),
   nunca start_row..start_row+total_rows.
 - Reglas de equipos: el team leader solo gestiona su equipo y puede coger a gente sin equipo; mover, soltar, dar de baja o borrar es de RRHH/admin; el manager mueve equipos de fila (migración 20261016000000_picker_team_rules).
+- Nómina: ninguna hora se paga sin revisar: `close-pay-week` no cierra la semana con tramos sin aprobar,
+  rechazados o de más de 14 h sin corregir (`unreviewedShifts` en pay.ts).
 - Nómina: la app calcula bruto y horas y exporta a Xero/PaySauce. El 8% de holiday pay de casuales, PAYE, KiwiSaver, ACC y las nóminas los hace el programa de nóminas (decisión del dueño, 2026-10-16).
 - Salario mínimo: tabla con fechas `NZ_MIN_WAGE_HISTORY` en src/services/harvestMetrics/pay.ts (copiar igual a supabase/functions/_shared/pay-rules.ts). Cada año, cuando se publique el Minimum Wage Order, añadir la fila con fecha 1 de abril. No volver a escribir 23.95 a mano: usar `PAY_RULES.minWageFloor` o `minWageFloorOn(fecha)`.
 - Documentación histórica (auditorías de abril, guías de Hetzner/Vercel/Supabase Cloud): `docs/archive/2026-04/`.

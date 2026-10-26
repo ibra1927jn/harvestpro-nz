@@ -2,6 +2,23 @@
 
 All notable changes to HarvestPro NZ will be documented in this file.
 
+## [Unreleased] - 2026-10-27 (Fase 2: security and money)
+
+### Security
+
+- Access matrix for every table in `public` (`supabase/tests/security/99_rls_matrix.sql`): who reads, inserts, updates and deletes each table, role by role, for the caller's orchard and another one; a new table without an entry fails the suite.
+- `20261027030000_fase2_rls_gaps`: `day_closures` lost its last open read policy (`auth.role() = 'authenticated'`, any session read every orchard); a deactivated account with a live token can no longer use chat, push, audit log, consent log, files or read its contract and HR documents; runner, QC and logistics no longer read leave requests (type and reason; they use `presence_today`); only runner, logistics, team leader, manager and admin create bins; a team leader adds pickers only in its own orchard; a manager edits only its own profile and field staff profiles. Tests in `99_rls_gaps_fase2.sql`, `95_leave_requests.sql`.
+
+### Fixed
+
+- No hour is paid without review: `close-pay-week` refuses to close while any shift of the week is not approved, rejected, or over 14 h uncorrected (`unreviewedShifts` in `pay.ts` / `pay-rules.ts`; reason `UNREVIEWED_HOURS` shown in the Payroll close bar).
+- Payroll pays each day at the legal minimum of that day: `computePayroll` no longer folds today's minimum into past days, so a new Minimum Wage Order (1 April) does not raise the March days of that week; `minimum_required` uses each day's minimum too.
+- Team leader and manager Timesheet refresh live when payroll approves or rejects (audit 23-10 C5), like Payroll.
+
+### Added
+
+- NZ payroll rule tests (`src/test/payroll-reference/nz-rules.test.ts`, `pay.review.test.ts`): minimum wage by date, public holidays at 1.5×, alternative days, gross-only export (KiwiSaver, PAYE and holiday pay left to the payroll program).
+
 ## [Unreleased] - 2026-10-27
 
 ### Changed

@@ -84,16 +84,29 @@ presencia sin horas, tramos de más de 14 h...). Antes de arreglar nada más, sa
 ## Fase 2 — Seguridad y dinero
 
 Todo lo que quede de la sección A, primero que nada.
-- [ ] Cada regla de acceso (RLS) con su test en `supabase/tests/security`: quién lee y quién
-      escribe cada tabla, según las decisiones de arriba.
-- [ ] Revisar las migraciones que aún tengan `USING (true)` y confirmar que una posterior las cierra.
-- [ ] Nómina: ninguna hora se paga sin revisar; cada cálculo con su test contra las reglas de NZ
+- [x] Cada regla de acceso (RLS) con su test en `supabase/tests/security`: quién lee y quién
+      escribe cada tabla, según las decisiones de arriba. *(2026-10-27, rama
+      `fase-2/seguridad-dinero`: `99_rls_matrix.sql` prueba las 35 tablas, rol por rol, leer /
+      crear / cambiar / borrar en su huerto y en otro; una tabla nueva sin entrada falla. Los
+      huecos que salieron se cierran en `20261027030000_fase2_rls_gaps` con
+      `99_rls_gaps_fase2.sql`. Queda verlo en la app real: A1 con la sesión abierta, A2 y A5.)*
+- [x] Revisar las migraciones que aún tengan `USING (true)` y confirmar que una posterior las cierra.
+      *(Todas las de `USING (true)` / `WITH CHECK (true)` las cierra una posterior; quedaba una
+      equivalente, `authenticated_select_day_closures` (`auth.role() = 'authenticated'`), cerrada en
+      `20261027030000`. `99_rls_gaps_fase2.sql` falla si vuelve a aparecer una política así.)*
+- [x] Nómina: ninguna hora se paga sin revisar; cada cálculo con su test contra las reglas de NZ
       (salario mínimo por fecha, festivos 1,5×, días alternativos, KiwiSaver).
+      *(`close-pay-week` no cierra con tramos sin aprobar, rechazados o de más de 14 h sin
+      corregir; cada día se paga con el mínimo legal de ese día; tests en
+      `src/test/payroll-reference/nz-rules.test.ts` y `pay.review.test.ts`. KiwiSaver, PAYE y el
+      8 % de holiday pay siguen en el programa de nóminas: el test comprueba que la app exporta
+      solo el bruto. Falta probar el cierre de semana en la app real.)*
 
 ## Fase 3 — Que los roles se hablen
 
 Objetivo: los 16 flujos de la auditoría en vivo (hoy 3 perfectos, 9 a medias y 4 rotos).
-- [ ] Nómina aprueba o rechaza → lo ven TL y manager.
+- [ ] Nómina aprueba o rechaza → lo ven TL y manager. *(El Timesheet del TL y del manager ya se
+      refresca solo, como Nómina (C5, rama `fase-2/seguridad-dinero`); falta verlo con dos sesiones.)*
 - [ ] QC rechaza → aviso al TL y al manager; el TL ve las inspecciones de su equipo.
 - [ ] Transporte: el runner ve en vivo si se lo asignaron o completaron.
 - [ ] Avisos del manager: elegir destinatarios y que la campana cuente.
