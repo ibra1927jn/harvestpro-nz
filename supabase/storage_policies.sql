@@ -78,3 +78,10 @@ CREATE POLICY "Chat attachments upload" ON storage.objects FOR INSERT TO authent
           AND (SELECT auth.uid())::text = ANY (c.participant_ids)));
 CREATE POLICY "Chat attachments delete own" ON storage.objects FOR DELETE TO authenticated
     USING (bucket_id = 'chat-attachments' AND owner_id = (SELECT auth.uid())::text);
+
+-- Cuentas de baja (Fase 2, migración 20261027030000_fase2_rls_gaps): ningún
+-- fichero, ni para leer ni para subir, mientras su token siga vivo.
+DROP POLICY IF EXISTS "Active accounts only" ON storage.objects;
+CREATE POLICY "Active accounts only" ON storage.objects AS RESTRICTIVE FOR ALL TO authenticated
+    USING ((SELECT public.is_active_member()))
+    WITH CHECK ((SELECT public.is_active_member()));

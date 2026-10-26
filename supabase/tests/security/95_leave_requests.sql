@@ -1,7 +1,8 @@
 -- =============================================================================
 -- leave_requests (Agenda de RRHH, revisión 21-10 #18): ausencias y permisos.
--- Lectura: miembros activos del huerto; RRHH, nómina y admin de toda la
--- empresa. Pedir: RRHH/admin en cualquier huerto; manager y team leader en el
+-- Lectura: manager y team leader del huerto; RRHH, nómina y admin de toda la
+-- empresa (runner, QC y logística ven «de permiso» con presence_today: Fase 2,
+-- 20261027030000_fase2_rls_gaps). Pedir: RRHH/admin en cualquier huerto; manager y team leader en el
 -- suyo, solo como "requested" y a su nombre. Decidir: RRHH/admin y el manager
 -- de su huerto; nadie decide la suya (salvo admin). Nadie borra.
 -- (no se ha podido ejecutar en esta rama: la base local es compartida;
@@ -26,7 +27,10 @@ VALUES (sec_test.id_of('A.leave_tl'), sec_test.id_of('A'), sec_test.id_of('A.tea
 
 -- ── Lectura ─────────────────────────────────────────────────────────────────
 SELECT sec_test.sees(w, 'sees leave of own orchard', $$SELECT 1 FROM leave_requests WHERE id = {A.leave}$$, 1)
-FROM unnest(ARRAY['A.manager', 'A.team_leader', 'A.runner', 'A.qc_inspector', 'A.logistics']) AS w;
+FROM unnest(ARRAY['A.manager', 'A.team_leader']) AS w;
+-- El tipo (enfermedad, violencia doméstica…) y el motivo no son para todo el huerto
+SELECT sec_test.sees(w, 'cannot read leave requests (uses presence_today)', $$SELECT 1 FROM leave_requests WHERE id = {A.leave}$$, 0)
+FROM unnest(ARRAY['A.runner', 'A.qc_inspector', 'A.logistics']) AS w;
 SELECT sec_test.sees(w, 'does not see leave of another orchard', $$SELECT 1 FROM leave_requests WHERE id = {B.leave}$$, 0)
 FROM unnest(ARRAY['A.manager', 'A.team_leader', 'A.runner']) AS w;
 SELECT sec_test.sees(w, 'sees leave of every orchard', $$SELECT 1 FROM leave_requests WHERE id IN ({A.leave}, {B.leave})$$, 2)
