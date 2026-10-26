@@ -37,10 +37,10 @@ FROM unnest(ARRAY['anon', 'A.team_leader', 'A.qc_inspector', 'A.logistics', 'A.p
 -- ── Fotos de QC ─────────────────────────────────────────────────────────────
 INSERT INTO storage.buckets (id, name, public) VALUES ('qc-photos', 'qc-photos', false) ON CONFLICT (id) DO NOTHING;
 INSERT INTO storage.objects (bucket_id, name, owner, owner_id)
-SELECT 'qc-photos', 'A/sectest-photo.webp', id, id::text FROM sec_test.who WHERE key = 'A.qc_inspector';
+SELECT 'qc-photos', sec_test.id_of('A')::text || '/sectest-photo.webp', id, id::text FROM sec_test.who WHERE key = 'A.qc_inspector';
 
 SELECT sec_test.record((SELECT NOT public FROM storage.buckets WHERE id = 'qc-photos'), 'qc-photos bucket is private', 'bucket is public');
-SELECT sec_test.sees(w, 'sees QC photos', $$SELECT 1 FROM storage.objects WHERE bucket_id = 'qc-photos' AND name = 'A/sectest-photo.webp'$$, 1)
+SELECT sec_test.sees(w, 'sees QC photos', $$SELECT 1 FROM storage.objects WHERE bucket_id = 'qc-photos' AND name = {A}::text || '/sectest-photo.webp'$$, 1)
 FROM unnest(ARRAY['A.qc_inspector', 'A.manager', 'A.admin']) AS w;
 SELECT sec_test.sees(w, 'cannot see QC photos', $$SELECT 1 FROM storage.objects WHERE bucket_id = 'qc-photos'$$, 0)
 FROM unnest(ARRAY['anon', 'A.runner', 'A.team_leader', 'A.payroll_admin']) AS w;
