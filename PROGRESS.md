@@ -44,13 +44,9 @@
 ## Pendiente
 
 - **Ibra:** revisar y fusionar el PR de `integracion/fase-0` a `main`.
-- **Ibra (urgente, fuera del código):** cambiar la clave `service_role` y la contraseña de Postgres del
-  proyecto de Supabase en la nube `bfglkiaauqxsddznucxf`, o borrar el proyecto. Están en la historia
-  pública de git (abril–octubre). Ver el punto 1 del inventario de ramas.
 - **Ibra:** aprobar la lista de ramas que se pueden borrar (final de
   `docs/audits/2026-10-27-inventario-ramas.md`). No se ha borrado ninguna.
-- **Del inventario (clase B), sin hacer:** `scripts/seed-users.cjs` con valores de reserva de un
-  proyecto en la nube; decidir si `signOut` cierra todas las sesiones (`scope: 'global'`); decidir si
+- **Del inventario (clase B), sin hacer:** decidir si `signOut` cierra todas las sesiones (`scope: 'global'`); decidir si
   la app guarda los días alternativos (Holidays Act s.60) o los lleva el programa de nóminas;
   limpiar `baseRepository.delete`.
 - **Después:** Fase 1 del plan (repetir la auditoría sobre `main`) y siguientes.

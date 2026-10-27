@@ -56,7 +56,7 @@ supabase functions deploy --all
 
 ### Manual Backup
 ```bash
-export DATABASE_HOST=db.mcbtyaebetzvzvnxydpy.supabase.co
+export DATABASE_HOST=db.<proyecto-borrado>.supabase.co
 export DATABASE_USER=postgres
 export DATABASE_PASSWORD=<your-db-password>
 export DATABASE_NAME=postgres

@@ -21,14 +21,8 @@ Fase 0 de `docs/PLAN_NIVEL.md`: para cada rama de GitHub, ¿su trabajo ya está 
 
 ### Lo más importante
 
-1. **Clave secreta en la historia pública (urgente, fuera del código).** El repo es público. Entre el
-   2026-04-14 (commit `d5ce6e36`) y el 2026-10-16 (commit `470c544c`), el fichero `scripts/setup-db.cjs`
-   llevaba escrita la **clave `service_role`** y la **contraseña de la base de datos** del proyecto de
-   Supabase en la nube `bfglkiaauqxsddznucxf`. Hoy ya **no** están en los ficheros de C, pero **sí siguen en
-   la historia** de C y de `main`: cualquiera puede verlas. Si ese proyecto de Supabase sigue existiendo,
-   hay que **cambiar la clave `service_role` y la contraseña de Postgres** en el panel de Supabase (o borrar
-   el proyecto si ya no se usa). Borrar la rama no arregla nada. Las demás claves que aparecen en C son las
-   de prueba de Supabase local (`supabase-demo`) o falsas (`mock`, `placeholder`), y no son un problema.
+1. **Supabase en la nube:** los proyectos de Supabase en la nube están eliminados (2026-10-16). No hay
+   nada que cambiar ahí; HarvestPro corre solo en Supabase local.
 2. **Datos personales a PostHog y Sentry (falta en C).** El arreglo de abril no se rehízo: C envía el
    **email** del usuario a PostHog (`analytics.identify` en `src/hooks/useAuthSession.ts`) y a Sentry
    (`setSentryUser`), manda el `picker_id` sin ocultar en los eventos de cubetas, fichajes y filas, y el
@@ -158,7 +152,7 @@ antes del 19 de octubre.
 
 | Rama | Último commit | Qué falta en C y dónde iría |
 |---|---|---|
-| `fix/remove-hardcoded-secrets-2026-04-22` | 2026-04-22 | (1) **Fuera del código:** cambiar la clave `service_role` y la contraseña de Postgres del proyecto `bfglkiaauqxsddznucxf`, o borrar el proyecto (ver "Lo más importante", punto 1). (2) `scripts/seed-users.cjs` sigue con valores de reserva: el proyecto `mcbtyaebetzvzvnxydpy` y un texto "PEGAR_AQUI…". No es un secreto, pero el script podría ejecutarse contra ese proyecto sin querer: exigir las variables de entorno o borrar el script si ya no se usa (los deploys a la nube se retiraron). (3) La revisión de secretos antes de cada commit (`.husky/pre-commit` solo hace `npm run lint`). Opcional; la CI ya revisa `src/`. |
+| `fix/remove-hardcoded-secrets-2026-04-22` | 2026-04-22 | Nada: los proyectos de Supabase en la nube están eliminados y `scripts/seed-users.cjs` se ha borrado. Opcional: una revisión de secretos en `.husky/pre-commit` (hoy solo hace `npm run lint`; la CI ya revisa `src/`). |
 | `fix/sentry-posthog-pii-redaction-2026-04-22` | 2026-04-22 | `src/hooks/useAuthSession.ts`: no mandar `email` a `analytics.identify` ni a `setSentryUser`. `src/config/analytics.ts`: no mandar `picker_id` en claro (usar un seudónimo o quitarlo) en `trackBucketScanned`, `trackCheckIn` y `trackRowAssignment`, y filtrar las claves con datos personales. `src/config/sentry.ts`: `beforeSend` y `beforeBreadcrumb` que limpien emails, IRD, cuentas bancarias y nombres; `setSentryUser` sin email. Con test. |
 | `fix/signout-global-and-requirerole-db-2026-04-22` | 2026-04-22 | La mitad de `requireRole` ya está en C (lee rol e `is_active` de `public.users`). Falta: `supabase.auth.signOut({ scope: 'global' })` en `src/context/auth/authActions.ts` (`teardownSession`), para cerrar también las otras sesiones de esa cuenta. Antes, decidir si se quiere (cierra la sesión en todos los móviles de esa persona). |
 | `fix/logout-clear-caches-2026-04-22` | 2026-04-22 | Al cerrar sesión, C borra Dexie y `localStorage` y recarga. Falta borrar la Cache Storage (sobre todo `supabase-api-cache`, que guarda respuestas de la API según `vite.config.ts`) y `sessionStorage`. Iría en `wipeLocalData()` (`src/context/auth/authActions.ts`). |
@@ -208,9 +202,7 @@ se va a rehacer sobre C, no a fusionar, y la rama vieja sigue guardada en `archi
 
 Ordenadas por importancia:
 
-1. **Cambiar las claves del proyecto Supabase `bfglkiaauqxsddznucxf`** (clave `service_role` y contraseña
-   de Postgres), o borrar ese proyecto si ya no se usa. Lo tiene que hacer Ibra en el panel de Supabase.
-   El repo es público y las claves están en la historia de git.
+1. (Hecho: no aplica) Los proyectos de Supabase en la nube están eliminados.
 2. **Datos personales a Sentry y PostHog:** quitar el email, ocultar `picker_id` y limpiar los errores
    (`useAuthSession.ts`, `config/analytics.ts`, `config/sentry.ts`).
 3. **Cerrar sesión de verdad:** borrar la Cache Storage y `sessionStorage` en `wipeLocalData()`, y decidir
@@ -219,7 +211,7 @@ Ordenadas por importancia:
    de lectura abiertas, con su test de seguridad.
 5. **Fotos de QC por huerto:** limitar a la carpeta del huerto de quien llama (migración nueva y
    `storage_policies.sql`).
-6. **`scripts/seed-users.cjs`:** quitar los valores de reserva del proyecto en la nube, o borrar el script.
+6. (Hecho) `scripts/seed-users.cjs`, el script del proyecto en la nube, se ha borrado.
    Opcional: revisión de secretos en `.husky/pre-commit`.
 7. **Días alternativos (Holidays Act s.60):** decidir si la app lleva un registro (tabla
    `alternative_holidays`) o lo deja al programa de nóminas.

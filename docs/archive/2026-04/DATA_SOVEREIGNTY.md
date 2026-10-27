@@ -3,7 +3,7 @@
 
 ## Current Situation
 
-The HarvestPro NZ Supabase project (`mcbtyaebetzvzvnxydpy`) is hosted in:
+The HarvestPro NZ Supabase project (`<proyecto-borrado>`) is hosted in:
 
 > **Region:** AWS `us-east-1` (North Virginia, USA)
 
@@ -49,7 +49,7 @@ Plan: Free (or Pro)
 ```bash
 # Get your direct connection string from Supabase Dashboard
 # Project Settings → Database → Connection string (URI)
-pg_dump postgresql://postgres:[PASSWORD]@db.mcbtyaebetzvzvnxydpy.supabase.co:5432/postgres \
+pg_dump postgresql://postgres:[PASSWORD]@db.<proyecto-borrado>.supabase.co:5432/postgres \
   --format=custom \
   --compress=9 \
   --no-acl \

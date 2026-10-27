@@ -23,6 +23,7 @@ All notable changes to HarvestPro NZ will be documented in this file.
 
 ### Changed
 
+- Removed everything tied to the deleted Supabase Cloud project: `scripts/seed-users.cjs`, `scripts/run-e2e-hetzner.sh`, the Hetzner E2E guide, the project refs in archived docs and the "rotate its keys" items in `PROGRESS.md` and the branch inventory (the cloud projects were deleted on 2026-10-16).
 - Integration branch `integracion/fase-0` (Fase 0 of `docs/PLAN_NIVEL.md`): brings `main` from 2026-10-19 up to 2026-10-27 — `review/combined-2026-10-24b` (role reviews, daily piece rates, offline roll call, chat and push, orchard structure, load-test fixes, local backups), the inventory security fixes and the October audit documents.
 - `PROGRESS.md` rewritten as a short current status; README, `CLAUDE.md` and the plan's Fase 0 brought up to date.
 
