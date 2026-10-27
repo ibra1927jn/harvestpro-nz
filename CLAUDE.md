@@ -58,6 +58,12 @@ Version: 9.9.0
   RRHH y admin de la empresa, el TL solo las de pickers de SU equipo y el inspector de QC solo las que creó él
   (crea; no cambia ni borra). Runner, logística y nómina, nada. La foto del TL se busca por
   `qc_inspections.photo_url` (misma migración).
+- Precios por cubeta (`piece_rates`, `variety_rates`, `harvest_settings.piece_rate`, `day_setups.piece_rate`): cada
+  uno lee solo los de SU huerto (manager, TL, runner, QC, logística); admin, RRHH y nómina los de todos. La escritura
+  no cambia (manager de su huerto y admin). Lo que paga el día entero de alguien con precios de otro huerto va por el
+  servidor: `calculate-payroll` y `check-compliance` leen precios con service role (`_shared/rates-client.ts`), la hoja
+  diaria del manager toma el complemento de `calculate-payroll` y el historial del picker pone «—» si no ve el precio
+  (migración 20261027050000).
 - Filas (`row_assignments`): las crea, reasigna y retira el manager (o admin), también varias por delante; el TL
   solo mueve a SU equipo (`pickers.current_row`, `moveTeamToRow`) entre las filas activas asignadas a su equipo y
   apunta avance y fin (triggers `guard_team_leader_current_row` y `guard_row_assignment_team_leader`).
