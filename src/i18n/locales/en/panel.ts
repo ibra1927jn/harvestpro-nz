@@ -72,6 +72,7 @@ const panel: TranslationDict = {
     'panel.history.col.hours': 'HOURS',
     'panel.history.col.earned': 'EARNED',
     'panel.history.earned_other_orchard': 'Includes buckets from another orchard whose price you cannot see',
+    'panel.history.earned_part_elsewhere': 'Also worked in another orchard that day: this orchard\'s part only. The pay is in Payroll.',
     'panel.history.daily_output_title': 'Daily Output (last {n} days)',
     // Quality tab
     'panel.quality.overall': 'Overall Quality Score',

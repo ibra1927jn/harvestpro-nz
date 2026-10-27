@@ -16,6 +16,7 @@ const repo = vi.hoisted(() => ({
     getBucketRecordsSince: vi.fn(),
     getInspectionsSince: vi.fn(),
     getDaySetupsSince: vi.fn(),
+    getDaysElsewhere: vi.fn(),
 }));
 vi.mock('@/repositories/picker-history.repository', () => ({ pickerHistoryRepository: repo }));
 const rates = vi.hoisted(() => ({ loadForPay: vi.fn() }));
@@ -45,6 +46,7 @@ beforeEach(() => {
     ]);
     repo.getInspectionsSince.mockResolvedValue([]);
     repo.getDaySetupsSince.mockResolvedValue([]);
+    repo.getDaysElsewhere.mockResolvedValue(new Set());
 });
 afterEach(() => { vi.useRealTimers(); });
 
@@ -80,5 +82,62 @@ describe('picker history with prices of the own orchard only', () => {
         rates.loadForPay.mockRejectedValue(new Error('offline'));
         const h = await pickerHistoryService.getPickerHistory('p1', 'A', 14);
         expect(typeof h!.dailyRecords.find(r => r.date === D2)?.earnings).toBe('number');
+    });
+});
+
+// Migración 20261027070000: el manager de A no lee el tramo ni las cubetas de B.
+// picker_days_elsewhere le dice qué días fueron partidos: horas y cubetas de aquí,
+// pago «—» (el complemento es del día entero; está en Nómina).
+describe('picker history when the other orchard\'s rows are not readable (manager)', () => {
+    beforeEach(() => {
+        repo.getAttendanceSince.mockResolvedValue([
+            { date: D1, orchard_id: 'A', check_in: t(D1, '07:00'), check_out: t(D1, '11:00') },
+            { date: D2, orchard_id: 'A', check_in: t(D2, '07:00'), check_out: t(D2, '11:00') },
+        ]);
+        repo.getBucketRecordsSince.mockResolvedValue([
+            ...Array.from({ length: 10 }, () => ({ scanned_at: t(D1, '08:00'), orchard_id: 'A', variety: null, quality_grade: 'A' })),
+            ...Array.from({ length: 10 }, () => ({ scanned_at: t(D2, '08:00'), orchard_id: 'A', variety: null, quality_grade: 'A' })),
+        ]);
+        rates.loadForPay.mockResolvedValue({
+            rates: [{ orchardId: 'A', variety: null, effectiveDate: '2026-10-01', pieceRate: 10 }],
+            orchardFallbacks: { A: 10 },
+        });
+    });
+
+    it('a day partly in another orchard keeps this orchard\'s hours and buckets, with no amount', async () => {
+        repo.getDaysElsewhere.mockResolvedValue(new Set([D2]));
+        const h = await pickerHistoryService.getPickerHistory('p1', 'A', 14);
+        const day = (d: string) => h!.dailyRecords.find(r => r.date === d);
+        expect(repo.getDaysElsewhere).toHaveBeenCalledWith('p1', expect.any(String));
+        expect(day(D2)).toMatchObject({ buckets: 10, hours: 4, earnings: null, partElsewhere: true });
+        expect(day(D2)?.topUp).toBeUndefined();
+        // Un día entero aquí sigue con su importe
+        expect(day(D1)).toMatchObject({ earnings: 100 });
+        expect(day(D1)?.partElsewhere).toBeUndefined();
+    });
+
+    it('whoever reads the other orchard\'s rows (HR, payroll, admin) gets the whole day priced', async () => {
+        repo.getDaysElsewhere.mockResolvedValue(new Set([D2]));
+        repo.getAttendanceSince.mockResolvedValue([
+            { date: D2, orchard_id: 'A', check_in: t(D2, '07:00'), check_out: t(D2, '11:00') },
+            { date: D2, orchard_id: 'B', check_in: t(D2, '12:00'), check_out: t(D2, '15:00') },
+        ]);
+        rates.loadForPay.mockResolvedValue({
+            rates: [
+                { orchardId: 'A', variety: null, effectiveDate: '2026-10-01', pieceRate: 10 },
+                { orchardId: 'B', variety: null, effectiveDate: '2026-10-01', pieceRate: 12 },
+            ],
+            orchardFallbacks: { A: 10, B: 12 },
+        });
+        const h = await pickerHistoryService.getPickerHistory('p1', 'A', 14);
+        const d2 = h!.dailyRecords.find(r => r.date === D2);
+        expect(typeof d2?.earnings).toBe('number');
+        expect(d2?.partElsewhere).toBeUndefined();
+    });
+
+    it('if the days elsewhere cannot be loaded the history still loads', async () => {
+        repo.getDaysElsewhere.mockRejectedValue(new Error('offline'));
+        const h = await pickerHistoryService.getPickerHistory('p1', 'A', 14);
+        expect(h!.dailyRecords.find(r => r.date === D2)?.earnings).toBe(100);
     });
 });

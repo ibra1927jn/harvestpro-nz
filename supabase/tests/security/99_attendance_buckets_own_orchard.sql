@@ -78,6 +78,18 @@ SELECT sec_test.allow('A.manager', 'still reads the audit of own orchard attenda
 SELECT sec_test.allow('A.manager', 'still reads other audit rows (not attendance, buckets or prices)',
     $$SELECT 1 FROM audit_logs WHERE id = {B.audit}$$);
 
+-- ── picker_days_elsewhere (migración 20261027071000): solo fechas ───────────
+SELECT sec_test.deny('anon', 'cannot call picker_days_elsewhere', $$SELECT * FROM picker_days_elsewhere({A.picker}, current_date - 7)$$);
+SELECT sec_test.returns('A.manager', 'gets the days a rotating picker also worked elsewhere (dates only)',
+    $$SELECT string_agg(day::text, ',' ORDER BY day) FROM picker_days_elsewhere({A.picker}, (now() AT TIME ZONE 'Pacific/Auckland')::date - 7)$$,
+    ((now() AT TIME ZONE 'Pacific/Auckland')::date - 1)::text || ',' || ((now() AT TIME ZONE 'Pacific/Auckland')::date)::text);
+SELECT sec_test.returns('A.manager', 'returns only a date column',
+    $$SELECT count(*)::text FROM pg_proc p, unnest(p.proargnames) AS a(name) WHERE p.proname = 'picker_days_elsewhere'$$, '3');
+SELECT sec_test.returns('A.manager', 'nothing for someone who is not of my orchard',
+    $$SELECT count(*)::text FROM picker_days_elsewhere({B.picker}, current_date - 7)$$, '0');
+SELECT sec_test.returns('B.manager', 'nothing for a picker who only worked here',
+    $$SELECT count(*)::text FROM picker_days_elsewhere({B.picker}, current_date - 7)$$, '0');
+
 -- ── Oficina de la empresa: todo ─────────────────────────────────────────────
 SELECT sec_test.sees(w, 'the office reads every orchard (rotating day included)',
     $$SELECT 1 FROM daily_attendance WHERE id IN ({A.att}, {B.att_rotating})

@@ -36,6 +36,12 @@ export interface DailyRecord {
   earnings: number | null;
   /** Complemento al mínimo del día */
   topUp?: number;
+  /**
+   * Ese día trabajó también en otro huerto cuyos fichajes y cubetas esta cuenta
+   * no lee (el manager, migración 20261027070000): horas y cubetas son las de
+   * aquí y el pago no se calcula (earnings null); el pago está en Nómina
+   */
+  partElsewhere?: boolean;
   /** Horas estimadas (turno sin cerrar) */
   estimated?: boolean;
   variety: string | null;
@@ -124,6 +130,11 @@ class PickerHistoryService {
         ? new Set<string>([orchardId, ...rates.map(r => r.orchardId ?? ''), ...Object.keys(orchardFallbacks)])
         : null;
       const orchardNames = await loadOrchardNames().catch(() => ({} as Record<string, string>));
+      // Días con trabajo en otro huerto (solo fechas): si aquí no se ven sus filas,
+      // el día está incompleto y su pago no se puede calcular
+      const daysElsewhere = await Promise.resolve()
+        .then(() => pickerHistoryRepository.getDaysElsewhere(pickerId, sinceStr))
+        .catch(() => new Set<string>());
 
       // --- Compute daily records ---
       // Horas y pago de cada día con el cálculo único (harvestMetrics/pay.ts):
@@ -165,12 +176,17 @@ class PickerHistoryService {
         });
         if (!pay) continue;
         const unpriced = !!pricedOrchards && dayBuckets.some(b => !!b.orchard_id && !pricedOrchards.has(b.orchard_id));
+        const partElsewhere = daysElsewhere.has(date)
+          && !shifts.some(s => !!s.orchard_id && s.orchard_id !== orchardId)
+          && !dayBuckets.some(b => !!b.orchard_id && b.orchard_id !== orchardId);
+        const noPay = unpriced || partElsewhere;
         dailyMap.set(date, {
           date,
           buckets: pay.buckets,
           hours: pay.hours,
-          earnings: unpriced ? null : pay.total,
-          topUp: unpriced ? undefined : pay.topUp,
+          earnings: noPay ? null : pay.total,
+          topUp: noPay ? undefined : pay.topUp,
+          ...(partElsewhere ? { partElsewhere: true } : {}),
           estimated: pay.estimatedDays > 0,
           // Variedades recogidas ese día y huertos donde trabajó (puede ser más de uno)
           variety: [...new Set(dayBuckets.map(b => b.variety).filter((v): v is string => !!v))].join(', ') || setup?.variety || null,

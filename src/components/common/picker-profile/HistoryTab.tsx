@@ -88,7 +88,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history, dailyBuckets }) => {
                                     </span>
                                     {/* Ganado */}
                                     {r.earnings === null
-                                        ? <span className="text-text-muted ml-auto" title={t('panel.history.earned_other_orchard')}>—</span>
+                                        ? <span className="text-text-muted ml-auto" data-testid={r.partElsewhere ? `history-part-elsewhere-${r.date}` : undefined} title={t(r.partElsewhere ? 'panel.history.earned_part_elsewhere' : 'panel.history.earned_other_orchard')}>—</span>
                                         : <span className="font-medium text-text-main ml-auto">${r.earnings.toFixed(0)}</span>}
                                 </div>
                             ))}
