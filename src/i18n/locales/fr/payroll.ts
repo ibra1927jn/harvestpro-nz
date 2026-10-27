@@ -7,6 +7,7 @@ const payroll: TranslationDict = {
     'pay.next_week': 'Semaine de paie suivante',
     'pay.week_range': 'Semaine de paie {start} → {end}',
     'pay.closes_monday': 'Clôture le lundi {date}',
+    'pay.orchard_scope': 'Uniquement la part de ce verger : heures, seaux et paie du travail effectué ici. Les personnes qui ont aussi travaillé dans un autre verger n’apparaissent qu’avec leur part d’ici. La paie exporte et clôture la semaine de l’entreprise.',
     'pay.unclosed_hint': 'Demandez au chef d’équipe ou au responsable de corriger l’heure de départ dans les feuilles d’heures avant de clôturer la semaine.',
     'pay.total_buckets': 'Total des seaux',
     'pay.total_hours': 'Total des heures',

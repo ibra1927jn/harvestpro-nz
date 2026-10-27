@@ -544,8 +544,10 @@ export interface PaySegment {
     travelHours: number;
 }
 
-/** Cubetas pagadas a un mismo precio (misma variedad y tarifa) */
+/** Cubetas pagadas a un mismo precio (mismo huerto, variedad y tarifa) */
 export interface PieceLine {
+    /** Huerto donde se recogieron: la vista de un huerto deja solo las suyas */
+    orchardId: string | null;
     variety: string;
     rate: number;
     buckets: number;
@@ -757,13 +759,14 @@ function buildPieceLines(scans: ReadonlyArray<ScanForPay>): PieceLine[] {
     const lines = new Map<string, PieceLine>();
     for (const s of scans) {
         const variety = s.variety ?? '—';
-        const k = `${variety}|${s.rate}`;
-        const line = lines.get(k) ?? { variety, rate: s.rate, buckets: 0, earnings: 0 };
+        const orchardId = s.orchardId ?? null;
+        const k = `${orchardId ?? ''}|${variety}|${s.rate}`;
+        const line = lines.get(k) ?? { orchardId, variety, rate: s.rate, buckets: 0, earnings: 0 };
         line.buckets += 1;
         line.earnings = round2(line.earnings + s.rate);
         lines.set(k, line);
     }
-    return [...lines.values()].sort((a, b) => a.variety.localeCompare(b.variety) || a.rate - b.rate);
+    return [...lines.values()].sort((a, b) => a.variety.localeCompare(b.variety) || a.rate - b.rate || (a.orchardId ?? '').localeCompare(b.orchardId ?? ''));
 }
 
 /**

@@ -10,6 +10,10 @@
  * service role DESPUÉS de requireRole; lo demás (cubetas, fichajes, personas)
  * sigue con el cliente del usuario y su RLS. Los precios no se devuelven tal
  * cual: solo lo que se paga.
+ *
+ * calculate-payroll lee también con él la foto de una semana cerrada
+ * (pay_weeks, solo nómina, RRHH y admin): al manager se le devuelve reducida
+ * a su huerto (payroll-orchard.ts).
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 

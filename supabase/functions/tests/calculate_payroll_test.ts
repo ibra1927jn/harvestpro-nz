@@ -187,11 +187,38 @@ Deno.test({ name: 'calculate-payroll matches hand-computed NZ pay', ...testOpts,
             })
             assertEquals(other.status, 403, show(other))
 
+            // Sin orchard_id (lo que pide la pantalla de Nómina): también solo su huerto
             const company = await call<PayrollResult>('calculate-payroll', { token: managerB.token, body: week })
             assertEquals(company.status, 200, show(company))
+            assertEquals(company.json.orchard_id, orchardB)
             // El precio que se le enseña es el de su huerto, no el de un huerto cualquiera
             assertEquals(company.json.settings.bucket_rate, 7)
-            assertEquals(company.json.picker_breakdown.find(x => x.picker_id === p3.id)?.days[0].topUp, 59.63)
+            assertEquals(company.json.picker_breakdown.map(x => x.picker_id), [p3.id])
+            assertEquals(company.json.summary.total_earnings, 96.09)
+        })
+
+        // Decisión del dueño (27-10): el manager ve solo la parte de su huerto.
+        // p3 trabajó en A (precio 5) y en B (precio 7) el martes.
+        await t.step('manager of B: no line, hour, bucket or price of orchard A anywhere', async () => {
+            const managerB = await makeUser('manager', { orchardId: orchardB })
+            for (const body of [{ start_date: monday, end_date: addDays(monday, 6) }, { orchard_id: orchardB, start_date: monday, end_date: addDays(monday, 6) }]) {
+                const r = await call<PayrollResult>('calculate-payroll', { token: managerB.token, body })
+                assertEquals(r.status, 200, show(r))
+                assert(!r.text.includes(orchardA), `orchard A appears in the manager's payroll: ${r.text.slice(0, 400)}`)
+                for (const id of [p1.id, p2.id, p4.id]) assert(!r.text.includes(id), 'only people who worked in B')
+                const [day] = r.json.picker_breakdown[0].days as PayDay[]
+                assert(day.segments.length > 0 && day.segments.every(s => s.orchardId === orchardB), 'only B segments')
+                assertEquals(day.byOrchard.map(o => o.orchardId), [orchardB])
+                assertEquals(day.pieceLines.map(l => [l.orchardId, l.rate, l.buckets]), [[orchardB, 7, 10]])
+                assertEquals(day.bucketsByVariety, { '—': 10 })
+                // Su parte del día (lo mismo que su fila): 3.28 h, 70 + 26.09
+                assertEquals([day.hours, day.buckets, day.pieceEarnings, day.topUp, day.total], [3.28, 10, 70, 26.09, 96.09])
+            }
+            // Nómina sigue viendo el día entero, con el huerto de cada línea
+            const all = await call<PayrollResult>('calculate-payroll', { token: payroll.token, body: { start_date: monday, end_date: addDays(monday, 6) } })
+            const whole = all.json.picker_breakdown.find(x => x.picker_id === p3.id)!.days[0]
+            assertEquals(whole.pieceLines.map(l => [l.orchardId, l.rate]).sort(), [[orchardA, 5], [orchardB, 7]].sort())
+            assertEquals(whole.topUp, 59.63)
         })
 
         await t.step('unknown orchard → 400 without leaking internals', async () => {

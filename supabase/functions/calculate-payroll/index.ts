@@ -11,14 +11,16 @@ import {
 } from '../_shared/security.ts'
 import { computePayroll } from '../_shared/payroll-calc.ts'
 import { pieceRatesReader } from '../_shared/rates-client.ts'
+import { payrollForOrchard } from '../_shared/payroll-orchard.ts'
 
 // deno-lint-ignore no-explicit-any
 type Client = any
 
 /**
- * Un manager solo ve los precios de SU huerto (20261027050000): no pide la
- * nómina de otro huerto, y el «precio por cubeta» que se le enseña es el suyo
- * (en la de empresa, settings.bucket_rate sería el de un huerto cualquiera).
+ * Un manager solo ve la parte de SU huerto de la nómina (decisión del dueño,
+ * 2026-10-27; precios: 20261027050000): no pide la de otro huerto ni la de la
+ * empresa (sin orchard_id recibe la de su huerto), y el «precio por cubeta»
+ * que se le enseña es el suyo.
  */
 async function managerOrchard(supabase: Client, userId: string): Promise<{ id: string | null; rate: number | null }> {
     const { data: me } = await supabase.from('users').select('orchard_id').eq('id', userId).maybeSingle()
@@ -57,32 +59,42 @@ serve(async (req) => {
         const { orchard_id, start_date, end_date } = PayrollInputSchema.parse(body)
 
         const manager = role === 'manager' ? await managerOrchard(supabase, user.id) : null
+        if (manager && !manager.id) {
+            throw new AuthError('A manager without an orchard has no payroll to see', 403)
+        }
         if (manager && orchard_id && orchard_id !== manager.id) {
             throw new AuthError('A manager can only calculate the payroll of their own orchard', 403)
         }
+        // Manager: siempre su huerto, aunque no lo pida (la de empresa es de
+        // nómina, RRHH y admin)
+        const scope = manager?.id ?? orchard_id
 
-        console.info(`[Payroll] Calculating ${orchard_id ? 'orchard ' + orchard_id : 'company (all orchards)'} from ${start_date} to ${end_date}`)
+        console.info(`[Payroll] Calculating ${scope ? 'orchard ' + scope : 'company (all orchards)'} from ${start_date} to ${end_date}`)
+
+        // Precios (y la foto de semanas cerradas) con service role, después de
+        // requireRole: el manager no lee los de otros huertos ni pay_weeks
+        const service = pieceRatesReader()
 
         // Semana cerrada: se devuelve la foto guardada al cerrar (lo que se pagó),
         // no un cálculo nuevo. Así la nómina de una semana pagada no cambia nunca.
-        if (!orchard_id) {
-            const { data: closed } = await supabase
-                .from('pay_weeks')
-                .select('week_start, week_end, status, closed_at, closed_by, snapshot')
-                .eq('week_start', start_date)
-                .eq('week_end', end_date)
-                .eq('status', 'closed')
-                .maybeSingle()
-            if (closed?.snapshot) {
-                const snapshot = withBucketRate(closed.snapshot, manager?.rate ?? null)
-                return jsonResponse({ ...snapshot, closed: { closed_at: closed.closed_at, closed_by: closed.closed_by } }, origin)
-            }
+        // Vista de un huerto: la foto reducida a ese huerto.
+        const { data: closed } = await service
+            .from('pay_weeks')
+            .select('week_start, week_end, status, closed_at, closed_by, snapshot')
+            .eq('week_start', start_date)
+            .eq('week_end', end_date)
+            .eq('status', 'closed')
+            .maybeSingle()
+        if (closed?.snapshot) {
+            const snapshot = withBucketRate(scope ? payrollForOrchard(closed.snapshot, scope) : closed.snapshot, manager?.rate ?? null)
+            return jsonResponse({ ...snapshot, closed: { closed_at: closed.closed_at, closed_by: closed.closed_by } }, origin)
         }
 
         // Precios de todos los huertos con service role (la gente rota: el
-        // complemento de un día se calcula con el día entero); el resto, con RLS
+        // complemento de un día se calcula con el día entero); el resto, con RLS.
+        // Lo que sale es solo lo del huerto pedido (payroll-calc → orchardDayView).
         const result = withBucketRate(
-            await computePayroll(supabase, { orchard_id, start_date, end_date }, pieceRatesReader()),
+            await computePayroll(supabase, { orchard_id: scope, start_date, end_date }, service),
             manager?.rate ?? null,
         )
 

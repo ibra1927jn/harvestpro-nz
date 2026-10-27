@@ -69,16 +69,14 @@ Deno.test({ name: 'check-compliance and detect-anomalies', ...testOpts, fn: asyn
             assertEquals(kinds, ['break_overdue/high', 'break_overdue/medium', 'wage_below_minimum/high'])
         })
 
-        await t.step('check-compliance: a team leader of another orchard sees none of their hours or buckets', async () => {
-            const r = await call<{ pickers: PickerCompliance[] }>('check-compliance', {
-                token: await seededToken('team_leader'), body: { orchard_id: orchard, picker_ids: [worker.id] },
-            })
-            assertEquals(r.status, 200, show(r))
-            const p = r.json.pickers[0]
-            assertEquals(p.metrics.hours_worked, 0)
-            assertEquals(p.metrics.buckets_today, 0)
-            assertEquals(p.violations.length, 0)
-            // (el nombre sí: la ficha de personas es de toda la empresa)
+        await t.step('check-compliance: a team leader or manager of another orchard is refused (403)', async () => {
+            for (const role of ['team_leader', 'manager'] as const) {
+                const r = await call<{ pickers: PickerCompliance[] }>('check-compliance', {
+                    token: await seededToken(role), body: { orchard_id: orchard, picker_ids: [worker.id] },
+                })
+                assertEquals(r.status, 403, `${role}: ${show(r)}`)
+                assert(!r.text.includes('hours_worked'), `${role}: no metrics in the refusal`)
+            }
         })
 
         await t.step('detect-anomalies: off-hours, impossible velocity and double scan (NZ time)', async () => {

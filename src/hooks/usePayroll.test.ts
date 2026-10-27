@@ -26,8 +26,9 @@ vi.mock('@/services/payroll.service', () => ({
     PayrollResult: {},
 }));
 
+const auth = vi.hoisted(() => ({ role: 'payroll_admin' }));
 vi.mock('@/context/AuthContext', () => ({
-    useAuth: () => ({ appUser: { role: 'payroll_admin' } }),
+    useAuth: () => ({ appUser: { role: auth.role } }),
 }));
 
 vi.mock('@/utils/logger', () => ({ logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } }));
@@ -86,6 +87,34 @@ describe('pay week helpers', () => {
         const w = defaultPayWeek('2026-10-11');
         expect(shiftPayWeek(w, -1).start).toBe('2026-09-28');
         expect(shiftPayWeek(w, 1).start).toBe('2026-10-12');
+    });
+});
+
+describe('usePayroll — quién ve qué (decisión del dueño 27-10)', () => {
+    beforeEach(() => { vi.clearAllMocks(); });
+
+    it('Nómina pide la empresa entera (sin huerto) y puede exportar', async () => {
+        const { result } = renderHook(() => usePayroll());
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+        expect(vi.mocked(payrollService.calculatePayroll).mock.calls[0][0]).toBeUndefined();
+        expect(result.current.orchardOnly).toBe(false);
+        expect(result.current.canExport).toBe(true);
+    });
+
+    it('el manager pide solo SU huerto, no exporta ni cierra la semana', async () => {
+        auth.role = 'manager';
+        try {
+            const { result } = renderHook(() => usePayroll());
+            await waitFor(() => expect(result.current.isLoading).toBe(false));
+            const calls = vi.mocked(payrollService.calculatePayroll).mock.calls;
+            expect(calls.length).toBeGreaterThan(0);
+            expect(calls.every(c => c[0] === 'orch-1')).toBe(true);
+            expect(result.current.orchardOnly).toBe(true);
+            expect(result.current.canExport).toBe(false);
+            expect(result.current.canManageWeek).toBe(false);
+        } finally {
+            auth.role = 'payroll_admin';
+        }
     });
 });
 

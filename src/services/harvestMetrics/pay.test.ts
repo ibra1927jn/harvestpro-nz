@@ -454,8 +454,8 @@ describe('payForRange — líneas por variedad y reparto por huerto', () => {
         const [r] = payForRange({ attendance, buckets, pieceRate: 6.5, minWage: 23.95, now });
         const day = r.dayDetails[0];
         expect(day.pieceLines).toEqual([
-            { variety: 'Braeburn', rate: 8, buckets: 3, earnings: 24 },
-            { variety: 'Royal Gala', rate: 6.5, buckets: 5, earnings: 32.5 },
+            { orchardId: 'B', variety: 'Braeburn', rate: 8, buckets: 3, earnings: 24 },
+            { orchardId: 'A', variety: 'Royal Gala', rate: 6.5, buckets: 5, earnings: 32.5 },
         ]);
         // 4 h + 15 min de trayecto en cada huerto: mitad y mitad
         const [a, b] = day.byOrchard;

@@ -24,6 +24,9 @@ import { useMessaging } from '@/context/MessagingContext';
 import { CHAT_NAV_ITEM, CHAT_TAB_ID, withChatBadge } from '@/config/navigation/chat.nav';
 import ChatTabView from '@/components/common/messaging/ChatTabView';
 
+/** Pestañas solo de Nómina: la exportación es la paga entera de cada persona */
+const EXPORT_TABS = new Set(['export', 'history']);
+
 const PAYROLL_NAV: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', labelKey: 'nav.dashboard', icon: 'dashboard' },
     { id: 'timesheets', label: 'Timesheets', labelKey: 'nav.timesheets', icon: 'schedule' },
@@ -39,7 +42,7 @@ const Payroll: React.FC = () => {
     const pay = usePayroll();
 
     const { unreadCount } = useMessaging();
-    const navItems = withChatBadge(PAYROLL_NAV.map(item => ({
+    const navItems = withChatBadge(PAYROLL_NAV.filter(item => pay.canExport || !EXPORT_TABS.has(item.id)).map(item => ({
         ...item,
         badge: item.id === 'dashboard' && pay.compliance.workers_below_minimum > 0 ? pay.compliance.workers_below_minimum : undefined,
     })), unreadCount);
@@ -72,6 +75,12 @@ const Payroll: React.FC = () => {
                     <span aria-hidden="true" className="material-symbols-outlined">chevron_right</span>
                 </button>
             </div>
+
+            {pay.orchardOnly && (
+                <p data-testid="payroll-orchard-scope" className="mb-4 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-3 text-sm font-semibold text-sky-900">
+                    {t('pay.orchard_scope')}
+                </p>
+            )}
 
             <PayWeekCloseBar
                 weekEnd={pay.week.end}
@@ -137,8 +146,8 @@ const Payroll: React.FC = () => {
                 {activeTab === 'dashboard' && <ComponentErrorBoundary componentName="Payroll Dashboard"><PayrollDashboard pickers={pay.pickers} settings={pay.settings} /></ComponentErrorBoundary>}
                 {activeTab === 'timesheets' && <ComponentErrorBoundary componentName="Timesheets"><TimesheetsTab orchardId={pay.orchardId} /></ComponentErrorBoundary>}
                 {activeTab === 'wages' && <ComponentErrorBoundary componentName="Wage Calculator"><WageCalculatorTab settings={pay.settings} /></ComponentErrorBoundary>}
-                {activeTab === 'export' && <ComponentErrorBoundary componentName="Export"><ExportTab pickers={pay.pickers} week={pay.week} isLoading={pay.isLoading} closedAt={pay.closedInfo?.closed_at ?? null} /></ComponentErrorBoundary>}
-                {activeTab === 'history' && <ComponentErrorBoundary componentName="Export History"><ExportHistoryTab /></ComponentErrorBoundary>}
+                {activeTab === 'export' && pay.canExport && <ComponentErrorBoundary componentName="Export"><ExportTab pickers={pay.pickers} week={pay.week} isLoading={pay.isLoading} closedAt={pay.closedInfo?.closed_at ?? null} /></ComponentErrorBoundary>}
+                {activeTab === 'history' && pay.canExport && <ComponentErrorBoundary componentName="Export History"><ExportHistoryTab /></ComponentErrorBoundary>}
             </div>
             </>)}
         </ResponsiveLayout>

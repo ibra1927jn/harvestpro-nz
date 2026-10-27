@@ -7,6 +7,7 @@ const payroll: TranslationDict = {
     'pay.next_week': 'Next pay week',
     'pay.week_range': 'Pay week {start} → {end}',
     'pay.closes_monday': 'Closes Monday {date}',
+    'pay.orchard_scope': 'Only this orchard\'s share: hours, buckets and pay worked here. People who also worked in another orchard show just their part here. Payroll exports and closes the company week.',
     'pay.unclosed_hint': 'Ask the team leader or manager to fix the check-out time in the timesheets before closing the week.',
     'pay.total_buckets': 'Total Buckets',
     'pay.total_hours': 'Total Hours',

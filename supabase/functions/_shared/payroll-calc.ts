@@ -8,6 +8,7 @@ import { payForRange, pieceRateOn, nzDateOf, isNZPublicHoliday, minWageFloorOn, 
 import { loadDailyPieceRates } from './piece-rates.ts'
 import { fetchAllRows } from './fetch-all-rows.ts'
 import { fetchInChunks } from './fetch-in-chunks.ts'
+import { orchardDayView } from './payroll-orchard.ts'
 
 // deno-lint-ignore no-explicit-any
 type SupabaseLike = any
@@ -71,7 +72,8 @@ const isPublicHoliday = isNZPublicHoliday
 
 /**
  * La parte de un huerto de la nómina de cada persona: suma de su reparto por
- * huerto (byOrchard) de cada día. El detalle del día (days) se deja entero.
+ * huerto (byOrchard) de cada día. El detalle de cada día se reduce a ese
+ * huerto más abajo (orchardDayView).
  */
 function onlyOrchardShare(rows: PickerRangePay[], orchardId: string): PickerRangePay[] {
     const out: PickerRangePay[] = []
@@ -350,7 +352,9 @@ export async function computePayroll(
             // Holidays Act 2003 s.60: un día alternativo por festivo trabajado
             alternative_holidays_owed: holidaysWorked,
             estimated_days: r.estimatedDays,
-            days: r.dayDetails,
+            // Huerto pedido: el detalle del día solo con lo de ese huerto (tramos,
+            // cubetas, precios y su parte del pago), nada de los otros huertos
+            days: orchard_id ? r.dayDetails.map(d => orchardDayView(d, orchard_id)) : r.dayDetails,
         })
 
         total_buckets += r.buckets

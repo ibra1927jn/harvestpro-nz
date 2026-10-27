@@ -135,6 +135,20 @@ Deno.test({ name: 'close-pay-week', ...testOpts, fn: async t => {
             assert(r.json.closed, 'snapshot marked as closed')
             assertEquals(r.json.summary.total_earnings, closedTotal)
 
+            // Manager: la foto reducida a SU huerto (aquí todo es de su huerto);
+            // el de otro huerto la ve cerrada pero sin ninguna línea de este
+            const own = await payrollOf(manager.token)
+            assertEquals(own.status, 200, show(own))
+            assert(own.json.closed, 'manager: snapshot marked as closed')
+            assertEquals(own.json.orchard_id, orchard)
+            assertEquals(own.json.summary.total_earnings, closedTotal)
+            const other = await payrollOf(await seededToken('manager'))
+            assertEquals(other.status, 200, show(other))
+            assert(other.json.closed, 'other manager: snapshot marked as closed')
+            assertEquals(other.json.picker_breakdown.length, 0)
+            assertEquals(other.json.summary.total_earnings, 0)
+            assert(!other.text.includes(picker.id) && !other.text.includes(orchard), `no line of another orchard: ${show(other)}`)
+
             // Corregir un fichaje de la semana cerrada → rechazado
             const fix = await call('manage-attendance', {
                 token: leader.token,

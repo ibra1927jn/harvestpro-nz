@@ -7,6 +7,7 @@ const payroll: TranslationDict = {
     'pay.next_week': 'Semana de pago siguiente',
     'pay.week_range': 'Semana de pago {start} → {end}',
     'pay.closes_monday': 'Cierra el lunes {date}',
+    'pay.orchard_scope': 'Solo la parte de este huerto: horas, cubetas y pago de lo trabajado aquí. Quien trabajó también en otro huerto aparece solo con su parte de aquí. Nóminas exporta y cierra la semana de la empresa.',
     'pay.unclosed_hint': 'Pide al jefe de equipo o al encargado que corrija la hora de salida en las planillas antes de cerrar la semana.',
     'pay.total_buckets': 'Cubetas totales',
     'pay.total_hours': 'Horas totales',
