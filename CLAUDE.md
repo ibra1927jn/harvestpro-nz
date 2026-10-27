@@ -64,6 +64,12 @@ Version: 9.9.0
   servidor: `calculate-payroll` y `check-compliance` leen precios con service role (`_shared/rates-client.ts`), la hoja
   diaria del manager toma el complemento de `calculate-payroll` y el historial del picker pone «—» si no ve el precio
   (migración 20261027050000).
+- Nómina (`/payroll`): el manager ve solo la parte de SU huerto; RRHH, nómina y admin, la empresa.
+  `calculate-payroll` le da su huerto aunque pida la empresa (otro huerto: 403) y cada día sale reducido a ese
+  huerto (`_shared/payroll-orchard.ts`: sus tramos, cubetas y líneas de precio, y su parte de horas, complemento
+  y pago; el complemento se calcula con el día entero). La foto de una semana cerrada, igual; `pay_weeks` solo la
+  leen admin, nómina y RRHH (migración 20261027060000). El manager no exporta (Xero/PaySauce es la paga entera de
+  cada persona) ni cierra la semana. `check-compliance`: manager y TL solo su huerto, la paga como su parte.
 - Filas (`row_assignments`): las crea, reasigna y retira el manager (o admin), también varias por delante; el TL
   solo mueve a SU equipo (`pickers.current_row`, `moveTeamToRow`) entre las filas activas asignadas a su equipo y
   apunta avance y fin (triggers `guard_team_leader_current_row` y `guard_row_assignment_team_leader`).
