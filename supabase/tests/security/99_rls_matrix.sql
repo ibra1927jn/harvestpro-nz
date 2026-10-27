@@ -269,9 +269,12 @@ BEGIN
         ARRAY['A.admin', 'B.admin', 'B.manager', 'B.hr_admin', 'B.team_leader']);
 
     -- Cierre del día y preparación del día: los lee su huerto (y admin); los hace el manager
-    -- de su huerto y admin. Nadie de otro huerto ni de baja los lee (Fase 2).
-    PERFORM sec_test.m_allow(t, ARRAY['read_a'], ARRAY['A.*', 'B.admin']) FROM unnest(ARRAY['day_closures', 'day_setups']) t;
-    PERFORM sec_test.m_allow(t, ARRAY['read_b'], ARRAY['B.*', 'A.admin']) FROM unnest(ARRAY['day_closures', 'day_setups']) t;
+    -- de su huerto y admin. Nadie de otro huerto ni de baja los lee (Fase 2). La preparación
+    -- lleva el precio del día: RRHH y nómina la leen de todos los huertos (96_piece_rates).
+    PERFORM sec_test.m_allow('day_closures', ARRAY['read_a'], ARRAY['A.*', 'B.admin']);
+    PERFORM sec_test.m_allow('day_closures', ARRAY['read_b'], ARRAY['B.*', 'A.admin']);
+    PERFORM sec_test.m_allow('day_setups', ARRAY['read_a'], ARRAY['A.*', 'B.admin', 'B.hr_admin', 'B.payroll_admin']);
+    PERFORM sec_test.m_allow('day_setups', ARRAY['read_b'], ARRAY['B.*', 'A.admin', 'A.hr_admin', 'A.payroll_admin']);
     PERFORM sec_test.m_allow(t, ARRAY['insert', 'update_a', 'delete_a'], ARRAY['A.admin', 'A.manager', 'B.admin'])
     FROM unnest(ARRAY['day_closures', 'day_setups']) t;
     PERFORM sec_test.m_allow(t, ARRAY['update_b', 'delete_b'], ARRAY['A.admin', 'B.admin', 'B.manager'])
@@ -283,10 +286,11 @@ BEGIN
     PERFORM sec_test.m_allow('fleet_vehicles', ARRAY['insert', 'update_a', 'delete_a'], ARRAY['A.admin', 'A.manager', 'A.logistics']);
     PERFORM sec_test.m_allow('fleet_vehicles', ARRAY['update_b', 'delete_b'], ARRAY['B.admin', 'B.manager', 'B.logistics']);
 
-    -- Configuración del huerto: la lee su huerto y los roles de empresa (99_harvest_settings_read);
+    -- Configuración del huerto (lleva el precio por cubeta guardado): la lee su huerto y
+    -- admin, RRHH y nómina de la empresa, el manager solo la suya (99_harvest_settings_read);
     -- la cambian manager de su huerto y admin; una huerta nueva (C) solo la da de alta admin
-    PERFORM sec_test.m_allow('harvest_settings', ARRAY['read_a'], ARRAY['A.*'] || co_b);
-    PERFORM sec_test.m_allow('harvest_settings', ARRAY['read_b'], ARRAY['B.*'] || co_a);
+    PERFORM sec_test.m_allow('harvest_settings', ARRAY['read_a'], ARRAY['A.*', 'B.admin', 'B.hr_admin', 'B.payroll_admin']);
+    PERFORM sec_test.m_allow('harvest_settings', ARRAY['read_b'], ARRAY['B.*', 'A.admin', 'A.hr_admin', 'A.payroll_admin']);
     PERFORM sec_test.m_allow('harvest_settings', ARRAY['insert'], ARRAY['A.admin', 'B.admin']);
     PERFORM sec_test.m_allow('harvest_settings', ARRAY['update_a', 'delete_a'], ARRAY['A.admin', 'A.manager', 'B.admin']);
     PERFORM sec_test.m_allow('harvest_settings', ARRAY['update_b', 'delete_b'], ARRAY['A.admin', 'B.admin', 'B.manager']);
@@ -344,10 +348,13 @@ BEGIN
         ARRAY['A.admin', 'A.hr_admin', 'A.manager', 'B.admin', 'B.hr_admin', 'B.manager', 'B.team_leader']);
     PERFORM sec_test.m_allow('pickers', ARRAY['delete_a', 'delete_b'], ARRAY['A.admin', 'A.hr_admin', 'B.admin', 'B.hr_admin']);
 
-    -- Precios por día (A4) y tarifas por variedad (obsoleta): los lee toda la plantilla
-    -- activa con 2FA si su rol lo pide (la nómina es de la empresa y la gente rota entre
-    -- huertos: 96_piece_rates); los pone el manager de su huerto y admin
-    PERFORM sec_test.m_allow(t, ARRAY['read_a', 'read_b'], ARRAY['A.*', 'B.*']) FROM unnest(ARRAY['piece_rates', 'variety_rates']) t;
+    -- Precios por día (A4) y tarifas por variedad (obsoleta): cada uno los de su huerto;
+    -- admin, RRHH y nómina los de todos (decisión del dueño 2026-10-27: 96_piece_rates);
+    -- los pone el manager de su huerto y admin
+    PERFORM sec_test.m_allow(t, ARRAY['read_a'], ARRAY['A.*', 'B.admin', 'B.hr_admin', 'B.payroll_admin'])
+    FROM unnest(ARRAY['piece_rates', 'variety_rates']) t;
+    PERFORM sec_test.m_allow(t, ARRAY['read_b'], ARRAY['B.*', 'A.admin', 'A.hr_admin', 'A.payroll_admin'])
+    FROM unnest(ARRAY['piece_rates', 'variety_rates']) t;
     PERFORM sec_test.m_allow(t, ARRAY['insert', 'update_a', 'delete_a'], ARRAY['A.admin', 'A.manager', 'B.admin'])
     FROM unnest(ARRAY['piece_rates', 'variety_rates']) t;
     PERFORM sec_test.m_allow(t, ARRAY['update_b', 'delete_b'], ARRAY['A.admin', 'B.admin', 'B.manager'])
