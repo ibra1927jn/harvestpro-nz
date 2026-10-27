@@ -646,27 +646,41 @@ async function teamLeaderDay(d) {
   pres.push(...present.map(p => ({ ...p, tlDevice: d })));
   state.presentByOrchard.set(d.orchard_id, pres);
 
-  // Asignación de filas: al empezar, a media mañana y tras comer
+  // Filas: las ASIGNA el manager (de una en una o de dos en dos: la primera del día y, según la
+  // velocidad, las siguientes); el TL solo mueve a su equipo entre las que le asignaron y apunta
+  // el avance y el final (migración 20261027040000).
   const tlIdx = Number(d.label.split('-')[2]);
-  const assign = async rowBase => {
+  const mgr = devices.find(x => x.role === 'manager' && x.orchard_id === d.orchard_id);
+  const asignadas = new Map(); // fila → id de la asignación
+  const ids = present.map(p => p.id);
+  const managerAssigns = async rowNumbers => {
+    if (!mgr) return;
+    await mgr.touch();
+    const recs = rowNumbers.map(r => ({ id: randomUUID(), orchard_id: d.orchard_id, row_number: r, side: 'north', assigned_pickers: ids, completion_percentage: 0, team_leader_id: d.id, status: 'active' }));
+    const { error } = await mgr.sb.from('row_assignments').insert(recs);
+    if (error) metrics.event('row_assign_failed', { role: 'manager', message: String(error.message).slice(0, 160) });
+    else for (const r of recs) asignadas.set(r.row_number, r.id);
+  };
+  const move = async rowBase => {
     await d.touch();
-    const ids = present.map(p => p.id);
-    const raId = randomUUID();
     const prev = d.activeAssignment;
-    await sb.from('row_assignments').upsert([{ id: raId, orchard_id: d.orchard_id, row_number: rowBase, side: 'north', assigned_pickers: ids, completion_percentage: 0, team_leader_id: d.id, status: 'active' }], { onConflict: 'id' });
-    await sb.from('pickers').update({ current_row: rowBase }).in('id', ids);
-    if (prev) await sb.from('row_assignments').update({ status: 'moved', ended_at: new Date().toISOString() }).in('id', [prev]).eq('status', 'active');
-    d.activeAssignment = raId;
+    const { error } = await sb.from('pickers').update({ current_row: rowBase }).in('id', ids);
+    if (error) metrics.event('row_move_failed', { role: d.role, message: String(error.message).slice(0, 160) });
+    if (prev) await sb.from('row_assignments').update({ completion_percentage: 100, status: 'completed', ended_at: new Date().toISOString() }).eq('id', prev).eq('status', 'active');
+    d.activeAssignment = asignadas.get(rowBase);
     d.currentRow = rowBase;
   };
+  await clock.until(parseHHMM('06:40'));
+  await managerAssigns([(tlIdx - 1) * 8 + 1, (tlIdx - 1) * 8 + 3]);
   await clock.until(parseHHMM('06:42'));
-  await assign((tlIdx - 1) * 8 + 1);
+  await move((tlIdx - 1) * 8 + 1);
   scheduleAt(parseHHMM('09:30'), async () => {
     await d.touch();
     await sb.from('row_assignments').update({ completion_percentage: 60 }).eq('id', d.activeAssignment);
   });
-  scheduleAt(parseHHMM('10:45'), () => assign((tlIdx - 1) * 8 + 3));
-  scheduleAt(parseHHMM('13:30'), () => assign((tlIdx - 1) * 8 + 5));
+  scheduleAt(parseHHMM('10:40'), () => managerAssigns([(tlIdx - 1) * 8 + 5]));
+  scheduleAt(parseHHMM('10:45'), () => move((tlIdx - 1) * 8 + 3));
+  scheduleAt(parseHHMM('13:30'), () => move((tlIdx - 1) * 8 + 5));
 
   // Descanso de comida apuntado por el TL (12:05) — una corrección por persona
   scheduleAt(parseHHMM('12:05'), async () => {
