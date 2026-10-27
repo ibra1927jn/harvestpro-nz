@@ -97,6 +97,39 @@ describe('fetchTimesheets — hours from the single pay calculation', () => {
         expect(repo.fetchDayOfPeople).toHaveBeenCalledWith(['p1'], d, '2026-10-12T00:00:00+13:00', '2026-10-12T23:59:59+13:00');
     });
 
+    // Migración 20261027070000: el manager de A no lee el tramo de B. Su parte de
+    // las horas la da calculate-payroll (vista de A, calculada con el día entero).
+    it('a manager who cannot read the other orchard\'s shift gets the hours share from calculate-payroll', async () => {
+        const d = '2026-10-12';
+        const shiftA = { id: 's1', picker_id: 'p1', orchard_id: 'A', check_in: t(d, '07:00'), check_out: t(d, '11:00'), break_start: null, break_minutes: null };
+        repo.fetchTimesheetAttendance.mockResolvedValue({ data: [{ ...shiftA, date: d, verified_by: null, updated_at: 'u' }], error: null });
+        repo.fetchPickerNames.mockResolvedValue({ p1: 'Ana' });
+        // Lo que la RLS deja leer: solo el tramo de A
+        repo.fetchDayOfPeople.mockResolvedValue({ shifts: [shiftA], buckets: [] });
+        repo.invokeCalculatePayroll.mockResolvedValue({
+            ...RESULT, orchard_id: 'A', date_range: { start: d, end: d },
+            picker_breakdown: [{
+                picker_id: 'p1', picker_name: 'Ana', buckets: 0, hours_worked: 4.03, piece_rate_earnings: 0, hourly_rate: 0,
+                minimum_required: 96.52, top_up_required: 96.52, total_earnings: 96.52, is_below_minimum: true,
+                days: [{
+                    date: d,
+                    // Vista de A: solo su tramo (con su mitad del trayecto) y su parte de horas
+                    segments: [{ orchardId: 'A', checkIn: new Date(shiftA.check_in).toISOString(), checkOut: new Date(shiftA.check_out).toISOString(), open: false, breakStart: null, grossHours: 4, travelHours: 0.25 }],
+                    hours: 4.03, breakMinutes: 0, travelMinutes: 15, buckets: 0, bucketsByVariety: {}, pieceLines: [],
+                    byOrchard: [{ orchardId: 'A', hours: 4.03, buckets: 0, pieceEarnings: 0, holidayPremium: 0, topUp: 96.52, total: 96.52 }],
+                    pieceEarnings: 0, holidayPremium: 0, topUp: 96.52, total: 96.52, belowMinimum: true, estimated: false, isPublicHoliday: false,
+                }],
+            }],
+        });
+
+        const [row] = await payrollService.fetchTimesheets('A', d);
+
+        expect(repo.invokeCalculatePayroll).toHaveBeenCalledWith('A', d, d);
+        // Con solo el tramo de A en local saldrían 4 h; el día entero da a A 4.03 h
+        expect(row).toMatchObject({ id: 's1', hours_worked: 4.03 });
+        expect(repo.fetchDayOfPeople).not.toHaveBeenCalled();
+    });
+
     it('on the DST start day asks for the real NZ day (midnight +12, end of day +13)', async () => {
         const d = '2026-09-27';
         repo.fetchTimesheetAttendance.mockResolvedValue({ data: [{ id: 's1', picker_id: 'p1', orchard_id: 'A', date: d, check_in: null, check_out: null }], error: null });
