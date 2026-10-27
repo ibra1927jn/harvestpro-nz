@@ -329,8 +329,11 @@ BEGIN
     PERFORM sec_test.m_allow('orchards', ARRAY['update_a'], ARRAY['A.admin', 'A.manager', 'B.admin']);
     PERFORM sec_test.m_allow('orchards', ARRAY['update_b'], ARRAY['A.admin', 'B.admin', 'B.manager']);
 
-    -- Semanas de pago: las leen los roles de empresa; se cierran y reabren por RPC
-    PERFORM sec_test.m_allow('pay_weeks', ARRAY['read_a'], co_a || co_b);
+    -- Semanas de pago (la foto es la nómina de la empresa): solo admin, RRHH y nómina;
+    -- el manager no, ve la parte de su huerto por calculate-payroll (20261027060000).
+    -- Se cierran y reabren por la Edge Function
+    PERFORM sec_test.m_allow('pay_weeks', ARRAY['read_a'],
+        ARRAY['A.admin', 'A.hr_admin', 'A.payroll_admin', 'B.admin', 'B.hr_admin', 'B.payroll_admin']);
 
     -- Exportaciones de nómina: nómina y admin
     PERFORM sec_test.m_allow('payroll_exports', ARRAY['read_a', 'insert', 'delete_a'],
