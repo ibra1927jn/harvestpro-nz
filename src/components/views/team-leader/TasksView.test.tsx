@@ -6,10 +6,10 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-const { mapProps, modalProps, mockAssignRow, auth, crew, rowAssignments } = vi.hoisted(() => ({
+const { mapProps, modalProps, mockMoveTeamToRow, auth, crew, rowAssignments } = vi.hoisted(() => ({
     mapProps: { last: null as Record<string, unknown> | null },
     modalProps: { last: null as Record<string, unknown> | null },
-    mockAssignRow: vi.fn(),
+    mockMoveTeamToRow: vi.fn(),
     auth: { userId: 'tl1' },
     crew: [
         { id: 'tl1', name: 'Maria', role: 'team_leader', status: 'active', picker_id: 'TL-1', current_row: 0 },
@@ -31,7 +31,7 @@ vi.mock('@/stores/useHarvestStore', () => {
         bucketRecords: [],
         settings: { min_buckets_per_hour: 4 },
         orchard: { id: 'o1', name: 'Sunrise' },
-        assignRow: mockAssignRow,
+        moveTeamToRow: mockMoveTeamToRow,
     };
     return {
         useHarvestStore: (selector?: (st: typeof state) => unknown) => (selector ? selector(state) : state),
@@ -119,6 +119,19 @@ describe('TasksView (team leader map)', () => {
         const pickers = modalProps.last?.pickers as { id: string }[];
         expect(pickers.map(p => p.id).sort()).toEqual(['p1', 'p2']);
         expect(modalProps.last?.initialRow).toBe(5);
+    });
+
+    it("offers only the rows the manager assigned to my team (not other teams' rows)", () => {
+        render(<TasksView />);
+        fireEvent.click(screen.getByText('row-5'));
+        expect(modalProps.last?.allowedRows).toEqual([3]);
+    });
+
+    it('moving in the modal only moves my people (no new row assignment)', async () => {
+        render(<TasksView />);
+        fireEvent.click(screen.getByText('row-5'));
+        await (modalProps.last?.onAssign as (row: number, ids: string[]) => Promise<void>)(3, ['p1']);
+        expect(mockMoveTeamToRow).toHaveBeenCalledWith(3, ['p1']);
     });
 
     it('the Assign button opens the modal without a preselected row', () => {

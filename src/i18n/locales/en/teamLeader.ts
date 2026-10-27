@@ -51,6 +51,7 @@ const teamLeader: TranslationDict = {
     'tl.tasks.side_center': 'Center',
     'tl.tasks.pickers_n': '{n} Pickers',
     'tl.tasks.no_rows': 'No rows assigned.',
+    'tl.tasks.no_assigned_rows': 'The manager hasn\'t assigned rows to your team yet.',
     'tl.tasks.tap_to_start': 'Tap directly to start',
     'tl.team.title': 'Crew Setup',
     'tl.team.subtitle': 'Harness & ID Assignment',

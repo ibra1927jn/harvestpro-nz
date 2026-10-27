@@ -54,6 +54,7 @@ const pickerDetails: TranslationDict = {
     'pd.row_hash': 'Row #',
     'pd.assign_row': 'Assign Row',
     'pd.assign_row_n': 'Assign Row {n}',
+    'pd.assigned_rows_label': 'Rows the manager assigned to your team',
     'pd.assign_row_error': 'Error assigning row',
     'pd.assign_pickers_n': 'Assign Pickers ({n})',
     'pd.no_active_pickers': 'No active pickers available',

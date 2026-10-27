@@ -51,6 +51,7 @@ const teamLeader: TranslationDict = {
     'tl.tasks.side_center': 'Centro',
     'tl.tasks.pickers_n': '{n} recolectores',
     'tl.tasks.no_rows': 'Sin hileras asignadas.',
+    'tl.tasks.no_assigned_rows': 'El manager aún no ha asignado hileras a tu equipo.',
     'tl.tasks.tap_to_start': 'Toca para empezar',
     'tl.team.title': 'Configurar cuadrilla',
     'tl.team.subtitle': 'Arnés e ID',

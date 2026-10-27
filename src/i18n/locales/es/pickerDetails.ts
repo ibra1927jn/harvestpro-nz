@@ -54,6 +54,7 @@ const pickerDetails: TranslationDict = {
     'pd.row_hash': 'Hilera n.º',
     'pd.assign_row': 'Asignar hilera',
     'pd.assign_row_n': 'Asignar hilera {n}',
+    'pd.assigned_rows_label': 'Hileras que el manager asignó a tu equipo',
     'pd.assign_row_error': 'Error al asignar la hilera',
     'pd.assign_pickers_n': 'Asignar recolectores ({n})',
     'pd.no_active_pickers': 'No hay recolectores activos',
