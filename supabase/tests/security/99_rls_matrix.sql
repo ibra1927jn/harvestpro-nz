@@ -300,11 +300,13 @@ BEGIN
     PERFORM sec_test.m_allow('hr_documents', ARRAY['insert', 'update_a', 'update_b', 'delete_a', 'delete_b'],
         ARRAY['A.admin', 'A.hr_admin', 'B.admin', 'B.hr_admin']);
 
-    -- Ausencias: las leen manager y TL de su huerto, RRHH, nómina y admin de la empresa
-    -- (runner, QC y logística no: ven «de permiso» con presence_today, Fase 2). Las piden
+    -- Ausencias (de {A,B}.picker, del equipo de {A,B}.team_leader): las leen el manager de
+    -- su huerto, el TL solo las de SU equipo (20261027040000), RRHH, nómina y admin de la
+    -- empresa y la propia persona (runner, QC y logística no: ven «de permiso» con
+    -- presence_today, Fase 2; 99_team_scope_leave_qc_rows.sql). Las piden
     -- TL (su equipo), manager, RRHH y admin; deciden manager de su huerto, RRHH y admin
     PERFORM sec_test.m_allow('leave_requests', ARRAY['read_a'],
-        ARRAY['A.admin', 'A.manager', 'A.hr_admin', 'A.payroll_admin', 'A.team_leader', 'A.team_leader2',
+        ARRAY['A.admin', 'A.manager', 'A.hr_admin', 'A.payroll_admin', 'A.team_leader',
               'B.admin', 'B.hr_admin', 'B.payroll_admin']);
     PERFORM sec_test.m_allow('leave_requests', ARRAY['read_b'],
         ARRAY['B.admin', 'B.manager', 'B.hr_admin', 'B.payroll_admin', 'B.team_leader',
@@ -361,11 +363,18 @@ BEGIN
     PERFORM sec_test.m_allow('push_subscriptions', ARRAY['read_b', 'update_b', 'delete_b'], ARRAY['B.runner']);
     PERFORM sec_test.m_allow('push_subscriptions', ARRAY['insert'], ARRAY['A.*', 'B.*']);
 
-    -- Inspecciones de calidad: las ve su huerto; las hacen QC, manager y admin del huerto
-    PERFORM sec_test.m_allow('qc_inspections', ARRAY['read_a'], ARRAY['A.*']);
-    PERFORM sec_test.m_allow('qc_inspections', ARRAY['read_b'], ARRAY['B.*']);
-    PERFORM sec_test.m_allow('qc_inspections', ARRAY['insert', 'update_a', 'delete_a'], ARRAY['A.admin', 'A.manager', 'A.qc_inspector']);
-    PERFORM sec_test.m_allow('qc_inspections', ARRAY['update_b', 'delete_b'], ARRAY['B.admin', 'B.manager', 'B.qc_inspector']);
+    -- Inspecciones de calidad ({A,B}.qc: de {A,B}.qc_inspector a {A,B}.picker, del equipo de
+    -- {A,B}.team_leader), con el bienestar (20261027040000): las ven el manager de su huerto,
+    -- RRHH y admin de la empresa, el TL del equipo del picker y el inspector que la hizo; nadie
+    -- más (runner, logística, nómina, el otro TL). Las hacen QC, manager y admin del huerto; las
+    -- cambian y borran manager y admin del huerto (QC ya no)
+    PERFORM sec_test.m_allow('qc_inspections', ARRAY['read_a'],
+        ARRAY['A.admin', 'A.manager', 'A.hr_admin', 'A.team_leader', 'A.qc_inspector', 'B.admin', 'B.hr_admin']);
+    PERFORM sec_test.m_allow('qc_inspections', ARRAY['read_b'],
+        ARRAY['B.admin', 'B.manager', 'B.hr_admin', 'B.team_leader', 'B.qc_inspector', 'A.admin', 'A.hr_admin']);
+    PERFORM sec_test.m_allow('qc_inspections', ARRAY['insert'], ARRAY['A.admin', 'A.manager', 'A.qc_inspector']);
+    PERFORM sec_test.m_allow('qc_inspections', ARRAY['update_a', 'delete_a'], ARRAY['A.admin', 'A.manager']);
+    PERFORM sec_test.m_allow('qc_inspections', ARRAY['update_b', 'delete_b'], ARRAY['B.admin', 'B.manager']);
 
     -- Escaneos rechazados (de A.runner): los apunta quien escanea; los leen manager, admin y
     -- quien los apuntó; no se cambian
@@ -374,13 +383,15 @@ BEGIN
     PERFORM sec_test.m_allow('rejected_scans', ARRAY['insert'],
         ARRAY['A.admin', 'A.manager', 'A.team_leader', 'A.team_leader2', 'A.runner', 'B.admin']);
 
-    -- Filas asignadas: las ve su huerto; las cambian manager, TL y admin del huerto
+    -- Filas asignadas ({A,B}.rowasg, del equipo de {A,B}.team_leader): las ve su huerto; las
+    -- crean, reasignan y borran manager del huerto y admin; el TL solo apunta avance y fin de
+    -- las de SU equipo (20261027040000; 99_team_scope_leave_qc_rows.sql)
     PERFORM sec_test.m_allow('row_assignments', ARRAY['read_a'], ARRAY['A.*', 'B.admin']);
     PERFORM sec_test.m_allow('row_assignments', ARRAY['read_b'], ARRAY['B.*', 'A.admin']);
-    PERFORM sec_test.m_allow('row_assignments', ARRAY['insert', 'update_a', 'delete_a'],
-        ARRAY['A.admin', 'A.manager', 'A.team_leader', 'A.team_leader2', 'B.admin']);
-    PERFORM sec_test.m_allow('row_assignments', ARRAY['update_b', 'delete_b'],
-        ARRAY['A.admin', 'B.admin', 'B.manager', 'B.team_leader']);
+    PERFORM sec_test.m_allow('row_assignments', ARRAY['insert', 'delete_a'], ARRAY['A.admin', 'A.manager', 'B.admin']);
+    PERFORM sec_test.m_allow('row_assignments', ARRAY['update_a'], ARRAY['A.admin', 'A.manager', 'A.team_leader', 'B.admin']);
+    PERFORM sec_test.m_allow('row_assignments', ARRAY['delete_b'], ARRAY['A.admin', 'B.admin', 'B.manager']);
+    PERFORM sec_test.m_allow('row_assignments', ARRAY['update_b'], ARRAY['A.admin', 'B.admin', 'B.manager', 'B.team_leader']);
 
     -- Transporte: lo ve y lo pide su huerto (a su nombre, A5); lo gestionan logística,
     -- manager y admin del huerto

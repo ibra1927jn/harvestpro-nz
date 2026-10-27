@@ -20,8 +20,10 @@ CREATE POLICY "HR documents delete" ON storage.objects FOR DELETE TO authenticat
 
 -- Almacén privado "qc-photos" (enlaces firmados desde 20261018000000_security_hardening_2).
 -- Rutas <orchard_id>/<día>/<inspección>.webp; desde 20261027020000_qc_photos_by_orchard
--- cada huerto solo ve y sube en su carpeta (primera carpeta = get_my_orchard_id()):
--- QC y manager de ese huerto; admin, cualquier huerto. Borra quien subió, en su huerto.
+-- cada huerto solo sube en su carpeta (primera carpeta = get_my_orchard_id()): QC y
+-- manager de ese huerto; admin, cualquier huerto. Borra quien subió, en su huerto.
+-- Ver (20261027040000_team_scoped_leave_qc_rows): manager, las de su huerto; RRHH y
+-- admin, todas; QC, las que subió; team leader, las de inspecciones de SU equipo.
 DROP POLICY IF EXISTS "Authenticated users can upload QC photos" ON storage.objects;
 DROP POLICY IF EXISTS "Users can delete own QC photos" ON storage.objects;
 DROP POLICY IF EXISTS "Public can view QC photos" ON storage.objects;
@@ -30,9 +32,19 @@ DROP POLICY IF EXISTS "Uploader deletes own QC photos" ON storage.objects;
 DROP POLICY IF EXISTS "QC staff view QC photos" ON storage.objects;
 CREATE POLICY "QC staff view QC photos" ON storage.objects FOR SELECT TO authenticated
     USING (bucket_id = 'qc-photos' AND (
-        (SELECT public.is_role(ARRAY['admin']))
-        OR ((SELECT public.is_role(ARRAY['qc_inspector', 'manager']))
-            AND (storage.foldername(name))[1] = (SELECT public.get_my_orchard_id())::text)));
+        (SELECT public.is_role(ARRAY['admin', 'hr_admin']))
+        OR ((SELECT public.is_role(ARRAY['manager']))
+            AND (storage.foldername(name))[1] = (SELECT public.get_my_orchard_id())::text)
+        OR ((SELECT public.is_role(ARRAY['qc_inspector']))
+            AND owner_id = (SELECT auth.uid())::text
+            AND (storage.foldername(name))[1] = (SELECT public.get_my_orchard_id())::text)
+        OR ((SELECT public.is_role(ARRAY['team_leader']))
+            AND EXISTS (
+                SELECT 1 FROM public.qc_inspections q
+                WHERE q.photo_url = objects.name
+                  AND q.orchard_id = (SELECT public.get_my_orchard_id())
+                  AND public.is_my_team_member(q.picker_id)
+            ))));
 CREATE POLICY "QC staff upload QC photos" ON storage.objects FOR INSERT TO authenticated
     WITH CHECK (bucket_id = 'qc-photos' AND (
         (SELECT public.is_role(ARRAY['admin']))

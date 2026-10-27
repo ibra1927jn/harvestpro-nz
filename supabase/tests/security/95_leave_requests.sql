@@ -1,12 +1,11 @@
 -- =============================================================================
 -- leave_requests (Agenda de RRHH, revisión 21-10 #18): ausencias y permisos.
--- Lectura: manager y team leader del huerto; RRHH, nómina y admin de toda la
--- empresa (runner, QC y logística ven «de permiso» con presence_today: Fase 2,
--- 20261027030000_fase2_rls_gaps). Pedir: RRHH/admin en cualquier huerto; manager y team leader en el
+-- Lectura: manager del huerto; team leader solo las de SU equipo y cada persona
+-- las suyas (20261027040000; los casos de equipo en 99_team_scope_leave_qc_rows.sql);
+-- RRHH, nómina y admin de toda la empresa (runner, QC y logística ven «de permiso»
+-- con presence_today: Fase 2, 20261027030000_fase2_rls_gaps). Pedir: RRHH/admin en cualquier huerto; manager y team leader en el
 -- suyo, solo como "requested" y a su nombre. Decidir: RRHH/admin y el manager
 -- de su huerto; nadie decide la suya (salvo admin). Nadie borra.
--- (no se ha podido ejecutar en esta rama: la base local es compartida;
---  el coordinador aplica la migración y lo corre)
 -- =============================================================================
 \set ON_ERROR_STOP 1
 BEGIN;
@@ -26,8 +25,10 @@ VALUES (sec_test.id_of('A.leave_tl'), sec_test.id_of('A'), sec_test.id_of('A.tea
         current_date, current_date, sec_test.id_of('A.manager'));
 
 -- ── Lectura ─────────────────────────────────────────────────────────────────
-SELECT sec_test.sees(w, 'sees leave of own orchard', $$SELECT 1 FROM leave_requests WHERE id = {A.leave}$$, 1)
-FROM unnest(ARRAY['A.manager', 'A.team_leader']) AS w;
+SELECT sec_test.sees('A.manager', 'sees leave of own orchard', $$SELECT 1 FROM leave_requests WHERE id IN ({A.leave}, {A.leave_tl})$$, 2);
+-- {A.leave} es de su equipo; {A.leave_tl}, la suya
+SELECT sec_test.sees('A.team_leader', 'sees leave of own team and own leave', $$SELECT 1 FROM leave_requests WHERE id IN ({A.leave}, {A.leave_tl})$$, 2);
+SELECT sec_test.sees('A.team_leader2', 'cannot see leave of another team', $$SELECT 1 FROM leave_requests WHERE id IN ({A.leave}, {A.leave_tl})$$, 0);
 -- El tipo (enfermedad, violencia doméstica…) y el motivo no son para todo el huerto
 SELECT sec_test.sees(w, 'cannot read leave requests (uses presence_today)', $$SELECT 1 FROM leave_requests WHERE id = {A.leave}$$, 0)
 FROM unnest(ARRAY['A.runner', 'A.qc_inspector', 'A.logistics']) AS w;

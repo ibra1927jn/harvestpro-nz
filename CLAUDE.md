@@ -51,6 +51,16 @@ Version: 9.9.0
 - Fichajes (`daily_attendance`): los leen manager/RRHH/admin del huerto, nómina de la empresa, el TL su equipo
   (y gente sin equipo del huerto) y cada uno lo suyo. Runner, QC y logística saben quién está fichado con
   `presence_today(huerto)` (sin horas ni pago; el store la relee cada minuto, migración 20261024021000).
+- Ausencias (`leave_requests`): manager del huerto, RRHH, nómina y admin de la empresa, el TL SOLO las de su
+  equipo (y las pide para su equipo) y cada uno las suyas; runner, QC y logística ven «de permiso» con
+  `presence_today` (migración 20261027040000_team_scoped_leave_qc_rows).
+- Calidad (`qc_inspections`, con las respuestas de bienestar, y las fotos de `qc-photos`): manager del huerto,
+  RRHH y admin de la empresa, el TL solo las de pickers de SU equipo y el inspector de QC solo las que creó él
+  (crea; no cambia ni borra). Runner, logística y nómina, nada. La foto del TL se busca por
+  `qc_inspections.photo_url` (misma migración).
+- Filas (`row_assignments`): las crea, reasigna y retira el manager (o admin), también varias por delante; el TL
+  solo mueve a SU equipo (`pickers.current_row`, `moveTeamToRow`) entre las filas activas asignadas a su equipo y
+  apunta avance y fin (triggers `guard_team_leader_current_row` y `guard_row_assignment_team_leader`).
 - Hora de fichajes y cubetas: la del servidor; la del móvil solo desde la cola sin red, corregida con el
   desfase medido y nunca del futuro (`_shared/device-time.ts`, `_shared/scan-time.ts`; el desfase queda en
   `*_clock_skew_ms`). Tramos de más de 14 h sin corregir: se pagan 14 h y no se aprueban
@@ -188,7 +198,7 @@ Version: 9.9.0
   (copiar + activar) y `create_orchard_block` (con filas) en una transacción; candado por temporada al meter
   filas. Los bloques pueden tener huecos: las filas reales son `blockRowNumbers()` (utils/blockRows.ts),
   nunca start_row..start_row+total_rows.
-- Reglas de equipos: el team leader solo gestiona su equipo y puede coger a gente sin equipo; mover, soltar, dar de baja o borrar es de RRHH/admin; el manager mueve equipos de fila (migración 20261016000000_picker_team_rules).
+- Reglas de equipos: el team leader solo gestiona su equipo y puede coger a gente sin equipo; mover, soltar, dar de baja o borrar es de RRHH/admin; el manager asigna filas a los equipos y el TL mueve a su equipo solo entre ellas (migraciones 20261016000000_picker_team_rules y 20261027040000).
 - Nómina: ninguna hora se paga sin revisar: `close-pay-week` no cierra la semana con tramos sin aprobar,
   rechazados o de más de 14 h sin corregir (`unreviewedShifts` en pay.ts).
 - Nómina: la app calcula bruto y horas y exporta a Xero/PaySauce. El 8% de holiday pay de casuales, PAYE, KiwiSaver, ACC y las nóminas los hace el programa de nóminas (decisión del dueño, 2026-10-16).
