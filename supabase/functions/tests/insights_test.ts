@@ -79,6 +79,42 @@ Deno.test({ name: 'check-compliance and detect-anomalies', ...testOpts, fn: asyn
             }
         })
 
+        // El manager solo LEE los fichajes y cubetas de su huerto (20261027070000);
+        // la función mira el día entero con service role y devuelve su parte
+        await t.step('check-compliance: a rotating picker\'s whole day counts, only own share is returned', async () => {
+            const other = await makeOrchard({ piece_rate: 9 })
+            const manager = await makeUser('manager', { orchardId: orchard })
+            const rotating = await makePicker(orchard)
+            const elsewhereOnly = await makePicker(other)
+            // Otro huerto 06:00–08:00 (2 cubetas), aquí 08:30–10:30 (1 cubeta), sin descanso:
+            // el día entero son 4.5 h (con el viaje) → falta el descanso de comida
+            must(await service.from('daily_attendance').insert([
+                { picker_id: rotating.id, orchard_id: other, date: today, check_in: nzTime(today, '06:00'), check_out: nzTime(today, '08:00'), status: 'present' },
+                { picker_id: rotating.id, orchard_id: orchard, date: today, check_in: nzTime(today, '08:30'), check_out: nzTime(today, '10:30'), status: 'present' },
+                { picker_id: elsewhereOnly.id, orchard_id: other, date: today, check_in: nzTime(today, '06:00'), check_out: nzTime(today, '12:00'), status: 'present' },
+            ]), 'rotating attendance')
+            must(await service.from('bucket_records').insert([
+                { picker_id: rotating.id, orchard_id: other, scanned_at: nzTime(today, '06:30'), quality_grade: 'A' },
+                { picker_id: rotating.id, orchard_id: other, scanned_at: nzTime(today, '07:30'), quality_grade: 'A' },
+                { picker_id: rotating.id, orchard_id: orchard, scanned_at: nzTime(today, '09:00'), quality_grade: 'A' },
+                { picker_id: elsewhereOnly.id, orchard_id: other, scanned_at: nzTime(today, '07:00'), quality_grade: 'A' },
+            ]), 'rotating buckets')
+
+            const r = await call<{ pickers: PickerCompliance[] }>('check-compliance', {
+                token: manager.token, body: { orchard_id: orchard, picker_ids: [rotating.id, elsewhereOnly.id] },
+            })
+            assertEquals(r.status, 200, show(r))
+            const rot = r.json.pickers.find(p => p.picker_id === rotating.id)!
+            // Aviso con el día entero (4.5 h), cifras solo de aquí (1 cubeta)
+            assert(rot.violations.some(v => v.type === 'break_overdue' && v.severity === 'high'), `meal break from the whole day: ${show(r)}`)
+            assertEquals(rot.metrics.buckets_today, 1)
+            assert(rot.metrics.hours_worked > 2 && rot.metrics.hours_worked < 2.5, `own share of hours: ${rot.metrics.hours_worked}`)
+            // Quien no trabajó hoy aquí: nada de su día en el otro huerto
+            const away = r.json.pickers.find(p => p.picker_id === elsewhereOnly.id)!
+            assertEquals([away.metrics.hours_worked, away.metrics.buckets_today, away.violations.length], [0, 0, 0])
+            assert(!r.text.includes(other), 'the other orchard is not in the response')
+        })
+
         await t.step('detect-anomalies: off-hours, impossible velocity and double scan (NZ time)', async () => {
             const r = await call<{ anomalies: Anomaly[] }>('detect-anomalies', { token: leader.token, body: { orchard_id: orchard } })
             assertEquals(r.status, 200, show(r))

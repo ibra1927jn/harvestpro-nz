@@ -90,11 +90,13 @@ serve(async (req) => {
             return jsonResponse({ ...snapshot, closed: { closed_at: closed.closed_at, closed_by: closed.closed_by } }, origin)
         }
 
-        // Precios de todos los huertos con service role (la gente rota: el
-        // complemento de un día se calcula con el día entero); el resto, con RLS.
-        // Lo que sale es solo lo del huerto pedido (payroll-calc → orchardDayView).
+        // Precios, cubetas y fichajes de todos los huertos con service role (la
+        // gente rota: el complemento y el reparto de horas de un día se calculan
+        // con el día entero; el manager solo lee los de su huerto, 20261027050000
+        // y 20261027070000); personas y contratos, con RLS. Lo que sale es solo
+        // lo del huerto pedido (payroll-calc → orchardDayView).
         const result = withBucketRate(
-            await computePayroll(supabase, { orchard_id: scope, start_date, end_date }, service),
+            await computePayroll(supabase, { orchard_id: scope, start_date, end_date }, service, service),
             manager?.rate ?? null,
         )
 

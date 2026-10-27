@@ -13,7 +13,7 @@ import { assert, assertAlmostEquals, assertEquals } from 'https://deno.land/std@
 import type { PayrollResult, PickerBreakdown } from '../_shared/payroll-calc.ts'
 import type { PayDay } from '../_shared/pay-rules.ts'
 import {
-    addDays, call, cleanupAll, makeOrchard, makePicker, makeUser, must, nzTime, randomMonday, service, show, testOpts,
+    ANON_KEY, SUPABASE_URL, addDays, call, cleanupAll, makeOrchard, makePicker, makeUser, must, nzTime, randomMonday, service, show, testOpts,
 } from './_helpers.ts'
 
 async function attendance(pickerId: string, orchardId: string, date: string, from: string, to: string | null, breakAt?: string): Promise<void> {
@@ -195,6 +195,25 @@ Deno.test({ name: 'calculate-payroll matches hand-computed NZ pay', ...testOpts,
             assertEquals(company.json.settings.bucket_rate, 7)
             assertEquals(company.json.picker_breakdown.map(x => x.picker_id), [p3.id])
             assertEquals(company.json.summary.total_earnings, 96.09)
+        })
+
+        // Decisión del dueño (27-10): el manager no LEE los fichajes ni las cubetas
+        // de otro huerto (20261027070000), tampoco los de alguien que rota; su
+        // parte (paso anterior) la calcula el servidor con el día entero
+        await t.step('manager of B: the API gives no attendance or bucket row of orchard A', async () => {
+            const managerB = await makeUser('manager', { orchardId: orchardB })
+            const rest = async (table: string) => {
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=orchard_id&picker_id=eq.${p3.id}`, {
+                    headers: { apikey: ANON_KEY, Authorization: `Bearer ${managerB.token}` },
+                })
+                assertEquals(res.status, 200, table)
+                return ((await res.json()) as { orchard_id: string }[]).map(r => r.orchard_id)
+            }
+            const att = await rest('daily_attendance')
+            const bkt = await rest('bucket_records')
+            assertEquals(att, [orchardB])
+            assertEquals(bkt.length, 10)
+            assert(bkt.every(o => o === orchardB), 'only B buckets')
         })
 
         // Decisión del dueño (27-10): el manager ve solo la parte de su huerto.

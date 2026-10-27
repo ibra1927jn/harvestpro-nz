@@ -193,6 +193,9 @@ DECLARE
     -- Roles de empresa que leen la nómina de todos los huertos (can_read_company_payroll)
     co_a text[] := ARRAY['A.admin', 'A.manager', 'A.hr_admin', 'A.payroll_admin'];
     co_b text[] := ARRAY['B.admin', 'B.manager', 'B.hr_admin', 'B.payroll_admin'];
+    -- Oficina de la empresa (todos los huertos): fichajes y cubetas (20261027070000)
+    of_a text[] := ARRAY['A.admin', 'A.hr_admin', 'A.payroll_admin'];
+    of_b text[] := ARRAY['B.admin', 'B.hr_admin', 'B.payroll_admin'];
 BEGIN
     -- Invitaciones: admin y RRHH, de toda la empresa (decisión: «invitar usuarios: admin y RRHH»).
     -- La persona invitada lee la suya por su email (97_invitations.sql).
@@ -231,10 +234,11 @@ BEGIN
     PERFORM sec_test.m_allow('broadcasts', ARRAY['insert', 'update_a', 'delete_a'], ARRAY['A.admin', 'A.manager']);
     PERFORM sec_test.m_allow('broadcasts', ARRAY['update_b', 'delete_b'], ARRAY['B.admin', 'B.manager']);
 
-    -- Cubetas: las ve su huerto y los roles de empresa (la nómina suma todos los huertos);
-    -- escanean runner, TL, manager y admin; corrigen manager de su huerto y admin
-    PERFORM sec_test.m_allow('bucket_records', ARRAY['read_a'], ARRAY['A.*'] || co_b);
-    PERFORM sec_test.m_allow('bucket_records', ARRAY['read_b'], ARRAY['B.*'] || co_a);
+    -- Cubetas: las ve su huerto y la oficina de la empresa (admin, RRHH, nómina); el manager
+    -- de otro huerto no (20261027070000); escanean runner, TL, manager y admin; corrigen
+    -- manager de su huerto y admin
+    PERFORM sec_test.m_allow('bucket_records', ARRAY['read_a'], ARRAY['A.*'] || of_b);
+    PERFORM sec_test.m_allow('bucket_records', ARRAY['read_b'], ARRAY['B.*'] || of_a);
     PERFORM sec_test.m_allow('bucket_records', ARRAY['insert'],
         ARRAY['A.admin', 'A.manager', 'A.team_leader', 'A.team_leader2', 'A.runner', 'B.admin']);
     PERFORM sec_test.m_allow('bucket_records', ARRAY['update_a', 'delete_a'], ARRAY['A.admin', 'A.manager', 'B.admin']);
@@ -258,11 +262,12 @@ BEGIN
     PERFORM sec_test.m_allow('contracts', ARRAY['insert', 'update_a', 'update_b', 'delete_a', 'delete_b'],
         ARRAY['A.admin', 'A.hr_admin', 'B.admin', 'B.hr_admin']);
 
-    -- Fichajes (de un picker del equipo de A.team_leader): los leen los roles de empresa y su
-    -- TL (no runner, QC ni logística: usan presence_today); los corrigen admin, manager y RRHH de
-    -- su huerto y su TL (A2); la persona no corrige lo suyo
-    PERFORM sec_test.m_allow('daily_attendance', ARRAY['read_a'], co_a || co_b || ARRAY['A.team_leader']);
-    PERFORM sec_test.m_allow('daily_attendance', ARRAY['read_b'], co_a || co_b || ARRAY['B.team_leader']);
+    -- Fichajes (de un picker del equipo de A.team_leader): los leen admin, manager y RRHH de su
+    -- huerto, la oficina de la empresa y su TL (no el manager de otro huerto, 20261027070000; no
+    -- runner, QC ni logística: usan presence_today); los corrigen admin, manager y RRHH de su
+    -- huerto y su TL (A2); la persona no corrige lo suyo
+    PERFORM sec_test.m_allow('daily_attendance', ARRAY['read_a'], co_a || of_b || ARRAY['A.team_leader']);
+    PERFORM sec_test.m_allow('daily_attendance', ARRAY['read_b'], co_b || of_a || ARRAY['B.team_leader']);
     PERFORM sec_test.m_allow('daily_attendance', ARRAY['insert', 'update_a', 'delete_a'],
         ARRAY['A.admin', 'A.manager', 'A.hr_admin', 'A.team_leader', 'B.admin']);
     PERFORM sec_test.m_allow('daily_attendance', ARRAY['update_b', 'delete_b'],

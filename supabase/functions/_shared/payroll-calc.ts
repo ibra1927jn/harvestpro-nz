@@ -163,6 +163,13 @@ export async function computePayroll(
      * manager solo lee los precios de su huerto (rates-client.ts).
      */
     ratesClient: SupabaseLike = supabase,
+    /**
+     * Cliente con el que se leen las cubetas y los fichajes. Por defecto el
+     * mismo; calculate-payroll pasa el de service role: el manager solo lee los
+     * de su huerto (migración 20261027070000) y el día de quien rota incluye
+     * otro huerto. Lo que sale es solo lo del huerto pedido (orchardDayView).
+     */
+    recordsClient: SupabaseLike = supabase,
 ): Promise<PayrollResult> {
     // 1. Tarifas. Cada cubeta cobra el precio de SU DÍA para su variedad en su
     //    huerto; si la variedad no tiene precio, el general del huerto ese día;
@@ -205,7 +212,7 @@ export async function computePayroll(
     //    otro el mismo día: el complemento al mínimo se calcula con el día entero.
     //    Por páginas: PostgREST corta en 1000 filas y una semana tiene más.
     const events = await fetchAllRows((from, to) => {
-        const q = supabase
+        const q = recordsClient
             .from('bucket_records')
             .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
             .is('deleted_at', null)
@@ -218,7 +225,7 @@ export async function computePayroll(
         return q.order('scanned_at').order('id').range(from, to)
     })
     const attendance = await fetchAllRows((from, to) => {
-        const q = supabase
+        const q = recordsClient
             .from('daily_attendance')
             .select('picker_id, orchard_id, date, check_in, check_out, break_start, break_minutes, corrected_at')
             .is('deleted_at', null)

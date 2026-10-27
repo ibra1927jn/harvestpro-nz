@@ -106,9 +106,15 @@ serve(async (req) => {
             .formatToParts(new Date(`${today}T12:00:00Z`))
             .find(p => p.type === 'timeZoneName')?.value.replace('GMT', '') || '+13:00'
 
+        // Fichajes, cubetas y precios con service role, después de requireRole y
+        // del huerto: el manager y el TL solo leen los de su huerto (20261027050000,
+        // 20261027070000), pero el día de la persona puede incluir otro huerto. No
+        // salen en la respuesta: solo la parte de este huerto y los avisos del día.
+        const rates = pieceRatesReader()
+
         // Tramos de hoy de estas personas en TODOS los huertos (pueden haber
         // pasado por otro huerto: el mínimo se comprueba con el día entero)
-        const { data: attendance } = await supabase
+        const { data: attendance } = await rates
             .from('daily_attendance')
             .select('picker_id, orchard_id, check_in, check_out, break_start, break_minutes, date, corrected_at')
             .eq('date', today)
@@ -116,7 +122,7 @@ serve(async (req) => {
             .in('picker_id', picker_ids)
 
         // Cubetas del día NZ (todos los huertos); los rechazos los quita el cálculo
-        const { data: bucketCounts } = await supabase
+        const { data: bucketCounts } = await rates
             .from('bucket_records')
             .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
             .is('deleted_at', null)
@@ -126,10 +132,6 @@ serve(async (req) => {
 
         // Precio de cada cubeta: el de hoy de su variedad en su huerto (piece_rates);
         // sin él, el general del huerto de hoy; si no, harvest_settings.piece_rate
-        // Con service role: el team leader y el manager solo leen los precios de su
-        // huerto (20261027050000), pero el día de la persona puede incluir otro
-        // huerto; los precios no salen en la respuesta, solo el resultado
-        const rates = pieceRatesReader()
         const [dailyRates, { data: settingsRows }] = await Promise.all([
             loadDailyPieceRates(rates, today, today),
             rates.from('harvest_settings').select('orchard_id, piece_rate'),
@@ -141,8 +143,15 @@ serve(async (req) => {
 
         type AttRow = { picker_id: string; orchard_id: string | null; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null; date: string; corrected_at: string | null }
         type BktRow = { picker_id: string; orchard_id: string | null; variety: string | null; scanned_at: string; quality_grade: string | null }
-        const attRows = (attendance ?? []) as AttRow[]
-        const bktRows = (bucketCounts ?? []) as BktRow[]
+        // Manager y TL: solo quien ha trabajado hoy en su huerto (fichaje o cubeta
+        // aquí); de los demás no se mira nada de otro huerto
+        const workedHere = new Set<string>([
+            ...((attendance ?? []) as AttRow[]).filter(a => a.orchard_id === orchard_id).map(a => a.picker_id),
+            ...((bucketCounts ?? []) as BktRow[]).filter(b => b.orchard_id === orchard_id).map(b => b.picker_id),
+        ])
+        const visible = (pickerId: string) => !ownOrchardOnly || workedHere.has(pickerId)
+        const attRows = ((attendance ?? []) as AttRow[]).filter(a => visible(a.picker_id))
+        const bktRows = ((bucketCounts ?? []) as BktRow[]).filter(b => visible(b.picker_id))
 
         // Get picker names
         const { data: pickers } = await supabase
