@@ -48,9 +48,16 @@ Version: 9.9.0
 - `supabase/functions/_shared/` — pay-rules.ts (idéntico a src/services/harvestMetrics/pay.ts, lo vigila pay-parity.test.ts), payroll-calc.ts, security.ts, scan-time.ts, cors.ts
 - `supabase/seeds/` — seeds locales (orden: seed_00_local_bootstrap → seed_2weeks_local → seed_role_users)
 - 35 tablas, RLS en todas, 2FA (aal2) exigido por política para roles privilegiados
-- Fichajes (`daily_attendance`): los leen manager/RRHH/admin del huerto, nómina de la empresa, el TL su equipo
-  (y gente sin equipo del huerto) y cada uno lo suyo. Runner, QC y logística saben quién está fichado con
-  `presence_today(huerto)` (sin horas ni pago; el store la relee cada minuto, migración 20261024021000).
+- Fichajes (`daily_attendance`) y cubetas (`bucket_records`): el manager SOLO los de su huerto, también de quien
+  rota (parte del día aquí y parte en otro); admin, RRHH y nómina, toda la empresa; el TL los fichajes de su equipo
+  (también en otro huerto) y de gente sin equipo del huerto, y las cubetas de su huerto y de su equipo; cada uno lo
+  suyo; las cubetas del huerto las ve todo el huerto. Runner, QC y logística saben quién está fichado con
+  `presence_today(huerto)` (sin horas ni pago; el store la relee cada minuto, migración 20261024021000); el manager
+  sabe por ella quién está ahora en otro huerto (solo el nombre). Lo que necesita el día entero de quien rota va por
+  el servidor: `calculate-payroll` y `check-compliance` leen fichajes y cubetas con service role y devuelven la
+  parte del huerto (las horas de la hoja de fichajes salen de ahí); el historial del picker pone «—» en el pago de
+  un día partido (`picker_days_elsewhere`, solo fechas). `presence_today` de otro huerto y la auditoría de fichajes,
+  cubetas y precios de otro huerto: no para el manager (migraciones 20261027070000 y 20261027071000).
 - Ausencias (`leave_requests`): manager del huerto, RRHH, nómina y admin de la empresa, el TL SOLO las de su
   equipo (y las pide para su equipo) y cada uno las suyas; runner, QC y logística ven «de permiso» con
   `presence_today` (migración 20261027040000_team_scoped_leave_qc_rows).
