@@ -159,7 +159,8 @@ describe('setLocale (language switch)', () => {
         fireEvent.click(screen.getByRole('button', { name: 'switch' }));
         await waitFor(() => expect(screen.getByRole('status').textContent).toBe('true'));
         expect(screen.getByText(`es:${locales.translations.es?.['common.retry']}`)).toBeTruthy();
-        expect(document.documentElement.lang).toBe('es');
+        // <html lang> lo pone un efecto pasivo: puede llegar después del texto (CI lento)
+        await waitFor(() => expect(document.documentElement.lang).toBe('es'));
         expect(localStorage.getItem('harvestpro_locale')).toBe('es');
         expect(i18n.translate('common.retry')).toBe(locales.translations.es?.['common.retry']);
     });
@@ -170,7 +171,8 @@ describe('setLocale (language switch)', () => {
         fireEvent.click(screen.getByRole('button', { name: 'switch' }));
         await waitFor(() => expect(screen.getByRole('status').textContent).toBe('true'));
         expect(screen.getByText('fr:Réessayer')).toBeTruthy();
-        expect(document.documentElement.lang).toBe('fr');
+        // <html lang> lo pone un efecto pasivo: puede llegar después del texto (CI lento)
+        await waitFor(() => expect(document.documentElement.lang).toBe('fr'));
         expect(localStorage.getItem('harvestpro_locale')).toBe('fr');
     });
 
