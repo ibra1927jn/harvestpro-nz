@@ -160,4 +160,63 @@ describe('daily timesheet uses the price of THAT day', () => {
         expect(rates.loadRange).toHaveBeenCalledWith(d, d);
         expect(rec).toMatchObject({ buckets_total: 20, piece_rate: 6.5, piece_earnings: 145 }); // 10 × 8 + 10 × 6.50
     });
+
+    // Migración 20261027050000: el manager de A no lee el precio de B. El complemento
+    // del día (A por la mañana, B por la tarde) sale del cálculo de nómina del servidor.
+    it('top-up of a day in two orchards comes from calculate-payroll (B\'s price is not readable here)', async () => {
+        const d = '2026-10-13';
+        const shiftA = { id: 'sA', picker_id: 'p3', orchard_id: 'A', check_in: t(d, '07:00'), check_out: t(d, '11:00'), break_start: t(d, '09:00'), break_minutes: 30 };
+        const shiftB = { id: 'sB', picker_id: 'p3', orchard_id: 'B', check_in: t(d, '12:00'), check_out: t(d, '15:00'), break_start: null, break_minutes: null };
+        const bucketsA = Array.from({ length: 10 }, () => ({ picker_id: 'p3', orchard_id: 'A', variety: null, scanned_at: t(d, '08:00'), quality_grade: 'A' }));
+        const bucketsB = Array.from({ length: 10 }, () => ({ picker_id: 'p3', orchard_id: 'B', variety: null, scanned_at: t(d, '13:00'), quality_grade: 'A' }));
+        repo.fetchTimesheetAttendance.mockResolvedValue({ data: [{ ...shiftA, date: d, verified_by: null, updated_at: 'u' }], error: null });
+        repo.fetchPickerNames.mockResolvedValue({ p3: 'Ana' });
+        repo.fetchDayOfPeople.mockResolvedValue({ shifts: [shiftA, shiftB], buckets: [...bucketsA, ...bucketsB] });
+        // Solo el precio de A es legible
+        const onlyA = [{ orchardId: 'A', variety: null, effectiveDate: '2026-10-01', pieceRate: 5 }];
+        rates.loadRange.mockResolvedValue(onlyA);
+        rates.loadForPay.mockResolvedValue({ rates: onlyA, orchardFallbacks: { A: 5 } });
+        const share = (orchardId: string, topUp: number) => ({ orchardId, hours: 4, buckets: 10, pieceEarnings: 50, holidayPremium: 0, topUp, total: 50 + topUp });
+        repo.invokeCalculatePayroll.mockResolvedValue({
+            ...RESULT, orchard_id: 'A', date_range: { start: d, end: d },
+            picker_breakdown: [{
+                picker_id: 'p3', picker_name: 'Ana', buckets: 10, hours_worked: 4.22, piece_rate_earnings: 50, hourly_rate: 11.85,
+                minimum_required: 101.07, top_up_required: 33.54, total_earnings: 83.54, is_below_minimum: true,
+                days: [{
+                    date: d, segments: [], hours: 7.5, breakMinutes: 30, travelMinutes: 60, buckets: 20, bucketsByVariety: {},
+                    pieceLines: [], byOrchard: [share('A', 33.54), share('B', 26.09)], pieceEarnings: 120, holidayPremium: 0,
+                    topUp: 59.63, total: 179.63, belowMinimum: true, estimated: false, isPublicHoliday: false,
+                }],
+            }],
+        });
+        const from = vi.spyOn(supabase, 'from').mockImplementation(((name: string) => name === 'harvest_settings'
+            ? table({ piece_rate: 5, min_wage_rate: 23.95 })
+            : table(bucketsA)) as never);
+
+        const [rec] = await payrollService.generateDailyTimesheet('A', d);
+        from.mockRestore();
+        expect(repo.invokeCalculatePayroll).toHaveBeenCalledWith('A', d, d);
+        expect(rec).toMatchObject({ piece_earnings: 50, top_up: 33.54, is_below_minimum: true });
+    });
+
+    it('without calculate-payroll the top-up falls back to the local calculation', async () => {
+        const d = '2026-10-13';
+        const shift = { id: 's1', picker_id: 'p1', orchard_id: 'A', check_in: t(d, '07:00'), check_out: t(d, '11:00'), break_start: null, break_minutes: null };
+        const buckets = Array.from({ length: 10 }, () => ({ picker_id: 'p1', orchard_id: 'A', variety: null, scanned_at: t(d, '08:00'), quality_grade: 'A' }));
+        repo.fetchTimesheetAttendance.mockResolvedValue({ data: [{ ...shift, date: d, verified_by: null, updated_at: 'u' }], error: null });
+        repo.fetchPickerNames.mockResolvedValue({ p1: 'Ana' });
+        repo.fetchDayOfPeople.mockResolvedValue({ shifts: [shift], buckets });
+        const onlyA = [{ orchardId: 'A', variety: null, effectiveDate: '2026-10-01', pieceRate: 5 }];
+        rates.loadRange.mockResolvedValue(onlyA);
+        rates.loadForPay.mockResolvedValue({ rates: onlyA, orchardFallbacks: { A: 5 } });
+        repo.invokeCalculatePayroll.mockRejectedValue(new Error('offline'));
+        const from = vi.spyOn(supabase, 'from').mockImplementation(((name: string) => name === 'harvest_settings'
+            ? table({ piece_rate: 5, min_wage_rate: 23.95 })
+            : table(buckets)) as never);
+
+        const [rec] = await payrollService.generateDailyTimesheet('A', d);
+        from.mockRestore();
+        // 4 h × 23.95 = 95.80 − 50 de cubetas
+        expect(rec).toMatchObject({ piece_earnings: 50, top_up: 45.8 });
+    });
 });

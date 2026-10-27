@@ -112,6 +112,8 @@ const MFA_ROLES: ReadonlySet<string> = new Set(['admin', 'manager', 'payroll_adm
 interface AuthResult {
   user: { id: string; email: string };
   supabase: SupabaseClient;
+  /** Rol de public.users (ya comprobado contra `roles`) */
+  role: AllowedRole;
 }
 
 /**
@@ -182,6 +184,7 @@ export async function requireRole(
   return {
     user: { id: user.id, email: user.email ?? '' },
     supabase,
+    role: userRole as AllowedRole,
   };
 }
 

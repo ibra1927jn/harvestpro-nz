@@ -70,6 +70,7 @@ const panel: TranslationDict = {
     'panel.history.col.bins': 'CUBETAS',
     'panel.history.col.hours': 'HORAS',
     'panel.history.col.earned': 'GANADO',
+    'panel.history.earned_other_orchard': 'Incluye cubetas de otro huerto cuyo precio no puedes ver',
     'panel.history.daily_output_title': 'Producción diaria (últimos {n} días)',
     // Quality
     'panel.quality.overall': 'Puntaje de Calidad General',

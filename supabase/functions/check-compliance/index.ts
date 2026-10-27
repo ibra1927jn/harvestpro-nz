@@ -9,6 +9,7 @@ import {
 } from '../_shared/security.ts'
 import { attendanceRowOf, payForRange, pieceRateOn, nzDateOf, isNZPublicHoliday, PAY_RULES } from '../_shared/pay-rules.ts'
 import { loadDailyPieceRates } from '../_shared/piece-rates.ts'
+import { pieceRatesReader } from '../_shared/rates-client.ts'
 
 /**
  * check-compliance — Server-side NZ Employment Relations Act compliance
@@ -113,9 +114,13 @@ serve(async (req) => {
 
         // Precio de cada cubeta: el de hoy de su variedad en su huerto (piece_rates);
         // sin él, el general del huerto de hoy; si no, harvest_settings.piece_rate
+        // Con service role: el team leader y el manager solo leen los precios de su
+        // huerto (20261027050000), pero el día de la persona puede incluir otro
+        // huerto; los precios no salen en la respuesta, solo el resultado
+        const rates = pieceRatesReader()
         const [dailyRates, { data: settingsRows }] = await Promise.all([
-            loadDailyPieceRates(supabase, today, today),
-            supabase.from('harvest_settings').select('orchard_id, piece_rate'),
+            loadDailyPieceRates(rates, today, today),
+            rates.from('harvest_settings').select('orchard_id, piece_rate'),
         ])
         const orchardRates: Record<string, number> = {}
         for (const s of (settingsRows ?? []) as { orchard_id: string; piece_rate: number | null }[]) {

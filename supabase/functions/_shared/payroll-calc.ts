@@ -155,11 +155,17 @@ export interface PayrollResult {
 export async function computePayroll(
     supabase: SupabaseLike,
     { orchard_id, start_date, end_date }: { orchard_id?: string; start_date: string; end_date: string },
+    /**
+     * Cliente con el que se leen los precios (harvest_settings y piece_rates).
+     * Por defecto el mismo; calculate-payroll pasa uno de service role porque un
+     * manager solo lee los precios de su huerto (rates-client.ts).
+     */
+    ratesClient: SupabaseLike = supabase,
 ): Promise<PayrollResult> {
     // 1. Tarifas. Cada cubeta cobra el precio de SU DÍA para su variedad en su
     //    huerto; si la variedad no tiene precio, el general del huerto ese día;
     //    si el huerto no tiene ninguno, harvest_settings.piece_rate.
-    const { data: settingsRows, error: settingsError } = await supabase
+    const { data: settingsRows, error: settingsError } = await ratesClient
         .from('harvest_settings')
         .select('orchard_id, piece_rate, min_wage_rate')
     if (settingsError) throw new Error(`Harvest settings: ${settingsError.message}`)
@@ -190,7 +196,7 @@ export async function computePayroll(
     // Precio por cubeta de cada día, huerto y variedad (piece_rates): cambiar el
     // precio hoy no reescribe los días anteriores. Hasta el día siguiente al
     // rango (cubetas de un turno que cruza la medianoche).
-    const dailyRates = await loadDailyPieceRates(supabase, start_date, addDays(end_date, 1))
+    const dailyRates = await loadDailyPieceRates(ratesClient, start_date, addDays(end_date, 1))
 
     // 2. Cubetas y tramos del rango (límites en hora NZ), de TODOS los huertos
     //    (también si se pide uno). La gente rota y puede pasar de un huerto a

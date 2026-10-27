@@ -71,6 +71,7 @@ const panel: TranslationDict = {
     'panel.history.col.bins': 'BINS',
     'panel.history.col.hours': 'HEURES',
     'panel.history.col.earned': 'GAGNÉ',
+    'panel.history.earned_other_orchard': 'Inclut des bins d’un autre verger dont vous ne voyez pas le prix',
     'panel.history.daily_output_title': 'Production journalière ({n} derniers jours)',
     // Quality tab
     'panel.quality.overall': 'Note de qualité globale',

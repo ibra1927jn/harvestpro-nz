@@ -68,6 +68,22 @@ async function computeDayOfPeople(pickerIds: string[], date: string, minWage: nu
   return byPicker;
 }
 
+/** Día `date` de cada persona según calculate-payroll; null si el servidor falla */
+async function serverDaysOf(result: Promise<PayrollResult>, date: string): Promise<Map<string, PayDay> | null> {
+  try {
+    const { picker_breakdown } = await result;
+    const out = new Map<string, PayDay>();
+    for (const p of picker_breakdown) {
+      const day = p.days?.find(d => d.date === date);
+      if (day) out.set(p.picker_id, day);
+    }
+    return out;
+  } catch (e) {
+    logger.warn('[Payroll] calculate-payroll unavailable for the daily sheet; local top-up', e);
+    return null;
+  }
+}
+
 /** Hojas por llamada en «Aprobar todas» (el servidor admite hasta 500) */
 export const TIMESHEET_BATCH_SIZE = 200;
 
@@ -314,12 +330,19 @@ export const payrollService = {
     //    (todos sus tramos y cubetas, de cualquier huerto) y a este huerto le
     //    toca su parte (según horas, igual que el coste por huerto en Nómina).
     //    Se muestra en su último tramo del día en este huerto.
+    //    El día entero sale del cálculo de nómina (servidor): el manager solo lee
+    //    los precios de SU huerto (migración 20261027050000) y aquí no sabría lo
+    //    ganado en otro. Sin servidor (o sin esa persona), el cálculo local.
     const holiday = isNZPublicHoliday(targetDate);
-    const days = await computeDayOfPeople([...segmentsByPicker.keys()], targetDate, minWageRate).catch(() => null);
+    const serverDays = await serverDaysOf(this.calculatePayroll(orchardId, targetDate, targetDate), targetDate);
+    const missing = [...segmentsByPicker.keys()].filter(id => !serverDays?.has(id));
+    const days = missing.length > 0
+      ? await computeDayOfPeople(missing, targetDate, minWageRate).catch(() => null)
+      : null;
     const dayTopUp = new Map<string, DayTopUp>();
     for (const [pickerId, segs] of segmentsByPicker) {
       dayTopUp.set(pickerId, dayTopUpFor({
-        day: days?.get(pickerId)?.day,
+        day: serverDays?.get(pickerId) ?? days?.get(pickerId)?.day,
         orchardId,
         hours: segs.reduce((s, t) => s + t.hours_worked, 0),
         minWageRate,

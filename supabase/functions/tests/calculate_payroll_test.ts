@@ -167,6 +167,33 @@ Deno.test({ name: 'calculate-payroll matches hand-computed NZ pay', ...testOpts,
             assertEquals(p?.top_up_required, 91.6)
         })
 
+        // Un manager solo lee los precios de SU huerto (20261027050000), pero su
+        // parte del día se calcula con el día entero, también lo de otro huerto
+        await t.step('manager of B: own share uses orchard A\'s price too; never another orchard', async () => {
+            const managerB = await makeUser('manager', { orchardId: orchardB })
+            const week = { start_date: monday, end_date: addDays(monday, 6) }
+            const own = await call<PayrollResult>('calculate-payroll', {
+                token: managerB.token, body: { orchard_id: orchardB, ...week },
+            })
+            assertEquals(own.status, 200, show(own))
+            const p = own.json.picker_breakdown.find(x => x.picker_id === p3.id)
+            // Lo mismo que ve nómina: 70 + 26.09 (con el precio de B en A saldría otro complemento)
+            assertEquals(p?.top_up_required, 26.09)
+            assertEquals(p?.total_earnings, 96.09)
+            assertEquals(own.json.settings.bucket_rate, 7)
+
+            const other = await call('calculate-payroll', {
+                token: managerB.token, body: { orchard_id: orchardA, ...week },
+            })
+            assertEquals(other.status, 403, show(other))
+
+            const company = await call<PayrollResult>('calculate-payroll', { token: managerB.token, body: week })
+            assertEquals(company.status, 200, show(company))
+            // El precio que se le enseña es el de su huerto, no el de un huerto cualquiera
+            assertEquals(company.json.settings.bucket_rate, 7)
+            assertEquals(company.json.picker_breakdown.find(x => x.picker_id === p3.id)?.days[0].topUp, 59.63)
+        })
+
         await t.step('unknown orchard → 400 without leaking internals', async () => {
             const r = await call('calculate-payroll', {
                 token: payroll.token, body: { orchard_id: crypto.randomUUID(), start_date: monday, end_date: addDays(monday, 6) },

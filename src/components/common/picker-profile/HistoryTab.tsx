@@ -87,7 +87,9 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history, dailyBuckets }) => {
                                         {r.hours.toFixed(1)}h{r.estimated ? '*' : ''}
                                     </span>
                                     {/* Ganado */}
-                                    <span className="font-medium text-text-main ml-auto">${r.earnings.toFixed(0)}</span>
+                                    {r.earnings === null
+                                        ? <span className="text-text-muted ml-auto" title={t('panel.history.earned_other_orchard')}>—</span>
+                                        : <span className="font-medium text-text-main ml-auto">${r.earnings.toFixed(0)}</span>}
                                 </div>
                             ))}
                         </div>
