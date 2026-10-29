@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { INTEGRATION_TESTS } from './vitest.config';
 
 // Zona horaria fija antes de crear los workers (ver vitest.config.ts)
 process.env.TZ = 'Pacific/Auckland';
@@ -17,9 +18,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/test-setup.ts'],
+    setupFiles: ['./src/test-env.ts', './src/test-setup.ts'],
     include: ['**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    exclude: ['node_modules', 'dist', 'tests', 'e2e'],
+    exclude: ['node_modules', 'dist', 'tests', 'e2e', ...INTEGRATION_TESTS],
     testTimeout: 30_000,
     hookTimeout: 10_000,
     teardownTimeout: 5_000,
@@ -38,6 +39,7 @@ export default defineConfig({
         'src/**/*.test.{ts,tsx}',
         'src/**/*.spec.{ts,tsx}',
         'src/test-setup.ts',
+        'src/test-env.ts',
         'src/vite-env.d.ts',
         'src/**/*.d.ts',
         'src/**/index.ts',

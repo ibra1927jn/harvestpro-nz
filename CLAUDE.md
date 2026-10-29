@@ -62,8 +62,10 @@ Version: 9.9.0
 - Config local: threads, 2 workers. CI (vitest.config.ci.ts): forks, 1 worker, 5 shards.
 - Guards baratos (CI): `npm run test:assertions` (tests que no pueden fallar, incluye src/integration)
   y `npm run test:mock-guard` (vi.mock que el setup dejaría sin efecto).
-- `src/integration/*supabase*` y `role-flows-sanity` usan el Supabase local real (se saltan sin
-  SUPABASE_SERVICE_ROLE_KEY).
+- `npm test` funciona en un clon limpio sin `.env`: `src/test-env.ts` pone URL/clave de Supabase falsas
+  si faltan. Los que usan el Supabase local real (`tests/integration/`, `src/integration/*supabase*` y
+  `role-flows-sanity`, lista `INTEGRATION_TESTS` en vitest.config.ts) van aparte: `npm run test:integration`
+  (necesita `supabase start`; los de src/integration se saltan sin SUPABASE_SERVICE_ROLE_KEY).
 - Edge Functions: `npm run test:functions` (Deno, supabase/functions/tests/, necesita .env.local).
 - BD: `scripts/test-db-security.sh` (RLS, SECURITY DEFINER; supabase/tests/security/*.sql con ROLLBACK).
 - E2E Playwright: ~31 specs en e2e/ (`npm run test:e2e`) y 9 móviles en e2e/mobile

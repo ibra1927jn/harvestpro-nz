@@ -7,14 +7,23 @@ import path from 'path';
 // (test-setup.ts) no cambia la zona de Date, y los tests dependían de la del host.
 process.env.TZ = 'Pacific/Auckland';
 
+// Tests que necesitan un Supabase local real: van en `npm run test:integration`
+// (vitest.config.integration.ts), no en `npm test`.
+export const INTEGRATION_TESTS = [
+  'tests/integration/**',
+  'src/integration/*supabase*.integration.test.ts',
+  'src/integration/role-flows-sanity.integration.test.ts',
+];
+
 export default defineConfig({
   plugins: [react()],
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/test-setup.ts'],
+    // test-env.ts primero: pone URL/clave de Supabase falsas si faltan (clon limpio sin .env)
+    setupFiles: ['./src/test-env.ts', './src/test-setup.ts'],
     include: ['**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    exclude: ['node_modules', 'dist', 'tests/e2e', 'e2e'],
+    exclude: ['node_modules', 'dist', 'tests/e2e', 'e2e', ...INTEGRATION_TESTS],
     testTimeout: 30_000, // 30s per test (prevents CI hangs)
     hookTimeout: 10_000, // 10s for beforeEach/afterEach
     teardownTimeout: 5_000, // 5s for cleanup after tests
@@ -32,6 +41,7 @@ export default defineConfig({
         'src/**/*.test.{ts,tsx}',
         'src/**/*.spec.{ts,tsx}',
         'src/test-setup.ts',
+        'src/test-env.ts',
         'src/vite-env.d.ts',
         'src/**/*.d.ts',
         'src/**/index.ts',

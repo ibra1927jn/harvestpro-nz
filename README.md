@@ -123,7 +123,8 @@ Privileged accounts need 2FA. On a development machine you can switch it off wit
 ### Useful commands
 
 ```bash
-npm test                       # unit and component tests
+npm test                       # unit and component tests (no .env needed)
+npm run test:integration       # tests against the local Supabase (needs `supabase start`)
 npm run lint                   # ESLint, zero warnings allowed
 npm run build                  # type-check + production build
 npm run test:e2e               # Playwright
