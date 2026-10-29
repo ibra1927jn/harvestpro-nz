@@ -120,20 +120,20 @@ describe('SyncStatusMonitor', () => {
         expect(heard[1]).toMatch(/^Back online/);
     });
 
-    it('speaks the connection change in the app language (Tongan user hears Tongan)', async () => {
+    it('speaks the connection change in the app language (French user hears French)', async () => {
         const { setCurrentLocale } = await import('@/i18n');
         const { translations } = await import('@/i18n/locales/all');
         resetAnnouncerForTests();
-        setCurrentLocale('to');
+        setCurrentLocale('fr');
         const heard: string[] = [];
         const off = subscribeAnnouncer(m => heard.push(m));
         try {
             const { rerender } = render(<SyncStatusMonitor />);
             mocks.isOnline = false;
             rerender(<SyncStatusMonitor />);
-            expect(heard[0]).toBe(translations.to['sync.sr_offline']);
+            expect(heard[0]).toBe(translations.fr['sync.sr_offline']);
             expect(heard[0]).not.toMatch(/No signal/);
-            expect(screen.getByText(translations.to['sync.offline'])).toBeTruthy();
+            expect(screen.getByText(translations.fr['sync.offline'])).toBeTruthy();
         } finally {
             off();
             setCurrentLocale('en');

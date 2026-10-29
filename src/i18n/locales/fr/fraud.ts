@@ -1,0 +1,34 @@
+import type { TranslationDict } from '../../types';
+
+const fraud: TranslationDict = {
+    'fraud.title': 'Bouclier anti-fraude',
+    'fraud.live': 'En direct',
+    'fraud.demo': 'Démo',
+    'fraud.server_side': 'Détection côté serveur — analyse en temps réel des scans',
+    'fraud.intelligent': 'Détection intelligente — comprend le travail réel au verger',
+    'fraud.high': 'Élevé',
+    'fraud.medium': 'Moyen',
+    'fraud.low': 'Faible',
+    'fraud.dismissed': 'Écartés',
+    'fraud.no_anomalies': 'Aucune anomalie détectée',
+    'fraud.normal_patterns': 'Tous les scans semblent normaux pour ce filtre',
+    'fraud.all_flags': 'Toutes',
+    'fraud.impossible_rate': 'Cadence impossible',
+    'fraud.post_pickup': 'Après ramassage',
+    'fraud.peer_outlier': 'Écart avec les collègues',
+    'fraud.off_hours': 'Hors horaires',
+    'fraud.duplicates': 'Doublons',
+    'fraud.inspect_profile': 'Voir le profil et l’historique',
+    'fraud.smart_dismissals': 'Écarts intelligents',
+    'fraud.scenarios_ignored': 'cas correctement ignorés — le système comprend votre verger',
+    'fraud.analyzing': 'Analyse des scans…',
+    'fraud.refresh': 'Actualiser les anomalies',
+    'fraud.rule_elapsed': 'Règle 1 : temps écoulé',
+    'fraud.rule_peer': 'Règle 2 : comparaison entre collègues',
+    'fraud.rule_grace': 'Règle 3 : période de grâce',
+    'fraud.rule_elapsed_desc': 'Mesure seaux ÷ temps depuis le dernier ramassage. Des seaux accumulés sous les arbres = normal. Un pic impossible après le ramassage = alerte.',
+    'fraud.rule_peer_desc': 'Compare chaque cueilleur à ses voisins de rang. Si tout le monde va vite = bon arbre. Si UNE SEULE personne fonce = suspect.',
+    'fraud.rule_grace_desc': 'Les 90 premières minutes = mise en route. Échelles, fruits froids, pas encore de tracteurs. Le système observe sans rien signaler, sauf une cadence impossible.',
+};
+
+export default fraud;

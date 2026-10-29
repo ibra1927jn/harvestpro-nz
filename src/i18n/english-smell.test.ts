@@ -13,7 +13,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { translations } from '@/i18n/locales/all';
-import { CANONICAL_TRANSLATIONS, EXEMPT_FROM_DIFF_CHECK } from './english-smell';
+import { CANONICAL_TRANSLATIONS, EXEMPT_FROM_DIFF_CHECK, frSameAsEnIsOk } from './english-smell';
 
 // Función t() replicada (idéntica a la del hook, sin React)
 function t(key: string, locale: string): string {
@@ -96,31 +96,47 @@ describe('ES locale: cobertura de claves del diccionario EN', () => {
     });
 });
 
-// ─── Suite 4: otras locales con cobertura propia (mi, sm, hi, tl, to) ────────
+// ─── Suite 4: francés (fr) ────────────────────────────────────────────────────
+//
+// Mismas comprobaciones que el español, y además: ningún texto francés puede
+// ser idéntico al inglés salvo que todas sus palabras se escriban igual en
+// francés (términos del sector, marcas, unidades). Si un texto nuevo cae aquí,
+// tradúcelo; si de verdad es francés correcto, añade la palabra a la lista.
 
-const FULL_LOCALES = ['mi', 'sm', 'hi', 'tl', 'to'] as const;
-// Estas locales usan ...en como base — verificamos un subconjunto de claves nav+dashboard
+describe('FR locale: canonical keys are translated (differ from EN)', () => {
+    for (const { section, key, en } of CANONICAL_TRANSLATIONS) {
+        if (EXEMPT_FROM_DIFF_CHECK.has(key)) continue;
 
-const SPOT_CHECK_KEYS: Array<{ key: string; en: string }> = [
-    { key: 'nav.dashboard',       en: 'Dashboard' },
-    { key: 'nav.teams',           en: 'Teams' },
-    { key: 'dashboard.title',     en: 'Orchard Overview' },
-    { key: 'dashboard.velocity',  en: 'Velocity' },
-    { key: 'common.loading',      en: 'Loading…' },
-];
-
-describe('Locales con cobertura propia (mi/sm/hi/tl/to): nav + dashboard traducidos', () => {
-    for (const locale of FULL_LOCALES) {
-        for (const { key } of SPOT_CHECK_KEYS) {
-            it(`[${locale}] "${key}" está definida explícitamente en el dict (no sólo fallback)`, () => {
-                const dict = translations[locale as keyof typeof translations];
-                // La clave debe existir en el diccionario del locale (decisión consciente del traductor)
-                // Aunque el valor sea igual al EN (p.ej. "Dashboard" en tl), la clave fue puesta a propósito.
-                expect(
-                    key in dict,
-                    `[${locale}] "${key}" no está definida — cayó implícitamente al fallback EN`
-                ).toBe(true);
-            });
-        }
+        it(`[${section}] "${key}" devuelve texto en FR, no inglés`, () => {
+            const frDict = translations['fr'];
+            expect(frDict[key], `Clave "${key}" no está definida en el locale FR`).toBeDefined();
+            // «Production», «Total»… se escriben igual en francés
+            if (frSameAsEnIsOk(en)) return;
+            expect(frDict[key], `Clave "${key}" tiene el mismo valor en FR que en EN: "${en}"`).not.toBe(en);
+            expect(t(key, 'fr'), `t("${key}", "fr") cayó al fallback EN`).not.toBe(en);
+        });
     }
+});
+
+describe('FR locale: sin textos en inglés', () => {
+    const enDict = translations['en'];
+    const frDict = translations['fr'];
+
+    it('tiene todas las claves del inglés', () => {
+        const missing = Object.keys(enDict).filter(k => !(k in frDict));
+        expect(missing, `Claves sin traducción FR: ${missing.join(', ')}`).toEqual([]);
+    });
+
+    it('un texto igual al inglés solo puede llevar palabras que se escriben igual en francés', () => {
+        const smelly = Object.keys(enDict)
+            .filter(k => frDict[k] === enDict[k])
+            .filter(k => !frSameAsEnIsOk(enDict[k]))
+            .map(k => `${k} = "${enDict[k]}"`);
+        expect(smelly, `Textos FR sin traducir:\n${smelly.join('\n')}`).toEqual([]);
+    });
+
+    it('la guardia detecta un texto sin traducir', () => {
+        expect(frSameAsEnIsOk('Save {n} buckets')).toBe(false);
+        expect(frSameAsEnIsOk('{n} bins · Zone {zone}')).toBe(true);
+    });
 });

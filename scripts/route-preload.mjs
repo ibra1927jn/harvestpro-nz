@@ -28,7 +28,7 @@ export const ROUTE_MODULES = {
 };
 
 /** Idiomas que van en chunk aparte (src/i18n/locales/index.ts; el inglés va en el bundle). */
-export const LAZY_LOCALES = ['es', 'mi', 'sm', 'hi', 'to', 'tl'];
+export const LAZY_LOCALES = ['es', 'fr'];
 export const LOCALE_STORAGE_KEY = 'harvestpro_locale';
 export const localeModule = l => `src/i18n/locales/${l}/index.ts`;
 

@@ -214,6 +214,11 @@ describe('SettingsView', () => {
         render(<SettingsView />);
         expect(screen.getByText('English')).toBeTruthy();
         expect(screen.getByText('Español')).toBeTruthy();
+        expect(screen.getByText('Français')).toBeTruthy();
+        // Idiomas retirados (2026-10-21)
+        for (const removed of ['Te Reo Māori', 'Gagana Samoa', 'हिन्दी', 'Lea Faka-Tonga', 'Filipino']) {
+            expect(screen.queryByText(removed)).toBeNull();
+        }
     });
 
     it('renders footer with version info', () => {
