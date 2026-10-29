@@ -20,7 +20,6 @@ interface RequiredConfig {
  * Optional configuration with defaults
  */
 interface OptionalConfig {
-    GEMINI_API_KEY?: string;
     APP_VERSION?: string;
     ENABLE_ANALYTICS?: boolean;
     LOG_LEVEL?: 'debug' | 'info' | 'warn' | 'error';
@@ -54,12 +53,9 @@ function detectEnvironment(): Environment {
     if (mode === 'production') return 'production';
     if (mode === 'staging') return 'staging';
 
-    // Check URL for Vercel preview deployments
+    // Any non-local host is treated as production
     if (typeof window !== 'undefined') {
         const host = window.location.hostname;
-        if (host.includes('vercel.app') && !host.includes('prod')) {
-            return 'staging';
-        }
         if (host !== 'localhost' && host !== '127.0.0.1') {
             return 'production';
         }
@@ -108,7 +104,7 @@ function loadConfig(): AppConfig {
     // In production/staging, throw if env vars are missing
     if (missingKeys.length > 0 && (isProduction || environment === 'staging')) {
         const msg = `❌ [Config] Missing required environment variables: ${missingKeys.join(', ')}. ` +
-            `Set them in Vercel Environment Variables or .env file.`;
+            `Set them in the .env file.`;
         logger.error(msg);
         throw new ConfigurationError(msg, missingKeys);
     }
@@ -127,7 +123,6 @@ function loadConfig(): AppConfig {
         isProduction,
         SUPABASE_URL: supabaseUrl || '',
         SUPABASE_ANON_KEY: supabaseAnonKey || '',
-        GEMINI_API_KEY: import.meta.env.VITE_GEMINI_API_KEY,
         APP_VERSION: import.meta.env.VITE_APP_VERSION || '9.9.0',
         ENABLE_ANALYTICS: import.meta.env.VITE_ENABLE_ANALYTICS === 'true',
         LOG_LEVEL: (import.meta.env.VITE_LOG_LEVEL as AppConfig['LOG_LEVEL']) || 'info',
