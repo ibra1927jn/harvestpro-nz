@@ -78,7 +78,12 @@ presencia sin horas, tramos de más de 14 h...). Antes de arreglar nada más, sa
 
 - [ ] Repetir la auditoría en `main`: los controles por código y el barrido de la app real con cada
       rol, más los 16 flujos entre roles con dos sesiones abiertas.
-- [ ] Una tabla con cada punto de la auditoría (A1-A5, B1-B10, C, D, E, F, G): arreglado / falta.
+      *(2026-10-27: los controles por código, hechos sobre `integracion/fase-0`; falta el barrido de
+      la app real con cada rol y los 16 flujos. Qué pulsar en cada punto: columna «Qué mirar en
+      vivo» de `docs/audits/2026-10-27-fase-1-estado.md`.)*
+- [x] Una tabla con cada punto de la auditoría (A1-A5, B1-B10, C, D, E, F, G): arreglado / falta.
+      *(`docs/audits/2026-10-27-fase-1-estado.md`: 38 arreglados, 9 por ver en vivo, 2 faltan;
+      con la lista de lo que falta por prioridad.)*
 - **Hecho cuando:** está la lista de lo que falta de verdad, y es la que guía las fases 2 a 5.
 
 ## Fase 2 — Seguridad y dinero

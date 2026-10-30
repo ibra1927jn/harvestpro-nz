@@ -39,6 +39,7 @@ All notable changes to HarvestPro NZ will be documented in this file.
 
 ### Added
 
+- Fase 1 status of the 2026-10-23 audit, checked against the code of `integracion/fase-0`: `docs/audits/2026-10-27-fase-1-estado.md` (38 fixed, 9 to confirm live, 2 missing).
 - Audit documents: `docs/audits/2026-10-21-manager-review.md`, `docs/audits/2026-10-23-wiring-audit.md` (+ `2026-10-23-wiring/`), `docs/audits/2026-10-27-inventario-ramas.md`.
 
 ## [Unreleased] - 2026-10-16
