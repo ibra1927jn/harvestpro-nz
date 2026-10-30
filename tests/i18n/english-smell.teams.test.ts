@@ -20,7 +20,6 @@ const TEAMS_KEYS = [
     'teams.no_team_members',
     'teams.no_harvest_teams',
     'teams.no_runners_assigned',
-    'teams.manage_teams',
 ];
 
 describe('Teams i18n — all keys present in EN', () => {

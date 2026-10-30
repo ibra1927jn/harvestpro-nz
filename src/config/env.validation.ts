@@ -16,7 +16,6 @@ const envSchema = z.object({
         .string({ error: 'VITE_SUPABASE_ANON_KEY is required' })
         .min(30, 'VITE_SUPABASE_ANON_KEY looks too short to be valid'),
 
-    VITE_GEMINI_API_KEY: z.string().optional(),
     VITE_APP_VERSION: z.string().default('9.9.0'),
     VITE_ENABLE_ANALYTICS: z.enum(['true', 'false']).default('false'),
     VITE_LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
@@ -33,7 +32,6 @@ export function validateEnv(): ValidatedEnv {
     const raw = {
         VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
         VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
-        VITE_GEMINI_API_KEY: import.meta.env.VITE_GEMINI_API_KEY,
         VITE_APP_VERSION: import.meta.env.VITE_APP_VERSION,
         VITE_ENABLE_ANALYTICS: import.meta.env.VITE_ENABLE_ANALYTICS,
         VITE_LOG_LEVEL: import.meta.env.VITE_LOG_LEVEL,

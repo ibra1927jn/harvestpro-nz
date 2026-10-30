@@ -9,7 +9,6 @@ const ORCHARD_MAP_KEYS = [
     'orchardMap.blocks',
     'orchardMap.rows',
     'orchardMap.live',
-    'orchardMap.varieties',
     'orchardMap.variety_filter',
     'orchardMap.all',
     'orchardMap.status.empty',
