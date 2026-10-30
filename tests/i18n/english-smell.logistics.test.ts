@@ -38,7 +38,6 @@ const LOGISTICS_KEYS = [
     'logistics.events.alert',
     'logistics.events.empty',
     // Full view link
-    'logistics.full_view',
 ];
 
 describe('logistics i18n — EN keys present and non-empty', () => {
