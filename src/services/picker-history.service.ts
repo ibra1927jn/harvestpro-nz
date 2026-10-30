@@ -28,10 +28,20 @@ export interface DailyRecord {
   buckets: number;
   /** Horas pagables (descanso de 30 min no pagado ya descontado) */
   hours: number;
-  /** Pago total del día: cubetas + complemento al mínimo */
-  earnings: number;
+  /**
+   * Pago total del día: cubetas + complemento al mínimo. null = no se puede
+   * calcular: ese día cogió cubetas en otro huerto y esta cuenta no lee su
+   * precio (cada uno solo ve los de su huerto, migración 20261027050000)
+   */
+  earnings: number | null;
   /** Complemento al mínimo del día */
   topUp?: number;
+  /**
+   * Ese día trabajó también en otro huerto cuyos fichajes y cubetas esta cuenta
+   * no lee (el manager, migración 20261027070000): horas y cubetas son las de
+   * aquí y el pago no se calcula (earnings null); el pago está en Nómina
+   */
+  partElsewhere?: boolean;
   /** Horas estimadas (turno sin cerrar) */
   estimated?: boolean;
   variety: string | null;
@@ -112,9 +122,19 @@ class PickerHistoryService {
       // 6. Get day setups for variety info
       const daySetups = await pickerHistoryRepository.getDaySetupsSince(orchardId, sinceStr);
       // Precio de cada día (piece_rates): un cambio de hoy no reescribe los días pasados
-      const { rates, orchardFallbacks } = await pieceRatesRepository.loadForPay(sinceStr, nzDateOf(new Date()))
-        .catch(() => ({ rates: [], orchardFallbacks: {} as Record<string, number> }));
+      const priceBook = await pieceRatesRepository.loadForPay(sinceStr, nzDateOf(new Date())).catch(() => null);
+      const { rates, orchardFallbacks } = priceBook ?? { rates: [], orchardFallbacks: {} as Record<string, number> };
+      // Huertos cuyo precio lee esta cuenta (el suyo; admin, RRHH y nómina, todos).
+      // Sin respuesta del servidor no se oculta nada (se usa el respaldo, como antes).
+      const pricedOrchards = priceBook
+        ? new Set<string>([orchardId, ...rates.map(r => r.orchardId ?? ''), ...Object.keys(orchardFallbacks)])
+        : null;
       const orchardNames = await loadOrchardNames().catch(() => ({} as Record<string, string>));
+      // Días con trabajo en otro huerto (solo fechas): si aquí no se ven sus filas,
+      // el día está incompleto y su pago no se puede calcular
+      const daysElsewhere = await Promise.resolve()
+        .then(() => pickerHistoryRepository.getDaysElsewhere(pickerId, sinceStr))
+        .catch(() => new Set<string>());
 
       // --- Compute daily records ---
       // Horas y pago de cada día con el cálculo único (harvestMetrics/pay.ts):
@@ -155,12 +175,18 @@ class PickerHistoryService {
           minWage: setup?.min_wage_rate || PAY_RULES.minWageFloor,
         });
         if (!pay) continue;
+        const unpriced = !!pricedOrchards && dayBuckets.some(b => !!b.orchard_id && !pricedOrchards.has(b.orchard_id));
+        const partElsewhere = daysElsewhere.has(date)
+          && !shifts.some(s => !!s.orchard_id && s.orchard_id !== orchardId)
+          && !dayBuckets.some(b => !!b.orchard_id && b.orchard_id !== orchardId);
+        const noPay = unpriced || partElsewhere;
         dailyMap.set(date, {
           date,
           buckets: pay.buckets,
           hours: pay.hours,
-          earnings: pay.total,
-          topUp: pay.topUp,
+          earnings: noPay ? null : pay.total,
+          topUp: noPay ? undefined : pay.topUp,
+          ...(partElsewhere ? { partElsewhere: true } : {}),
           estimated: pay.estimatedDays > 0,
           // Variedades recogidas ese día y huertos donde trabajó (puede ser más de uno)
           variety: [...new Set(dayBuckets.map(b => b.variety).filter((v): v is string => !!v))].join(', ') || setup?.variety || null,
@@ -178,7 +204,7 @@ class PickerHistoryService {
       const todayRecord = dailyMap.get(today);
       const todayBuckets = todayRecord?.buckets ?? 0;
       const todayHours = todayRecord?.hours || 0;
-      const todayEarnings = todayRecord?.earnings || 0;
+      const todayEarnings = todayRecord?.earnings ?? 0;
 
       // --- Quality summary ---
       const quality = this.computeQuality(inspections);
@@ -279,15 +305,16 @@ class PickerHistoryService {
 
     // 💸 Chronic Top-Up: needed min wage subsidy >60% of days
     if (dailyRecords.length >= 5) {
-      // Días con complemento según el cálculo único
-      const topUpDays = dailyRecords.filter(r => (r.topUp ?? 0) > 0).length;
-      const topUpRatio = topUpDays / dailyRecords.length;
-      if (topUpRatio > 0.6) {
+      // Días con complemento según el cálculo único (solo los días con pago conocido)
+      const paidDays = dailyRecords.filter(r => r.earnings !== null);
+      const topUpDays = paidDays.filter(r => (r.topUp ?? 0) > 0).length;
+      const topUpRatio = paidDays.length > 0 ? topUpDays / paidDays.length : 0;
+      if (paidDays.length >= 5 && topUpRatio > 0.6) {
         badges.push({
           type: 'chronic_topup',
           severity: topUpRatio > 0.8 ? 'critical' : 'warning',
           label: 'Chronic Top-Up',
-          detail: `Needed wage subsidy ${Math.round(topUpRatio * 100)}% of days (${topUpDays}/${dailyRecords.length})`,
+          detail: `Needed wage subsidy ${Math.round(topUpRatio * 100)}% of days (${topUpDays}/${paidDays.length})`,
         });
       }
     }

@@ -29,7 +29,7 @@ const TasksView = () => {
     // Confirmación al asignar fila (el modal se cierra; los errores los enseña el modal)
     const { toast, showToast, hideToast } = useToast();
     const { appUser } = useAuth();
-    const { rowAssignments, bucketRecords, assignRow, crew, settings } = useHarvest();
+    const { rowAssignments, bucketRecords, moveTeamToRow, crew, settings } = useHarvest();
     const { broadcasts } = useMessaging();
     // Fila preseleccionada al abrir el modal desde el mapa (null = sin preselección)
     const [assignRowNumber, setAssignRowNumber] = useState<number | null>(null);
@@ -63,7 +63,14 @@ const TasksView = () => {
         return Math.min((rowBuckets / TARGET_BUCKETS_PER_ROW) * 100, 100);
     };
 
-    // Solo mi equipo se puede asignar a filas (el team leader gestiona su equipo)
+    // Filas que el manager asignó a mi equipo: las únicas a las que puedo moverlo
+    // (el servidor rechaza otras: migración 20261027040000)
+    const allowedRows = useMemo(
+        () => (rowAssignments ?? []).filter(ra => ra.team_leader_id === appUser?.id).map(ra => ra.row_number),
+        [rowAssignments, appUser?.id],
+    );
+
+    // Solo mi equipo se puede mover de fila (el team leader gestiona su equipo)
     const pickersForAssignment: PickerForAssignment[] = team.map(p => ({
         id: p.id,
         name: p.name,
@@ -177,12 +184,13 @@ const TasksView = () => {
             {isModalOpen && (
                 <RowAssignmentModal
                     onClose={() => setIsModalOpen(false)}
-                    onAssign={async (row, side, pickers) => {
-                        await assignRow(row, side.toLowerCase() as 'north' | 'south', pickers);
+                    onAssign={async (row, pickers) => {
+                        await moveTeamToRow(row, pickers);
                         showToast(t('comms.rows_assigned', { rows: String(row) }), 'success');
                     }}
                     pickers={pickersForAssignment}
                     initialRow={assignRowNumber ?? undefined}
+                    allowedRows={allowedRows}
                 />
             )}
         </div>

@@ -64,6 +64,17 @@ export const pickerHistoryRepository = {
         ).catch(() => []);
     },
 
+    /**
+     * Días (NZ) en que la persona trabajó también en otro huerto (solo fechas,
+     * picker_days_elsewhere): el manager no lee los fichajes de allí
+     * (migración 20261027070000). Sin respuesta: ninguno.
+     */
+    async getDaysElsewhere(pickerId: string, sinceDate: string): Promise<Set<string>> {
+        const { data, error } = await supabase.rpc('picker_days_elsewhere', { p_picker_id: pickerId, p_since: sinceDate });
+        if (error || !Array.isArray(data)) return new Set();
+        return new Set((data as { day: string }[]).map(r => String(r.day).slice(0, 10)));
+    },
+
     /** Get quality inspections for a picker since a given ISO timestamp */
     async getInspectionsSince(pickerId: string, sinceIso: string): Promise<PickerInspectionRow[]> {
         // Las inspecciones de la app de Calidad están en qc_inspections (columna

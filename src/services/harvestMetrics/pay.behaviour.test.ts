@@ -341,7 +341,7 @@ describe('payForRange — aggregation', () => {
         expect(r.topUp).toBe(103.4);
         expect(r.hours).toBe(16);
         expect(r.daysBelowMinimum).toBe(1);
-        expect(r.dayDetails[1].pieceLines).toEqual([{ variety: 'Envy', rate: 7.35, buckets: 12, earnings: 88.2 }]);
+        expect(r.dayDetails[1].pieceLines).toEqual([{ orchardId: null, variety: 'Envy', rate: 7.35, buckets: 12, earnings: 88.2 }]);
     });
 
     it('a day with only a closed zero-length shift and no buckets is dropped', () => {
@@ -359,10 +359,10 @@ describe('payForRange — aggregation', () => {
         ];
         const [r] = payForRange({ attendance: [], buckets, pieceRate: 6.5, minWage: MIN, now });
         expect(r.dayDetails[0].pieceLines).toEqual([
-            { variety: 'Braeburn', rate: 8, buckets: 1, earnings: 8 },
-            { variety: 'Gala', rate: 6.5, buckets: 1, earnings: 6.5 },
-            { variety: 'Gala', rate: 7, buckets: 2, earnings: 14 },
-            { variety: '—', rate: 6.5, buckets: 1, earnings: 6.5 },
+            { orchardId: null, variety: 'Braeburn', rate: 8, buckets: 1, earnings: 8 },
+            { orchardId: null, variety: 'Gala', rate: 6.5, buckets: 1, earnings: 6.5 },
+            { orchardId: null, variety: 'Gala', rate: 7, buckets: 2, earnings: 14 },
+            { orchardId: null, variety: '—', rate: 6.5, buckets: 1, earnings: 6.5 },
         ].sort((a, b) => a.variety.localeCompare(b.variety) || a.rate - b.rate));
         expect(r.dayDetails[0].bucketsByVariety).toEqual({ Gala: 3, Braeburn: 1, '—': 1 });
     });

@@ -57,6 +57,8 @@ export const PickerBreakdownSchema = z.object({
         buckets: z.number(),
         bucketsByVariety: z.record(z.string(), z.number()),
         pieceLines: z.array(z.object({
+            // Semanas cerradas antes de 2026-10-27: sin huerto en la línea
+            orchardId: z.string().nullable().default(null),
             variety: z.string(), rate: z.number(), buckets: z.number(), earnings: z.number(),
         })).default([]),
         byOrchard: z.array(z.object({

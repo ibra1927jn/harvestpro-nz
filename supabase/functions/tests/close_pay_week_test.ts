@@ -1,5 +1,6 @@
 /**
- * close-pay-week: solo payroll_admin y admin cierran / reabren; al cerrar se
+ * close-pay-week: solo payroll_admin y admin cierran / reabren; no se cierra
+ * con horas estimadas ni con tramos sin aprobar; al cerrar se
  * guarda la foto de la nómina y calculate-payroll devuelve esa foto (no
  * cambia aunque cambien tarifas); la semana cerrada no admite cambios.
  */
@@ -36,9 +37,10 @@ Deno.test({ name: 'close-pay-week', ...testOpts, fn: async t => {
             scanned_at: new Date(start + i * 20 * 60_000).toISOString(),
         }))), 'buckets')
 
+        let lateId = ''
         const body = (action: string, extra: Record<string, unknown> = {}) => ({ action, week_start: monday, ...extra })
         /** Respuesta de close-pay-week */
-        type CloseResult = { closed?: boolean; reason?: string; pending?: { picker_id: string }[]; total_earnings?: number; already_closed?: boolean }
+        type CloseResult = { closed?: boolean; reason?: string; pending?: { picker_id: string; issues?: { date: string; issue: string }[] }[]; total_earnings?: number; already_closed?: boolean }
         const payrollOf = (token: string) => call<PayrollResult & { closed?: unknown }>('calculate-payroll', { token, body: { start_date: monday, end_date: sunday } })
 
         await t.step('only payroll_admin / admin may close', async () => {
@@ -77,6 +79,31 @@ Deno.test({ name: 'close-pay-week', ...testOpts, fn: async t => {
             assertEquals(r.json.pending?.map(p => p.picker_id), [late.id])
             // Se corrige la hoja de horas (salida real) antes de cerrar
             must(await service.from('daily_attendance').update({ check_out: nzTime(tue, '10:30') }).eq('id', open!.id), 'close shift')
+            lateId = open!.id
+        })
+
+        await t.step('will not close until every shift is approved (no hour is paid without review)', async () => {
+            const review = (id: string, decision: 'approve' | 'reject', reason?: string) =>
+                call('approve-timesheet', { token: payroll.token, body: { attendance_id: id, decision, ...(reason ? { reason } : {}) } })
+
+            const before = await call<CloseResult>('close-pay-week', { token: payroll.token, body: body('close') })
+            assertEquals(before.status, 200, show(before))
+            assertEquals(before.json.closed, false)
+            assertEquals(before.json.reason, 'UNREVIEWED_HOURS')
+            assertEquals(before.json.pending?.map(p => p.picker_id).sort(), [picker.id, late.id].sort())
+            assertEquals(before.json.pending?.flatMap(p => (p.issues ?? []).map(i => i.issue)), ['not_approved', 'not_approved'])
+
+            // Uno aprobado y el otro rechazado: sigue sin cerrar
+            assertEquals((await review(att!.id, 'approve')).status, 200)
+            assertEquals((await review(lateId, 'reject', 'Check-out time is wrong')).status, 200)
+            const rejected = await call<CloseResult>('close-pay-week', { token: payroll.token, body: body('close') })
+            assertEquals(rejected.json.reason, 'UNREVIEWED_HOURS', show(rejected))
+            assertEquals(rejected.json.pending?.map(p => [p.picker_id, (p.issues ?? []).map(i => i.issue)]), [[late.id, ['rejected']]])
+            const { count } = await service.from('pay_weeks').select('id', { count: 'exact', head: true }).eq('week_start', monday)
+            assertEquals(count, 0)
+
+            // Corregido y aprobado: ya se puede cerrar
+            assertEquals((await review(lateId, 'approve')).status, 200)
         })
 
         let closedTotal = 0
@@ -107,6 +134,20 @@ Deno.test({ name: 'close-pay-week', ...testOpts, fn: async t => {
             assertEquals(r.status, 200, show(r))
             assert(r.json.closed, 'snapshot marked as closed')
             assertEquals(r.json.summary.total_earnings, closedTotal)
+
+            // Manager: la foto reducida a SU huerto (aquí todo es de su huerto);
+            // el de otro huerto la ve cerrada pero sin ninguna línea de este
+            const own = await payrollOf(manager.token)
+            assertEquals(own.status, 200, show(own))
+            assert(own.json.closed, 'manager: snapshot marked as closed')
+            assertEquals(own.json.orchard_id, orchard)
+            assertEquals(own.json.summary.total_earnings, closedTotal)
+            const other = await payrollOf(await seededToken('manager'))
+            assertEquals(other.status, 200, show(other))
+            assert(other.json.closed, 'other manager: snapshot marked as closed')
+            assertEquals(other.json.picker_breakdown.length, 0)
+            assertEquals(other.json.summary.total_earnings, 0)
+            assert(!other.text.includes(picker.id) && !other.text.includes(orchard), `no line of another orchard: ${show(other)}`)
 
             // Corregir un fichaje de la semana cerrada → rechazado
             const fix = await call('manage-attendance', {

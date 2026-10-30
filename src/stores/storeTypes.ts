@@ -91,6 +91,8 @@ export interface RowSlice {
     rowAssignments: RowAssignment[];
     assignRow: (rowNumber: number, side: 'north' | 'south', pickerIds: string[]) => Promise<void>;
     assignRows: (rowNumbers: number[], side: 'north' | 'south', pickerIds: string[]) => Promise<void>;
+    /** Team leader: lleva a gente de su equipo a una fila que el manager asignó a su equipo */
+    moveTeamToRow: (rowNumber: number, pickerIds: string[]) => Promise<void>;
     updateRowProgress: (rowId: string, percentage: number) => Promise<void>;
     completeRow: (rowId: string) => Promise<void>;
 }

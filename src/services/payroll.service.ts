@@ -21,6 +21,7 @@ import {
   dayTopUpFor,
   groupSegmentsByPicker,
   splitDayHoursBySegment,
+  splitOrchardDayBySegment,
   type DayBucket,
   type DayTopUp,
 } from './payroll/timesheetLogic';
@@ -66,6 +67,77 @@ async function computeDayOfPeople(pickerIds: string[], date: string, minWage: nu
     byPicker.set(id, { day, segHours });
   }
   return byPicker;
+}
+
+/** Día `date` de cada persona según calculate-payroll; null si el servidor falla */
+async function serverDaysOf(result: Promise<PayrollResult>, date: string): Promise<Map<string, PayDay> | null> {
+  try {
+    const { picker_breakdown } = await result;
+    const out = new Map<string, PayDay>();
+    for (const p of picker_breakdown) {
+      const day = p.days?.find(d => d.date === date);
+      if (day) out.set(p.picker_id, day);
+    }
+    return out;
+  } catch (e) {
+    logger.warn('[Payroll] calculate-payroll unavailable for the daily sheet; local top-up', e);
+    return null;
+  }
+}
+
+/**
+ * Hojas de horas de un huerto en un día. Las horas de cada tramo son su parte
+ * de las horas pagables del día de la persona, calculado con el día ENTERO:
+ * - del servidor (calculate-payroll, vista del huerto): el manager solo lee los
+ *   fichajes de SU huerto (migración 20261027070000) y quien rota tiene parte
+ *   del día en otro; el servidor reparte con el día entero y solo devuelve lo
+ *   de aquí;
+ * - sin servidor (o sin esa persona), el cálculo local con lo que se pueda
+ *   leer: para un manager, solo este huerto (el reparto de un día partido
+ *   sale aproximado, nunca se rompe).
+ */
+async function timesheetsOf(
+  orchardId: string,
+  targetDate: string,
+  loadServerDays: () => Promise<Map<string, PayDay> | null>,
+): Promise<TimesheetEntry[]> {
+  const { data: attendance, error } = await payrollRepository.fetchTimesheetAttendance(
+    orchardId,
+    targetDate
+  );
+
+  if (error) {
+    logger.error('[Payroll] Error fetching timesheets:', error);
+    return [];
+  }
+
+  const pickerIds = [...new Set(attendance.map(a => a.picker_id))];
+  const [pickerNames, serverDays] = await Promise.all([
+    payrollRepository.fetchPickerNames(pickerIds),
+    pickerIds.length > 0 ? loadServerDays() : Promise.resolve(null),
+  ]);
+  const segHoursOf = new Map<string, Map<string, number>>();
+  for (const id of pickerIds) {
+    const closed = attendance.filter(a => a.picker_id === id && a.check_in && a.check_out);
+    const split = splitOrchardDayBySegment(closed, serverDays?.get(id));
+    if (split) segHoursOf.set(id, split);
+  }
+  const missing = pickerIds.filter(id => !segHoursOf.has(id));
+  const local = missing.length > 0 ? await computeDayOfPeople(missing, targetDate).catch(() => null) : null;
+  for (const id of missing) {
+    const hours = local?.get(id)?.segHours;
+    if (hours) segHoursOf.set(id, hours);
+  }
+
+  const today = todayNZST();
+  return (attendance || []).map(a => {
+    const entry = buildTimesheetEntry(a, pickerNames[a.picker_id], segHoursOf.get(a.picker_id)?.get(a.id), today);
+    if (entry.requires_review) {
+      const staleOpen = !!a.check_in && !a.check_out;
+      logger.warn(`[Payroll] Picker ${a.picker_id} timesheet needs review (${staleOpen ? 'no check-out' : entry.long_shift ? 'over 14 h, not corrected' : `${entry.hours_worked}h`})`);
+    }
+    return entry;
+  });
 }
 
 /** Hojas por llamada en «Aprobar todas» (el servidor admite hasta 500) */
@@ -138,33 +210,7 @@ export const payrollService = {
    */
   async fetchTimesheets(orchardId: string, date?: string): Promise<TimesheetEntry[]> {
     const targetDate = date || todayNZST();
-
-    const { data: attendance, error } = await payrollRepository.fetchTimesheetAttendance(
-      orchardId,
-      targetDate
-    );
-
-    if (error) {
-      logger.error('[Payroll] Error fetching timesheets:', error);
-      return [];
-    }
-
-    // Get picker names
-    const pickerIds = [...new Set(attendance.map(a => a.picker_id))];
-    const [pickerNames, days] = await Promise.all([
-      payrollRepository.fetchPickerNames(pickerIds),
-      computeDayOfPeople(pickerIds, targetDate).catch(() => null),
-    ]);
-
-    const today = todayNZST();
-    return (attendance || []).map(a => {
-      const entry = buildTimesheetEntry(a, pickerNames[a.picker_id], days?.get(a.picker_id)?.segHours.get(a.id), today);
-      if (entry.requires_review) {
-        const staleOpen = !!a.check_in && !a.check_out;
-        logger.warn(`[Payroll] Picker ${a.picker_id} timesheet needs review (${staleOpen ? 'no check-out' : entry.long_shift ? 'over 14 h, not corrected' : `${entry.hours_worked}h`})`);
-      }
-      return entry;
-    });
+    return timesheetsOf(orchardId, targetDate, () => serverDaysOf(this.calculatePayroll(orchardId, targetDate, targetDate), targetDate));
   },
 
   /**
@@ -267,8 +313,11 @@ export const payrollService = {
   ): Promise<DailyTimesheetRecord[]> {
     const targetDate = date || todayNZST();
 
-    // 1. Obtener attendance (horas trabajadas)
-    const timesheets = await this.fetchTimesheets(orchardId, targetDate);
+    // 1. Obtener attendance (horas trabajadas). El día entero de cada persona
+    //    sale del cálculo de nómina (servidor), una sola vez para horas y complemento
+    let serverDaysPromise: Promise<Map<string, PayDay> | null> | null = null;
+    const loadServerDays = () => (serverDaysPromise ??= serverDaysOf(this.calculatePayroll(orchardId, targetDate, targetDate), targetDate));
+    const timesheets = await timesheetsOf(orchardId, targetDate, loadServerDays);
 
     if (timesheets.length === 0) return [];
 
@@ -314,12 +363,19 @@ export const payrollService = {
     //    (todos sus tramos y cubetas, de cualquier huerto) y a este huerto le
     //    toca su parte (según horas, igual que el coste por huerto en Nómina).
     //    Se muestra en su último tramo del día en este huerto.
+    //    El día entero sale del cálculo de nómina (servidor): el manager solo lee
+    //    los precios de SU huerto (migración 20261027050000) y aquí no sabría lo
+    //    ganado en otro. Sin servidor (o sin esa persona), el cálculo local.
     const holiday = isNZPublicHoliday(targetDate);
-    const days = await computeDayOfPeople([...segmentsByPicker.keys()], targetDate, minWageRate).catch(() => null);
+    const serverDays = await loadServerDays();
+    const missing = [...segmentsByPicker.keys()].filter(id => !serverDays?.has(id));
+    const days = missing.length > 0
+      ? await computeDayOfPeople(missing, targetDate, minWageRate).catch(() => null)
+      : null;
     const dayTopUp = new Map<string, DayTopUp>();
     for (const [pickerId, segs] of segmentsByPicker) {
       dayTopUp.set(pickerId, dayTopUpFor({
-        day: days?.get(pickerId)?.day,
+        day: serverDays?.get(pickerId) ?? days?.get(pickerId)?.day,
         orchardId,
         hours: segs.reduce((s, t) => s + t.hours_worked, 0),
         minWageRate,

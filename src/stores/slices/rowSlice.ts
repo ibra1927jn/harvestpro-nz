@@ -98,6 +98,28 @@ export const createRowSlice: StateCreator<HarvestStoreState, [], [], RowSlice> =
     }
   },
 
+  /**
+   * moveTeamToRow — el team leader mueve a gente de SU equipo a una de las filas
+   * que el manager asignó a su equipo. Solo cambia pickers.current_row: las
+   * asignaciones (row_assignments) las crea y retira el manager, y el servidor
+   * rechaza una fila que no esté asignada a ese equipo
+   * (guard_team_leader_current_row, migración 20261027040000).
+   */
+  moveTeamToRow: async (rowNumber, pickerIds) => {
+    if (pickerIds.length === 0) return;
+    const before = get().crew;
+    set(state => ({
+      crew: state.crew.map(p => (pickerIds.includes(p.id) ? { ...p, current_row: rowNumber } : p)),
+    }));
+    const { error } = await rowRepository.updatePickerRows(pickerIds, rowNumber);
+    if (error) {
+      logger.error('❌ [Store] Team not moved to row:', error);
+      set({ crew: before });
+      throw new Error('Row not saved — only rows the manager assigned to your team');
+    }
+    analytics.trackRowAssignment(rowNumber);
+  },
+
   /** assignRow — single row convenience, delegates to assignRows */
   assignRow: async (rowNumber, side, pickerIds) => {
     await get().assignRows([rowNumber], side, pickerIds);

@@ -54,6 +54,7 @@ const pickerDetails: TranslationDict = {
     'pd.row_hash': 'Rang n°',
     'pd.assign_row': 'Attribuer le rang',
     'pd.assign_row_n': 'Attribuer le rang {n}',
+    'pd.assigned_rows_label': 'Rangs attribués à votre équipe par le manager',
     'pd.assign_row_error': 'Erreur lors de l’attribution du rang',
     'pd.assign_pickers_n': 'Attribuer des cueilleurs ({n})',
     'pd.no_active_pickers': 'Aucun cueilleur actif disponible',

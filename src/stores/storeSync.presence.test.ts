@@ -6,16 +6,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const getPresenceToday = vi.fn();
+const getOpenShiftsElsewhere = vi.fn();
 
 vi.mock('@/services/supabase', () => {
     const channel = { on: vi.fn(() => channel), subscribe: vi.fn() };
     return { supabase: { channel: vi.fn(() => channel), getChannels: vi.fn(() => []), removeChannel: vi.fn() } };
 });
 vi.mock('@/repositories/store-sync.repository', () => ({
-    storeSyncRepository: { getPresenceToday: (...a: unknown[]) => getPresenceToday(...a) },
+    storeSyncRepository: {
+        getPresenceToday: (...a: unknown[]) => getPresenceToday(...a),
+        getOpenShiftsElsewhere: (...a: unknown[]) => getOpenShiftsElsewhere(...a),
+    },
 }));
 
-import { PRESENCE_REFRESH_MS, needsPresence, refreshPresence, setupRealtimeSubscriptions, type StoreGetter, type StoreSetter } from './storeSync';
+import { PRESENCE_REFRESH_MS, elsewhereFromPresenceOnly, loadShiftsElsewhere, needsPresence, refreshPresence, setupRealtimeSubscriptions, type StoreGetter, type StoreSetter } from './storeSync';
 import type { HarvestStoreState } from './storeTypes';
 import type { Picker } from '@/types';
 
@@ -66,5 +70,36 @@ describe('presence for roles that do not read all attendance', () => {
         const store = makeStore({ crew: before, orchard: { id: 'o1' } } as Partial<HarvestStoreState>);
         await refreshPresence(store.get, store.set, 'o1');
         expect(store.state().crew).toBe(before);
+    });
+});
+
+// Migración 20261027070000: el manager no lee los tramos de otro huerto. «Ahora en
+// otro huerto» le llega de presence_today (solo el huerto, sin hora de allí).
+describe('manager: "now in another orchard" from presence_today', () => {
+    beforeEach(() => { getPresenceToday.mockReset(); getOpenShiftsElsewhere.mockReset(); });
+
+    it('only the manager uses presence for it', () => {
+        expect(elsewhereFromPresenceOnly('manager')).toBe(true);
+        for (const r of ['admin', 'hr_admin', 'payroll_admin', 'team_leader', 'runner', null]) expect(elsewhereFromPresenceOnly(r)).toBe(false);
+    });
+
+    it('marks the picker as elsewhere with no time from there, and keeps own-orchard attendance', async () => {
+        getPresenceToday.mockResolvedValue([{ ...presentRow, present: false, since: null, elsewhere_orchard_id: 'o2', elsewhere_orchard_name: 'Orchard B' }]);
+        const own = [{ ...crew[0], check_in: '2026-10-24T18:00:00Z', check_out: '2026-10-24T20:00:00Z' }];
+        const store = makeStore({ crew: own, orchard: { id: 'o1' }, currentUser: { id: 'm1', name: 'M', role: 'manager' } } as Partial<HarvestStoreState>);
+        await loadShiftsElsewhere(store.get, store.set, 'o1', '2026-10-25');
+        expect(getOpenShiftsElsewhere).not.toHaveBeenCalled();
+        expect(getPresenceToday).toHaveBeenCalledWith('o1');
+        const p = store.state().crew[0];
+        expect(p.elsewhere).toEqual({ orchard_id: 'o2', orchard_name: 'Orchard B', since: null });
+        expect([p.check_in, p.check_out]).toEqual(['2026-10-24T18:00:00Z', '2026-10-24T20:00:00Z']);
+    });
+
+    it('the office still reads the open shifts of other orchards', async () => {
+        getOpenShiftsElsewhere.mockResolvedValue([{ picker_id: 'p1', orchard_id: 'o2', check_in: '2026-10-24T21:00:00Z', orchards: { name: 'Orchard B' } }]);
+        const store = makeStore({ crew, orchard: { id: 'o1' }, currentUser: { id: 'h1', name: 'H', role: 'hr_admin' } } as Partial<HarvestStoreState>);
+        await loadShiftsElsewhere(store.get, store.set, 'o1', '2026-10-25');
+        expect(getPresenceToday).not.toHaveBeenCalled();
+        expect(store.state().crew[0].elsewhere?.since).toBe('2026-10-24T21:00:00Z');
     });
 });

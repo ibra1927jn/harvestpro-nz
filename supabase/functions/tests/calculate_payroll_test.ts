@@ -13,7 +13,7 @@ import { assert, assertAlmostEquals, assertEquals } from 'https://deno.land/std@
 import type { PayrollResult, PickerBreakdown } from '../_shared/payroll-calc.ts'
 import type { PayDay } from '../_shared/pay-rules.ts'
 import {
-    addDays, call, cleanupAll, makeOrchard, makePicker, makeUser, must, nzTime, randomMonday, service, show, testOpts,
+    ANON_KEY, SUPABASE_URL, addDays, call, cleanupAll, makeOrchard, makePicker, makeUser, must, nzTime, randomMonday, service, show, testOpts,
 } from './_helpers.ts'
 
 async function attendance(pickerId: string, orchardId: string, date: string, from: string, to: string | null, breakAt?: string): Promise<void> {
@@ -165,6 +165,79 @@ Deno.test({ name: 'calculate-payroll matches hand-computed NZ pay', ...testOpts,
             assertEquals(a.json.settings.min_wage_rate, 23.95)
             const p = a.json.picker_breakdown.find(x => x.picker_id === p1.id)
             assertEquals(p?.top_up_required, 91.6)
+        })
+
+        // Un manager solo lee los precios de SU huerto (20261027050000), pero su
+        // parte del día se calcula con el día entero, también lo de otro huerto
+        await t.step('manager of B: own share uses orchard A\'s price too; never another orchard', async () => {
+            const managerB = await makeUser('manager', { orchardId: orchardB })
+            const week = { start_date: monday, end_date: addDays(monday, 6) }
+            const own = await call<PayrollResult>('calculate-payroll', {
+                token: managerB.token, body: { orchard_id: orchardB, ...week },
+            })
+            assertEquals(own.status, 200, show(own))
+            const p = own.json.picker_breakdown.find(x => x.picker_id === p3.id)
+            // Lo mismo que ve nómina: 70 + 26.09 (con el precio de B en A saldría otro complemento)
+            assertEquals(p?.top_up_required, 26.09)
+            assertEquals(p?.total_earnings, 96.09)
+            assertEquals(own.json.settings.bucket_rate, 7)
+
+            const other = await call('calculate-payroll', {
+                token: managerB.token, body: { orchard_id: orchardA, ...week },
+            })
+            assertEquals(other.status, 403, show(other))
+
+            // Sin orchard_id (lo que pide la pantalla de Nómina): también solo su huerto
+            const company = await call<PayrollResult>('calculate-payroll', { token: managerB.token, body: week })
+            assertEquals(company.status, 200, show(company))
+            assertEquals(company.json.orchard_id, orchardB)
+            // El precio que se le enseña es el de su huerto, no el de un huerto cualquiera
+            assertEquals(company.json.settings.bucket_rate, 7)
+            assertEquals(company.json.picker_breakdown.map(x => x.picker_id), [p3.id])
+            assertEquals(company.json.summary.total_earnings, 96.09)
+        })
+
+        // Decisión del dueño (27-10): el manager no LEE los fichajes ni las cubetas
+        // de otro huerto (20261027070000), tampoco los de alguien que rota; su
+        // parte (paso anterior) la calcula el servidor con el día entero
+        await t.step('manager of B: the API gives no attendance or bucket row of orchard A', async () => {
+            const managerB = await makeUser('manager', { orchardId: orchardB })
+            const rest = async (table: string) => {
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=orchard_id&picker_id=eq.${p3.id}`, {
+                    headers: { apikey: ANON_KEY, Authorization: `Bearer ${managerB.token}` },
+                })
+                assertEquals(res.status, 200, table)
+                return ((await res.json()) as { orchard_id: string }[]).map(r => r.orchard_id)
+            }
+            const att = await rest('daily_attendance')
+            const bkt = await rest('bucket_records')
+            assertEquals(att, [orchardB])
+            assertEquals(bkt.length, 10)
+            assert(bkt.every(o => o === orchardB), 'only B buckets')
+        })
+
+        // Decisión del dueño (27-10): el manager ve solo la parte de su huerto.
+        // p3 trabajó en A (precio 5) y en B (precio 7) el martes.
+        await t.step('manager of B: no line, hour, bucket or price of orchard A anywhere', async () => {
+            const managerB = await makeUser('manager', { orchardId: orchardB })
+            for (const body of [{ start_date: monday, end_date: addDays(monday, 6) }, { orchard_id: orchardB, start_date: monday, end_date: addDays(monday, 6) }]) {
+                const r = await call<PayrollResult>('calculate-payroll', { token: managerB.token, body })
+                assertEquals(r.status, 200, show(r))
+                assert(!r.text.includes(orchardA), `orchard A appears in the manager's payroll: ${r.text.slice(0, 400)}`)
+                for (const id of [p1.id, p2.id, p4.id]) assert(!r.text.includes(id), 'only people who worked in B')
+                const [day] = r.json.picker_breakdown[0].days as PayDay[]
+                assert(day.segments.length > 0 && day.segments.every(s => s.orchardId === orchardB), 'only B segments')
+                assertEquals(day.byOrchard.map(o => o.orchardId), [orchardB])
+                assertEquals(day.pieceLines.map(l => [l.orchardId, l.rate, l.buckets]), [[orchardB, 7, 10]])
+                assertEquals(day.bucketsByVariety, { '—': 10 })
+                // Su parte del día (lo mismo que su fila): 3.28 h, 70 + 26.09
+                assertEquals([day.hours, day.buckets, day.pieceEarnings, day.topUp, day.total], [3.28, 10, 70, 26.09, 96.09])
+            }
+            // Nómina sigue viendo el día entero, con el huerto de cada línea
+            const all = await call<PayrollResult>('calculate-payroll', { token: payroll.token, body: { start_date: monday, end_date: addDays(monday, 6) } })
+            const whole = all.json.picker_breakdown.find(x => x.picker_id === p3.id)!.days[0]
+            assertEquals(whole.pieceLines.map(l => [l.orchardId, l.rate]).sort(), [[orchardA, 5], [orchardB, 7]].sort())
+            assertEquals(whole.topUp, 59.63)
         })
 
         await t.step('unknown orchard → 400 without leaking internals', async () => {

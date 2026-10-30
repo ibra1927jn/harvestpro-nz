@@ -8,12 +8,33 @@ import {
   dayTopUpFor,
   groupSegmentsByPicker,
   splitDayHoursBySegment,
+  splitOrchardDayBySegment,
   type AttendanceForTimesheet,
   type DayBucket,
 } from './timesheetLogic';
 
 const seg = (grossHours: number, travelHours = 0): PaySegment => ({
   orchardId: 'o1', checkIn: null, checkOut: null, open: false, breakStart: null, grossHours, travelHours,
+});
+
+describe('splitOrchardDayBySegment', () => {
+  const s = (checkIn: string, grossHours: number, travelHours = 0, open = false) =>
+    ({ orchardId: 'A', checkIn, checkOut: null, open, breakStart: null, grossHours, travelHours });
+  it('splits the orchard share by time + travel, matching shifts by check-in', () => {
+    const day = { hours: 6, segments: [s('2026-10-12T07:00:00.000Z', 2, 0.5), s('2026-10-12T12:00:00.000Z', 2.5)] };
+    const out = splitOrchardDayBySegment(
+      [{ id: 'b', check_in: '2026-10-13T01:00:00+13:00' }, { id: 'a', check_in: '2026-10-12T20:00:00+13:00' }], day);
+    expect(out?.get('a')).toBe(3);
+    expect(out?.get('b')).toBe(3);
+  });
+  it('an open segment keeps its weight but gets no shift', () => {
+    const day = { hours: 4, segments: [s('2026-10-12T07:00:00Z', 2), s('2026-10-12T10:00:00Z', 2, 0, true)] };
+    expect(splitOrchardDayBySegment([{ id: 'a', check_in: '2026-10-12T07:00:00Z' }], day)?.get('a')).toBe(2);
+  });
+  it('null without a server day or when a closed shift is not in it', () => {
+    expect(splitOrchardDayBySegment([{ id: 'a', check_in: '2026-10-12T07:00:00Z' }], undefined)).toBeNull();
+    expect(splitOrchardDayBySegment([{ id: 'a', check_in: '2026-10-12T08:00:00Z' }], { hours: 2, segments: [s('2026-10-12T07:00:00Z', 2)] })).toBeNull();
+  });
 });
 
 describe('splitDayHoursBySegment', () => {

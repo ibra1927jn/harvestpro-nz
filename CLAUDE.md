@@ -48,9 +48,38 @@ Version: 9.9.0
 - `supabase/functions/_shared/` — pay-rules.ts (idéntico a src/services/harvestMetrics/pay.ts, lo vigila pay-parity.test.ts), payroll-calc.ts, security.ts, scan-time.ts, cors.ts
 - `supabase/seeds/` — seeds locales (orden: seed_00_local_bootstrap → seed_2weeks_local → seed_role_users)
 - 35 tablas, RLS en todas, 2FA (aal2) exigido por política para roles privilegiados
-- Fichajes (`daily_attendance`): los leen manager/RRHH/admin del huerto, nómina de la empresa, el TL su equipo
-  (y gente sin equipo del huerto) y cada uno lo suyo. Runner, QC y logística saben quién está fichado con
-  `presence_today(huerto)` (sin horas ni pago; el store la relee cada minuto, migración 20261024021000).
+- Fichajes (`daily_attendance`) y cubetas (`bucket_records`): el manager SOLO los de su huerto, también de quien
+  rota (parte del día aquí y parte en otro); admin, RRHH y nómina, toda la empresa; el TL los fichajes de su equipo
+  (también en otro huerto) y de gente sin equipo del huerto, y las cubetas de su huerto y de su equipo; cada uno lo
+  suyo; las cubetas del huerto las ve todo el huerto. Runner, QC y logística saben quién está fichado con
+  `presence_today(huerto)` (sin horas ni pago; el store la relee cada minuto, migración 20261024021000); el manager
+  sabe por ella quién está ahora en otro huerto (solo el nombre). Lo que necesita el día entero de quien rota va por
+  el servidor: `calculate-payroll` y `check-compliance` leen fichajes y cubetas con service role y devuelven la
+  parte del huerto (las horas de la hoja de fichajes salen de ahí); el historial del picker pone «—» en el pago de
+  un día partido (`picker_days_elsewhere`, solo fechas). `presence_today` de otro huerto y la auditoría de fichajes,
+  cubetas y precios de otro huerto: no para el manager (migraciones 20261027070000 y 20261027071000).
+- Ausencias (`leave_requests`): manager del huerto, RRHH, nómina y admin de la empresa, el TL SOLO las de su
+  equipo (y las pide para su equipo) y cada uno las suyas; runner, QC y logística ven «de permiso» con
+  `presence_today` (migración 20261027040000_team_scoped_leave_qc_rows).
+- Calidad (`qc_inspections`, con las respuestas de bienestar, y las fotos de `qc-photos`): manager del huerto,
+  RRHH y admin de la empresa, el TL solo las de pickers de SU equipo y el inspector de QC solo las que creó él
+  (crea; no cambia ni borra). Runner, logística y nómina, nada. La foto del TL se busca por
+  `qc_inspections.photo_url` (misma migración).
+- Precios por cubeta (`piece_rates`, `variety_rates`, `harvest_settings.piece_rate`, `day_setups.piece_rate`): cada
+  uno lee solo los de SU huerto (manager, TL, runner, QC, logística); admin, RRHH y nómina los de todos. La escritura
+  no cambia (manager de su huerto y admin). Lo que paga el día entero de alguien con precios de otro huerto va por el
+  servidor: `calculate-payroll` y `check-compliance` leen precios con service role (`_shared/rates-client.ts`), la hoja
+  diaria del manager toma el complemento de `calculate-payroll` y el historial del picker pone «—» si no ve el precio
+  (migración 20261027050000).
+- Nómina (`/payroll`): el manager ve solo la parte de SU huerto; RRHH, nómina y admin, la empresa.
+  `calculate-payroll` le da su huerto aunque pida la empresa (otro huerto: 403) y cada día sale reducido a ese
+  huerto (`_shared/payroll-orchard.ts`: sus tramos, cubetas y líneas de precio, y su parte de horas, complemento
+  y pago; el complemento se calcula con el día entero). La foto de una semana cerrada, igual; `pay_weeks` solo la
+  leen admin, nómina y RRHH (migración 20261027060000). El manager no exporta (Xero/PaySauce es la paga entera de
+  cada persona) ni cierra la semana. `check-compliance`: manager y TL solo su huerto, la paga como su parte.
+- Filas (`row_assignments`): las crea, reasigna y retira el manager (o admin), también varias por delante; el TL
+  solo mueve a SU equipo (`pickers.current_row`, `moveTeamToRow`) entre las filas activas asignadas a su equipo y
+  apunta avance y fin (triggers `guard_team_leader_current_row` y `guard_row_assignment_team_leader`).
 - Hora de fichajes y cubetas: la del servidor; la del móvil solo desde la cola sin red, corregida con el
   desfase medido y nunca del futuro (`_shared/device-time.ts`, `_shared/scan-time.ts`; el desfase queda en
   `*_clock_skew_ms`). Tramos de más de 14 h sin corregir: se pagan 14 h y no se aprueban
@@ -81,6 +110,7 @@ Version: 9.9.0
   SUPABASE_SERVICE_ROLE_KEY).
 - Edge Functions: `npm run test:functions` (Deno, supabase/functions/tests/, necesita .env.local).
 - BD: `scripts/test-db-security.sh` (RLS, SECURITY DEFINER; supabase/tests/security/*.sql con ROLLBACK).
+  Tabla nueva en `public`: añadirla a `99_rls_matrix.sql` (quién lee/crea/cambia/borra, rol por rol) o falla.
 - E2E Playwright: ~31 specs en e2e/ (`npm run test:e2e`) y 9 móviles en e2e/mobile
   (`npm run test:e2e:mobile`, puerto 3000 o `MOBILE_PORT`; reutiliza un servidor ya levantado).
 - «Empresa desde cero»: `npm run test:e2e:fresh` (playwright.fresh.config.ts, e2e/fresh-company.spec.ts):
@@ -187,7 +217,9 @@ Version: 9.9.0
   (copiar + activar) y `create_orchard_block` (con filas) en una transacción; candado por temporada al meter
   filas. Los bloques pueden tener huecos: las filas reales son `blockRowNumbers()` (utils/blockRows.ts),
   nunca start_row..start_row+total_rows.
-- Reglas de equipos: el team leader solo gestiona su equipo y puede coger a gente sin equipo; mover, soltar, dar de baja o borrar es de RRHH/admin; el manager mueve equipos de fila (migración 20261016000000_picker_team_rules).
+- Reglas de equipos: el team leader solo gestiona su equipo y puede coger a gente sin equipo; mover, soltar, dar de baja o borrar es de RRHH/admin; el manager asigna filas a los equipos y el TL mueve a su equipo solo entre ellas (migraciones 20261016000000_picker_team_rules y 20261027040000).
+- Nómina: ninguna hora se paga sin revisar: `close-pay-week` no cierra la semana con tramos sin aprobar,
+  rechazados o de más de 14 h sin corregir (`unreviewedShifts` en pay.ts).
 - Nómina: la app calcula bruto y horas y exporta a Xero/PaySauce. El 8% de holiday pay de casuales, PAYE, KiwiSaver, ACC y las nóminas los hace el programa de nóminas (decisión del dueño, 2026-10-16).
 - Salario mínimo: tabla con fechas `NZ_MIN_WAGE_HISTORY` en src/services/harvestMetrics/pay.ts (copiar igual a supabase/functions/_shared/pay-rules.ts). Cada año, cuando se publique el Minimum Wage Order, añadir la fila con fecha 1 de abril. No volver a escribir 23.95 a mano: usar `PAY_RULES.minWageFloor` o `minWageFloorOn(fecha)`.
 - Documentación histórica (auditorías de abril, guías de Hetzner/Vercel/Supabase Cloud): `docs/archive/2026-04/`.

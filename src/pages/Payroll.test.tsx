@@ -4,7 +4,7 @@
  * Verifies: renders DesktopLayout with payroll nav, loading state, summary cards, compliance banner
  */
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 // ── Mocks ────────────────────────────────────────────
@@ -28,8 +28,12 @@ vi.mock('@/services/offline.service', () => ({
     offlineService: { getPendingCount: vi.fn().mockResolvedValue(0) },
 }));
 
+// Rol de quien abre la pantalla: nómina (empresa, exporta) o manager (su huerto)
+const scope = vi.hoisted(() => ({ canExport: true, orchardOnly: false }));
+
 vi.mock('@/hooks/usePayroll', () => ({
     usePayroll: () => ({
+        ...scope,
         isLoading: false,
         hasLoadedOnce: true,
         error: null,
@@ -121,5 +125,23 @@ describe('Payroll Page', () => {
     it('shows payroll dashboard as default', () => {
         render(<Payroll />);
         expect(screen.getByTestId('payroll-dashboard')).toBeTruthy();
+    });
+
+    it('payroll: company view, no orchard notice', () => {
+        render(<Payroll />);
+        expect(screen.queryByTestId('payroll-orchard-scope')).toBeNull();
+    });
+
+    describe('manager (own orchard only, decisión del dueño 27-10)', () => {
+        beforeEach(() => { scope.canExport = false; scope.orchardOnly = true; });
+        afterEach(() => { scope.canExport = true; scope.orchardOnly = false; });
+
+        it('says it is only this orchard\'s share and has no Export / History tabs', () => {
+            render(<Payroll />);
+            expect(screen.getByTestId('payroll-orchard-scope').textContent).toMatch(/Only this orchard's share/);
+            expect(screen.getAllByText('Timesheets').length).toBeGreaterThan(0);
+            expect(screen.queryByText('Export')).toBeNull();
+            expect(screen.queryByText('History')).toBeNull();
+        });
     });
 });

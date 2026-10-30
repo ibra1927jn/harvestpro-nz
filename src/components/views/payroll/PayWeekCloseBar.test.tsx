@@ -36,6 +36,15 @@ describe('PayWeekCloseBar', () => {
         expect(screen.getByText('Ana: Wed, 7 Oct')).toBeInTheDocument();
     });
 
+    it('muestra quién tiene horas sin aprobar (ninguna hora se paga sin revisar)', () => {
+        render(<PayWeekCloseBar {...base} closeResult={{
+            week: { start: '2026-10-05', end: '2026-10-11' }, closed: false, reason: 'UNREVIEWED_HOURS',
+            pending: [{ picker_id: 'p1', picker_name: 'Ana', dates: ['2026-10-07'], issues: [{ date: '2026-10-07', issue: 'rejected' }] }],
+        }} />);
+        expect(screen.getByRole('alert')).toHaveTextContent('no hour is paid without review');
+        expect(screen.getByText('Ana: Wed, 7 Oct')).toBeInTheDocument();
+    });
+
     it('reabrir exige motivo', () => {
         const onReopen = vi.fn();
         render(<PayWeekCloseBar {...base} closedInfo={{ closed_at: '2026-10-12T01:00:00Z', closed_by: 'u1' }} onReopen={onReopen} />);

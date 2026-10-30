@@ -71,6 +71,8 @@ const panel: TranslationDict = {
     'panel.history.col.bins': 'BINS',
     'panel.history.col.hours': 'HEURES',
     'panel.history.col.earned': 'GAGNÉ',
+    'panel.history.earned_other_orchard': 'Inclut des bins d’un autre verger dont vous ne voyez pas le prix',
+    'panel.history.earned_part_elsewhere': 'A aussi travaillé dans un autre verger ce jour-là : seule la part de ce verger. La paie est dans Paie.',
     'panel.history.daily_output_title': 'Production journalière ({n} derniers jours)',
     // Quality tab
     'panel.quality.overall': 'Note de qualité globale',

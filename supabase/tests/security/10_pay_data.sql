@@ -92,9 +92,13 @@ FROM unnest(ARRAY['anon', 'A.runner', 'A.team_leader']) AS w;
 
 -- ── pay_weeks (cierre de semana: solo Edge Function close-pay-week) ─────────
 SELECT sec_test.sees(w, 'reads closed pay weeks', $$SELECT 1 FROM pay_weeks WHERE id = {payweek}$$, 1)
-FROM unnest(ARRAY['A.payroll_admin', 'A.admin']) AS w;
+FROM unnest(ARRAY['A.payroll_admin', 'A.admin', 'A.hr_admin', 'B.payroll_admin']) AS w;
+-- El manager tampoco: la foto es la nómina de la empresa (precios y pagos de
+-- todos los huertos); ve la parte de su huerto por calculate-payroll (20261027060000)
 SELECT sec_test.sees(w, 'cannot read pay weeks', $$SELECT 1 FROM pay_weeks WHERE id = {payweek}$$, 0)
-FROM unnest(ARRAY['anon', 'A.runner', 'A.team_leader', 'A.qc_inspector', 'A.logistics']) AS w;
+FROM unnest(ARRAY['anon', 'A.runner', 'A.team_leader', 'A.qc_inspector', 'A.logistics', 'A.manager', 'B.manager']) AS w;
+SELECT sec_test.sees(w, 'cannot read any pay week snapshot', $$SELECT 1 FROM pay_weeks WHERE snapshot IS NOT NULL$$, 0)
+FROM unnest(ARRAY['A.manager', 'B.manager']) AS w;
 SELECT sec_test.deny(w, 'cannot reopen a pay week directly', $$UPDATE pay_weeks SET status = 'reopened' WHERE id = {payweek}$$)
 FROM unnest(ARRAY['anon', 'A.runner', 'A.team_leader', 'A.manager', 'A.hr_admin', 'A.payroll_admin', 'A.admin']) AS w;
 SELECT sec_test.deny(w, 'cannot close a pay week directly',

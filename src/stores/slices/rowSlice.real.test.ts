@@ -50,6 +50,24 @@ describe('rowSlice', () => {
         );
     });
 
+    it('moveTeamToRow only moves the people (current_row), never creates or retires row assignments', async () => {
+        const { slice, setSpy } = makeSlice();
+        await slice.moveTeamToRow(7, ['p1']);
+        expect(rowRepository.updatePickerRows).toHaveBeenCalledWith(['p1'], 7);
+        expect(rowRepository.upsertRowAssignments).not.toHaveBeenCalled();
+        expect(rowRepository.retireAssignments).not.toHaveBeenCalled();
+        const updater = setSpy.mock.calls[0][0] as (state: Record<string, unknown>) => Record<string, unknown>;
+        const result = updater({ crew: [{ id: 'p1', current_row: 0 }, { id: 'p2', current_row: 2 }] });
+        expect(result.crew).toEqual([{ id: 'p1', current_row: 7 }, { id: 'p2', current_row: 2 }]);
+    });
+
+    it('moveTeamToRow restores the crew and throws when the server refuses the row', async () => {
+        vi.spyOn(rowRepository, 'updatePickerRows').mockResolvedValue({ error: { message: 'Row 5 is not assigned to your team by the manager' } } as never);
+        const { slice, setSpy, store } = makeSlice();
+        await expect(slice.moveTeamToRow(5, ['p1'])).rejects.toThrow(/only rows the manager assigned/);
+        expect(setSpy).toHaveBeenLastCalledWith({ crew: store.crew });
+    });
+
     it('assignRows passes set() updater that creates entries + updates crew', () => {
         const { slice, setSpy } = makeSlice();
         slice.assignRows([5, 6], 'north', ['p1', 'p2']);

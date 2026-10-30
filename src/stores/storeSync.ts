@@ -292,13 +292,27 @@ export function needsPresence(role: string | null | undefined): boolean {
 }
 
 /**
+ * ¿«Ahora en otro huerto» solo por presence_today? El manager lee los fichajes
+ * de su huerto, no los de otros (migración 20261027070000): de allí solo sabe
+ * el nombre del huerto, sin horas.
+ */
+export function elsewhereFromPresenceOnly(role: string | null | undefined): boolean {
+  return role === 'manager';
+}
+
+/**
  * Quién está trabajando ahora en otro huerto (la gente rota entre huertos) y,
  * para quien no lee todos los fichajes, la presencia de hoy (presence_today).
+ * El TL ve los tramos de su equipo en otro huerto; la oficina, todos; el
+ * manager, solo el nombre del huerto (presence_today).
  */
-async function loadShiftsElsewhere(get: StoreGetter, set: StoreSetter, orchardId: string, today: string): Promise<void> {
-  const withPresence = needsPresence(get().currentUser?.role);
+export async function loadShiftsElsewhere(get: StoreGetter, set: StoreSetter, orchardId: string, today: string): Promise<void> {
+  const role = get().currentUser?.role;
+  const presenceOnly = elsewhereFromPresenceOnly(role);
+  const withPresence = needsPresence(role) || presenceOnly;
   const [visible, presence] = await Promise.all([
     (async (): Promise<OpenShiftElsewhere[]> => {
+      if (presenceOnly) return [];
       try {
         return await storeSyncRepository.getOpenShiftsElsewhere(orchardId, today);
       } catch (e) {
@@ -316,6 +330,11 @@ async function loadShiftsElsewhere(get: StoreGetter, set: StoreSetter, orchardId
       }
     })(),
   ]);
+  if (presenceOnly) {
+    // El manager tiene los fichajes de su huerto: de presence_today solo «en otro huerto»
+    set(s => ({ crew: applyElsewhere(s.crew, presence ? elsewhereFromPresence(presence) : []) }));
+    return;
+  }
   setPresence(set, visible, presence);
 }
 

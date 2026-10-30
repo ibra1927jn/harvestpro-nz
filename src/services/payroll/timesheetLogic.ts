@@ -32,6 +32,31 @@ export function splitDayHoursBySegment(
   return out;
 }
 
+/**
+ * Igual, con el día que da calculate-payroll para un huerto (orchardDayView):
+ * solo los tramos de ese huerto y como horas su parte del día (calculada con
+ * el día entero, también lo trabajado en otro huerto, que el manager no lee).
+ * Cada tramo cerrado se busca por su hora de entrada y se lleva la parte de
+ * esas horas según su tiempo + trayecto. null si algún tramo cerrado no está
+ * en el día del servidor (otra versión de los datos): entonces, el cálculo local.
+ */
+export function splitOrchardDayBySegment(
+  closedShifts: ReadonlyArray<{ id: string; check_in: string | null }>,
+  day: Pick<PayDay, 'hours' | 'segments'> | undefined
+): Map<string, number> | null {
+  if (!day) return null;
+  const segs = day.segments ?? [];
+  const weight = segs.reduce((s, x) => s + x.grossHours + x.travelHours, 0);
+  const out = new Map<string, number>();
+  for (const shift of closedShifts) {
+    const at = shift.check_in ? Date.parse(shift.check_in) : NaN;
+    const seg = segs.find(s => !s.open && s.checkIn !== null && Date.parse(s.checkIn) === at);
+    if (!seg) return null;
+    out.set(shift.id, weight > 0 ? round2(day.hours * (seg.grossHours + seg.travelHours) / weight) : 0);
+  }
+  return out;
+}
+
 export interface AttendanceForTimesheet {
   id: string;
   picker_id: string;

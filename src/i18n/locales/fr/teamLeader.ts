@@ -51,6 +51,7 @@ const teamLeader: TranslationDict = {
     'tl.tasks.side_center': 'Centre',
     'tl.tasks.pickers_n': '{n} cueilleurs',
     'tl.tasks.no_rows': 'Aucun rang attribué.',
+    'tl.tasks.no_assigned_rows': 'Le manager n\'a pas encore attribué de rangs à votre équipe.',
     'tl.tasks.tap_to_start': 'Touchez pour commencer',
     'tl.team.title': 'Configuration de l’équipe',
     'tl.team.subtitle': 'Attribution des harnais et des ID',

@@ -39,7 +39,8 @@ SELECT sec_test.allow('A.team_leader', 'adds a new picker to own team',
     $$INSERT INTO pickers (picker_id, name, orchard_id, team_leader_id) VALUES ('SECTEST-NEW1', 'New', {A}, {A.team_leader})$$);
 SELECT sec_test.allow('A.team_leader', 'renames a picker of own team', $$UPDATE pickers SET name = 'Renamed' WHERE id = {A.picker}$$);
 SELECT sec_test.allow('A.team_leader', 'sets the harness number of own picker', $$UPDATE pickers SET harness_number = 'H-17' WHERE id = {A.picker}$$);
-SELECT sec_test.allow('A.team_leader', 'moves own team to a row', $$UPDATE pickers SET current_row = 4 WHERE id = {A.picker}$$);
+-- (fila 1: la que el manager asignó a su equipo, {A.rowasg}; filas sin asignar en 99_team_scope_leave_qc_rows.sql)
+SELECT sec_test.allow('A.team_leader', 'moves own team to a row the manager assigned', $$UPDATE pickers SET current_row = 1 WHERE id = {A.picker}$$);
 SELECT sec_test.allow('A.team_leader', 'takes a picker who has no team', $$UPDATE pickers SET team_leader_id = auth.uid() WHERE id = {A.picker_free}$$);
 
 -- ── Team leader: lo que es de RRHH ──────────────────────────────────────────

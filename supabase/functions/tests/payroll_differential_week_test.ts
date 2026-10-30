@@ -203,6 +203,10 @@ Deno.test({ name: 'payroll differential: realistic week in the DB vs reference',
         })
 
         await t.step('close-pay-week snapshot = live payroll; reopen goes back to live', async () => {
+            // Ninguna hora se paga sin revisar: nómina aprueba la semana antes de cerrarla
+            // (aprobar no cambia las cifras: se comprueba abajo contra el cálculo en vivo)
+            must(await service.from('daily_attendance').update({ verified_by: payroll.id, verified_at: new Date().toISOString() })
+                .in('orchard_id', [A, B]).gte('date', MONDAY).lte('date', SUNDAY), 'approve week')
             const closed = await call<{ closed?: boolean; reason?: string }>('close-pay-week', { token: payroll.token, body: { action: 'close', week_start: MONDAY } })
             assertEquals(closed.status, 200, show(closed))
             assertEquals(closed.json.closed, true, show(closed))

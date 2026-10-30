@@ -1,7 +1,8 @@
 -- =============================================================================
 -- piece_rates (precio por cubeta por día, huerto y variedad; auditoría 23-10 A4)
--- Lectura: todo miembro activo (todos los roles ven el precio; la nómina es de
--- la empresa). Escritura: manager de SU huerto y de hoy en adelante (no reescribe
+-- Lectura (decisión del dueño 2026-10-27, migración 20261027050000): cada uno
+-- solo los precios de SU huerto (manager, team leader, runner, QC, logística);
+-- admin, RRHH y nómina (con 2FA) los de todos los huertos. Escritura: manager de SU huerto y de hoy en adelante (no reescribe
 -- el pasado); admin cualquier huerto y día. Nadie toca días de una semana de pago
 -- cerrada. 2FA para roles privilegiados. variety_rates (obsoleta): el manager
 -- solo escribe las de su huerto; las de la empresa (sin huerto), solo admin.
@@ -23,14 +24,48 @@ INSERT INTO public.piece_rates (id, orchard_id, variety, effective_date, piece_r
     (sec_test.id_of('A.rate_today'), sec_test.id_of('A'), 'SecTest Today', (now() AT TIME ZONE 'Pacific/Auckland')::date, 9);
 
 -- ── Lectura ─────────────────────────────────────────────────────────────────
-SELECT sec_test.sees(w, 'sees the piece rates (own orchard and the company''s)',
+-- Su huerto: todos los roles activos
+SELECT sec_test.sees(w, 'reads the piece rates of own orchard',
+    $$SELECT 1 FROM piece_rates WHERE id IN ({A.rate_old}, {A.rate_old_v})$$, 2)
+FROM unnest(ARRAY['A.manager', 'A.team_leader', 'A.team_leader2', 'A.runner', 'A.qc_inspector', 'A.logistics',
+                  'A.hr_admin', 'A.payroll_admin', 'A.admin']) AS w;
+SELECT sec_test.sees(w, 'reads the piece rates of own orchard',
+    $$SELECT 1 FROM piece_rates WHERE id = {B.rate_old}$$, 1)
+FROM unnest(ARRAY['B.manager', 'B.team_leader', 'B.runner', 'B.qc_inspector', 'B.logistics']) AS w;
+-- Otro huerto: nadie salvo admin, RRHH y nómina
+SELECT sec_test.sees(w, 'cannot read the piece rates of another orchard',
+    $$SELECT 1 FROM piece_rates WHERE id = {B.rate_old}$$, 0)
+FROM unnest(ARRAY['A.manager', 'A.team_leader', 'A.team_leader2', 'A.runner', 'A.qc_inspector', 'A.logistics']) AS w;
+SELECT sec_test.sees(w, 'cannot read the piece rates of another orchard',
+    $$SELECT 1 FROM piece_rates WHERE id IN ({A.rate_old}, {A.rate_old_v})$$, 0)
+FROM unnest(ARRAY['B.manager', 'B.team_leader', 'B.runner', 'B.qc_inspector', 'B.logistics']) AS w;
+SELECT sec_test.sees(w, 'sees no piece rate but its own orchard''s',
+    $$SELECT 1 FROM piece_rates WHERE orchard_id <> {A}$$, 0)
+FROM unnest(ARRAY['A.manager', 'A.team_leader', 'A.runner', 'A.qc_inspector', 'A.logistics']) AS w;
+SELECT sec_test.sees(w, 'reads the piece rates of every orchard',
     $$SELECT 1 FROM piece_rates WHERE id IN ({A.rate_old}, {A.rate_old_v}, {B.rate_old})$$, 3)
-FROM unnest(ARRAY['A.manager', 'A.team_leader', 'A.runner', 'A.qc_inspector', 'A.logistics',
-                  'A.hr_admin', 'A.payroll_admin', 'A.admin', 'B.runner']) AS w;
+FROM unnest(ARRAY['A.hr_admin', 'A.payroll_admin', 'A.admin', 'B.hr_admin', 'B.payroll_admin', 'B.admin']) AS w;
+-- Lo que pinta el día: piece_rates_as_of respeta la misma regla (SECURITY INVOKER)
+SELECT sec_test.returns(w, 'piece_rates_as_of gives nothing of another orchard',
+    $$SELECT count(*)::text FROM piece_rates_as_of((now() AT TIME ZONE 'Pacific/Auckland')::date, ARRAY[{B}])$$, '0')
+FROM unnest(ARRAY['A.manager', 'A.team_leader', 'A.runner', 'A.qc_inspector', 'A.logistics']) AS w;
+SELECT sec_test.returns(w, 'piece_rates_as_of gives the other orchard''s prices',
+    $$SELECT count(*)::text FROM piece_rates_as_of((now() AT TIME ZONE 'Pacific/Auckland')::date, ARRAY[{B}])
+      WHERE id = {B.rate_old}$$, '1')
+FROM unnest(ARRAY['A.hr_admin', 'A.payroll_admin', 'A.admin']) AS w;
 SELECT sec_test.sees(w, 'cannot read piece rates', $$SELECT 1 FROM piece_rates WHERE id = {A.rate_old}$$, 0)
-FROM unnest(ARRAY['anon', 'A.inactive_manager']) AS w;
+FROM unnest(ARRAY['anon', 'A.inactive_manager', 'A.inactive_hr_admin', 'A.inactive_admin']) AS w;
 SELECT sec_test.sees(w, 'without 2FA cannot read piece rates', $$SELECT 1 FROM piece_rates WHERE id = {A.rate_old}$$, 0)
-FROM unnest(ARRAY['A.manager@aal1', 'A.admin@aal1', 'A.payroll_admin@aal1']) AS w;
+FROM unnest(ARRAY['A.manager@aal1', 'A.admin@aal1', 'A.payroll_admin@aal1', 'A.hr_admin@aal1']) AS w;
+SELECT sec_test.sees(w, 'without 2FA cannot read another orchard''s piece rates',
+    $$SELECT 1 FROM piece_rates WHERE id = {B.rate_old}$$, 0)
+FROM unnest(ARRAY['A.admin@aal1', 'A.payroll_admin@aal1', 'A.hr_admin@aal1']) AS w;
+-- Catálogo: no queda la política de lectura abierta a toda la empresa
+SELECT sec_test.record(
+    NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public'
+                AND tablename IN ('piece_rates', 'variety_rates')
+                AND policyname IN ('Members read piece rates', 'Members read variety rates')),
+    'piece_rates / variety_rates: the company-wide read policies are gone', NULL);
 SELECT sec_test.returns('A.runner', 'piece_rates_as_of gives the last price of each variety up to a date',
     $$SELECT piece_rate::text FROM piece_rates_as_of((now() AT TIME ZONE 'Pacific/Auckland')::date, ARRAY[{A}])
       WHERE variety = 'SecTest Braeburn'$$, '8.10');
@@ -134,6 +169,33 @@ SELECT sec_test.deny('A.manager', 'variety_rates: cannot write the company price
     $$INSERT INTO variety_rates (orchard_id, variety, piece_rate) VALUES (NULL, 'SecTest VR', 7)$$);
 SELECT sec_test.allow('A.admin', 'variety_rates: admin writes the company price',
     $$INSERT INTO variety_rates (orchard_id, variety, piece_rate) VALUES (NULL, 'SecTest VR co', 7)$$);
+-- Lectura de variety_rates: igual que piece_rates; la de la empresa (sin huerto), solo admin, RRHH y nómina
+DO $$
+BEGIN
+    INSERT INTO sec_test.ids VALUES ('A.vr', gen_random_uuid()), ('B.vr', gen_random_uuid()), ('co.vr', gen_random_uuid());
+    INSERT INTO public.variety_rates (id, orchard_id, variety, piece_rate) VALUES
+        (sec_test.id_of('A.vr'), sec_test.id_of('A'), 'SecTest VR read', 7),
+        (sec_test.id_of('B.vr'), sec_test.id_of('B'), 'SecTest VR read', 8),
+        (sec_test.id_of('co.vr'), NULL, 'SecTest VR read co', 9);
+END $$;
+SELECT sec_test.sees(w, 'variety_rates: reads only own orchard''s',
+    $$SELECT 1 FROM variety_rates WHERE id IN ({A.vr}, {B.vr}, {co.vr})$$, 1)
+FROM unnest(ARRAY['A.manager', 'A.team_leader', 'A.runner', 'A.qc_inspector', 'A.logistics', 'B.runner']) AS w;
+SELECT sec_test.sees(w, 'variety_rates: cannot read another orchard''s',
+    $$SELECT 1 FROM variety_rates WHERE id = {B.vr}$$, 0)
+FROM unnest(ARRAY['A.manager', 'A.team_leader', 'A.runner', 'A.qc_inspector', 'A.logistics']) AS w;
+SELECT sec_test.sees(w, 'variety_rates: reads every orchard''s and the company''s',
+    $$SELECT 1 FROM variety_rates WHERE id IN ({A.vr}, {B.vr}, {co.vr})$$, 3)
+FROM unnest(ARRAY['A.hr_admin', 'A.payroll_admin', 'A.admin']) AS w;
+
+-- day_setups.piece_rate (precio del día): su huerto; admin, RRHH y nómina todos
+SELECT sec_test.sees(w, 'day_setups: cannot read another orchard''s day price',
+    $$SELECT 1 FROM day_setups WHERE orchard_id = {B}$$, 0)
+FROM unnest(ARRAY['A.manager', 'A.team_leader', 'A.runner', 'A.qc_inspector', 'A.logistics']) AS w;
+SELECT sec_test.sees(w, 'day_setups: reads every orchard''s day price',
+    $$SELECT 1 FROM day_setups WHERE orchard_id = {B} LIMIT 1$$, 1)
+FROM unnest(ARRAY['A.hr_admin', 'A.payroll_admin', 'A.admin']) AS w;
+
 SELECT sec_test.deny('A.team_leader', 'variety_rates: cannot write',
     $$INSERT INTO variety_rates (orchard_id, variety, piece_rate) VALUES ({A}, 'SecTest VR', 7)$$);
 
