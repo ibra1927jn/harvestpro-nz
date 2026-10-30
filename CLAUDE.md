@@ -200,9 +200,9 @@ Version: 9.9.0
 - `seed_season_simulation.sql` desactiva `trg_push_qc_inspection` mientras mete sus inspecciones (sin push).
 - Programarlo cada día con el Programador de tareas: `docs/backups-local.md`.
 
-## Estado actual (2026-10-27)
-- `main` se quedó en el 2026-10-19; el PR de integración de `integracion/fase-0` (Fase 0 de `docs/PLAN_NIVEL.md`)
-  lo pone al día hasta el 2026-10-27, cuando Ibra lo revise y lo fusione. Trabajo nuevo: ramas cortas que se
+## Estado actual (2026-10-30)
+- Todo el trabajo de octubre está en `main` (PR #90 Fase 0, #92 Fase 2, #91, #93 fusionados el 2026-10-30).
+  Ramas viejas: `docs/RAMAS.md` (script `scripts/borrar-ramas.sh`). Trabajo nuevo: ramas cortas que se
   fusionan en 1–2 días, nunca apiladas.
 - Plan en curso: `docs/PLAN_NIVEL.md` (nada nuevo fuera de él). Resumen corto del estado: `PROGRESS.md`.
 - Sin usuarios reales todavía. Una instalación = una empresa con varios huertos.

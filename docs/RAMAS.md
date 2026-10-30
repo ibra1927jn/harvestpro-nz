@@ -1,7 +1,26 @@
 # Inventario de ramas — 30-10-2026
 
 Foto de las **112 ramas remotas** de `ibra1927jn/harvestpro-nz` (contando `main`) el 30-10-2026.
-**No se ha borrado ni fusionado nada.** Las recomendaciones son propuestas: decide Ibra.
+
+## Qué se hizo el 30-10-2026 (actualización)
+
+- **Fusionados en `main`** (merge commit, CI en verde): PR **#90** (`integracion/fase-0`), **#92**
+  (`fase-2/seguridad-dinero`), **#91** (`docs/fase-1-estado`) y **#93** (`mejoras/2026-10-30`). #92 y #91 se
+  cambiaron de base a `main` antes de fusionar. #93 chocaba con #90 en `src/i18n/locales/fr` y `loader.test.tsx`:
+  se resolvió dejando la versión de `main` (solo en/es/fr, claves sin uso ya quitadas).
+- **Las ramas NO se han borrado todavía**: desde el entorno de Claude no se puede borrar ramas ni subir etiquetas
+  (el proxy de GitHub lo bloquea). Queda un script listo para lanzarlo Ibra en su PC: ver
+  [Borrar las ramas](#borrar-las-ramas).
+- Se **conservan**: `main`, `archive/2026-04` y las 4 de «revisar» (`claude/vñaide-code-usage-kj089r`,
+  `fix/alt-holiday-cross-period-2026-04-22`, `fix/base-repository-soft-delete-2026-04-22`,
+  `fix/signout-global-and-requirerole-db-2026-04-22`).
+- A **borrar: 107** = las 103 marcadas «borrar» + las 4 ramas de los PR fusionados. De ellas, 69 ya están
+  dentro de `main` y 38 no (34 están en `archive/2026-04`; las otras 4 son `docs/manager-review-2026-10-21`,
+  `wip/runner-verify`, `wip/team-leader-verify` y `review/combined-2026-10-24`). Antes de borrar cada una de
+  esas 38, el script deja una etiqueta `archivo/<rama>` en su punta: no se pierde nada.
+
+Las columnas «¿En main?» y «Commits fuera de main» de la tabla de abajo son de **antes** de fusionar (main en
+`ff70f84`, 19-10).
 
 Cómo se hizo:
 
@@ -187,8 +206,33 @@ recomendación · por qué (y PR, si tiene).
 | `harvest-fixes` | no | 2026-02-06 | 1 | Refine demo mode, secure Gemini and improve messaging/offline | **borrar** | Rama vieja (ene–abr) superada por el trabajo de octubre; una copia queda en archive/2026-04. PR: #2 (fusionado) |
 | `phase-1-refactor-and-cleanup-16646578613640258155` | no | 2026-01-30 | 4 | Integration of Phases 1, 2, and 3: Architecture, Offline, Maps | **borrar** | Rama vieja (ene–abr) superada por el trabajo de octubre; una copia queda en archive/2026-04. PR: #1 (cerrado) |
 
-## Si se aprueba borrar
+## Borrar las ramas
 
-1. Primero fusionar #90 (y #92/#91). Si no, borrar las ramas de octubre perdería trabajo.
-2. Las ramas de abril pueden borrarse ya: todas están dentro de `archive/2026-04`.
-3. Borrar desde GitHub o con `git push origin --delete <rama>` (solo con el visto bueno de Ibra).
+Script: [`scripts/borrar-ramas.sh`](../scripts/borrar-ramas.sh) (lleva dentro la lista exacta de las 107).
+Para cada rama que no está en `main` primero sube la etiqueta `archivo/<rama>` (los caracteres raros se cambian
+por `_`) apuntando a su punta, y luego la borra. Si una rama ha cambiado desde el 30-10, o ya no está en `main`,
+no la toca. Nunca toca `main` ni `archive/2026-04`, y las 4 de «revisar» no están en la lista.
+
+Desde la carpeta del repo, en Git Bash (Windows) o una terminal:
+
+```bash
+git pull
+bash scripts/borrar-ramas.sh              # prueba: solo enseña lo que haría
+bash scripts/borrar-ramas.sh --de-verdad  # etiqueta y borra
+```
+
+Después, cerrar en GitHub los PR viejos que se quedan sin rama (#67–#89 y los de abril que siguen abiertos).
+
+## Recuperar una rama archivada
+
+Las borradas que no estaban en `main` tienen su etiqueta `archivo/<rama>`; las de abril, además, están dentro de
+`archive/2026-04`. Para volver a tener una como rama:
+
+```bash
+git fetch origin --tags
+git push origin refs/tags/archivo/wip/runner-verify:refs/heads/wip/runner-verify
+# o solo en local:
+git switch -c wip/runner-verify archivo/wip/runner-verify
+```
+
+Las que ya estaban en `main` no necesitan nada: su trabajo está en el historial de `main`.

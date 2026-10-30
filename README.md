@@ -9,7 +9,7 @@
 ![Android](https://img.shields.io/badge/Android-Capacitor%208-3DDC84?logo=android&logoColor=white)
 ![Status](https://img.shields.io/badge/status-pre--pilot-orange)
 
-> **Status (27 October 2026):** in active development towards a first pilot, running on a local Supabase stack. It has **no production users yet**. The current work plan is [docs/PLAN_NIVEL.md](docs/PLAN_NIVEL.md) and a short status is in [PROGRESS.md](PROGRESS.md). Known gaps are listed openly under [Known gaps](#known-gaps).
+> **Status (30 October 2026):** in active development towards a first pilot. All October work (up to the 27 October integration, the security and payroll review of Phase 2, and the 30 October clean-up) is merged into `main`. It runs **only on a local Supabase stack** (Docker); there is no hosted deployment (the Vercel and Hetzner deployments were retired on 10 October 2026). It has **no production users yet**. The current work plan is [docs/PLAN_NIVEL.md](docs/PLAN_NIVEL.md) and a short status is in [PROGRESS.md](PROGRESS.md). Known gaps are listed openly under [Known gaps](#known-gaps).
 
 ---
 
@@ -83,16 +83,16 @@ More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Quality, measured
 
-Numbers from the last full local run (16 Oct 2026), not targets. Since then CI runs lint, the unit tests in 5 shards, the build, the Edge Function tests and the mobile e2e suite against a real local Supabase on every pull request:
+Numbers from local runs, not targets (dates in the table). CI runs lint, the unit tests in 5 shards, the build, the Edge Function tests and the mobile e2e suite against a real local Supabase on every pull request:
 
-| Check                                        | Result                                          |
-| -------------------------------------------- | ----------------------------------------------- |
-| Unit and component tests (Vitest, 489 files) | **5,359 passing**                               |
-| Database security suite (SQL, RLS and 2FA)   | **797 / 797 passing**                           |
-| TypeScript `--noEmit`                        | 0 errors                                        |
-| ESLint (`--max-warnings 0`)                  | 0 warnings                                      |
-| End-to-end specs (Playwright)                | 40 specs, desktop and mobile                    |
-| Edge Function tests (Deno)                   | 16 files, including a payroll differential test |
+| Check                                                | Result                                                            |
+| ---------------------------------------------------- | ----------------------------------------------------------------- |
+| Unit and component tests (Vitest, 579 files, 30 Oct) | **6,002 passing** (`npm test`, no `.env`)                         |
+| Database security suite (SQL, RLS and 2FA, 16 Oct)   | **797 / 797 passing** (Phase 2 added a 35-table RLS matrix since) |
+| TypeScript `--noEmit`                                | 0 errors                                                          |
+| ESLint (`--max-warnings 0`)                          | 0 warnings                                                        |
+| End-to-end specs (Playwright)                        | 40 specs, desktop and mobile                                      |
+| Edge Function tests (Deno)                           | 16 files, including a payroll differential test                   |
 
 ## Getting started (local)
 
@@ -119,6 +119,12 @@ npm run dev                  # http://localhost:5173
 **Demo accounts** (local seeds only): `manager@`, `lead@`, `runner@`, `qc@`, `payroll@`, `hr@`, `logistics@`, `admin@harvestpro.nz` — password `111111`.
 
 Privileged accounts need 2FA. On a development machine you can switch it off with `VITE_MFA_ENFORCE=false` in `.env.local` **and** `scripts/dev-disable-mfa.sql` on the database (both are needed: the database enforces it too).
+
+### Tests
+
+- `npm test` runs the unit and component tests in a clean clone **without any `.env`**: `src/test-env.ts` sets placeholder Supabase values when they are missing.
+- `npm run test:integration` runs the tests that need a real database (`tests/integration/`, `src/integration/*supabase*`, `role-flows-sanity`); start the local stack first with `supabase start`.
+- Database security suite, Edge Function tests and Playwright also need the local stack (see below).
 
 ### Useful commands
 
@@ -148,6 +154,10 @@ From the [16 October 2026 external audit](docs/audits/2026-10-16-external-audit.
 - **Offline:** roll call, breaks and bucket scans work without signal; other office screens (payroll, HR, setup) need it.
 - **Multi-company:** one installation = one company. Several companies in one database would need a tenant column and stricter policies.
 
+## Deployment
+
+There is none on purpose: the only environment is Supabase in Docker on the developer's machine plus `npm run dev` (or `vite preview`). Hosted Supabase Cloud projects, Vercel and the Hetzner server were retired in October 2026, and their guides live in `docs/archive/2026-04/`. CI builds the web app and an unsigned Android APK as artefacts, without deploying.
+
 ## Documentation
 
 | Document                                                                                                   | What it covers                                                                                 |
@@ -156,6 +166,7 @@ From the [16 October 2026 external audit](docs/audits/2026-10-16-external-audit.
 | [docs/PLAN_NIVEL.md](docs/PLAN_NIVEL.md)                                                                   | Current work plan, phase by phase (Spanish)                                                    |
 | [PROGRESS.md](PROGRESS.md)                                                                                 | Short status: done, pending (Spanish)                                                          |
 | [docs/audits/](docs/audits/)                                                                               | Audits: external (16 Oct), load test, role reviews, wiring (23 Oct), branch inventory (27 Oct) |
+| [docs/RAMAS.md](docs/RAMAS.md)                                                                             | Branches: what was merged, what to delete, how to restore an archived one (Spanish)            |
 | [docs/PATTERNS.md](docs/PATTERNS.md)                                                                       | React and TypeScript patterns used in the codebase                                             |
 | [docs/MANUAL_OPERACIONES.md](docs/MANUAL_OPERACIONES.md)                                                   | Field manual for team leaders (Spanish)                                                        |
 | [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)                                                                 | 15-minute demo walkthrough                                                                     |
