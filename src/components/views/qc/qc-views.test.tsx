@@ -26,9 +26,9 @@ describe('DistributionBar', () => {
         render(
             <DistributionBar distribution={{ A: 10, B: 5, C: 0, reject: 1, total: 16 }} />
         );
-        expect(screen.getByTitle('Grade A: 10')).toBeTruthy();
-        expect(screen.getByTitle('Grade B: 5')).toBeTruthy();
-        expect(screen.getByTitle('Reject: 1')).toBeTruthy();
+        expect(screen.getByTitle('Good: 10')).toBeTruthy();
+        expect(screen.getByTitle('Acceptable: 5')).toBeTruthy();
+        expect(screen.getByTitle('Severe: 1')).toBeTruthy();
     });
 
     it('skips zero-count segments', () => {

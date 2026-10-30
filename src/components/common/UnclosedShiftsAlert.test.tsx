@@ -28,4 +28,14 @@ describe('UnclosedShiftsAlert', () => {
         expect(screen.getByText('Ana — 10/10/2026 (in 07:00, A)')).toBeInTheDocument();
         expect(getUnclosed).toHaveBeenLastCalledWith('2026-10-12', { orchardId: 'o1', pickerIds: undefined });
     });
+
+    it('a shift open today for more than 14 h is listed as a forgotten check-out', async () => {
+        getUnclosed.mockResolvedValueOnce([
+            { id: 'c', pickerId: 'p2', pickerName: 'Bo', orchardName: 'A', date: '2026-10-12', checkIn: '2026-10-11T17:00:00Z', long: true },
+        ]);
+        render(<UnclosedShiftsAlert />);
+        expect(await screen.findByText(/open for more than 14 h \(1 person\)\. At most 14 h are paid/)).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button'));
+        expect(screen.getByText('Bo — open since 06:00 (A), more than 14 h')).toBeInTheDocument();
+    });
 });

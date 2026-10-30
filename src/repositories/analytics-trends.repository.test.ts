@@ -11,7 +11,7 @@ function mockChain(result: { data?: unknown; error?: unknown }) {
         eq: vi.fn(() => chain),
         gte: vi.fn(() => chain),
         lte: vi.fn(() => chain),
-        order: vi.fn(() => chain),
+        order: vi.fn(() => chain), is: vi.fn(() => chain), range: vi.fn(() => chain),
         then: (onF?: (v: unknown) => unknown, onR?: (r: unknown) => unknown) =>
             Promise.resolve(result).then(onF, onR),
     };
@@ -31,12 +31,12 @@ describe('analyticsTrendsRepository.getBucketsByRowInRange', () => {
 
     it('[] cuando data null', async () => {
         vi.spyOn(supabase, 'from').mockReturnValue(mockChain({ data: null, error: null }) as never);
-        expect(await analyticsTrendsRepository.getBucketsByRowInRange('o1', 's', 'e')).toEqual([]);
+        expect(await analyticsTrendsRepository.getBucketsByRowInRange('o1', '2026-04-01', '2026-04-18')).toEqual([]);
     });
 
     it('throws cuando error', async () => {
         vi.spyOn(supabase, 'from').mockReturnValue(mockChain({ data: null, error: { message: 'rls' } }) as never);
-        await expect(analyticsTrendsRepository.getBucketsByRowInRange('o1', 's', 'e')).rejects.toBeTruthy();
+        await expect(analyticsTrendsRepository.getBucketsByRowInRange('o1', '2026-04-01', '2026-04-18')).rejects.toBeTruthy();
     });
 });
 

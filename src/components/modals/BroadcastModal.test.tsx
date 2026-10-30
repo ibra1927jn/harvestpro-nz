@@ -73,7 +73,8 @@ describe('BroadcastModal', () => {
         fireEvent.click(screen.getByText('Send Broadcast'));
 
         await vi.waitFor(() => {
-            expect(onSend).toHaveBeenCalledWith('Rain', 'Stop picking', 'normal');
+            // Por defecto, para todos (sin roles de destino)
+            expect(onSend).toHaveBeenCalledWith('Rain', 'Stop picking', 'normal', []);
         });
     });
 });

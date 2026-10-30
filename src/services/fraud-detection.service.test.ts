@@ -3,7 +3,8 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
-import { fraudDetectionService } from './fraud-detection.service';
+import { anomalyDismissalsRepository } from '@/repositories/anomaly-dismissals.repository';
+import { anomalyKey, fraudDetectionService } from './fraud-detection.service';
 
 beforeEach(() => vi.restoreAllMocks());
 
@@ -65,21 +66,29 @@ describe('fraudDetectionService.fetchAnomalies', () => {
     });
 });
 
-describe('fraudDetectionService.getDismissedExamples', () => {
-    it('devuelve 3 ejemplos con scenario/reason/rule', () => {
-        const examples = fraudDetectionService.getDismissedExamples();
-        expect(examples).toHaveLength(3);
-        for (const e of examples) {
-            expect(e.scenario).toBeTruthy();
-            expect(e.reason).toBeTruthy();
-            expect(e.rule).toBeTruthy();
-        }
+describe('fraudDetectionService dismissals (anomaly_dismissals)', () => {
+    const anomaly = {
+        id: 'anm-1-1', type: 'peer_outlier' as const, severity: 'medium' as const,
+        pickerId: '11111111-1111-4111-8111-111111111111', pickerName: 'Ana', detail: '2x row mates',
+        timestamp: '2026-10-23T01:00:00Z', evidence: {}, rule: 'peer_comparison' as const,
+    };
+
+    it('the key survives new ids from detect-anomalies', () => {
+        expect(anomalyKey(anomaly)).toBe(anomalyKey({ ...anomaly, id: 'anm-9-9' } as typeof anomaly));
+        expect(anomalyKey(anomaly)).toBe('peer_outlier|11111111-1111-4111-8111-111111111111|2026-10-23T01:00:00Z');
     });
 
-    it('incluye ejemplos elapsed_velocity, peer_comparison y grace_period', () => {
-        const rules = fraudDetectionService.getDismissedExamples().map((e) => e.rule);
-        expect(rules).toContain('elapsed_velocity');
-        expect(rules).toContain('peer_comparison');
-        expect(rules).toContain('grace_period');
+    it('dismissing saves the anomaly with its reason', async () => {
+        const insert = vi.spyOn(anomalyDismissalsRepository, 'insert').mockResolvedValue({ id: 'd1' } as never);
+        await fraudDetectionService.dismissAnomaly('o1', anomaly, '  good trees ');
+        expect(insert).toHaveBeenCalledWith(expect.objectContaining({
+            orchard_id: 'o1', anomaly_key: anomalyKey(anomaly), anomaly_type: 'peer_outlier',
+            picker_id: anomaly.pickerId, picker_name: 'Ana', reason: 'good trees',
+        }));
+    });
+
+    it('listing dismissals offline returns an empty list instead of failing', async () => {
+        vi.spyOn(anomalyDismissalsRepository, 'listSince').mockRejectedValue(new Error('offline'));
+        expect(await fraudDetectionService.listDismissals('o1', '2026-10-22T11:00:00Z')).toEqual([]);
     });
 });

@@ -9,42 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      account_locks: {
-        Row: {
-          email: string
-          id: string
-          locked_at: string | null
-          locked_by_system: boolean | null
-          locked_until: string
-          unlock_reason: string | null
-          unlocked_at: string | null
-          unlocked_by: string | null
-          user_id: string | null
-        }
-        Insert: {
-          email: string
-          id?: string
-          locked_at?: string | null
-          locked_by_system?: boolean | null
-          locked_until: string
-          unlock_reason?: string | null
-          unlocked_at?: string | null
-          unlocked_by?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          email?: string
-          id?: string
-          locked_at?: string | null
-          locked_by_system?: boolean | null
-          locked_until?: string
-          unlock_reason?: string | null
-          unlocked_at?: string | null
-          unlocked_by?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       allowed_registrations: {
         Row: {
           assigned_role: string
@@ -272,6 +236,7 @@ export type Database = {
       }
       bucket_records: {
         Row: {
+          clock_skew_ms: number | null
           bin_id: string | null
           block_row_id: string | null
           coords: Json | null
@@ -290,6 +255,7 @@ export type Database = {
           version: number | null
         }
         Insert: {
+          clock_skew_ms?: number | null
           bin_id?: string | null
           block_row_id?: string | null
           coords?: Json | null
@@ -308,6 +274,7 @@ export type Database = {
           version?: number | null
         }
         Update: {
+          clock_skew_ms?: number | null
           bin_id?: string | null
           block_row_id?: string | null
           coords?: Json | null
@@ -358,13 +325,6 @@ export type Database = {
             foreignKeyName: "bucket_records_scanned_by_fkey"
             columns: ["scanned_by"]
             isOneToOne: false
-            referencedRelation: "pickers_performance_today"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bucket_records_scanned_by_fkey"
-            columns: ["scanned_by"]
-            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -377,29 +337,93 @@ export type Database = {
           },
         ]
       }
+      chat_message_reactions: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          emoji: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id?: string
+          created_at?: string
+          emoji: string
+          message_id: string
+          user_id?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          emoji?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_message_reactions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_message_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
+          attachment_name: string | null
+          attachment_path: string | null
+          attachment_size: number | null
+          attachment_type: string | null
           content: string
           conversation_id: string
           created_at: string | null
+          duration_ms: number | null
           id: string
           read_by: string[] | null
+          reply_to_id: string | null
           sender_id: string
         }
         Insert: {
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_size?: number | null
+          attachment_type?: string | null
           content: string
           conversation_id: string
           created_at?: string | null
+          duration_ms?: number | null
           id?: string
           read_by?: string[] | null
+          reply_to_id?: string | null
           sender_id: string
         }
         Update: {
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_size?: number | null
+          attachment_type?: string | null
           content?: string
           conversation_id?: string
           created_at?: string | null
+          duration_ms?: number | null
           id?: string
           read_by?: string[] | null
+          reply_to_id?: string | null
           sender_id?: string
         }
         Relationships: [
@@ -408,13 +432,6 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chat_messages_sender_id_fkey"
-            columns: ["sender_id"]
-            isOneToOne: false
-            referencedRelation: "pickers_performance_today"
             referencedColumns: ["id"]
           },
           {
@@ -477,21 +494,7 @@ export type Database = {
             foreignKeyName: "contracts_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "pickers_performance_today"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contracts_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contracts_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "pickers_performance_today"
             referencedColumns: ["id"]
           },
           {
@@ -515,6 +518,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           id: string
+          muted_by: string[]
           name: string | null
           participant_ids: string[]
           type: string
@@ -524,6 +528,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
+          muted_by?: string[]
           name?: string | null
           participant_ids?: string[]
           type: string
@@ -533,19 +538,13 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
+          muted_by?: string[]
           name?: string | null
           participant_ids?: string[]
           type?: string
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "conversations_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "pickers_performance_today"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "conversations_created_by_fkey"
             columns: ["created_by"]
@@ -557,7 +556,10 @@ export type Database = {
       }
       daily_attendance: {
         Row: {
+          check_in_clock_skew_ms: number | null
+          check_out_clock_skew_ms: number | null
           check_in: string | null
+          break_end: string | null
           break_minutes: number
           break_start: string | null
           check_out: string | null
@@ -585,7 +587,10 @@ export type Database = {
           version: number | null
         }
         Insert: {
+          check_in_clock_skew_ms?: number | null
+          check_out_clock_skew_ms?: number | null
           check_in?: string | null
+          break_end?: string | null
           break_minutes?: number
           break_start?: string | null
           check_out?: string | null
@@ -613,7 +618,10 @@ export type Database = {
           version?: number | null
         }
         Update: {
+          check_in_clock_skew_ms?: number | null
+          check_out_clock_skew_ms?: number | null
           check_in?: string | null
+          break_end?: string | null
           break_minutes?: number
           break_start?: string | null
           check_out?: string | null
@@ -653,13 +661,6 @@ export type Database = {
             columns: ["picker_id"]
             isOneToOne: false
             referencedRelation: "pickers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "daily_attendance_recorded_by_fkey"
-            columns: ["recorded_by"]
-            isOneToOne: false
-            referencedRelation: "pickers_performance_today"
             referencedColumns: ["id"]
           },
           {
@@ -729,13 +730,6 @@ export type Database = {
             foreignKeyName: "day_closures_closed_by_fkey"
             columns: ["closed_by"]
             isOneToOne: false
-            referencedRelation: "pickers_performance_today"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "day_closures_closed_by_fkey"
-            columns: ["closed_by"]
-            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -796,13 +790,6 @@ export type Database = {
             foreignKeyName: "day_setups_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "pickers_performance_today"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "day_setups_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -843,6 +830,7 @@ export type Database = {
           updated_at: string | null
           wof_expiry: string | null
           zone: string | null
+          type: string
         }
         Insert: {
           bins_loaded?: number | null
@@ -864,6 +852,7 @@ export type Database = {
           updated_at?: string | null
           wof_expiry?: string | null
           zone?: string | null
+          type?: string
         }
         Update: {
           bins_loaded?: number | null
@@ -885,15 +874,9 @@ export type Database = {
           updated_at?: string | null
           wof_expiry?: string | null
           zone?: string | null
+          type?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "fleet_vehicles_driver_id_fkey"
-            columns: ["driver_id"]
-            isOneToOne: false
-            referencedRelation: "pickers_performance_today"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "fleet_vehicles_driver_id_fkey"
             columns: ["driver_id"]
@@ -1000,81 +983,6 @@ export type Database = {
             columns: ["orchard_id"]
             isOneToOne: true
             referencedRelation: "orchards"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      login_attempts: {
-        Row: {
-          attempt_time: string | null
-          email: string
-          failure_reason: string | null
-          id: string
-          ip_address: unknown
-          success: boolean | null
-          user_agent: string | null
-        }
-        Insert: {
-          attempt_time?: string | null
-          email: string
-          failure_reason?: string | null
-          id?: string
-          ip_address?: unknown
-          success?: boolean | null
-          user_agent?: string | null
-        }
-        Update: {
-          attempt_time?: string | null
-          email?: string
-          failure_reason?: string | null
-          id?: string
-          ip_address?: unknown
-          success?: boolean | null
-          user_agent?: string | null
-        }
-        Relationships: []
-      }
-      messages: {
-        Row: {
-          content: string
-          created_at: string | null
-          id: string
-          read: boolean | null
-          receiver_id: string
-          sender_id: string
-          type: string | null
-        }
-        Insert: {
-          content: string
-          created_at?: string | null
-          id?: string
-          read?: boolean | null
-          receiver_id: string
-          sender_id: string
-          type?: string | null
-        }
-        Update: {
-          content?: string
-          created_at?: string | null
-          id?: string
-          read?: boolean | null
-          receiver_id?: string
-          sender_id?: string
-          type?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "messages_receiver_id_fkey"
-            columns: ["receiver_id"]
-            isOneToOne: false
-            referencedRelation: "pickers_performance_today"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "messages_receiver_id_fkey"
-            columns: ["receiver_id"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1239,13 +1147,6 @@ export type Database = {
             foreignKeyName: "pickers_team_leader_id_fkey"
             columns: ["team_leader_id"]
             isOneToOne: false
-            referencedRelation: "pickers_performance_today"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pickers_team_leader_id_fkey"
-            columns: ["team_leader_id"]
-            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1286,43 +1187,54 @@ export type Database = {
       }
       qc_inspections: {
         Row: {
+          comfortable: boolean | null
           created_at: string | null
+          criteria: Json | null
           grade: string
           id: string
+          informed: boolean | null
           inspector_id: string
           notes: string | null
           orchard_id: string
           photo_url: string | null
           picker_id: string
+          row_number: number | null
+          score: number | null
+          wellbeing_notes: string | null
         }
         Insert: {
+          comfortable?: boolean | null
           created_at?: string | null
+          criteria?: Json | null
           grade: string
           id?: string
+          informed?: boolean | null
           inspector_id: string
           notes?: string | null
           orchard_id: string
           photo_url?: string | null
           picker_id: string
+          row_number?: number | null
+          score?: number | null
+          wellbeing_notes?: string | null
         }
         Update: {
+          comfortable?: boolean | null
           created_at?: string | null
+          criteria?: Json | null
           grade?: string
           id?: string
+          informed?: boolean | null
           inspector_id?: string
           notes?: string | null
           orchard_id?: string
           photo_url?: string | null
           picker_id?: string
+          row_number?: number | null
+          score?: number | null
+          wellbeing_notes?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "qc_inspections_inspector_id_fkey"
-            columns: ["inspector_id"]
-            isOneToOne: false
-            referencedRelation: "pickers_performance_today"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "qc_inspections_inspector_id_fkey"
             columns: ["inspector_id"]
@@ -1341,79 +1253,7 @@ export type Database = {
             foreignKeyName: "qc_inspections_picker_id_fkey"
             columns: ["picker_id"]
             isOneToOne: false
-            referencedRelation: "pickers_performance_today"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "qc_inspections_picker_id_fkey"
-            columns: ["picker_id"]
-            isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      quality_inspections: {
-        Row: {
-          bucket_id: string | null
-          coords: Json | null
-          created_at: string | null
-          id: string
-          inspector_id: string | null
-          notes: string | null
-          photo_url: string | null
-          picker_id: string | null
-          quality_grade: string | null
-        }
-        Insert: {
-          bucket_id?: string | null
-          coords?: Json | null
-          created_at?: string | null
-          id?: string
-          inspector_id?: string | null
-          notes?: string | null
-          photo_url?: string | null
-          picker_id?: string | null
-          quality_grade?: string | null
-        }
-        Update: {
-          bucket_id?: string | null
-          coords?: Json | null
-          created_at?: string | null
-          id?: string
-          inspector_id?: string | null
-          notes?: string | null
-          photo_url?: string | null
-          picker_id?: string | null
-          quality_grade?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quality_inspections_bucket_id_fkey"
-            columns: ["bucket_id"]
-            isOneToOne: false
-            referencedRelation: "bucket_records"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quality_inspections_inspector_id_fkey"
-            columns: ["inspector_id"]
-            isOneToOne: false
-            referencedRelation: "pickers_performance_today"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quality_inspections_inspector_id_fkey"
-            columns: ["inspector_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quality_inspections_picker_id_fkey"
-            columns: ["picker_id"]
-            isOneToOne: false
-            referencedRelation: "pickers"
             referencedColumns: ["id"]
           },
         ]
@@ -1485,51 +1325,6 @@ export type Database = {
           },
         ]
       }
-      sync_conflicts: {
-        Row: {
-          created_at: string | null
-          id: string
-          local_updated_at: string | null
-          local_values: Json | null
-          record_id: string | null
-          resolution: string | null
-          resolved_at: string | null
-          resolved_by: string | null
-          server_updated_at: string | null
-          server_values: Json | null
-          table_name: string
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          local_updated_at?: string | null
-          local_values?: Json | null
-          record_id?: string | null
-          resolution?: string | null
-          resolved_at?: string | null
-          resolved_by?: string | null
-          server_updated_at?: string | null
-          server_values?: Json | null
-          table_name: string
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          local_updated_at?: string | null
-          local_values?: Json | null
-          record_id?: string | null
-          resolution?: string | null
-          resolved_at?: string | null
-          resolved_by?: string | null
-          server_updated_at?: string | null
-          server_values?: Json | null
-          table_name?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       transport_requests: {
         Row: {
           assigned_by: string | null
@@ -1587,13 +1382,6 @@ export type Database = {
             foreignKeyName: "transport_requests_assigned_by_fkey"
             columns: ["assigned_by"]
             isOneToOne: false
-            referencedRelation: "pickers_performance_today"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transport_requests_assigned_by_fkey"
-            columns: ["assigned_by"]
-            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1615,13 +1403,6 @@ export type Database = {
             foreignKeyName: "transport_requests_requested_by_fkey"
             columns: ["requested_by"]
             isOneToOne: false
-            referencedRelation: "pickers_performance_today"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transport_requests_requested_by_fkey"
-            columns: ["requested_by"]
-            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1629,36 +1410,45 @@ export type Database = {
       }
       users: {
         Row: {
+          avatar_url: string | null
           created_at: string | null
           email: string | null
           full_name: string | null
           id: string
           is_active: boolean | null
           orchard_id: string | null
+          phone: string | null
+          preferred_locale: string | null
           privacy_consent_at: string | null
           role: string | null
           team_id: string | null
           updated_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id: string
           is_active?: boolean | null
           orchard_id?: string | null
+          phone?: string | null
+          preferred_locale?: string | null
           privacy_consent_at?: string | null
           role?: string | null
           team_id?: string | null
           updated_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
           is_active?: boolean | null
           orchard_id?: string | null
+          phone?: string | null
+          preferred_locale?: string | null
           privacy_consent_at?: string | null
           role?: string | null
           team_id?: string | null
@@ -1674,72 +1464,189 @@ export type Database = {
           },
         ]
       }
-      wage_rates: {
+      // Añadido a mano (sin generador): 20260418000000_hr_documents + 20261022040000_hr_contract_document
+      hr_documents: {
         Row: {
-          created_at: string
-          effective_date: string
-          hourly_rate: number
+          contract_id: string | null
+          deleted_at: string | null
+          document_type: string
+          expires_at: string | null
+          file_size_bytes: number | null
           id: string
-          job_type: string
+          mime_type: string | null
           notes: string | null
           orchard_id: string
+          picker_id: string | null
+          storage_path: string
+          title: string
+          uploaded_at: string
+          uploaded_by: string | null
+          user_id: string | null
+        }
+        Insert: {
+          contract_id?: string | null
+          deleted_at?: string | null
+          document_type: string
+          expires_at?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          orchard_id: string
+          picker_id?: string | null
+          storage_path: string
+          title: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          contract_id?: string | null
+          deleted_at?: string | null
+          document_type?: string
+          expires_at?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          orchard_id?: string
+          picker_id?: string | null
+          storage_path?: string
+          title?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_documents_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_documents_orchard_id_fkey"
+            columns: ["orchard_id"]
+            isOneToOne: false
+            referencedRelation: "orchards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_documents_picker_id_fkey"
+            columns: ["picker_id"]
+            isOneToOne: false
+            referencedRelation: "pickers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      // Añadido a mano (sin generador): 20261022041000_leave_requests
+      leave_requests: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          deleted_at: string | null
+          end_date: string
+          half_day: boolean
+          id: string
+          orchard_id: string
+          picker_id: string
+          reason: string | null
+          requested_by: string | null
+          start_date: string
+          status: string
+          type: string
           updated_at: string
         }
         Insert: {
           created_at?: string
-          effective_date?: string
-          hourly_rate: number
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          deleted_at?: string | null
+          end_date: string
+          half_day?: boolean
           id?: string
-          job_type: string
-          notes?: string | null
           orchard_id: string
+          picker_id: string
+          reason?: string | null
+          requested_by?: string | null
+          start_date: string
+          status?: string
+          type: string
           updated_at?: string
         }
         Update: {
           created_at?: string
-          effective_date?: string
-          hourly_rate?: number
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          deleted_at?: string | null
+          end_date?: string
+          half_day?: boolean
           id?: string
-          job_type?: string
-          notes?: string | null
           orchard_id?: string
+          picker_id?: string
+          reason?: string | null
+          requested_by?: string | null
+          start_date?: string
+          status?: string
+          type?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "wage_rates_orchard_id_fkey"
+            foreignKeyName: "leave_requests_orchard_id_fkey"
             columns: ["orchard_id"]
             isOneToOne: false
             referencedRelation: "orchards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_picker_id_fkey"
+            columns: ["picker_id"]
+            isOneToOne: false
+            referencedRelation: "pickers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
       }
     }
     Views: {
-      pickers_performance_today: {
-        Row: {
-          buckets_today: number | null
-          full_name: string | null
-          grade_a: number | null
-          grade_b: number | null
-          grade_c: number | null
-          id: string | null
-          orchard_id: string | null
-          rejects: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "users_orchard_id_fkey"
-            columns: ["orchard_id"]
-            isOneToOne: false
-            referencedRelation: "orchards"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
+      presence_today: {
+        Args: { p_orchard_id: string }
+        Returns: {
+          picker_id: string
+          present: boolean
+          since: string | null
+          on_break: boolean
+          on_leave: boolean
+          checked_in_today: boolean
+          left_at: string | null
+          elsewhere_orchard_id: string | null
+          elsewhere_orchard_name: string | null
+        }[]
+      }
       check_in_picker: {
         Args: {
           p_orchard_id: string
@@ -1749,10 +1656,7 @@ export type Database = {
         Returns: Json
       }
       check_out_picker: { Args: { p_attendance_id: string }; Returns: Json }
-      check_rate_limit: { Args: { check_email: string }; Returns: Json }
-      cleanup_old_account_locks: { Args: never; Returns: undefined }
       cleanup_old_audit_logs: { Args: never; Returns: undefined }
-      cleanup_old_login_attempts: { Args: never; Returns: undefined }
       close_payroll_period: {
         Args: {
           p_orchard_id: string
@@ -1773,7 +1677,6 @@ export type Database = {
       }
       get_auth_orchard_id: { Args: never; Returns: string }
       get_auth_role: { Args: never; Returns: string }
-      get_failed_login_count: { Args: { check_email: string }; Returns: number }
       get_my_orchard_id: { Args: never; Returns: string }
       get_record_audit_trail: {
         Args: { p_record_id: string; p_table_name: string }
@@ -1787,7 +1690,6 @@ export type Database = {
         }[]
       }
       health_check: { Args: never; Returns: Json }
-      is_account_locked: { Args: { check_email: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_hr_manager_or_admin: { Args: never; Returns: boolean }
       is_logistics_or_manager: { Args: never; Returns: boolean }
@@ -1805,9 +1707,27 @@ export type Database = {
         }
         Returns: Json
       }
-      unlock_account: {
-        Args: { target_email: string; unlock_reason_text?: string }
+      set_conversation_muted: {
+        Args: { p_conversation_id: string; p_muted: boolean }
         Returns: boolean
+      }
+      update_conversation: {
+        Args: {
+          p_add?: string[] | null
+          p_conversation_id: string
+          p_name?: string | null
+          p_remove?: string[] | null
+        }
+        Returns: Json
+      }
+      update_my_profile: {
+        Args: {
+          p_avatar_url?: string | null
+          p_full_name?: string | null
+          p_phone?: string | null
+          p_preferred_locale?: string | null
+        }
+        Returns: Json
       }
     }
     Enums: {
@@ -2496,11 +2416,6 @@ export const Constants = {
 
 /** Alias conveniente para la fila de la tabla pickers */
 export type SupabasePicker = Database['public']['Tables']['pickers']['Row'];
-
-/** Alias conveniente para la vista pickers_performance_today */
-export type SupabasePerformanceStat = Database['public']['Views']['pickers_performance_today']['Row'] & {
-    picker_id?: string | null;
-};
 
 export function isSupabasePicker(v: unknown): v is Database['public']['Tables']['pickers']['Row'] {
     if (!v || typeof v !== 'object') return false;

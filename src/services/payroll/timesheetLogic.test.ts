@@ -8,12 +8,33 @@ import {
   dayTopUpFor,
   groupSegmentsByPicker,
   splitDayHoursBySegment,
+  splitOrchardDayBySegment,
   type AttendanceForTimesheet,
   type DayBucket,
 } from './timesheetLogic';
 
 const seg = (grossHours: number, travelHours = 0): PaySegment => ({
   orchardId: 'o1', checkIn: null, checkOut: null, open: false, breakStart: null, grossHours, travelHours,
+});
+
+describe('splitOrchardDayBySegment', () => {
+  const s = (checkIn: string, grossHours: number, travelHours = 0, open = false) =>
+    ({ orchardId: 'A', checkIn, checkOut: null, open, breakStart: null, grossHours, travelHours });
+  it('splits the orchard share by time + travel, matching shifts by check-in', () => {
+    const day = { hours: 6, segments: [s('2026-10-12T07:00:00.000Z', 2, 0.5), s('2026-10-12T12:00:00.000Z', 2.5)] };
+    const out = splitOrchardDayBySegment(
+      [{ id: 'b', check_in: '2026-10-13T01:00:00+13:00' }, { id: 'a', check_in: '2026-10-12T20:00:00+13:00' }], day);
+    expect(out?.get('a')).toBe(3);
+    expect(out?.get('b')).toBe(3);
+  });
+  it('an open segment keeps its weight but gets no shift', () => {
+    const day = { hours: 4, segments: [s('2026-10-12T07:00:00Z', 2), s('2026-10-12T10:00:00Z', 2, 0, true)] };
+    expect(splitOrchardDayBySegment([{ id: 'a', check_in: '2026-10-12T07:00:00Z' }], day)?.get('a')).toBe(2);
+  });
+  it('null without a server day or when a closed shift is not in it', () => {
+    expect(splitOrchardDayBySegment([{ id: 'a', check_in: '2026-10-12T07:00:00Z' }], undefined)).toBeNull();
+    expect(splitOrchardDayBySegment([{ id: 'a', check_in: '2026-10-12T08:00:00Z' }], { hours: 2, segments: [s('2026-10-12T07:00:00Z', 2)] })).toBeNull();
+  });
 });
 
 describe('splitDayHoursBySegment', () => {
@@ -51,11 +72,24 @@ describe('buildTimesheetEntry', () => {
   });
 
   it('open shift counts 0 h; open shift from a past day needs review', () => {
-    const today = buildTimesheetEntry(att({ check_out: null }), 'A', undefined, '2026-10-13');
+    const today = buildTimesheetEntry(att({ check_out: null }), 'A', undefined, '2026-10-13', new Date('2026-10-13T03:00:00Z'));
     expect(today.hours_worked).toBe(0);
     expect(today.requires_review).toBe(false);
+    expect(today.long_shift).toBeUndefined();
     const stale = buildTimesheetEntry(att({ check_out: null, date: '2026-10-12' }), 'A', undefined, '2026-10-13');
     expect(stale.requires_review).toBe(true);
+  });
+
+  it('open for more than 14 h, or closed over 14 h without a correction: long shift', () => {
+    const open = buildTimesheetEntry(att({ check_out: null }), 'A', undefined, '2026-10-13', new Date('2026-10-13T10:00:00Z'));
+    expect(open).toMatchObject({ requires_review: true, long_shift: true, hours_worked: 0 });
+    const closed = att({ check_out: '2026-10-13T11:00:00Z' }); // 16 h
+    const raw = buildTimesheetEntry(closed, 'A', undefined, '2026-10-14');
+    expect(raw).toMatchObject({ requires_review: true, long_shift: true, hours_worked: 14 });
+    const fixed = buildTimesheetEntry({ ...closed, corrected_at: '2026-10-14T00:00:00Z' }, 'A', undefined, '2026-10-14');
+    expect(fixed.long_shift).toBeUndefined();
+    expect(fixed.hours_worked).toBe(16);
+    expect(fixed.requires_review).toBe(true); // > 14 h: se sigue señalando, pero ya se puede aprobar
   });
 
   it('more than 14 h needs review; verified shifts are marked', () => {

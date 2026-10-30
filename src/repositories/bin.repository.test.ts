@@ -10,7 +10,7 @@ type Thenable<T> = T & { then?: never };
 function makeBuilder<T>(terminal: Thenable<{ data: T | null; error: unknown | null }>) {
     const calls: { method: string; args: unknown[] }[] = [];
     const chain: Record<string, unknown> = {};
-    for (const method of ['select', 'insert', 'update', 'delete', 'eq', 'single']) {
+    for (const method of ['select', 'insert', 'update', 'delete', 'eq', 'is', 'single']) {
         chain[method] = vi.fn((...args: unknown[]) => {
             calls.push({ method, args });
             return chain;
@@ -42,7 +42,7 @@ describe('binRepository.getByOrchard', () => {
 
         const result = await binRepository.getByOrchard('orchard-xyz');
         expect(fromMock).toHaveBeenCalledWith('bins');
-        expect(calls.find((c) => c.method === 'select')?.args[0]).toBe('*');
+        expect(calls.find((c) => c.method === 'select')?.args[0]).toBe('id, bin_code, status, variety, filled_at, deleted_at');
         expect(calls.find((c) => c.method === 'eq')?.args).toEqual(['orchard_id', 'orchard-xyz']);
         expect(result).toEqual([{ id: 'b1' }]);
     });

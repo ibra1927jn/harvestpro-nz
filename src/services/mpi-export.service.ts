@@ -10,6 +10,8 @@
  */
 import { supabase } from '@/services/supabase';
 import { logger } from '@/utils/logger';
+import { fetchAllRows } from '@/utils/fetchAllRows';
+import { nzMidnight, nzEndOfDay } from '@/utils/nzst';
 
 // =============================================
 // TYPES
@@ -165,15 +167,25 @@ export const mpiExportService = {
     logger.info(`[MPI] Generating batch export for ${orchardId}: ${startDate} to ${endDate}`);
 
     // Get unique bin IDs in the date range
-    const { data: binRecords } = await supabase
-      .from('bucket_records')
-      .select('bin_id')
-      .eq('orchard_id', orchardId)
-      .gte('scanned_at', startDate)
-      .lte('scanned_at', endDate)
-      .not('bin_id', 'is', null);
+    // Paginado (una semana son ~20.000 cubetas: se exportaban solo los bins de
+    // las primeras 1000) y con días NZ completos: una fecha sola la lee Postgres
+    // como medianoche UTC = 13:00 en NZ. Prueba de carga 2026-10-21.
+    const fromIso = /^\d{4}-\d{2}-\d{2}$/.test(startDate) ? nzMidnight(startDate) : startDate;
+    const toIso = /^\d{4}-\d{2}-\d{2}$/.test(endDate) ? nzEndOfDay(endDate) : endDate;
+    const binRecords = await fetchAllRows<{ bin_id: string | null }>((from, to) =>
+      supabase
+        .from('bucket_records')
+        .select('bin_id')
+        .eq('orchard_id', orchardId)
+        .is('deleted_at', null)
+        .gte('scanned_at', fromIso)
+        .lte('scanned_at', toIso)
+        .not('bin_id', 'is', null)
+        .order('id')
+        .range(from, to)
+    );
 
-    const uniqueBinIds = [...new Set((binRecords || []).map(r => r.bin_id).filter(Boolean))];
+    const uniqueBinIds = [...new Set(binRecords.map(r => r.bin_id).filter(Boolean))] as string[];
 
     // Generate traces for each bin
     const records: MPITraceRecord[] = [];

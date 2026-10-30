@@ -17,7 +17,8 @@ export const QUICK_REPLIES = [
     { emoji: '🔄', label: 'chat.qr.need_backup' },
 ];
 
-export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+// Mismo conjunto que el CHECK de chat_message_reactions (migración 20261023070000)
+export { REACTION_EMOJIS } from '@/services/chat-reactions.logic';
 
 // ── Avatar colors by name hash ──
 const AVATAR_COLORS = [

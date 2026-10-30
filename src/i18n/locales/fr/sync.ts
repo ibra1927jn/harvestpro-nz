@@ -35,6 +35,7 @@ const sync: TranslationDict = {
     'sync.type.timesheet': 'Modification de feuille d’heures',
     'sync.type.picker': 'Modification de cueilleur',
     'sync.type.qc_inspection': 'Inspection contrôle qualité',
+    'sync.type.bin': 'Mise à jour de bin',
     'sync.type.unlink': 'Retrait de l’équipe',
     'rejected.summary_one': '{n} scan de seau refusé (non compté dans la paie)',
     'rejected.summary_other': '{n} scans de seau refusés (non comptés dans la paie)',
@@ -66,6 +67,8 @@ const sync: TranslationDict = {
     'dlq.discard_all': 'Tout écarter ({n})',
     'dlq.desc': 'Suivez et gérez les éléments dont la synchro a échoué. Les erreurs sont classées par gravité.',
     'dlq.none': 'Aucun élément en échec.',
+    'sync.reason.day_closed': 'la journée était déjà clôturée lors de l’envoi. Demandez au responsable ou à un admin de l’ajouter dans la feuille d’heures',
+    'sync.reason.pay_week_closed': 'la semaine de paie était déjà clôturée lors de l’envoi. Demandez à la paie de la rouvrir ou de l’ajouter à la main',
 };
 
 export default sync;

@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw';
-import { MOCK_IDS, mockDatabase } from '../data';
+import { MOCK_IDS, mockDatabase, mockPickersPerformanceToday } from '../data';
 
 export const functionsHandlers = [
   // Provisiona un nuevo orchard (onboarding)
@@ -14,7 +14,7 @@ export const functionsHandlers = [
 
   // Cálculo de nómina — formato exacto que espera PayrollResultSchema (Zod)
   http.post('*/functions/v1/calculate-payroll', () => {
-    const pickers = (mockDatabase['pickers_performance_today'] as Array<Record<string, unknown>>) ?? [];
+    const pickers = mockPickersPerformanceToday as Array<Record<string, unknown>>;
     const settings = (mockDatabase['harvest_settings'] as Array<Record<string, unknown>>)?.[0] ?? {};
     const PIECE_RATE = (settings.piece_rate as number) ?? 6.50;
     const MIN_WAGE   = (settings.min_wage_rate as number) ?? 23.95;
@@ -107,7 +107,7 @@ export const functionsHandlers = [
 
   // Verificación de cumplimiento NZ — calcula violaciones reales desde mock data
   http.post('*/functions/v1/check-compliance', () => {
-    const pickers = (mockDatabase['pickers_performance_today'] as Array<Record<string, unknown>>) ?? [];
+    const pickers = mockPickersPerformanceToday as Array<Record<string, unknown>>;
     const settings = (mockDatabase['harvest_settings'] as Array<Record<string, unknown>>)?.[0] ?? {};
     const PIECE_RATE = (settings.piece_rate as number) ?? 6.50;
     const MIN_WAGE   = (settings.min_wage_rate as number) ?? 23.95;

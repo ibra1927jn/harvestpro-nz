@@ -26,7 +26,7 @@ vi.mock('@/components/ui/InlineEdit', () => ({
 import FleetTab from './FleetTab';
 
 const makeTractor = (id: string, name: string, status: string, zone: string, driver: string, binsLoaded = 5, maxCap = 20) => ({
-    id, name, status, zone, driver_name: driver,
+    id, name, type: 'tractor', status, zone, driver_name: driver,
     bins_loaded: binsLoaded, max_capacity: maxCap,
     load_status: binsLoaded === 0 ? 'empty' : binsLoaded >= maxCap ? 'full' : 'partial',
     last_update: '2026-03-10T12:00:00',

@@ -16,6 +16,7 @@ import { setSentryUser } from '@/config/sentry';
 import { analytics } from '@/config/analytics';
 import { authContextRepository } from '@/repositories/auth-context.repository';
 import type { AuthState } from '@/context/auth.types';
+import { canSwitchOwnOrchard } from '@/config/orchardAccess';
 
 // =============================================
 // ROLE MAPPING (pure function, easily testable)
@@ -88,9 +89,10 @@ export async function loadUserProfile(userId: string): Promise<{
     throw new Error('User profile not found. Please contact support.');
   }
 
-  // 2. Auto-assign orchard if none
+  // 2. Auto-assign orchard if none — solo roles de empresa / oficina: al personal
+  // de campo lo vincula el manager o RRHH (el servidor no deja que se mueva solo)
   let orchardId = userData?.orchard_id;
-  if (!orchardId) {
+  if (!orchardId && canSwitchOwnOrchard(userData?.role)) {
     orchardId = await authContextRepository.getFirstOrchardId();
     if (orchardId) {
       await authContextRepository.assignOrchard(userId, orchardId);
@@ -107,8 +109,9 @@ export async function loadUserProfile(userId: string): Promise<{
   }
 
   // 4. Set up observability
-  setSentryUser({ id: userId, email: userData?.email, role: roleEnum ?? undefined });
-  analytics.identify(userId, { role: roleEnum, orchard_id: orchardId, email: userData?.email });
+  // Solo el uuid opaco de auth: nunca email ni nombre hacia Sentry/PostHog (NZ Privacy Act)
+  setSentryUser({ id: userId, role: roleEnum ?? undefined });
+  analytics.identify(userId, { role: roleEnum, orchard_id: orchardId });
 
   // 5. Build state update
   const stateUpdate: Partial<AuthState> = {

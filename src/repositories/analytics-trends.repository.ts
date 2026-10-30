@@ -25,7 +25,7 @@ export const analyticsTrendsRepository = {
         const [attendance, buckets] = await Promise.all([
             fetchAllRows<PayInputs['attendance'][number]>((from, to) => supabase
                 .from('daily_attendance')
-                .select('picker_id, orchard_id, date, check_in, check_out, break_start, break_minutes')
+                .select('picker_id, orchard_id, date, check_in, check_out, break_start, break_minutes, corrected_at')
                 .eq('orchard_id', orchardId)
                 .is('deleted_at', null)
                 .gte('date', startDate)
@@ -39,6 +39,7 @@ export const analyticsTrendsRepository = {
                 .is('deleted_at', null)
                 .gte('scanned_at', nzMidnight(startDate))
                 .lte('scanned_at', nzEndOfDay(endDate))
+                .order('scanned_at') // el índice da el orden: sin reordenar todo en cada página
                 .order('id')
                 .range(from, to)),
         ]);
@@ -47,14 +48,21 @@ export const analyticsTrendsRepository = {
 
     /** Get bucket records for a date range grouped by row */
     async getBucketsByRowInRange(orchardId: string, startDate: string, endDate: string) {
-        const { data, error } = await supabase
-            .from('bucket_records')
-            .select('row_number, picker_id, scanned_at')
-            .eq('orchard_id', orchardId)
-            .gte('scanned_at', `${startDate}T00:00:00`)
-            .lte('scanned_at', `${endDate}T23:59:59`);
-        if (error) throw error;
-        return data || [];
+        // Paginado (un solo día de huerto pasa de las 1000 filas que corta
+        // PostgREST: el mapa de calor salía con un tercio de las cubetas) y con
+        // la medianoche NZ (antes 'T00:00:00' se leía como UTC: 13 h de desfase).
+        // Prueba de carga 2026-10-21.
+        return fetchAllRows<{ row_number: number; picker_id: string; scanned_at: string }>((from, to) =>
+            supabase
+                .from('bucket_records')
+                .select('row_number, picker_id, scanned_at')
+                .eq('orchard_id', orchardId)
+                .is('deleted_at', null)
+                .gte('scanned_at', nzMidnight(startDate))
+                .lte('scanned_at', nzEndOfDay(endDate))
+                .order('scanned_at')
+                .order('id')
+                .range(from, to));
     },
 
     /** Get day closures for a date range */
@@ -134,6 +142,7 @@ export const analyticsTrendsRepository = {
                 .lt('scanned_at', utcToStr)
                 .is('deleted_at', null)
                 .order('scanned_at')
+                .order('id') // desempate estable entre páginas (horas repetidas)
                 .range(from, to);
 
             if (error) throw error;

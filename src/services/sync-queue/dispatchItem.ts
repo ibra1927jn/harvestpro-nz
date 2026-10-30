@@ -2,7 +2,6 @@
  * Envía un elemento de la cola a su procesador, validando antes el payload con Zod.
  */
 import { bucketLedgerService } from '../bucket-ledger.service';
-import { simpleMessagingService } from '../simple-messaging.service';
 import { userService } from '../user.service';
 import { toNZST } from '@/utils/nzst';
 import type { QueuedSyncItem } from '../db';
@@ -14,6 +13,9 @@ import {
   processPicker,
   processQCInspection,
   processUnlink,
+  processBin,
+  processLeaveRequest,
+  processChatReaction,
 } from '../sync-processors';
 import type { AttendancePayload, PickerPayload, QCInspectionPayload } from '../sync-processors';
 
@@ -21,7 +23,14 @@ export type SyncSchemas = typeof import('../sync.schemas');
 
 type Handler = (item: QueuedSyncItem, schemas: SyncSchemas) => Promise<unknown>;
 
-const HANDLERS: Record<QueuedSyncItem['type'], Handler> = {
+/**
+ * Sin 'MESSAGE': el chat va por messageOutbox y ese procesador llamaba
+ * sendMessage(receiverId, content, type) con la firma (conversationId,
+ * senderId, content), así que nunca funcionó (auditoría 2026-10-23, punto 7).
+ * Un elemento antiguo de ese tipo que quede en un móvil va a la cola de
+ * fallidos como tipo desconocido (runQueuePass), no se pierde en silencio.
+ */
+const HANDLERS: Partial<Record<QueuedSyncItem['type'], Handler>> = {
   SCAN: (item, s) => {
     // 🔧 BUG-3 fix: validar el payload antes de procesarlo
     const scanData = s.ScanPayloadSchema.parse(item.payload);
@@ -35,10 +44,6 @@ const HANDLERS: Record<QueuedSyncItem['type'], Handler> = {
     const assignData = s.AssignmentPayloadSchema.parse(item.payload);
     return userService.assignUserToOrchard(assignData.userId, assignData.orchardId);
   },
-  MESSAGE: (item, s) => {
-    const msgData = s.MessagePayloadSchema.parse(item.payload);
-    return simpleMessagingService.sendMessage(msgData.receiverId, msgData.content, msgData.type || 'direct');
-  },
   // Procesadores extraídos (Strategy), con validación Zod
   CONTRACT: (item, s) => processContract(s.ContractPayloadSchema.parse(item.payload), item.updated_at),
   TRANSPORT: (item, s) => processTransport(s.TransportPayloadSchema.parse(item.payload), item.updated_at),
@@ -47,6 +52,9 @@ const HANDLERS: Record<QueuedSyncItem['type'], Handler> = {
   QC_INSPECTION: (item, s) =>
     processQCInspection(s.QCInspectionPayloadSchema.parse(item.payload) as QCInspectionPayload),
   UNLINK: (item, s) => processUnlink(s.UnlinkPayloadSchema.parse(item.payload)),
+  BIN: (item, s) => processBin(s.BinPayloadSchema.parse(item.payload)),
+  LEAVE_REQUEST: (item, s) => processLeaveRequest(s.LeaveRequestPayloadSchema.parse(item.payload)),
+  CHAT_REACTION: (item, s) => processChatReaction(s.ChatReactionPayloadSchema.parse(item.payload)),
 };
 
 /**

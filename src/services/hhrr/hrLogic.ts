@@ -36,6 +36,15 @@ export interface VisaDoc {
   expires_at: string | null;
 }
 
+/** Documento de RRHH de una persona (hr_documents, versión ligera) */
+export interface PersonDoc extends VisaDoc {
+  id: string;
+  document_type: string;
+  /** Contrato del que es copia firmada (employment_agreement) */
+  contract_id: string | null;
+  storage_path: string;
+}
+
 /** Visado: el documento "Work Visa" más reciente; sin documento = not_recorded */
 export function latestVisaFor(personId: string, visas: VisaDoc[]): VisaDoc | undefined {
   return visas
@@ -48,30 +57,141 @@ export function visaStatusOf(visa: VisaDoc | undefined, todayNZ: string): Employ
   return visa.expires_at && visa.expires_at < todayNZ ? 'expired' : 'work_visa';
 }
 
-/** Ficha de empleado a partir de la persona, su contrato vigente y su visado */
+/**
+ * Copia firmada de un contrato: documento employment_agreement enlazado por
+ * contract_id que cubre la fecha de fin del contrato. Al subirla se le pone
+ * expires_at = end_date; si luego el contrato se renueva (fin más lejano) la
+ * copia antigua deja de cubrirlo y hace falta el PDF nuevo. Si hay varias,
+ * la de fecha más lejana.
+ */
+export function signedCopyOf(
+  contract: { id: string; end_date: string | null } | undefined,
+  docs: PersonDoc[]
+): PersonDoc | undefined {
+  if (!contract) return undefined;
+  return docs
+    .filter(d => d.document_type === 'employment_agreement' && d.contract_id === contract.id)
+    .filter(d => !contract.end_date || !d.expires_at || d.expires_at >= contract.end_date)
+    .sort((a, b) => (b.expires_at ?? '9999').localeCompare(a.expires_at ?? '9999'))[0];
+}
+
+/**
+ * Contratos pendientes de RRHH: los borradores y los que caducan, más los
+ * activos sin copia firmada (la ley exige tener copia del acuerdo de empleo).
+ */
+export function pendingContractIds(
+  contracts: { id: string; status: string; end_date: string | null }[],
+  docs: PersonDoc[]
+): string[] {
+  return contracts
+    .filter(c => c.status === 'draft' || c.status === 'expiring' || (c.status === 'active' && !signedCopyOf(c, docs)))
+    .map(c => c.id);
+}
+
+/* ── Dominios de los filtros ─────────────────── */
+
+/** Estado de la persona: todos los valores, salgan o no en la lista */
+export const EMPLOYEE_STATUSES: ReadonlyArray<Employee['status']> = ['active', 'on_leave', 'pending', 'terminated'];
+export const VISA_STATUSES: ReadonlyArray<Employee['visa_status']> = ['work_visa', 'expired', 'not_recorded'];
+export const CONTRACT_TYPES: ReadonlyArray<Employee['contract_type']> = ['permanent', 'seasonal', 'casual'];
+
+/**
+ * Opciones de un filtro: el dominio completo con el recuento de cada valor.
+ * Las de 0 se quedan (en gris) en vez de desaparecer: antes el filtro de
+ * estado solo ofrecía "Activo" porque se sacaba de los valores presentes.
+ */
+export function domainOptions(
+  domain: ReadonlyArray<string>,
+  values: ReadonlyArray<string>
+): { value: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
+  return domain.map(value => ({ value, count: counts.get(value) ?? 0 }));
+}
+
+/* ── Alta completa ("qué falta") ───────────── */
+
+export type OnboardingItem = 'contract' | 'signed_copy' | 'visa' | 'tax_declaration' | 'health_safety_cert';
+
+/**
+ * Lo que falta para dar el alta por completa: contrato activo, copia firmada
+ * del acuerdo, visado vigente (caducado o sin registrar: no se sabe quién es
+ * ciudadano), declaración de impuestos (IR330) y certificado de seguridad.
+ * Un certificado caducado cuenta como que falta.
+ */
+export function missingOnboardingItems(
+  employee: Pick<Employee, 'id' | 'visa_status'>,
+  documents: PersonDoc[],
+  contract: { id: string; end_date: string | null } | undefined,
+  todayNZ: string
+): OnboardingItem[] {
+  const mine = documents.filter(d => d.picker_id === employee.id || d.user_id === employee.id);
+  const valid = (type: string) => mine.some(d => d.document_type === type && (!d.expires_at || d.expires_at >= todayNZ));
+  const out: OnboardingItem[] = [];
+  if (!contract) out.push('contract');
+  else if (!signedCopyOf(contract, mine)) out.push('signed_copy');
+  if (employee.visa_status !== 'work_visa') out.push('visa');
+  if (!mine.some(d => d.document_type === 'tax_declaration')) out.push('tax_declaration');
+  if (!valid('health_safety_cert')) out.push('health_safety_cert');
+  return out;
+}
+
+/**
+ * Estado de la persona: baja → terminated; ausencia aprobada que cubre hoy →
+ * on_leave; alta sin contrato activo o sin copia firmada → pending; si no, active.
+ * (El visado y los certificados salen en el semáforo pero no bloquean el alta:
+ * no se registra quién es ciudadano.)
+ */
+export function employeeStatusOf(
+  active: boolean,
+  onLeaveToday: boolean,
+  missing: ReadonlyArray<OnboardingItem>
+): Employee['status'] {
+  if (!active) return 'terminated';
+  if (onLeaveToday) return 'on_leave';
+  if (missing.includes('contract') || missing.includes('signed_copy')) return 'pending';
+  return 'active';
+}
+
+/** Datos de contexto que la ficha no saca de la persona ni del contrato */
+export interface EmployeeContext {
+  /** Documentos de toda la empresa (visados, copias firmadas, certificados…) */
+  documents?: PersonDoc[];
+  /** Personas con una ausencia aprobada que cubre hoy (leave_requests) */
+  onLeaveToday?: ReadonlySet<string>;
+}
+
+/** Ficha de empleado a partir de la persona, su contrato vigente y sus documentos */
 export function buildEmployee(
   person: StaffPerson,
   contracts: ActiveContractRow[],
   visas: VisaDoc[],
   todayNZ: string,
-  nowISO: string
+  nowISO: string,
+  ctx: EmployeeContext = {}
 ): Employee {
   const contract = contracts.find(c => c.employee_id === person.id);
   const visa = latestVisaFor(person.id, visas);
+  const documents = ctx.documents ?? [];
+  const signed = signedCopyOf(contract, documents);
+  const visa_status = visaStatusOf(visa, todayNZ);
+  const missing = missingOnboardingItems({ id: person.id, visa_status }, documents, contract, todayNZ);
   return {
     id: person.id,
     full_name: person.full_name,
     email: person.email,
     role: person.role,
-    status: person.active ? 'active' : 'terminated',
+    status: employeeStatusOf(person.active, ctx.onLeaveToday?.has(person.id) ?? false, missing),
     contract_type: (contract?.type || 'seasonal') as Employee['contract_type'],
     contract_start: contract?.start_date || person.created_at || nowISO,
     contract_end: contract?.end_date || undefined,
     hourly_rate: contract?.hourly_rate || NZ_MINIMUM_WAGE_2026,
-    visa_status: visaStatusOf(visa, todayNZ),
+    visa_status,
     visa_expiry: visa?.expires_at ?? undefined,
     contract_id: contract?.id,
     contract_updated_at: contract?.updated_at ?? undefined,
+    contract_document: signed ? { id: signed.id, storage_path: signed.storage_path } : undefined,
+    missing_items: missing,
     source: person.source,
     hire_date: person.created_at || nowISO,
     orchard_id: person.orchard_id,
@@ -91,7 +211,8 @@ export interface WeekPayRow {
 }
 
 /**
- * Filas de nómina: salen las personas activas y cualquiera que haya cobrado.
+ * Filas de nómina: salen las personas en plantilla (activas, de permiso o con
+ * el alta a medias) y cualquiera que haya cobrado.
  * El mínimo garantizado es la tarifa del contrato si es mayor que el general.
  */
 export function buildPayrollEntries(
@@ -102,7 +223,7 @@ export function buildPayrollEntries(
 ): PayrollEntry[] {
   const payById = new Map(rows.map(r => [r.id, r]));
   return employees
-    .filter(e => e.status === 'active' || payById.has(e.id))
+    .filter(e => e.status !== 'terminated' || payById.has(e.id))
     .map(emp => {
       const p = payById.get(emp.id);
       const hours = p?.hours ?? 0;

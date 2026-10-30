@@ -6,8 +6,12 @@ import {
     jsonResponse,
     checkRateLimit,
     ComplianceCheckSchema,
+    AuthError,
 } from '../_shared/security.ts'
-import { payForRange, pieceRateFor, nzDateOf, isNZPublicHoliday, PAY_RULES } from '../_shared/pay-rules.ts'
+import { attendanceRowOf, payForRange, pieceRateOn, nzDateOf, isNZPublicHoliday, PAY_RULES } from '../_shared/pay-rules.ts'
+import { loadDailyPieceRates } from '../_shared/piece-rates.ts'
+import { pieceRatesReader } from '../_shared/rates-client.ts'
+import { orchardDayView } from '../_shared/payroll-orchard.ts'
 
 /**
  * check-compliance — Server-side NZ Employment Relations Act compliance
@@ -63,7 +67,7 @@ serve(async (req) => {
     const origin = req.headers.get('Origin')
 
     try {
-        const { user, supabase } = await requireRole(req, ['admin', 'manager', 'team_leader'])
+        const { user, supabase, role } = await requireRole(req, ['admin', 'manager', 'team_leader'])
         checkRateLimit(user.id)
 
         const body = await req.json()
@@ -74,6 +78,16 @@ serve(async (req) => {
         }
 
         const { orchard_id, picker_ids } = ComplianceCheckSchema.parse(body)
+
+        // Manager y team leader: solo su huerto, y de la paga solo la parte de su
+        // huerto (decisión del dueño, 2026-10-27). Admin ve el día entero.
+        const ownOrchardOnly = role !== 'admin'
+        if (ownOrchardOnly) {
+            const { data: me } = await supabase.from('users').select('orchard_id').eq('id', user.id).maybeSingle()
+            if (!me?.orchard_id || me.orchard_id !== orchard_id) {
+                throw new AuthError('You can only check compliance in your own orchard', 403)
+            }
+        }
 
         // Tarifas del huerto (harvest_settings; la tabla orchards no tiene estas columnas)
         const { data: settings } = await supabase
@@ -92,17 +106,23 @@ serve(async (req) => {
             .formatToParts(new Date(`${today}T12:00:00Z`))
             .find(p => p.type === 'timeZoneName')?.value.replace('GMT', '') || '+13:00'
 
+        // Fichajes, cubetas y precios con service role, después de requireRole y
+        // del huerto: el manager y el TL solo leen los de su huerto (20261027050000,
+        // 20261027070000), pero el día de la persona puede incluir otro huerto. No
+        // salen en la respuesta: solo la parte de este huerto y los avisos del día.
+        const rates = pieceRatesReader()
+
         // Tramos de hoy de estas personas en TODOS los huertos (pueden haber
         // pasado por otro huerto: el mínimo se comprueba con el día entero)
-        const { data: attendance } = await supabase
+        const { data: attendance } = await rates
             .from('daily_attendance')
-            .select('picker_id, orchard_id, check_in, check_out, break_start, break_minutes, date')
+            .select('picker_id, orchard_id, check_in, check_out, break_start, break_minutes, date, corrected_at')
             .eq('date', today)
             .is('deleted_at', null)
             .in('picker_id', picker_ids)
 
         // Cubetas del día NZ (todos los huertos); los rechazos los quita el cálculo
-        const { data: bucketCounts } = await supabase
+        const { data: bucketCounts } = await rates
             .from('bucket_records')
             .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
             .is('deleted_at', null)
@@ -110,22 +130,28 @@ serve(async (req) => {
             .lte('scanned_at', `${today}T23:59:59${nzOffset}`)
             .in('picker_id', picker_ids)
 
-        // Precio de cada cubeta: variedad (huerto → empresa) o precio del huerto
-        const [{ data: varietyRows }, { data: settingsRows }] = await Promise.all([
-            supabase.from('variety_rates').select('orchard_id, variety, piece_rate'),
-            supabase.from('harvest_settings').select('orchard_id, piece_rate'),
+        // Precio de cada cubeta: el de hoy de su variedad en su huerto (piece_rates);
+        // sin él, el general del huerto de hoy; si no, harvest_settings.piece_rate
+        const [dailyRates, { data: settingsRows }] = await Promise.all([
+            loadDailyPieceRates(rates, today, today),
+            rates.from('harvest_settings').select('orchard_id, piece_rate'),
         ])
-        const varietyRates = ((varietyRows ?? []) as { orchard_id: string | null; variety: string; piece_rate: number }[])
-            .map(v => ({ orchardId: v.orchard_id, variety: v.variety, pieceRate: Number(v.piece_rate) }))
         const orchardRates: Record<string, number> = {}
         for (const s of (settingsRows ?? []) as { orchard_id: string; piece_rate: number | null }[]) {
             if (s.piece_rate != null) orchardRates[s.orchard_id] = Number(s.piece_rate)
         }
 
-        type AttRow = { picker_id: string; orchard_id: string | null; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null; date: string }
+        type AttRow = { picker_id: string; orchard_id: string | null; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null; date: string; corrected_at: string | null }
         type BktRow = { picker_id: string; orchard_id: string | null; variety: string | null; scanned_at: string; quality_grade: string | null }
-        const attRows = (attendance ?? []) as AttRow[]
-        const bktRows = (bucketCounts ?? []) as BktRow[]
+        // Manager y TL: solo quien ha trabajado hoy en su huerto (fichaje o cubeta
+        // aquí); de los demás no se mira nada de otro huerto
+        const workedHere = new Set<string>([
+            ...((attendance ?? []) as AttRow[]).filter(a => a.orchard_id === orchard_id).map(a => a.picker_id),
+            ...((bucketCounts ?? []) as BktRow[]).filter(b => b.orchard_id === orchard_id).map(b => b.picker_id),
+        ])
+        const visible = (pickerId: string) => !ownOrchardOnly || workedHere.has(pickerId)
+        const attRows = ((attendance ?? []) as AttRow[]).filter(a => visible(a.picker_id))
+        const bktRows = ((bucketCounts ?? []) as BktRow[]).filter(b => visible(b.picker_id))
 
         // Get picker names
         const { data: pickers } = await supabase
@@ -144,25 +170,26 @@ serve(async (req) => {
             const violations: ComplianceViolation[] = []
             const shifts = attRows.filter(a => a.picker_id === pickerId)
             const [range] = payForRange({
-                attendance: shifts.map(a => ({
-                    pickerId, date: today, orchardId: a.orchard_id,
-                    checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes,
-                })),
+                // Igual que nómina (tope de 14 h salvo corrección posterior a la salida)
+                attendance: shifts.map(a => ({ ...attendanceRowOf(a), pickerId, date: today })),
                 buckets: bktRows.filter(b => b.picker_id === pickerId).map(b => ({
                     pickerId, scannedAt: b.scanned_at, qualityGrade: b.quality_grade, orchardId: b.orchard_id, variety: b.variety,
-                    pieceRate: pieceRateFor({ orchardId: b.orchard_id, variety: b.variety }, { varietyRates, orchardRates, fallback: pieceRate }),
+                    pieceRate: pieceRateOn(dailyRates, b.orchard_id, b.variety, nzDateOf(b.scanned_at), (b.orchard_id ? orchardRates[b.orchard_id] : undefined) ?? pieceRate),
                 })),
                 pieceRate,
                 minWage,
                 isPublicHoliday: () => isHoliday,
                 now,
             })
-            const day = range?.dayDetails[0]
+            const wholeDay = range?.dayDetails[0]
+            // Cifras de pago: las del día entero (admin) o la parte de este huerto
+            const day = wholeDay && ownOrchardOnly ? orchardDayView(wholeDay, orchard_id) : wholeDay
             const buckets = day?.buckets ?? 0
-            // Horas pagables del día (todos los tramos, trayecto, un descanso)
+            // Horas pagables (todos los tramos, trayecto, un descanso; o su parte aquí)
             const hoursWorked = day?.hours ?? 0
-            // Tiempo en el día (bruto) para los avisos de descanso y de exceso de horas
-            const elapsedHours = (day?.segments ?? []).reduce((sum, s) => sum + s.grossHours + s.travelHours, 0)
+            // Tiempo en el día entero (bruto) para los avisos de descanso y de
+            // exceso de horas: la ley mira el día de la persona, no el huerto
+            const elapsedHours = (wholeDay?.segments ?? []).reduce((sum, s) => sum + s.grossHours + s.travelHours, 0)
             const mealBreakRecorded = shifts.some(a => !!a.break_start)
             const minWageApplied = isHoliday ? minWage * PAY_RULES.publicHolidayMultiplier : minWage
             const pay = {

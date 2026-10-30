@@ -20,8 +20,10 @@
  *  R5  Sin fichaje: del primer al último escaneo pagable de ese día.
  *  R1b Una cubeta escaneada dentro de un tramo cerrado que cruza la medianoche
  *      es del día de ese tramo (las horas y las cubetas van juntas).
- *  R6  Cubeta 'reject': no se paga. Cada cubeta paga el precio de su variedad
- *      en su huerto → de su variedad en la empresa → del huerto → general.
+ *  R6  Cubeta 'reject': no se paga. Cada cubeta paga el precio del DÍA (fecha NZ
+ *      del escaneo) de su variedad en su huerto (el último fijado ese día o
+ *      antes) → el general del huerto ese día → harvest_settings del huerto →
+ *      general (decisión del dueño 2026-10-23: un cambio no reescribe días pasados).
  *  R7  Mínimo/h = máx(legal 23.95, configurado, contrato si es mayor).
  *  R8  Complemento POR DÍA: total del día = M × máx(cubetas, mínimo × horas),
  *      M = 1.5 en festivo nacional NZ (Holidays Act s.50), 1 si no. El
@@ -43,7 +45,12 @@ export interface RefShift {
     checkOut: string | null;
     breakStart?: string | null;
     breakMinutes?: number | null;
+    /** Hoja corregida: un tramo de más de 14 h se paga entero */
+    corrected?: boolean;
 }
+
+/** R-tope (ronda 24-10): un tramo sin corregir cuenta como mucho 14 h desde su entrada */
+const MAX_UNREVIEWED_MS = 14 * 3_600_000;
 
 export interface RefBucket {
     pickerId: string;
@@ -54,7 +61,9 @@ export interface RefBucket {
 }
 
 export interface RefRates {
-    varietyRates: ReadonlyArray<{ orchardId: string | null; variety: string; rate: number }>;
+    /** piece_rates: precio por huerto, variedad (null = general) y día desde el que vale */
+    daily: ReadonlyArray<{ orchardId: string; variety: string | null; from: string; rate: number }>;
+    /** harvest_settings.piece_rate de cada huerto (si no tiene precio ese día) */
     orchardRates: Readonly<Record<string, number>>;
     fallback: number;
 }
@@ -115,17 +124,24 @@ export function refNzDate(t: number | string): string {
     return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
-/** R6: precio de una cubeta */
-export function refRate(b: { orchardId: string | null; variety: string | null }, rates: RefRates): number {
-    const v = (b.variety ?? '').trim().toLowerCase();
-    if (v) {
-        for (const r of rates.varietyRates) {
-            if (r.orchardId === b.orchardId && r.variety.trim().toLowerCase() === v) return r.rate;
+/** R6: precio de una cubeta (el de su día) */
+export function refRate(b: { orchardId: string | null; variety: string | null; scannedAt: string }, rates: RefRates): number {
+    const date = refNzDate(b.scannedAt);
+    const norm = (v: string | null) => (v ?? '').trim().toLowerCase();
+    const latest = (variety: string | null) => {
+        let best: { from: string; rate: number } | null = null;
+        for (const r of rates.daily) {
+            if (r.orchardId !== b.orchardId || norm(r.variety) !== norm(variety) || r.from > date) continue;
+            if (!best || r.from > best.from) best = r;
         }
-        for (const r of rates.varietyRates) {
-            if (r.orchardId === null && r.variety.trim().toLowerCase() === v) return r.rate;
-        }
+        return best;
+    };
+    if (norm(b.variety)) {
+        const own = latest(b.variety);
+        if (own) return own.rate;
     }
+    const general = latest(null);
+    if (general) return general.rate;
     if (b.orchardId && rates.orchardRates[b.orchardId] !== undefined) return rates.orchardRates[b.orchardId];
     return rates.fallback;
 }
@@ -212,6 +228,7 @@ export function referencePay(shifts: ReadonlyArray<RefShift>, buckets: ReadonlyA
                 }
                 seg.end = last;
             }
+            if (!seg.shift.corrected && seg.end - seg.start > MAX_UNREVIEWED_MS) seg.end = seg.start + MAX_UNREVIEWED_MS;
         }
     }
 

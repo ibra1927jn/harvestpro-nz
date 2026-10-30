@@ -56,7 +56,8 @@ export function buildBroadcast(
     title,
     content,
     priority,
-    target_roles: targetRoles || [Role.TEAM_LEADER, Role.RUNNER],
+    // Sin destinatarios = para todos (antes {team_leader, runner} aunque decía «todo el personal»)
+    target_roles: targetRoles ?? [],
     acknowledged_by: [],
     created_at: nowNZST(),
   };

@@ -54,19 +54,19 @@ describe('DistributionBar', () => {
         expect(green.getAttribute('style')).toContain('50%');
     });
 
-    it('segmento reject usa título "Reject" (no "Grade reject")', () => {
+    it('segmento reject usa la etiqueta de la inspección del picker ("Severe", no "Grade reject")', () => {
         const { container } = render(
             <DistributionBar distribution={{ A: 0, B: 0, C: 0, reject: 5, total: 5 }} />,
         );
         const red = container.querySelector('.bg-red-500');
-        expect(red?.getAttribute('title')).toBe('Reject: 5');
+        expect(red?.getAttribute('title')).toBe('Severe: 5');
     });
 
-    it('segmento A usa título "Grade A"', () => {
+    it('segmento A usa la etiqueta "Good"', () => {
         const { container } = render(
             <DistributionBar distribution={{ A: 3, B: 0, C: 0, reject: 0, total: 3 }} />,
         );
         const green = container.querySelector('.bg-green-500');
-        expect(green?.getAttribute('title')).toBe('Grade A: 3');
+        expect(green?.getAttribute('title')).toBe('Good: 3');
     });
 });

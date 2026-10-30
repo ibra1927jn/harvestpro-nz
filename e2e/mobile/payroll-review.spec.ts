@@ -59,7 +59,10 @@ test('payroll approves one timesheet and rejects another', async ({ page }) => {
   await expect(card(toReject.name)).toBeVisible({ timeout: 20_000 });
   await snap(page, test.info(), 'payroll-timesheets-pending');
 
+  // Rechazar pide un motivo (3–200 caracteres) antes de confirmar
   await card(toReject.name).getByRole('button', { name: /Reject/ }).click();
+  await card(toReject.name).getByLabel('Reason for rejection').fill('Check-out time is wrong');
+  await card(toReject.name).getByRole('button', { name: 'Reject', exact: true }).click();
   await expect(page.getByText(`Timesheet rejected for ${toReject.name}`)).toBeVisible();
   await expect
     .poll(() => sql(`select coalesce(rejected_by::text, '') || '|' || coalesce(verified_by::text, '') from public.daily_attendance where id = ${lit(toReject.attendanceId)}`)[0])

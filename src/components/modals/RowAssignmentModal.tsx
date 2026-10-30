@@ -1,6 +1,7 @@
 /**
- * RowAssignmentModal - Modal para asignar pickers a filas
- * Versión centralizada para TeamLeader
+ * RowAssignmentModal — el team leader lleva a gente de su equipo a una fila.
+ * Solo ofrece las filas que el manager asignó a su equipo (`allowedRows`): el
+ * servidor rechaza cualquier otra (migración 20261027040000).
  */
 
 import React, { useState } from 'react';
@@ -18,18 +19,20 @@ export interface PickerForAssignment {
 
 interface RowAssignmentModalProps {
   onClose: () => void;
-  onAssign: (
-    rowNumber: number,
-    side: 'North' | 'South',
-    assignedPickers: string[]
-  ) => Promise<void> | void;
+  onAssign: (rowNumber: number, assignedPickers: string[]) => Promise<void> | void;
   pickers: PickerForAssignment[];
+  /** Filas que el manager asignó al equipo (las únicas que se pueden elegir) */
+  allowedRows: number[];
+  /** Fila preseleccionada (al abrir el modal tocando una fila del mapa) */
+  initialRow?: number;
 }
 
-const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, onAssign, pickers }) => {
+const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, onAssign, pickers, initialRow, allowedRows }) => {
   const { t } = useTranslation();
-  const [rowNumber, setRowNumber] = useState('');
-  const [side, setSide] = useState<'North' | 'South'>('South');
+  const rows = [...new Set(allowedRows)].sort((a, b) => a - b);
+  const [rowNumber, setRowNumber] = useState(
+    initialRow && rows.includes(initialRow) ? String(initialRow) : rows.length === 1 ? String(rows[0]) : ''
+  );
   const [selectedPickers, setSelectedPickers] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { showToast } = useToast();
@@ -44,7 +47,7 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, onAssi
     if (!rowNumber || selectedPickers.length === 0) return;
     setIsSubmitting(true);
     try {
-      await onAssign(parseInt(rowNumber), side, selectedPickers);
+      await onAssign(parseInt(rowNumber, 10), selectedPickers);
       onClose();
     } catch (_error) {
       showToast(t('pd.assign_row_error'), 'error');
@@ -67,32 +70,26 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, onAssi
             <span aria-hidden="true" className="material-symbols-outlined">close</span>
           </button>
         </div>
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div>
-            <label className="text-xs font-bold text-text-muted uppercase mb-2 block">
-              {t('pd.row_number')} *
-            </label>
-            <input
-              type="number"
-              value={rowNumber}
-              onChange={e => setRowNumber(e.target.value)}
-              placeholder="12"
-              className="w-full px-4 py-3 rounded-xl border-2 border-border-light focus:border-primary outline-none text-2xl font-black text-center text-text-main bg-white transition-colors"
-            />
+        <p className="text-xs font-bold text-text-muted uppercase mb-2">{t('pd.assigned_rows_label')}</p>
+        {rows.length === 0 ? (
+          <p data-testid="no-assigned-rows" className="bg-slate-50 rounded-xl p-4 text-sm text-text-muted border border-border-light mb-6">
+            {t('tl.tasks.no_assigned_rows')}
+          </p>
+        ) : (
+          <div role="group" aria-label={t('pd.assigned_rows_label')} className="flex flex-wrap gap-2 mb-6">
+            {rows.map(r => (
+              <button
+                key={r}
+                type="button"
+                aria-pressed={rowNumber === String(r)}
+                onClick={() => setRowNumber(String(r))}
+                className={`min-w-[3rem] px-3 py-2 rounded-xl border-2 text-lg font-black transition-colors ${rowNumber === String(r) ? 'border-primary bg-primary/10 text-primary' : 'border-border-light bg-white text-text-main'}`}
+              >
+                {r}
+              </button>
+            ))}
           </div>
-          <div>
-            <label className="text-xs font-bold text-text-muted uppercase mb-2 block">{t('assignModal.side')} *</label>
-            <select
-              value={side}
-              onChange={e => setSide(e.target.value as 'North' | 'South')}
-              aria-label={t('assignModal.side')}
-              className="w-full px-4 py-3 rounded-xl border-2 border-border-light focus:border-primary outline-none font-bold text-text-main bg-white transition-colors"
-            >
-              <option value="South">{t('assignModal.side.south')}</option>
-              <option value="North">{t('assignModal.side.north')}</option>
-            </select>
-          </div>
-        </div>
+        )}
         <p className="text-xs font-bold text-text-muted uppercase mb-3">
           {t('pd.assign_pickers_n', { n: selectedPickers.length })}
         </p>

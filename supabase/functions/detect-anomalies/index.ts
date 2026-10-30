@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { fetchAllRows } from '../_shared/fetch-all-rows.ts'
 import {
     handlePreflight,
     corsHeaders,
@@ -26,6 +27,10 @@ interface DetectionConfig {
     postCollectionWindowMinutes: number
     shiftStartHour: number
     shiftEndHour: number
+    /** Dos cubetas de la MISMA persona con menos de esto: escaneo repetido o tarjeta compartida */
+    duplicateWindowSeconds: number
+    /** Tope de anomalías en la respuesta (las cuentas de stats son las totales) */
+    maxAnomaliesReturned: number
 }
 
 const CONFIG: DetectionConfig = {
@@ -35,6 +40,8 @@ const CONFIG: DetectionConfig = {
     postCollectionWindowMinutes: 20,
     shiftStartHour: 6,
     shiftEndHour: 19,
+    duplicateWindowSeconds: 60,
+    maxAnomaliesReturned: 200,
 }
 
 // ── Types ────────────────────────────────────────────
@@ -110,17 +117,24 @@ serve(async (req) => {
         // Cubetas de hoy con el nombre de la persona. Antes leía la tabla
         // bucket_events, que no existe: la función daba siempre 400 y el panel
         // de anomalías del manager salía vacío.
-        const { data: rows, error: eventsError } = await supabase
-            .from('bucket_records')
-            .select('id, picker_id, row_number, scanned_at, pickers(name)')
-            .eq('orchard_id', orchard_id)
-            .is('deleted_at', null)
-            .gte('scanned_at', dayStart.toISOString())
-            .lt('scanned_at', dayEnd.toISOString())
-            .order('scanned_at', { ascending: true })
-
-        if (eventsError) throw new Error(`Failed to fetch events: ${eventsError.message}`)
+        // Paginado: un huerto hace ~3.000 cubetas al día y PostgREST corta en
+        // 1000 (antes solo se miraban las de la mañana; prueba de carga 2026-10-21)
         type Row = { id: string; picker_id: string; row_number: number | null; scanned_at: string; pickers: { name: string } | { name: string }[] | null }
+        let rows: Row[]
+        try {
+            rows = await fetchAllRows<Row>((from, to) => supabase
+                .from('bucket_records')
+                .select('id, picker_id, row_number, scanned_at, pickers(name)')
+                .eq('orchard_id', orchard_id)
+                .is('deleted_at', null)
+                .gte('scanned_at', dayStart.toISOString())
+                .lt('scanned_at', dayEnd.toISOString())
+                .order('scanned_at', { ascending: true })
+                .order('id')
+                .range(from, to))
+        } catch (eventsError) {
+            throw new Error(`Failed to fetch events: ${(eventsError as { message?: string })?.message ?? eventsError}`)
+        }
         const events: BucketEvent[] = ((rows ?? []) as Row[]).map(r => ({
             id: r.id,
             picker_id: r.picker_id,
@@ -280,36 +294,41 @@ serve(async (req) => {
             }
         }
 
-        // ── Rule 4: Duplicate Proximity ──────────────
-        const eventsByTime = [...events].sort(
-            (a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime()
-        )
-
-        for (let i = 0; i < eventsByTime.length; i++) {
-            for (let j = i + 1; j < eventsByTime.length; j++) {
-                const a = eventsByTime[i]
-                const b = eventsByTime[j]
-
-                const timeDiff = new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
-                if (timeDiff > 120_000) break
-
-                if (a.row_number != null && a.row_number === b.row_number && a.picker_id !== b.picker_id) {
-                    anomalies.push({
-                        id: makeId(),
-                        type: 'duplicate_proximity',
-                        severity: 'medium',
-                        pickerId: b.picker_id,
-                        pickerName: pickerNames.get(b.picker_id) || 'Unknown',
-                        detail: `Scan on Row ${a.row_number} — same row was scanned by ${pickerNames.get(a.picker_id)} ${Math.round(timeDiff / 1000)}s earlier. Possible tag sharing.`,
-                        timestamp: b.recorded_at,
-                        evidence: {
-                            rowNumber: a.row_number,
-                            conflictPicker: pickerNames.get(a.picker_id),
-                            timeDiffSeconds: Math.round(timeDiff / 1000),
-                        },
-                        rule: 'duplicate',
-                    })
+        // ── Rule 4: Escaneo repetido (misma persona) ──
+        // Antes: dos personas DISTINTAS en la misma fila con menos de 2 min.
+        // Eso es lo normal (la cuadrilla entera trabaja junta en 2 filas): con 80
+        // personas salían decenas de miles de "posibles tarjetas compartidas" al
+        // día, la respuesta pesaba ~30 MB y tardaba 10-16 s (prueba de carga
+        // 2026-10-21). Ahora: la MISMA persona con dos cubetas en menos de
+        // duplicateWindowSeconds (llenar una cubeta lleva minutos) → una
+        // anomalía por persona con cuántas veces pasó.
+        for (const [pickerId, pEvents] of pickerEvents) {
+            let repeats = 0
+            let first: { a: BucketEvent; b: BucketEvent; gap: number } | null = null
+            for (let i = 1; i < pEvents.length; i++) {
+                const gap = new Date(pEvents[i].recorded_at).getTime() - new Date(pEvents[i - 1].recorded_at).getTime()
+                if (gap >= 0 && gap < CONFIG.duplicateWindowSeconds * 1000) {
+                    repeats++
+                    if (!first) first = { a: pEvents[i - 1], b: pEvents[i], gap }
                 }
+            }
+            if (repeats > 0 && first) {
+                anomalies.push({
+                    id: makeId(),
+                    type: 'duplicate_proximity',
+                    severity: repeats >= 3 ? 'high' : 'medium',
+                    pickerId,
+                    pickerName: pickerNames.get(pickerId) || 'Unknown',
+                    detail: `${repeats} bucket${repeats > 1 ? 's' : ''} scanned less than ${CONFIG.duplicateWindowSeconds}s after the previous one for the same person (first: ${Math.round(first.gap / 1000)}s apart). Possible double scan or shared tag.`,
+                    timestamp: first.b.recorded_at,
+                    evidence: {
+                        repeats,
+                        firstGapSeconds: Math.round(first.gap / 1000),
+                        rowNumber: first.b.row_number,
+                        windowSeconds: CONFIG.duplicateWindowSeconds,
+                    },
+                    rule: 'duplicate',
+                })
             }
         }
 
@@ -320,7 +339,7 @@ serve(async (req) => {
         console.info(`[detect-anomalies] Found ${anomalies.length} anomalies for orchard ${orchard_id}`)
 
         return new Response(JSON.stringify({
-            anomalies,
+            anomalies: anomalies.slice(0, CONFIG.maxAnomaliesReturned),
             stats: {
                 total: anomalies.length,
                 high: anomalies.filter(a => a.severity === 'high').length,

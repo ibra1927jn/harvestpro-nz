@@ -46,12 +46,12 @@ describe('AddPickerModal', () => {
         expect(screen.getByText('Full Name *')).toBeTruthy();
         expect(screen.getByText('Picker ID *')).toBeTruthy();
         expect(screen.getByText('Harness No. *')).toBeTruthy();
-        expect(screen.getByText('Start Time *')).toBeTruthy();
     });
 
-    it('renders optional Row field', () => {
+    it('does not ask for start time or row (they were never saved)', () => {
         render(<AddPickerModal onClose={onClose} onAdd={onAdd} />);
-        expect(screen.getByText('Row (Optional)')).toBeTruthy();
+        expect(screen.queryByText('Start Time *')).toBeNull();
+        expect(screen.queryByText('Row (Optional)')).toBeNull();
     });
 
     it('renders Safety Induction section', () => {

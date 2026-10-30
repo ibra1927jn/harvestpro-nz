@@ -20,9 +20,10 @@ BEGIN
             now() - interval '2 days 8 hours', now() - interval '2 days', 'present')
     RETURNING id INTO v_id;
     INSERT INTO sec_test.ids VALUES ('A.att_manager', v_id);
-    -- Un fichaje ya rechazado por nómina
+    -- Un fichaje ya rechazado por nómina (cerrado: un turno abierto no se aprueba, 20261023012000)
     UPDATE public.daily_attendance SET rejected_at = now(), rejected_by = sec_test.id_of('A.payroll_admin'),
-        rejection_reason = 'SecTest rejected' WHERE id = sec_test.id_of('A.att');
+        rejection_reason = 'SecTest rejected', check_out = check_in + interval '8 hours'
+    WHERE id = sec_test.id_of('A.att');
 END $$;
 
 -- ── Quién puede ─────────────────────────────────────────────────────────────
@@ -53,7 +54,7 @@ SELECT sec_test.deny('A.payroll_admin', 'unknown decision is refused',
 
 -- ── Semana de pago cerrada ──────────────────────────────────────────────────
 SELECT sec_test.deny(w, 'cannot review a timesheet of a closed pay week',
-    $$SELECT review_timesheet({A.att_closed_week}, d) FROM unnest(ARRAY['approve', 'reject']) d$$, ARRAY['P0001'])
+    $$SELECT review_timesheet({A.att_closed_week}, d, 'SecTest reason') FROM unnest(ARRAY['approve', 'reject']) d$$, ARRAY['P0001'])
 FROM unnest(ARRAY['A.payroll_admin', 'A.admin', 'A.manager']) AS w;
 
 -- ── Corregir un rechazo lo devuelve a pendiente ─────────────────────────────

@@ -4,25 +4,118 @@
  * Queries repositories for day_closures, attendance, bucket_records
  */
 import { analyticsTrendsRepository } from '@/repositories/analytics-trends.repository';
-import { payForRange, pieceRateFor, nzDateOf } from '@/services/harvestMetrics/pay';
-import type { VarietyRate } from '@/types';
+import { attendanceRowOf, payForRange, pieceRateOn, nzDateOf, type DailyPieceRate } from '@/services/harvestMetrics/pay';
+import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
+import { logger } from '@/utils/logger';
 
 /** Punto de tendencia diaria devuelto por getDailyTrendsV2.
  *  label = fecha cruda 'YYYY-MM-DD'. El consumidor aplica el formato local (weekday, etc.). */
 export interface DailyTrendPoint {
     label: string;
     value: number;
-    meta?: { date: string; totalBuckets?: number };
+    meta?: { date: string; totalBuckets?: number; costPerBin?: number; topUpCost?: number };
 }
 
 export interface DailyTrendsV2 {
     totalBins: DailyTrendPoint[];
-    costPerBin: DailyTrendPoint[];  // [] hasta Paso 3 (requiere daily_attendance + harvest_settings)
+    /** Coste por cubeta de cada día (pago total / cubetas). Vacío si no se pasan ajustes de pago */
+    costPerBin: DailyTrendPoint[];
     workforceSize: DailyTrendPoint[];
     breakEvenCost: number;
 }
 
+/** Ajustes de pago del huerto que necesita el cálculo diario (los del store) */
+export interface PaySettingsInput {
+    /** Precio general guardado (harvest_settings.piece_rate): solo si un día no tiene ninguno */
+    piece_rate: number;
+    min_wage_rate: number;
+    /**
+     * Precios por día (piece_rates) del rango. Si no se pasan, se cargan: cada
+     * cubeta cobra el precio de SU día, así un cambio de hoy no reescribe la tendencia.
+     */
+    daily_rates?: ReadonlyArray<DailyPieceRate>;
+}
+
+/** Pago de un día NZ, sumado para todos los pickers */
+export interface DailyPay {
+    date: string;
+    buckets: number;
+    pieceEarnings: number;
+    topUp: number;
+    total: number;
+}
+
+/** Fechas NZ 'YYYY-MM-DD' de start a end, ambas incluidas */
+export function nzDateRange(startDateNZ: string, endDateNZ: string): string[] {
+    const out: string[] = [];
+    const start = Date.parse(`${startDateNZ}T00:00:00Z`);
+    const end = Date.parse(`${endDateNZ}T00:00:00Z`);
+    if (Number.isNaN(start) || Number.isNaN(end) || start > end) return out;
+    for (let ms = start; ms <= end; ms += 86_400_000) {
+        out.push(new Date(ms).toISOString().slice(0, 10));
+    }
+    return out;
+}
+
 export class AnalyticsTrendsService {
+    /**
+     * Pago de cada día NZ del rango: fichajes y cubetas del huerto pasados por el
+     * cálculo único (pay.ts), día a día. Es la misma fuente que la nómina y que
+     * el informe semanal, así la tendencia y el sangrado cuadran con lo que se paga.
+     */
+    async getDailyPay(
+        orchardId: string,
+        startDateNZ: string,
+        endDateNZ: string,
+        settings: PaySettingsInput,
+    ): Promise<Map<string, DailyPay>> {
+        const [{ attendance, buckets }, dailyRates] = await Promise.all([
+            analyticsTrendsRepository.getPayInputs(orchardId, startDateNZ, endDateNZ),
+            settings.daily_rates
+                ? Promise.resolve(settings.daily_rates)
+                : pieceRatesRepository.loadRange(startDateNZ, endDateNZ, orchardId).catch((e: unknown) => {
+                    logger.warn('[AnalyticsTrends] piece rates not loaded, using the stored rate', e);
+                    return [] as DailyPieceRate[];
+                }),
+        ]);
+        // Agrupar por día NZ una sola vez (no recorrer todas las cubetas por día)
+        const attByDay = new Map<string, Parameters<typeof payForRange>[0]['attendance'][number][]>();
+        for (const a of attendance) {
+            const list = attByDay.get(a.date) ?? [];
+            list.push(attendanceRowOf(a));
+            attByDay.set(a.date, list);
+        }
+        const bktByDay = new Map<string, Parameters<typeof payForRange>[0]['buckets'][number][]>();
+        for (const b of buckets) {
+            const day = nzDateOf(b.scanned_at);
+            const list = bktByDay.get(day) ?? [];
+            list.push({
+                pickerId: b.picker_id, scannedAt: b.scanned_at, qualityGrade: b.quality_grade,
+                orchardId: b.orchard_id, variety: b.variety,
+                pieceRate: pieceRateOn(dailyRates, b.orchard_id ?? orchardId, b.variety, day, settings.piece_rate),
+            });
+            bktByDay.set(day, list);
+        }
+
+        const out = new Map<string, DailyPay>();
+        for (const date of nzDateRange(startDateNZ, endDateNZ)) {
+            const dayRows = payForRange({
+                attendance: attByDay.get(date) ?? [],
+                buckets: bktByDay.get(date) ?? [],
+                pieceRate: settings.piece_rate,
+                minWage: settings.min_wage_rate,
+            });
+            const sum = dayRows.reduce((acc, r) => ({
+                buckets: acc.buckets + r.buckets,
+                pieceEarnings: acc.pieceEarnings + r.pieceEarnings,
+                topUp: acc.topUp + r.topUp,
+                total: acc.total + r.total,
+            }), { buckets: 0, pieceEarnings: 0, topUp: 0, total: 0 });
+            out.set(date, { date, ...sum });
+        }
+        return out;
+    }
+
     /**
      * Obtener densidad de cosecha por row para un rango de fechas
      */
@@ -105,15 +198,21 @@ export class AnalyticsTrendsService {
      *
      * Recibe fechas NZ ya calculadas por el consumidor (YYYY-MM-DD, timezone-aware).
      * label = fecha cruda (YYYY-MM-DD). El consumidor aplica Intl para el weekday localizado.
-     * costPerBin = [] — requiere daily_attendance + harvest_settings (pendiente).
+     * costPerBin: con `settings`, coste por cubeta de cada día con cubetas
+     * (pago total del día, complemento al mínimo incluido, entre cubetas pagadas);
+     * sin ajustes de pago queda vacío.
      */
     async getDailyTrendsV2(
         orchardId: string,
         startDate: string,
         endDate: string,
         breakEvenCost: number = 8.50,
+        settings?: PaySettingsInput,
     ): Promise<DailyTrendsV2> {
-        const aggregates = await analyticsTrendsRepository.getDailyAggregates(orchardId, startDate, endDate);
+        const [aggregates, dailyPay] = await Promise.all([
+            analyticsTrendsRepository.getDailyAggregates(orchardId, startDate, endDate),
+            settings ? this.getDailyPay(orchardId, startDate, endDate, settings) : Promise.resolve(null),
+        ]);
 
         const totalBins: DailyTrendPoint[] = aggregates.map(d => ({
             label: d.date,
@@ -127,7 +226,17 @@ export class AnalyticsTrendsService {
             meta: { date: d.date },
         }));
 
-        return { totalBins, workforceSize, costPerBin: [], breakEvenCost };
+        const costPerBin: DailyTrendPoint[] = dailyPay
+            ? [...dailyPay.values()]
+                .filter(d => d.buckets > 0)
+                .map(d => ({
+                    label: d.date,
+                    value: Math.round((d.total / d.buckets) * 100) / 100,
+                    meta: { date: d.date, totalBuckets: d.buckets, costPerBin: Math.round((d.total / d.buckets) * 100) / 100, topUpCost: Math.round(d.topUp * 100) / 100 },
+                }))
+            : [];
+
+        return { totalBins, workforceSize, costPerBin, breakEvenCost };
     }
 
     /**
@@ -144,7 +253,7 @@ export class AnalyticsTrendsService {
         orchardId: string | undefined,
         days: number = 7,
         locale: string = 'en-NZ',
-        settings?: { piece_rate: number; min_wage_rate: number; variety_rates?: VarietyRate[] },
+        settings?: PaySettingsInput,
     ): Promise<{ label: string; value: number }[]> {
         const nzFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' });
         const weekdayFmt = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'Pacific/Auckland' });
@@ -171,37 +280,8 @@ export class AnalyticsTrendsService {
 
         // Complemento al mínimo de cada día = suma por picker del cálculo único
         // (pay.ts): horas del fichaje con descanso no pagado, cubetas sin rechazos.
-        const { attendance, buckets } = await analyticsTrendsRepository.getPayInputs(orchardId, startDateNZ, endDateNZ);
-        // Agrupar por día NZ una sola vez (no recorrer todas las cubetas por día)
-        const attByDay = new Map<string, Parameters<typeof payForRange>[0]['attendance'][number][]>();
-        for (const a of attendance) {
-            const list = attByDay.get(a.date) ?? [];
-            list.push({ pickerId: a.picker_id, date: a.date, orchardId: a.orchard_id, checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes });
-            attByDay.set(a.date, list);
-        }
-        const varietyRates = (settings.variety_rates ?? []).map(r => ({ orchardId: r.orchard_id, variety: r.variety, pieceRate: Number(r.piece_rate) }));
-        const bktByDay = new Map<string, Parameters<typeof payForRange>[0]['buckets'][number][]>();
-        for (const b of buckets) {
-            const day = nzDateOf(b.scanned_at);
-            const list = bktByDay.get(day) ?? [];
-            list.push({
-                pickerId: b.picker_id, scannedAt: b.scanned_at, qualityGrade: b.quality_grade,
-                orchardId: b.orchard_id, variety: b.variety,
-                pieceRate: pieceRateFor({ orchardId: b.orchard_id, variety: b.variety }, { varietyRates, fallback: settings.piece_rate }),
-            });
-            bktByDay.set(day, list);
-        }
-
-        return slots.map(s => {
-            const dayRows = payForRange({
-                attendance: attByDay.get(s.dateNZ) ?? [],
-                buckets: bktByDay.get(s.dateNZ) ?? [],
-                pieceRate: settings.piece_rate,
-                minWage: settings.min_wage_rate,
-            });
-            const topUp = dayRows.reduce((sum, r) => sum + r.topUp, 0);
-            return { label: s.label, value: Math.round(topUp) };
-        });
+        const dailyPay = await this.getDailyPay(orchardId, startDateNZ, endDateNZ, settings);
+        return slots.map(s => ({ label: s.label, value: Math.round(dailyPay.get(s.dateNZ)?.topUp ?? 0) }));
     }
 }
 

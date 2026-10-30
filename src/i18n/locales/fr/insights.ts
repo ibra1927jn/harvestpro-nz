@@ -26,13 +26,6 @@ const insights: TranslationDict = {
     'insights.trend.title': 'Coût par bin — tendance sur 7 jours',
     'insights.trend.subtitle': 'Points rouges = au-dessus du seuil de rentabilité',
     'insights.trend.breakeven': 'Seuil de rentabilité',
-    'insights.trend.day.mon': 'Lun',
-    'insights.trend.day.tue': 'Mar',
-    'insights.trend.day.wed': 'Mer',
-    'insights.trend.day.thu': 'Jeu',
-    'insights.trend.day.fri': 'Ven',
-    'insights.trend.day.sat': 'Sam',
-    'insights.trend.day.sun': 'Dim',
     // Team cost
     'insights.team_cost.title': 'Coût par équipe',
     'insights.team_cost.subtitle': 'Coût/bin plus bas = plus efficace',

@@ -28,6 +28,8 @@ vi.mock('@/repositories/auth-context.repository', () => ({
 }));
 
 import { resolveRole, loadUserProfile, isTransientProfileError } from './useAuthSession';
+import { setSentryUser } from '@/config/sentry';
+import { analytics } from '@/config/analytics';
 
 describe('resolveRole', () => {
   it('maps manager role', () => {
@@ -92,6 +94,21 @@ describe('loadUserProfile', () => {
     expect('user' in result.stateUpdate).toBe(false);
   });
 
+  it('identifica en Sentry y PostHog solo con el id opaco, sin email (NZ Privacy Act)', async () => {
+    mockGetUserProfile.mockResolvedValue({
+      data: { id: 'u1', full_name: 'Alice', email: 'a@test.com', role: 'manager', orchard_id: 'o1' },
+      error: null,
+    });
+    await loadUserProfile('u1');
+    expect(setSentryUser).toHaveBeenCalledWith({ id: 'u1', role: 'manager' });
+    expect(analytics.identify).toHaveBeenCalledWith('u1', { role: 'manager', orchard_id: 'o1' });
+    const sent = JSON.stringify([
+      vi.mocked(setSentryUser).mock.calls,
+      vi.mocked(analytics.identify).mock.calls,
+    ]);
+    expect(sent).not.toMatch(/a@test\.com|Alice/);
+  });
+
   it('auto-assigns orchard when user has none', async () => {
     mockGetUserProfile.mockResolvedValue({
       data: {
@@ -109,6 +126,18 @@ describe('loadUserProfile', () => {
     const result = await loadUserProfile('u1');
     expect(mockAssignOrchard).toHaveBeenCalledWith('u1', 'auto-o1');
     expect(result.result.orchardId).toBe('auto-o1');
+  });
+
+  it('does not auto-assign an orchard to field staff (manager / HR link them)', async () => {
+    mockGetUserProfile.mockResolvedValue({
+      data: { id: 'u2', full_name: 'Tama', email: 't@test.com', role: 'team_leader', orchard_id: null },
+      error: null,
+    });
+    mockGetFirstOrchardId.mockResolvedValue('auto-o1');
+
+    const result = await loadUserProfile('u2');
+    expect(mockAssignOrchard).not.toHaveBeenCalled();
+    expect(result.result.orchardId).toBeNull();
   });
 
   it('throws on DB error', async () => {

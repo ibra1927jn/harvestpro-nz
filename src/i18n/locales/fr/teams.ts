@@ -12,11 +12,7 @@ const teams: TranslationDict = {
     'teams.no_orchard': 'Aucun verger',
     'teams.link_staff': 'Associer du personnel',
     'teams.import_csv': 'Importer un CSV',
-    'teams.no_runners': 'Aucun runner actif',
-    'teams.no_teams': 'Pas encore d’équipes de récolte',
     'teams.bins_today': 'bins aujourd’hui',
-    'teams.active': 'Actif',
-    'teams.on_break': 'En pause',
     // Nuevas claves para TeamsView, TeamLeaderCard y RunnersSection
     'teams.view_profile': 'VOIR LE PROFIL',
     'teams.bucket_runner': 'Runner de seaux',
@@ -36,11 +32,9 @@ const teams: TranslationDict = {
     'teams.assign_leader': 'Désigner un chef d’équipe',
     'teams.no_runners_assigned': 'Aucun runner de seaux attribué',
     'teams.no_runners_sub': 'Les runners transportent les seaux des cueilleurs jusqu’aux bins. Attribuez des runners depuis la sélection du chef d’équipe.',
-    'teams.runner_active': 'Actif · Runner de seaux',
     'teams.status_active': 'Actif',
     'teams.status_break': 'En pause',
     'teams.status_idle': 'Inactif',
-    'teams.manage_teams': 'Gérer les équipes',
     'teams.confirm_q': 'Confirmer ?',
 };
 

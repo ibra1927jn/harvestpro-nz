@@ -12,11 +12,7 @@ const teams: TranslationDict = {
     'teams.no_orchard': 'No orchard',
     'teams.link_staff': 'Link Staff',
     'teams.import_csv': 'Import CSV',
-    'teams.no_runners': 'No active runners',
-    'teams.no_teams': 'No harvest teams yet',
     'teams.bins_today': 'bins today',
-    'teams.active': 'Active',
-    'teams.on_break': 'On Break',
     // Nuevas claves para TeamsView, TeamLeaderCard y RunnersSection
     'teams.view_profile': 'VIEW PROFILE',
     'teams.bucket_runner': 'Bucket Runner',
@@ -36,11 +32,9 @@ const teams: TranslationDict = {
     'teams.assign_leader': 'Assign a leader',
     'teams.no_runners_assigned': 'No Bucket Runners Assigned',
     'teams.no_runners_sub': 'Runners help transport buckets from pickers to bins. Assign runners from the team leader selection.',
-    'teams.runner_active': 'Active · Bucket Runner',
     'teams.status_active': 'Active',
     'teams.status_break': 'On Break',
     'teams.status_idle': 'Idle',
-    'teams.manage_teams': 'Manage Teams',
     'teams.confirm_q': 'Confirm?',
 };
 

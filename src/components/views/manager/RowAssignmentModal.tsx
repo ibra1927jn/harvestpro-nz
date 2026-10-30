@@ -10,11 +10,14 @@ import { Picker } from '@/types';
 import RowTeamDisplay from './RowTeamDisplay';
 import RowGrid from './RowGrid';
 import { useTranslation } from '@/i18n';
+import { blockRowNumbers } from '@/utils/blockRows';
 
 interface RowAssignmentModalProps {
     onClose: () => void;
     initialRow?: number;
     onViewPicker?: (picker: Picker) => void;
+    /** Guardado en el servidor (la página enseña la confirmación: el modal ya se cerró) */
+    onAssigned?: (rows: number[]) => void;
 }
 
 interface TeamOnRow {
@@ -23,7 +26,7 @@ interface TeamOnRow {
     total: number;
 }
 
-const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, initialRow = 1, onViewPicker }) => {
+const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, initialRow = 1, onViewPicker, onAssigned }) => {
     const dialogRef = useRef<HTMLDivElement>(null);
     useDialogA11y(dialogRef, { onClose });
 
@@ -46,10 +49,8 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, initia
     const selectedBlock = orchardBlocks.find(b => b.id === selectedBlockId) || null;
     const blockRows = useMemo(() => {
         if (selectedBlock) {
-            return Array.from(
-                { length: selectedBlock.totalRows },
-                (_, i) => selectedBlock.startRow + i
-            );
+            // Filas reales del bloque (puede tener huecos)
+            return blockRowNumbers(selectedBlock);
         }
         return Array.from({ length: 20 }, (_, i) => i + 1);
     }, [selectedBlock]);
@@ -104,6 +105,7 @@ const RowAssignmentModal: React.FC<RowAssignmentModalProps> = ({ onClose, initia
         }
         try {
             await assignRows(selectedRows, selectedSide, memberIds);
+            onAssigned?.([...selectedRows].sort((a, b) => a - b));
             onClose();
         } catch (e) {
             setAssignError(e instanceof Error ? e.message : 'Row assignment not saved');

@@ -221,13 +221,47 @@ export async function decryptValue(ciphertext: string): Promise<string> {
   }
 }
 
+// ── Archivos (fotos, notas de voz) ─────────────
+/** Bytes cifrados con la misma clave AES-256-GCM (IV aleatorio por archivo) */
+export interface EncryptedBytes {
+  iv: Uint8Array;
+  data: ArrayBuffer;
+}
+
+/** Cifra el contenido de un archivo antes de guardarlo en IndexedDB */
+export async function encryptBytes(plain: ArrayBuffer): Promise<EncryptedBytes> {
+  try {
+    const key = await getEncryptionKey();
+    const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+    const data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plain);
+    return { iv, data };
+  } catch (error) {
+    logger.error('[dbCrypto] File encryption failed', error);
+    throw new Error('Encryption failed — refusing to store the file unencrypted');
+  }
+}
+
+/** Descifra un archivo guardado con encryptBytes (lanza si la clave no sirve) */
+export async function decryptBytes(enc: EncryptedBytes): Promise<ArrayBuffer> {
+  const key = await getEncryptionKey();
+  // Copia del IV: Uint8Array que vuelve de IndexedDB puede venir de otro realm
+  const iv = new Uint8Array(enc.iv);
+  try {
+    return await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, enc.data);
+  } catch {
+    const legacy = await getLegacyKey();
+    return crypto.subtle.decrypt({ name: 'AES-GCM', iv }, legacy, enc.data);
+  }
+}
+
 // ── PII Field Encryption ───────────────────────
 /** Fields to encrypt per table */
 const SENSITIVE_FIELDS: Record<string, string[]> = {
   user_cache: ['profile', 'roster'],
   settings_cache: ['settings'],
   bucket_queue: ['scanned_by'],
-  message_queue: ['content'],
+  // upload: adjunto (nombre del archivo y ruta; los bytes van cifrados en pending_files)
+  message_queue: ['content', 'upload'],
 };
 
 /**

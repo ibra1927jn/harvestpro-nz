@@ -10,9 +10,11 @@ import { useTranslation } from '@/i18n';
 interface AdminOrchardsTabProps {
     orchards: OrchardOverview[];
     onNewOrchard: () => void;
+    /** Abre «Estructura del huerto» (temporadas, bloques y filas) de ese huerto */
+    onOpenStructure: (orchardId: string) => void;
 }
 
-const AdminOrchardsTab: React.FC<AdminOrchardsTabProps> = ({ orchards, onNewOrchard }) => {
+const AdminOrchardsTab: React.FC<AdminOrchardsTabProps> = ({ orchards, onNewOrchard, onOpenStructure }) => {
     const { t } = useTranslation();
     return (
     <ComponentErrorBoundary componentName="Orchards">
@@ -54,6 +56,15 @@ const AdminOrchardsTab: React.FC<AdminOrchardsTabProps> = ({ orchards, onNewOrch
                                     <div className="text-xs text-text-secondary">{t('admin.compliance')}</div>
                                 </div>
                             </div>
+                            <button
+                                type="button"
+                                onClick={() => onOpenStructure(orch.id)}
+                                data-testid={`admin-structure-${orch.id}`}
+                                className="mt-4 w-full flex items-center justify-center gap-1 rounded-lg border border-border-light px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-background-light"
+                            >
+                                <span aria-hidden="true" className="material-symbols-outlined text-sm">grid_view</span>
+                                {t('admin.structure_btn')}
+                            </button>
                         </div>
                     ))}
                 </div>

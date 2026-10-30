@@ -29,6 +29,7 @@ import { analytics } from '../config/analytics';
 import { authContextRepository } from '@/repositories/auth-context.repository';
 import { loadUserProfile } from '@/hooks/useAuthSession';
 import { edgeFunctionWarmupService } from '../services/edgeFunctionWarmup.service';
+import { notificationService } from '../services/notification.service';
 import type { AuthState, AuthContextType } from './auth.types';
 import {
   FAILED_PROFILE_LOAD_STATE,
@@ -45,6 +46,7 @@ import {
 } from './auth/authActions';
 import { useAuthLifecycle } from './auth/useAuthLifecycle';
 import { useSessionKeepAlive } from './auth/useSessionKeepAlive';
+import { usePreferredLocale } from './auth/usePreferredLocale';
 import { AuthModals } from './auth/AuthModals';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -189,6 +191,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useAuthLifecycle({ isAuthenticatedRef, loadUserData, signOut, updateAuthState });
   useSessionKeepAlive();
+  // Idioma guardado en la cuenta («Mi cuenta»): se aplica una vez al cargar el perfil
+  usePreferredLocale(state.appUser?.id, state.appUser?.preferred_locale);
+  // Avisos activados en este móvil: vuelven a arrancar y la suscripción push se renueva
+  const signedInUserId = state.appUser?.id;
+  useEffect(() => {
+    if (!signedInUserId) return;
+    const timer = setTimeout(() => void notificationService.resume(), 2000);
+    return () => clearTimeout(timer);
+  }, [signedInUserId]);
 
   const contextValue: AuthContextType = {
     ...state,

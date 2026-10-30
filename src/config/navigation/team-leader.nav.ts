@@ -4,7 +4,7 @@
  */
 import type { NavTab } from '@/components/common/BottomNav';
 
-export type TeamLeaderTab = 'home' | 'team' | 'tasks' | 'profile' | 'chat' | 'attendance' | 'timesheet';
+export type TeamLeaderTab = 'home' | 'team' | 'tasks' | 'chat' | 'attendance' | 'timesheet';
 
 export const TEAM_LEADER_NAV_TABS: NavTab[] = [
     { id: 'home', label: 'Home', labelKey: 'nav.home', icon: 'home' },

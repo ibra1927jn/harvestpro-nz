@@ -12,6 +12,13 @@
  */
 import React, { createContext, useContext, useState, useRef, useCallback, ReactNode } from 'react';
 import { messageOutbox } from '@/services/message-outbox.service';
+import { pendingFiles, QueueFullError } from '@/services/pending-uploads.service';
+import {
+  attachmentPath,
+  chatAttachmentsService,
+  MAX_ATTACHMENT_BYTES,
+  type ChatAttachment,
+} from '@/services/chat-attachments.service';
 import { Role, MessagePriority } from '../types';
 import { nowNZST } from '@/utils/nzst';
 import { logger } from '@/utils/logger';
@@ -23,7 +30,9 @@ import {
   buildChatGroups,
   buildLastMessageMap,
   collectParticipantIds,
+  mutedIdsOf,
   sumUnread,
+  withConversationMuted,
   withBroadcastAcknowledged,
   withConversationRead,
   withMessageRead,
@@ -33,8 +42,15 @@ import { useMessagingRealtime } from './useMessagingRealtime';
 import { mergeOutbox } from './messagingOutbox';
 
 // Types extracted to messaging.types.ts for reuse
-import type { DBMessage, ChatGroup, MessagingState, MessagingContextType } from './messaging.types';
-export type { DBMessage, ChatGroup } from './messaging.types';
+import type {
+  DBMessage,
+  ChatGroup,
+  MessagingState,
+  MessagingContextType,
+  OutgoingAttachment,
+  SendAttachmentResult,
+} from './messaging.types';
+export type { DBMessage, ChatGroup, OutgoingAttachment, SendAttachmentResult } from './messaging.types';
 
 // =============================================
 // CONTEXT
@@ -66,12 +82,17 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
   // =============================================
   // MESSAGE ACTIONS
   // =============================================
-  useMessagingRealtime({ setState, userIdRef, orchardIdRef });
+  // Silenciadas: sin notificación del sistema (lo lee el efecto de realtime)
+  const mutedIdsRef = useRef<Set<string>>(new Set());
+  mutedIdsRef.current = mutedIdsOf(state.chatGroups);
+
+  useMessagingRealtime({ setState, userIdRef, orchardIdRef, mutedIdsRef });
 
   const sendMessage = async (
     conversationId: string,
     content: string,
-    priority: MessagePriority = 'normal'
+    priority: MessagePriority = 'normal',
+    options?: { replyToId?: string }
   ): Promise<DBMessage | null> => {
     if (!userIdRef.current) {
       logger.error('[MessagingContext] No user ID set');
@@ -81,13 +102,17 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
     const timestamp = nowNZST();
 
     // 1. Optimistic UI Update
-    const optimisticMsg = buildOptimisticMessage(
-      userIdRef.current,
-      conversationId,
-      content,
-      priority,
-      orchardIdRef.current || undefined
-    );
+    const replyToId = options?.replyToId;
+    const optimisticMsg: DBMessage = {
+      ...buildOptimisticMessage(
+        userIdRef.current,
+        conversationId,
+        content,
+        priority,
+        orchardIdRef.current || undefined
+      ),
+      ...(replyToId ? { reply_to_id: replyToId } : {}),
+    };
 
     setState(prev => ({
       ...prev,
@@ -101,13 +126,11 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
           conversationId,
           userIdRef.current,
           content,
-          { id: optimisticMsg.id, createdAt: timestamp }
+          { id: optimisticMsg.id, createdAt: timestamp, replyToId }
         );
 
         if (!data) throw new Error('Send failed');
-
-        // Update Conversation updated_at
-        await messagingRepository.updateConversationTimestamp(conversationId);
+        // conversations.updated_at lo pone el trigger trg_touch_conversation_on_message
 
         return data;
       } else {
@@ -125,9 +148,114 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
         content,
         timestamp,
         priority,
+        ...(replyToId ? { reply_to_id: replyToId } : {}),
       });
 
       return { ...optimisticMsg, delivery: 'pending' };
+    }
+  };
+
+  /**
+   * Foto / PDF / nota de voz. Con red: sube el archivo y guarda el mensaje.
+   * Sin red o si falla: el archivo se guarda cifrado en el móvil (pending_files)
+   * y el mensaje va a la bandeja de salida, con el mismo id (no duplica).
+   */
+  const sendAttachment = async (conversationId: string, file: OutgoingAttachment): Promise<SendAttachmentResult> => {
+    const me = userIdRef.current;
+    if (!me) return { message: null, error: 'failed' };
+    if (file.blob.size <= 0 || file.blob.size > MAX_ATTACHMENT_BYTES) return { message: null, error: 'too_large' };
+
+    const timestamp = nowNZST();
+    const content = (file.caption ?? '').trim();
+    const optimistic = buildOptimisticMessage(me, conversationId, content, 'normal', orchardIdRef.current || undefined);
+    const attachment: ChatAttachment = {
+      path: attachmentPath(conversationId, optimistic.id, file.ext),
+      type: file.type,
+      ...(file.name ? { name: file.name.slice(0, 200) } : {}),
+      size: file.blob.size,
+      ...(file.durationMs !== undefined ? { duration_ms: Math.round(file.durationMs) } : {}),
+    };
+
+    if (navigator.onLine) {
+      try {
+        await chatAttachmentsService.upload(attachment.path, file.blob, file.mime);
+        const data = (await messagingRepository.sendMessage(conversationId, me, content, {
+          id: optimistic.id,
+          createdAt: timestamp,
+          attachment,
+          replyToId: file.replyToId,
+        })) as DBMessage | null;
+        if (data) return { message: data };
+      } catch (error) {
+        logger.warn('[MessagingContext] Attachment not sent now, queuing it:', error);
+      }
+    }
+
+    try {
+      await pendingFiles.put(optimistic.id, 'chat', file.blob, file.mime);
+    } catch (error) {
+      if (error instanceof QueueFullError) return { message: null, error: 'queue_full' };
+      logger.error('[MessagingContext] Attachment could not be stored on this device:', error);
+      return { message: null, error: 'failed' };
+    }
+    await messageOutbox.queue({
+      id: optimistic.id,
+      channel_type: 'direct',
+      recipient_id: conversationId,
+      sender_id: me,
+      content,
+      timestamp,
+      priority: 'normal',
+      upload: { ...attachment, file_id: optimistic.id, mime: file.mime },
+      ...(file.replyToId ? { reply_to_id: file.replyToId } : {}),
+    });
+    // Con red (falló otra cosa) se reintenta ya: si el servidor lo rechaza sale "No enviado"
+    if (navigator.onLine) void messageOutbox.flush().catch(() => undefined);
+
+    return {
+      message: {
+        ...optimistic,
+        content,
+        created_at: timestamp,
+        delivery: 'pending',
+        attachment_path: attachment.path,
+        attachment_type: attachment.type,
+        attachment_name: attachment.name ?? null,
+        attachment_size: attachment.size,
+        duration_ms: attachment.duration_ms ?? null,
+        local_file_id: optimistic.id,
+        ...(file.replyToId ? { reply_to_id: file.replyToId } : {}),
+      },
+    };
+  };
+
+  const updateConversation = async (
+    conversationId: string,
+    changes: { name?: string; add?: string[]; remove?: string[] }
+  ): Promise<boolean> => {
+    try {
+      const row = await messagingRepository.updateConversation(conversationId, changes);
+      setState(prev => ({
+        ...prev,
+        chatGroups: prev.chatGroups.map(g =>
+          g.id === conversationId ? { ...g, name: row.name || g.name, members: row.participant_ids } : g
+        ),
+      }));
+      return true;
+    } catch (error) {
+      logger.warn('[MessagingContext] Conversation not updated:', error);
+      return false;
+    }
+  };
+
+  const setConversationMuted = async (conversationId: string, muted: boolean): Promise<boolean> => {
+    try {
+      await messagingRepository.setMuted(conversationId, muted);
+      setState(prev => withConversationMuted(prev, conversationId, muted));
+      return true;
+    } catch (error) {
+      logger.warn('[MessagingContext] Mute not saved:', error);
+      return false;
     }
   };
 
@@ -156,7 +284,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
         broadcasts: [broadcast, ...prev.broadcasts],
       }));
       // 📊 PostHog: Track broadcast sent
-      analytics.trackBroadcast((targetRoles || [Role.TEAM_LEADER, Role.RUNNER]).length, priority);
+      analytics.trackBroadcast(broadcast.target_roles.length, priority);
       return true;
     } catch (error) {
       logger.error('[MessagingContext] Error sending broadcast:', error);
@@ -248,7 +376,9 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
         name: data.name,
         members: data.participant_ids,
         isGroup: true,
-        lastMsg: 'Group created',
+        lastMsg: '',
+        createdBy: userIdRef.current,
+        muted: false,
         time: new Date().toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: '2-digit', minute: '2-digit' }),
       };
 
@@ -291,15 +421,17 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, []);
 
   const refreshMessages = useCallback(async () => {
-    if (!orchardIdRef.current || !userIdRef.current) return;
+    // Sin huerto (RRHH, nómina, admin de empresa) también hay chat; los avisos sí son por huerto
+    if (!userIdRef.current) return;
     const currentUserId = userIdRef.current;
+    const orchardId = orchardIdRef.current;
 
     try {
       // Batch 1: broadcasts y conversations en paralelo — independientes entre sí
       // Antes era secuencial (4 queries en cadena bloqueando el pool)
       logger.info('[CONN-TRACE] refreshMessages batch 1 — broadcasts + conversations (paralelo)');
       const [broadcastsData, convData, unreadMap] = await Promise.all([
-        messagingRepository.getBroadcasts(orchardIdRef.current),
+        orchardId ? messagingRepository.getBroadcasts(orchardId) : Promise.resolve([]),
         messagingRepository.getConversations(currentUserId),
         messagingRepository.getUnreadCounts().catch(() => ({} as Record<string, number>)),
       ]);
@@ -316,7 +448,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
           : Promise.resolve({} as Record<string, string>),
         convIds.length > 0
           ? messagingRepository.getLastMessages(convIds)
-          : Promise.resolve([] as Array<{ conversation_id: string; content: string; created_at: string }>),
+          : Promise.resolve([] as Array<{ conversation_id: string; content: string; created_at: string; attachment_type?: string | null }>),
       ]);
 
       const chatGroups = buildChatGroups({
@@ -331,7 +463,7 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
         ...prev,
         broadcasts: broadcastsData || [],
         chatGroups,
-        unreadCount: sumUnread(unreadMap),
+        unreadCount: sumUnread(unreadMap, mutedIdsOf(chatGroups)),
       }));
     } catch (error) {
       logger.error('[MessagingContext] Error refreshing messages:', error);
@@ -346,6 +478,9 @@ export const MessagingProvider: React.FC<{ children: ReactNode }> = ({ children 
     ...state,
     sendMessage,
     sendBroadcast,
+    sendAttachment,
+    updateConversation,
+    setConversationMuted,
     getOrCreateConversation,
     markMessageRead,
     markConversationRead,

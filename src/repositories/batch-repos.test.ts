@@ -10,7 +10,7 @@ function mockChain(result: { data?: unknown; error?: unknown; count?: number | n
     const chain: Record<string, unknown> = {
         select: vi.fn(() => chain), eq: vi.fn(() => chain), in: vi.fn(() => chain),
         update: vi.fn(() => chain), insert: vi.fn(() => chain), delete: vi.fn(() => chain),
-        order: vi.fn(() => chain), limit: vi.fn(() => chain), single: vi.fn(() => chain),
+        order: vi.fn(() => chain), range: vi.fn(() => chain), limit: vi.fn(() => chain), single: vi.fn(() => chain),
         maybeSingle: vi.fn(() => chain), gte: vi.fn(() => chain), lte: vi.fn(() => chain),
         is: vi.fn(() => chain), or: vi.fn(() => chain), upsert: vi.fn(() => chain),
         then: (onF?: (v: unknown) => unknown, onR?: (r: unknown) => unknown) =>
@@ -304,9 +304,9 @@ describe('pickerHistoryRepository', () => {
 
     it('getInspectionsSince returns data', async () => {
         fromSpy.mockReturnValue(mockChain({ data: [{ id: 'i1' }], error: null }) as never);
-        // Lee qc_inspections y la tabla antigua (el mock responde lo mismo a las dos)
+        // Solo qc_inspections (quality_inspections ya no se consulta)
         const result = await repo.getInspectionsSince('p1', '2026-01-01');
-        expect(result).toHaveLength(2);
+        expect(result).toHaveLength(1);
     });
 
     it('getDaySetupsSince returns data', async () => {

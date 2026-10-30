@@ -67,6 +67,13 @@ export const PAY_RULES = {
     minWageFloor: NZ_MIN_WAGE_HISTORY[NZ_MIN_WAGE_HISTORY.length - 1].rate,
     /** Multiplicador del mínimo en festivo trabajado */
     publicHolidayMultiplier: 1.5,
+    /**
+     * Tramo de más de estas horas sin corregir (salida olvidada, móvil sin
+     * red): se marca para revisión, nómina no lo aprueba y solo se pagan estas
+     * horas hasta que alguien corrija la hoja (corrected_at). Corregido, se
+     * paga lo que diga la hoja aunque pase de aquí.
+     */
+    maxUnreviewedShiftHours: 14,
     timeZone: 'Pacific/Auckland',
 } as const;
 
@@ -92,6 +99,8 @@ export interface ShiftInput {
     scanTimes?: ReadonlyArray<string | null | undefined>;
     /** "Ahora", para turnos abiertos. Por defecto new Date() */
     now?: Date;
+    /** Hoja corregida a mano (corrected_at): un tramo largo se paga entero */
+    corrected?: boolean;
 }
 
 export interface ShiftHours {
@@ -102,9 +111,15 @@ export interface ShiftHours {
     /** Minutos de descanso descontados */
     breakMinutes: number;
     source: HoursSource;
+    /**
+     * El tramo pasaba de maxUnreviewedShiftHours sin corregir y se ha cortado
+     * ahí (solo aparece cuando es true)
+     */
+    capped?: true;
 }
 
 const MS_PER_HOUR = 3_600_000;
+const MAX_UNREVIEWED_SHIFT_MS = PAY_RULES.maxUnreviewedShiftHours * MS_PER_HOUR;
 
 function toMs(ts: string | null | undefined): number | null {
     if (!ts) return null;
@@ -164,7 +179,98 @@ export function mealBreakMissing(
 }
 
 /**
- * Horas trabajadas de un picker en un día.
+ * ¿La corrección a mano (corrected_at) cubre este tramo? Solo si se hizo
+ * DESPUÉS de la salida: corregir la entrada por la mañana y olvidar la salida
+ * no da por revisado un tramo que luego se cierra con 20 h. Igual que
+ * public.shift_needs_review en la BD.
+ */
+export function correctionCovers(correctedAt: string | null | undefined, checkOut: string | null | undefined): boolean {
+    const c = toMs(correctedAt);
+    const out = toMs(checkOut);
+    return c !== null && out !== null && c >= out;
+}
+
+/**
+ * Un fichaje tal como viene de daily_attendance (snake_case). Lo usan todas
+ * las pantallas para calcular horas igual que nómina (attendanceRowOf / shiftHoursOf).
+ */
+export interface DbShift {
+    picker_id: string;
+    date: string;
+    orchard_id?: string | null;
+    check_in?: string | null;
+    check_out?: string | null;
+    break_start?: string | null;
+    break_minutes?: number | null;
+    corrected_at?: string | null;
+}
+
+/**
+ * ¿Hay que revisar este tramo antes de pagarlo o aprobarlo? Abierto desde hace
+ * más de maxUnreviewedShiftHours (salida olvidada), o cerrado con más de esas
+ * horas y sin corregir. Sin entrada no hay nada que revisar aquí.
+ */
+export function shiftNeedsReview(
+    shift: { checkIn?: string | null; checkOut?: string | null; corrected?: boolean },
+    now: Date = new Date(),
+): boolean {
+    const inMs = toMs(shift.checkIn);
+    if (inMs === null) return false;
+    const outMs = toMs(shift.checkOut);
+    if (outMs === null) return now.getTime() - inMs > MAX_UNREVIEWED_SHIFT_MS;
+    return !shift.corrected && outMs - inMs > MAX_UNREVIEWED_SHIFT_MS;
+}
+
+/** Por qué un tramo aún no se puede pagar */
+export type ShiftReviewIssue =
+    /** Nadie de nómina (o el manager de su huerto) lo ha aprobado */
+    | 'not_approved'
+    /** Rechazado y sin corregir ni volver a aprobar */
+    | 'rejected'
+    /** Más de maxUnreviewedShiftHours sin corregir (o sin salida) */
+    | 'needs_correction';
+
+/** Un fichaje con su estado de revisión (columnas de daily_attendance) */
+export interface ReviewableShift extends DbShift {
+    verified_at?: string | null;
+    rejected_at?: string | null;
+}
+
+/**
+ * Tramos de un rango de días [start, end] (fechas NZ) que todavía no se pueden
+ * pagar: ninguna hora se paga sin revisar (Fase 2). Un tramo se puede pagar
+ * cuando está aprobado (verified_at), no rechazado y, si pasa del tope de horas,
+ * corregido a mano. Corregir una hoja ya aprobada le quita la aprobación (BD,
+ * 20261023012000), así que lo aprobado es siempre lo que se paga. Los fichajes
+ * sin entrada (ausencias) no tienen horas: no cuentan. Un tramo abierto no se
+ * puede aprobar: sale como 'needs_correction' si ya pasó del tope y si no como
+ * 'not_approved'. Un problema por tramo, el más grave primero.
+ */
+export function unreviewedShifts(
+    rows: ReadonlyArray<ReviewableShift>,
+    range: { start: string; end: string },
+    now: Date = new Date(),
+): Array<{ pickerId: string; date: string; issue: ShiftReviewIssue }> {
+    const out: Array<{ pickerId: string; date: string; issue: ShiftReviewIssue }> = [];
+    for (const r of rows) {
+        const date = r.date.slice(0, 10);
+        if (date < range.start || date > range.end || toMs(r.check_in) === null) continue;
+        let issue: ShiftReviewIssue | null = null;
+        if (shiftNeedsReview({ checkIn: r.check_in, checkOut: r.check_out, corrected: correctionCovers(r.corrected_at, r.check_out) }, now)) {
+            issue = 'needs_correction';
+        } else if (r.rejected_at) {
+            issue = 'rejected';
+        } else if (!r.verified_at) {
+            issue = 'not_approved';
+        }
+        if (issue) out.push({ pickerId: r.picker_id, date, issue });
+    }
+    return out.sort((a, b) => a.pickerId.localeCompare(b.pickerId) || a.date.localeCompare(b.date));
+}
+
+/**
+ * Horas trabajadas de un picker en un día. Un tramo (cerrado o abierto) de más
+ * de maxUnreviewedShiftHours sin corregir cuenta solo esas horas (capped).
  */
 export function shiftHours(input: ShiftInput): ShiftHours {
     const breakMinutes = input.breakMinutes ?? PAY_RULES.mealBreakMinutes;
@@ -199,6 +305,10 @@ export function shiftHours(input: ShiftInput): ShiftHours {
         return { hours: 0, grossHours: 0, breakMinutes: 0, source: 'none' };
     }
 
+    // Salida olvidada o tramo larguísimo sin corregir: como mucho el tope
+    const capped = source !== 'scan_estimate' && !input.corrected && endMs - startMs > MAX_UNREVIEWED_SHIFT_MS;
+    if (capped) endMs = startMs + MAX_UNREVIEWED_SHIFT_MS;
+
     const grossHours = (endMs - startMs) / MS_PER_HOUR;
     const deducted = breakToDeduct(startMs, endMs, input.breakStart, breakMinutes);
     const hours = Math.max(0, grossHours - deducted / 60);
@@ -208,6 +318,7 @@ export function shiftHours(input: ShiftInput): ShiftHours {
         grossHours: round2(grossHours),
         breakMinutes: Math.round(deducted),
         source,
+        ...(capped ? { capped: true as const } : {}),
     };
 }
 
@@ -301,9 +412,24 @@ const NZ_DATE_FMT = new Intl.DateTimeFormat('en-CA', {
     day: '2-digit',
 });
 
+// La fecha NZ no cambia dentro de una misma hora UTC (el desfase NZ es de horas
+// enteras y el cambio de hora cae en punto): se calcula una vez por hora.
+// Formatear cada cubeta costaba ~2,3 µs: media semana de empresa (140.000
+// cubetas) eran 330 ms de CPU, y las Edge Functions tienen 2 s (prueba de carga 2026-10-21).
+const NZ_DATE_BY_HOUR = new Map<number, string>();
+
 /** Fecha YYYY-MM-DD en hora de Nueva Zelanda de un timestamp. */
 export function nzDateOf(ts: string | Date): string {
-    return NZ_DATE_FMT.format(typeof ts === 'string' ? new Date(ts) : ts);
+    const d = typeof ts === 'string' ? new Date(ts) : ts;
+    const hour = Math.floor(d.getTime() / 3_600_000);
+    if (!Number.isFinite(hour)) return NZ_DATE_FMT.format(d);
+    let date = NZ_DATE_BY_HOUR.get(hour);
+    if (date === undefined) {
+        date = NZ_DATE_FMT.format(d);
+        if (NZ_DATE_BY_HOUR.size > 20_000) NZ_DATE_BY_HOUR.clear();
+        NZ_DATE_BY_HOUR.set(hour, date);
+    }
+    return date;
 }
 
 /**
@@ -351,6 +477,35 @@ export function payWeekOf(dateYMD: string): PayWeek {
 
 // ─── Agregado de un rango (semana de pago) ──────────────────────────────────
 
+/** Fichaje de la BD → fila del cálculo de pago (con la corrección que lo cubre) */
+export function attendanceRowOf(r: DbShift): AttendanceRow {
+    return {
+        pickerId: r.picker_id,
+        date: r.date,
+        orchardId: r.orchard_id ?? null,
+        checkIn: r.check_in ?? null,
+        checkOut: r.check_out ?? null,
+        breakStart: r.break_start ?? null,
+        breakMinutes: r.break_minutes ?? null,
+        corrected: correctionCovers(r.corrected_at, r.check_out),
+    };
+}
+
+/** Horas de UN fichaje de la BD con el cálculo único (tope de 14 h incluido) */
+export function shiftHoursOf(
+    r: Pick<DbShift, 'check_in' | 'check_out' | 'break_start' | 'break_minutes' | 'corrected_at'>,
+    now?: Date,
+): ShiftHours {
+    return shiftHours({
+        checkIn: r.check_in,
+        checkOut: r.check_out,
+        breakStart: r.break_start,
+        breakMinutes: r.break_minutes,
+        corrected: correctionCovers(r.corrected_at, r.check_out),
+        now,
+    });
+}
+
 export interface AttendanceRow {
     pickerId: string;
     /** YYYY-MM-DD (fecha NZ del tramo) */
@@ -361,6 +516,8 @@ export interface AttendanceRow {
     checkOut?: string | null;
     breakStart?: string | null;
     breakMinutes?: number | null;
+    /** Hoja corregida a mano (corrected_at): un tramo largo se paga entero */
+    corrected?: boolean;
 }
 
 export interface BucketRow {
@@ -387,8 +544,10 @@ export interface PaySegment {
     travelHours: number;
 }
 
-/** Cubetas pagadas a un mismo precio (misma variedad y tarifa) */
+/** Cubetas pagadas a un mismo precio (mismo huerto, variedad y tarifa) */
 export interface PieceLine {
+    /** Huerto donde se recogieron: la vista de un huerto deja solo las suyas */
+    orchardId: string | null;
     variety: string;
     rate: number;
     buckets: number;
@@ -436,6 +595,11 @@ export interface PayDay {
     /** Horas estimadas (algún tramo sin cerrar o sin fichaje) */
     estimated: boolean;
     isPublicHoliday: boolean;
+    /**
+     * Algún tramo pasaba de maxUnreviewedShiftHours sin corregir: se ha pagado
+     * solo hasta el tope y hay que revisarlo (solo aparece cuando es true)
+     */
+    needsReview?: true;
 }
 
 export interface PickerRangePay {
@@ -453,6 +617,8 @@ export interface PickerRangePay {
     daysBelowMinimum: number;
     /** Días cuyas horas son estimadas (sin fichaje cerrado): revisar la hoja de horas */
     estimatedDays: number;
+    /** Días con un tramo cortado en el tope de horas (solo aparece si hay alguno) */
+    reviewDays?: number;
     /** Detalle día a día (huerto, horas, cubetas por variedad, pago) */
     dayDetails: PayDay[];
 }
@@ -477,23 +643,26 @@ interface ScanForPay {
  *   la mitad se carga al huerto de salida y la otra mitad al de llegada.
  *   El hueco entre dos tramos del mismo huerto (salió y volvió) no se paga.
  * - Sin tramos: del primer al último escaneo (estimado).
+ * - Un tramo de más de maxUnreviewedShiftHours desde su entrada y sin corregir
+ *   cuenta solo hasta el tope (needsReview).
  */
 function dayHours(
     rows: ReadonlyArray<AttendanceRow>,
     scans: ReadonlyArray<ScanForPay>,
     isToday: boolean,
     nowMs: number,
-): { hours: number; breakMinutes: number; travelMinutes: number; segments: PaySegment[]; estimated: boolean } {
+): { hours: number; breakMinutes: number; travelMinutes: number; segments: PaySegment[]; estimated: boolean; needsReview: boolean } {
     const sorted = [...rows]
         .filter(r => toMs(r.checkIn) !== null)
         .sort((a, b) => (toMs(a.checkIn) ?? 0) - (toMs(b.checkIn) ?? 0));
 
     if (sorted.length === 0) {
         const h = shiftHours({ scanTimes: scans.map(s => s.ts) });
-        return { hours: h.hours, breakMinutes: h.breakMinutes, travelMinutes: 0, segments: [], estimated: h.source !== 'none' };
+        return { hours: h.hours, breakMinutes: h.breakMinutes, travelMinutes: 0, segments: [], estimated: h.source !== 'none', needsReview: false };
     }
 
     let estimated = false;
+    let needsReview = false;
     const ranges: { start: number; end: number; row: AttendanceRow; contained: boolean }[] = [];
     // Fin más tardío hasta ahora: un tramo que se solapa con el anterior (error
     // al corregir la hoja) empieza donde acabó aquel; si no, el rato solapado
@@ -520,6 +689,11 @@ function dayHours(
                 .reduce((m, s) => Math.max(m, s.ms), start);
             end = last;
             estimated = true;
+        }
+        // Tope de horas sin corregir, contado desde la entrada real
+        if (!r.corrected && end - rawStart > MAX_UNREVIEWED_SHIFT_MS) {
+            end = rawStart + MAX_UNREVIEWED_SHIFT_MS;
+            needsReview = true;
         }
         // Tramo entero dentro de otro: no cuenta (tampoco para trayectos)
         const contained = coveredUntil > rawStart && end <= coveredUntil;
@@ -576,6 +750,7 @@ function dayHours(
         travelMinutes: Math.round(totalTravelMs / 60_000),
         segments,
         estimated,
+        needsReview,
     };
 }
 
@@ -584,13 +759,14 @@ function buildPieceLines(scans: ReadonlyArray<ScanForPay>): PieceLine[] {
     const lines = new Map<string, PieceLine>();
     for (const s of scans) {
         const variety = s.variety ?? '—';
-        const k = `${variety}|${s.rate}`;
-        const line = lines.get(k) ?? { variety, rate: s.rate, buckets: 0, earnings: 0 };
+        const orchardId = s.orchardId ?? null;
+        const k = `${orchardId ?? ''}|${variety}|${s.rate}`;
+        const line = lines.get(k) ?? { orchardId, variety, rate: s.rate, buckets: 0, earnings: 0 };
         line.buckets += 1;
         line.earnings = round2(line.earnings + s.rate);
         lines.set(k, line);
     }
-    return [...lines.values()].sort((a, b) => a.variety.localeCompare(b.variety) || a.rate - b.rate);
+    return [...lines.values()].sort((a, b) => a.variety.localeCompare(b.variety) || a.rate - b.rate || (a.orchardId ?? '').localeCompare(b.orchardId ?? ''));
 }
 
 /**
@@ -770,6 +946,7 @@ function payDayOf(date: string, rows: AttendanceRow[], dayScans: ScanForPay[], c
         belowMinimum: p.belowMinimum,
         estimated: h.estimated || hasStaleOpen,
         isPublicHoliday: holiday,
+        ...(h.needsReview ? { needsReview: true as const } : {}),
     };
 }
 
@@ -791,6 +968,7 @@ function addDay(acc: PickerRangePay, day: PayDay): void {
     acc.days += 1;
     if (day.belowMinimum) acc.daysBelowMinimum += 1;
     if (day.estimated) acc.estimatedDays += 1;
+    if (day.needsReview) acc.reviewDays = (acc.reviewDays ?? 0) + 1;
     acc.dayDetails.push(day);
 }
 
@@ -837,26 +1015,73 @@ export function payForRange(params: {
 }
 
 /**
- * Precio de una cubeta: el de su variedad en su huerto; si no hay, el de su
- * variedad para la empresa; si no, el precio normal del huerto; si no, el general.
+ * Precio por cubeta fijado un día (tabla piece_rates). Vale desde effectiveDate
+ * hasta que se fije otro para el mismo huerto y variedad.
  */
-export function pieceRateFor(
-    bucket: { orchardId?: string | null; variety?: string | null },
-    rates: {
-        /** variety_rates: [{ orchardId|null, variety, pieceRate }] */
-        varietyRates?: ReadonlyArray<{ orchardId: string | null; variety: string; pieceRate: number }>;
-        /** harvest_settings.piece_rate por huerto */
-        orchardRates?: Readonly<Record<string, number>>;
-        fallback: number;
-    },
-): number {
-    const v = bucket.variety?.trim().toLowerCase();
-    if (v && rates.varietyRates?.length) {
-        const own = rates.varietyRates.find(r => r.orchardId === (bucket.orchardId ?? null) && r.variety.trim().toLowerCase() === v);
-        if (own) return own.pieceRate;
-        const company = rates.varietyRates.find(r => r.orchardId === null && r.variety.trim().toLowerCase() === v);
-        if (company) return company.pieceRate;
+export interface DailyPieceRate {
+    orchardId: string;
+    /** null = precio general del huerto (variedades sin precio propio) */
+    variety: string | null;
+    /** YYYY-MM-DD (día NZ) desde el que vale */
+    effectiveDate: string;
+    pieceRate: number;
+}
+
+/** Índice por huerto+variedad, ordenado de la fecha más nueva a la más vieja */
+type DailyRateIndex = Map<string, ReadonlyArray<DailyPieceRate>>;
+const DAILY_RATE_INDEX = new WeakMap<ReadonlyArray<DailyPieceRate>, DailyRateIndex>();
+
+const dailyRateKey = (orchardId: string, variety: string | null | undefined) =>
+    `${orchardId}|${(variety ?? '').trim().toLowerCase()}`;
+
+function dailyRateIndexOf(rates: ReadonlyArray<DailyPieceRate>): DailyRateIndex {
+    let index = DAILY_RATE_INDEX.get(rates);
+    if (index) return index;
+    const groups = new Map<string, DailyPieceRate[]>();
+    for (const r of rates) {
+        const k = dailyRateKey(r.orchardId, r.variety);
+        const list = groups.get(k) ?? [];
+        list.push(r);
+        groups.set(k, list);
     }
-    if (bucket.orchardId && rates.orchardRates?.[bucket.orchardId] != null) return rates.orchardRates[bucket.orchardId];
-    return rates.fallback;
+    index = new Map();
+    for (const [k, list] of groups) {
+        index.set(k, list.sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate)));
+    }
+    DAILY_RATE_INDEX.set(rates, index);
+    return index;
+}
+
+function latestOn(list: ReadonlyArray<DailyPieceRate> | undefined, day: string): DailyPieceRate | undefined {
+    if (!list) return undefined;
+    for (const r of list) if (r.effectiveDate.slice(0, 10) <= day) return r;
+    return undefined;
+}
+
+/**
+ * Precio de una cubeta de un día (decisión del dueño 2026-10-23): el precio se
+ * fija por huerto, variedad y día. Cambiarlo hoy no toca los días anteriores;
+ * si un día nadie lo cambia, vale el último fijado.
+ * - la fila de esa variedad en ese huerto con la mayor effectiveDate <= dateNZ;
+ * - si no hay, la general del huerto (variety null) igual;
+ * - si no, fallback (harvest_settings.piece_rate).
+ * Función pura (el índice que se crea por lista es solo una caché).
+ */
+export function pieceRateOn(
+    rates: ReadonlyArray<DailyPieceRate>,
+    orchardId: string | null | undefined,
+    variety: string | null | undefined,
+    dateNZ: string,
+    fallback: number,
+): number {
+    if (!orchardId || rates.length === 0) return fallback;
+    const index = dailyRateIndexOf(rates);
+    const day = dateNZ.slice(0, 10);
+    const v = variety?.trim();
+    if (v) {
+        const own = latestOn(index.get(dailyRateKey(orchardId, v)), day);
+        if (own) return own.pieceRate;
+    }
+    const general = latestOn(index.get(dailyRateKey(orchardId, null)), day);
+    return general ? general.pieceRate : fallback;
 }

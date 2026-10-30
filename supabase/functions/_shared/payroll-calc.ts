@@ -4,8 +4,11 @@
  * close-pay-week (foto de lo que se paga al cerrar la semana), así ambos dan
  * exactamente las mismas cifras.
  */
-import { payForRange, pieceRateFor, isNZPublicHoliday, PAY_RULES, type PayDay, type PickerRangePay } from './pay-rules.ts'
+import { payForRange, pieceRateOn, nzDateOf, isNZPublicHoliday, minWageFloorOn, PAY_RULES, correctionCovers, type PayDay, type PickerRangePay } from './pay-rules.ts'
+import { loadDailyPieceRates } from './piece-rates.ts'
 import { fetchAllRows } from './fetch-all-rows.ts'
+import { fetchInChunks } from './fetch-in-chunks.ts'
+import { orchardDayView } from './payroll-orchard.ts'
 
 // deno-lint-ignore no-explicit-any
 type SupabaseLike = any
@@ -69,7 +72,8 @@ const isPublicHoliday = isNZPublicHoliday
 
 /**
  * La parte de un huerto de la nómina de cada persona: suma de su reparto por
- * huerto (byOrchard) de cada día. El detalle del día (days) se deja entero.
+ * huerto (byOrchard) de cada día. El detalle de cada día se reduce a ese
+ * huerto más abajo (orchardDayView).
  */
 function onlyOrchardShare(rows: PickerRangePay[], orchardId: string): PickerRangePay[] {
     const out: PickerRangePay[] = []
@@ -153,11 +157,24 @@ export interface PayrollResult {
 export async function computePayroll(
     supabase: SupabaseLike,
     { orchard_id, start_date, end_date }: { orchard_id?: string; start_date: string; end_date: string },
+    /**
+     * Cliente con el que se leen los precios (harvest_settings y piece_rates).
+     * Por defecto el mismo; calculate-payroll pasa uno de service role porque un
+     * manager solo lee los precios de su huerto (rates-client.ts).
+     */
+    ratesClient: SupabaseLike = supabase,
+    /**
+     * Cliente con el que se leen las cubetas y los fichajes. Por defecto el
+     * mismo; calculate-payroll pasa el de service role: el manager solo lee los
+     * de su huerto (migración 20261027070000) y el día de quien rota incluye
+     * otro huerto. Lo que sale es solo lo del huerto pedido (orchardDayView).
+     */
+    recordsClient: SupabaseLike = supabase,
 ): Promise<PayrollResult> {
-    // 1. Tarifas. Cada cubeta cobra el precio de su variedad (en su huerto o,
-    //    si no, el de la empresa); si la variedad no tiene precio, el precio
-    //    normal del huerto (harvest_settings.piece_rate).
-    const { data: settingsRows, error: settingsError } = await supabase
+    // 1. Tarifas. Cada cubeta cobra el precio de SU DÍA para su variedad en su
+    //    huerto; si la variedad no tiene precio, el general del huerto ese día;
+    //    si el huerto no tiene ninguno, harvest_settings.piece_rate.
+    const { data: settingsRows, error: settingsError } = await ratesClient
         .from('harvest_settings')
         .select('orchard_id, piece_rate, min_wage_rate')
     if (settingsError) throw new Error(`Harvest settings: ${settingsError.message}`)
@@ -173,39 +190,44 @@ export async function computePayroll(
     const companyBucketRate = Number(settingsList.find(s => s.piece_rate != null)?.piece_rate ?? 6.5)
     const bucket_rate = own?.piece_rate != null ? Number(own.piece_rate) : companyBucketRate
 
-    // Mínimo: el más alto de la empresa; nunca por debajo del legal
-    // (Minimum Wage Order 2026; la migración 20260412 ya lo corrige en DB).
-    const companyMinWage = Math.max(PAY_RULES.minWageFloor, ...settingsList.map(s => Number(s.min_wage_rate ?? 0)))
+    // Mínimo de la empresa: el más alto configurado. El legal de CADA día lo
+    // pone dayPay (minWageFloorOn(fecha)): aquí no se mete el legal de hoy, o un
+    // Minimum Wage Order nuevo (1 de abril) subiría también los días de marzo de
+    // esa semana y cambiaría semanas ya pagadas al recalcularlas (Fase 2).
+    const companyMinWage = Math.max(0, ...settingsList.map(s => Number(s.min_wage_rate ?? 0)))
     const stored_min_wage = own?.min_wage_rate != null ? Number(own.min_wage_rate) : companyMinWage
+    // Lo que se enseña como «mínimo vigente»: el configurado o, si es menor, el legal de hoy
     const min_wage_rate = Math.max(companyMinWage, PAY_RULES.minWageFloor)
     if (stored_min_wage < PAY_RULES.minWageFloor) {
         console.warn(`[Payroll] COMPLIANCE WARNING: min_wage_rate=${stored_min_wage} < legal floor ${PAY_RULES.minWageFloor}. Using floor.`)
     }
 
-    const { data: varietyRows } = await supabase
-        .from('variety_rates')
-        .select('orchard_id, variety, piece_rate')
-    const varietyRates = ((varietyRows ?? []) as { orchard_id: string | null; variety: string; piece_rate: number }[])
-        .map(v => ({ orchardId: v.orchard_id, variety: v.variety, pieceRate: Number(v.piece_rate) }))
+    // Precio por cubeta de cada día, huerto y variedad (piece_rates): cambiar el
+    // precio hoy no reescribe los días anteriores. Hasta el día siguiente al
+    // rango (cubetas de un turno que cruza la medianoche).
+    const dailyRates = await loadDailyPieceRates(ratesClient, start_date, addDays(end_date, 1))
 
     // 2. Cubetas y tramos del rango (límites en hora NZ), de TODOS los huertos
     //    (también si se pide uno). La gente rota y puede pasar de un huerto a
     //    otro el mismo día: el complemento al mínimo se calcula con el día entero.
     //    Por páginas: PostgREST corta en 1000 filas y una semana tiene más.
     const events = await fetchAllRows((from, to) => {
-        const q = supabase
+        const q = recordsClient
             .from('bucket_records')
             .select('picker_id, orchard_id, variety, scanned_at, quality_grade')
             .is('deleted_at', null)
             .gte('scanned_at', toNZBoundary(start_date, '00:00:00'))
             // Hasta el final del día siguiente al rango (turno que cruza la medianoche)
             .lt('scanned_at', toNZBoundary(addDays(end_date, 2), '00:00:00'))
-        return q.order('id').range(from, to)
+        // Orden por (scanned_at, id): el índice de scanned_at ya da el orden y cada
+        // página no reordena la semana entera (con order('id') cada página
+        // ordenaba ~70.000 filas en disco: 150 ms × 70 páginas; ahora ~45 ms)
+        return q.order('scanned_at').order('id').range(from, to)
     })
     const attendance = await fetchAllRows((from, to) => {
-        const q = supabase
+        const q = recordsClient
             .from('daily_attendance')
-            .select('picker_id, orchard_id, date, check_in, check_out, break_start, break_minutes')
+            .select('picker_id, orchard_id, date, check_in, check_out, break_start, break_minutes, corrected_at')
             .is('deleted_at', null)
             // Un día más por cada lado: las cubetas de después de medianoche son
             // del turno que las cubre (que puede ser del día anterior o del siguiente)
@@ -218,7 +240,7 @@ export async function computePayroll(
     //    - horas del día = suma de tramos − un descanso de 30 min NO pagado
     //    - complemento al mínimo POR DÍA (un día bueno no tapa uno malo)
     //    - festivos (Holidays Act 2003 s.50): mínimo × 1.5 ese día
-    type Att = { picker_id: string; orchard_id: string | null; date: string; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null }
+    type Att = { picker_id: string; orchard_id: string | null; date: string; check_in: string | null; check_out: string | null; break_start: string | null; break_minutes: number | null; corrected_at: string | null }
     type Ev = { picker_id: string; orchard_id: string | null; variety: string | null; scanned_at: string; quality_grade: string | null }
     // Huerto pedido: solo las personas que trabajaron en él en el rango (con
     // todos sus tramos y cubetas, de cualquier huerto)
@@ -239,6 +261,8 @@ export async function computePayroll(
         checkOut: a.check_out,
         breakStart: a.break_start,
         breakMinutes: a.break_minutes,
+        // Hoja corregida: un tramo de más de 14 h se paga entero (si no, el tope)
+        corrected: correctionCovers(a.corrected_at, a.check_out),
     }))
     const bucketRows = ((events ?? []) as Ev[]).filter(e => !atOrchard || atOrchard.has(e.picker_id)).map(e => ({
         pickerId: e.picker_id,
@@ -246,7 +270,7 @@ export async function computePayroll(
         variety: e.variety,
         scannedAt: e.scanned_at,
         qualityGrade: e.quality_grade,
-        pieceRate: pieceRateFor({ orchardId: e.orchard_id, variety: e.variety }, { varietyRates, orchardRates, fallback: companyBucketRate }),
+        pieceRate: pieceRateOn(dailyRates, e.orchard_id, e.variety, nzDateOf(e.scanned_at), (e.orchard_id ? orchardRates[e.orchard_id] : undefined) ?? companyBucketRate),
     }))
 
     // Tarifa por hora del contrato: si es mayor que el mínimo, es el mínimo
@@ -261,9 +285,9 @@ export async function computePayroll(
     for (const k of (contractRows ?? []) as { employee_id: string; hourly_rate: number | null; start_date: string | null; end_date: string | null }[]) {
         const rate = Number(k.hourly_rate ?? 0)
         const covers = (!k.start_date || k.start_date <= end_date) && (!k.end_date || k.end_date >= start_date)
-        if (covers && rate > min_wage_rate) minWageById.set(k.employee_id, Math.max(rate, minWageById.get(k.employee_id) ?? 0))
+        if (covers && rate > companyMinWage) minWageById.set(k.employee_id, Math.max(rate, minWageById.get(k.employee_id) ?? 0))
     }
-    const minWageOf = (id: string) => minWageById.get(id) ?? min_wage_rate
+    const minWageOf = (id: string) => minWageById.get(id) ?? companyMinWage
 
     // Un cálculo por cada mínimo distinto (casi todos usan el general)
     const groups = new Map<number, Set<string>>()
@@ -285,9 +309,10 @@ export async function computePayroll(
     const rows = (orchard_id ? onlyOrchardShare(allRows, orchard_id) : allRows).sort((a, b) => b.buckets - a.buckets)
     const pickerIds = rows.map(r => r.pickerId)
 
-    const { data: names } = pickerIds.length
-        ? await supabase.from('pickers').select('id, name').in('id', pickerIds)
-        : { data: [] as { id: string; name: string }[] }
+    // Por trozos: con ~250 personas en la URL Kong respondía 414 y la nómina
+    // salía sin nombres (prueba de carga 2026-10-21)
+    const names = await fetchInChunks<{ id: string; name: string }>(pickerIds, (chunk, from, to) =>
+        supabase.from('pickers').select('id, name').in('id', chunk).order('id').range(from, to))
     const nameById = new Map<string, string>((names ?? []).map((n: { id: string; name: string }) => [n.id, n.name]))
 
     // 4. Desglose por picker
@@ -324,14 +349,19 @@ export async function computePayroll(
             piece_rate_earnings: r.pieceEarnings,
             holiday_premium: r.holidayPremium,
             hourly_rate: r.hours > 0 ? r2(r.pieceEarnings / r.hours) : 0,
-            minimum_required: r2(hours_ordinary * minWageOf(r.pickerId) + hours_holiday * minWageOf(r.pickerId) * PAY_RULES.publicHolidayMultiplier),
+            // Con el mínimo legal de cada día (un 1 de abril a mitad de semana cuenta)
+            minimum_required: r2(r.dayDetails.reduce((s, d) => s + share(d).hours
+                * Math.max(minWageOf(r.pickerId), minWageFloorOn(d.date))
+                * (d.isPublicHoliday ? PAY_RULES.publicHolidayMultiplier : 1), 0)),
             top_up_required: r.topUp,
             total_earnings: r.total,
             is_below_minimum,
             // Holidays Act 2003 s.60: un día alternativo por festivo trabajado
             alternative_holidays_owed: holidaysWorked,
             estimated_days: r.estimatedDays,
-            days: r.dayDetails,
+            // Huerto pedido: el detalle del día solo con lo de ese huerto (tramos,
+            // cubetas, precios y su parte del pago), nada de los otros huertos
+            days: orchard_id ? r.dayDetails.map(d => orchardDayView(d, orchard_id)) : r.dayDetails,
         })
 
         total_buckets += r.buckets

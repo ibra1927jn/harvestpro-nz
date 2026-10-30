@@ -15,6 +15,7 @@ import { useAuth } from '@/context/AuthContext';
 import type { PayWeekActionResult } from '@/repositories/payroll.repository';
 import { translate } from '@/i18n';
 import { PAY_RULES } from '@/services/harvestMetrics/pay';
+import { useAttendanceLiveRefresh } from './useAttendanceLiveRefresh';
 
 /** Semana de pago a mostrar por defecto: el lunes se cierra la semana anterior. */
 export function defaultPayWeek(today: string = todayNZST()): PayWeek {
@@ -44,6 +45,9 @@ export function usePayroll() {
     const [closing, setClosing] = useState(false);
     const [closeResult, setCloseResult] = useState<PayWeekActionResult | null>(null);
     const { appUser } = useAuth();
+    // Manager: solo la parte de SU huerto (decisión del dueño, 2026-10-27; el
+    // servidor lo impone aunque se pida la empresa). Nómina ve la empresa entera.
+    const orchardOnly = appUser?.role === 'manager';
 
     useEffect(() => {
         let cancelled = false;
@@ -53,8 +57,8 @@ export function usePayroll() {
                 setIsLoading(true);
                 setError(null);
                 // Nómina de la EMPRESA: cada persona suma lo trabajado en todos los
-                // huertos esa semana (hoy en A, mañana en B...)
-                const data = await payrollService.calculatePayroll(undefined, week.start, week.end);
+                // huertos esa semana (hoy en A, mañana en B...). Manager: su huerto.
+                const data = await payrollService.calculatePayroll(orchardOnly ? orchardId : undefined, week.start, week.end);
                 if (!cancelled) setPayrollData(data);
             } catch (err) {
                 logger.warn('[Payroll] Failed to load payroll data:', err);
@@ -68,7 +72,13 @@ export function usePayroll() {
         };
         loadPayroll();
         return () => { cancelled = true; };
-    }, [orchardId, week, reloadKey]);
+    }, [orchardId, week, reloadKey, orchardOnly]);
+
+    // En vivo (fichajes de hoy o volver a la pestaña), solo si la semana incluye hoy:
+    // recalcular la semana entera como mucho una vez por minuto
+    const today = todayNZST();
+    const weekIsLive = week.start <= today && today <= week.end;
+    useAttendanceLiveRefresh(() => setReloadKey(k => k + 1), { enabled: !!orchardId && weekIsLive });
 
     // Al cambiar de semana se olvida el aviso de la anterior
     useEffect(() => { setCloseResult(null); }, [week]);
@@ -77,6 +87,9 @@ export function usePayroll() {
 
     // Cierre de semana: solo Nómina y admin, y solo semanas ya terminadas
     const canManageWeek = appUser?.role === 'payroll_admin' || appUser?.role === 'admin';
+    // Exportar a Xero/PaySauce también: la exportación es la paga entera de cada
+    // persona (todos los huertos), no la parte de un huerto
+    const canExport = canManageWeek;
     const weekFinished = todayNZST() > week.end;
     const closedInfo = payrollData?.closed ?? null;
 
@@ -115,6 +128,6 @@ export function usePayroll() {
 
     return {
         orchardId, isLoading, hasLoadedOnce, error, week, goToWeek, summary, compliance, pickers, settings,
-        closedInfo, canManageWeek, weekFinished, closing, closeResult, closeWeek, reopenWeek,
+        closedInfo, canManageWeek, canExport, orchardOnly, weekFinished, closing, closeResult, closeWeek, reopenWeek,
     };
 }

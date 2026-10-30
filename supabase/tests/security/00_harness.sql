@@ -309,6 +309,9 @@ BEGIN
     RETURNING id INTO v_id;
     INSERT INTO sec_test.ids VALUES (o || '.att_tl', v_id);
 
+    -- Un contrato activo que ya tuviera la persona en la base local (demo, otras
+    -- pruebas a mano) choca con «uno activo por persona»; dentro del ROLLBACK se aparta
+    UPDATE public.contracts SET status = 'expired' WHERE employee_id = v_runner AND status = 'active';
     INSERT INTO public.contracts (employee_id, orchard_id, type, status, start_date, hourly_rate, created_by)
     VALUES (v_runner, v_orchard, 'seasonal', 'active', v_today - 10, 25.00, v_hr) RETURNING id INTO v_id;
     INSERT INTO sec_test.ids VALUES (o || '.contract', v_id);
@@ -324,17 +327,9 @@ BEGIN
     VALUES (v_id, v_manager, 'SecTest private message ' || o) RETURNING id INTO v_id;
     INSERT INTO sec_test.ids VALUES (o || '.chat', v_id);
 
-    INSERT INTO public.messages (sender_id, receiver_id, content)
-    VALUES (v_runner, v_tl, 'SecTest DM ' || o) RETURNING id INTO v_id;
-    INSERT INTO sec_test.ids VALUES (o || '.dm', v_id);
-
     INSERT INTO public.broadcasts (orchard_id, sender_id, title, content)
     VALUES (v_orchard, v_manager, 'SecTest', 'SecTest broadcast ' || o) RETURNING id INTO v_id;
     INSERT INTO sec_test.ids VALUES (o || '.broadcast', v_id);
-
-    INSERT INTO public.wage_rates (orchard_id, job_type, hourly_rate)
-    VALUES (v_orchard, 'sectest', 24.00) RETURNING id INTO v_id;
-    INSERT INTO sec_test.ids VALUES (o || '.wage', v_id);
 
     INSERT INTO public.variety_rates (orchard_id, variety, piece_rate)
     VALUES (v_orchard, 'SecTestVariety', 7.00) RETURNING id INTO v_id;
@@ -410,6 +405,11 @@ BEGIN
     -- Las semanas ya cerradas en la BD (datos reales) bloquearían los fichajes
     -- de prueba de hoy: dentro de esta transacción (ROLLBACK) se reabren
     UPDATE public.pay_weeks SET status = 'reopened' WHERE status = 'closed';
+    -- Igual con los días cerrados recientes del seed (trg_enforce_closed_day_attendance
+    -- bloquearía los fichajes de prueba de hace unos días). Los cierres de prueba
+    -- (hace 200 y 400 días) se quedan.
+    UPDATE public.day_closures SET status = 'open'
+    WHERE status = 'closed' AND date > (now() AT TIME ZONE 'Pacific/Auckland')::date - 100;
 
     -- Las pruebas usan el valor de producción (2FA exigido en el servidor),
     -- aunque la BD de desarrollo lo tenga apagado (scripts/dev-disable-mfa.sql)
@@ -450,20 +450,16 @@ BEGIN
     INSERT INTO sec_test.who VALUES ('A.invitee', v_id, 'sectest.invite-a@example.test');
 END $$;
 
--- Foto de calidad subida por el inspector de A
+-- Foto de calidad subida por el inspector de A (en la carpeta de su huerto, como useQC.ts)
 DO $$
 DECLARE v_id uuid;
 BEGIN
     INSERT INTO storage.objects (bucket_id, name, owner, owner_id)
-    VALUES ('qc-photos', 'sectest/' || gen_random_uuid() || '.webp', sec_test.id_of('A.qc_inspector'),
+    VALUES ('qc-photos', sec_test.id_of('A')::text || '/sectest/' || gen_random_uuid() || '.webp', sec_test.id_of('A.qc_inspector'),
             sec_test.id_of('A.qc_inspector')::text)
     RETURNING id INTO v_id;
     INSERT INTO sec_test.ids VALUES ('A.qc_photo', v_id);
 END $$;
-
--- Bloqueo de cuenta e intentos de acceso (de un email de prueba)
-INSERT INTO public.account_locks (email, locked_until) VALUES ('sectest.locked@example.test', now() + interval '10 minutes');
-INSERT INTO public.login_attempts (email, success) VALUES ('sectest.locked@example.test', false);
 
 GRANT SELECT ON ALL TABLES IN SCHEMA sec_test TO anon, authenticated;
 

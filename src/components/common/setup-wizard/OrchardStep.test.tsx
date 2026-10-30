@@ -1,64 +1,29 @@
 /**
- * OrchardStep — setup wizard step 1.
+ * OrchardStep — paso 1 del asistente de huerto nuevo
  */
+import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import OrchardStep from './OrchardStep';
-import { INITIAL_DATA } from './wizard.types';
+import { sampleWizardData } from './testData';
 
 describe('OrchardStep', () => {
-    it('renderiza 4 inputs (code/name/location/total_rows)', () => {
-        const { container } = render(
-            <OrchardStep data={INITIAL_DATA} onUpdate={() => {}} />,
-        );
-        const inputs = container.querySelectorAll('input');
-        expect(inputs).toHaveLength(4);
+    it('shows code, name and location (rows come from the blocks step)', () => {
+        render(<OrchardStep data={sampleWizardData} onUpdate={() => {}} />);
+        expect((screen.getByLabelText('Orchard Code *') as HTMLInputElement).value).toBe('JP-01');
+        expect((screen.getByLabelText('Orchard Name *') as HTMLInputElement).value).toBe('J&P Cherries');
+        expect((screen.getByLabelText('Location') as HTMLInputElement).value).toBe('Cromwell');
+        expect(screen.queryByLabelText('Total Rows')).toBeNull();
     });
 
-    it('code input upperCases el valor', () => {
+    it('upper-cases the code and passes name and location as typed', () => {
         const onUpdate = vi.fn();
-        const { container } = render(
-            <OrchardStep data={INITIAL_DATA} onUpdate={onUpdate} />,
-        );
-        const codeInput = container.querySelectorAll('input')[0];
-        fireEvent.change(codeInput, { target: { value: 'jp-01' } });
-        expect(onUpdate).toHaveBeenCalledWith('code', 'JP-01');
-    });
-
-    it('name input pasa el valor tal cual', () => {
-        const onUpdate = vi.fn();
-        const { container } = render(<OrchardStep data={INITIAL_DATA} onUpdate={onUpdate} />);
-        const nameInput = container.querySelectorAll('input')[1];
-        fireEvent.change(nameInput, { target: { value: 'My Farm' } });
-        expect(onUpdate).toHaveBeenCalledWith('name', 'My Farm');
-    });
-
-    it('total_rows parseInt + default 1 cuando NaN', () => {
-        const onUpdate = vi.fn();
-        const { container } = render(<OrchardStep data={INITIAL_DATA} onUpdate={onUpdate} />);
-        const rows = container.querySelectorAll('input')[3];
-        fireEvent.change(rows, { target: { value: 'abc' } });
-        expect(onUpdate).toHaveBeenCalledWith('total_rows', 1);
-    });
-
-    it('total_rows parsea número válido', () => {
-        const onUpdate = vi.fn();
-        const { container } = render(<OrchardStep data={INITIAL_DATA} onUpdate={onUpdate} />);
-        const rows = container.querySelectorAll('input')[3];
-        fireEvent.change(rows, { target: { value: '42' } });
-        expect(onUpdate).toHaveBeenCalledWith('total_rows', 42);
-    });
-
-    it('renderiza valores desde data', () => {
-        const data = {
-            ...INITIAL_DATA,
-            orchard: { code: 'ABC', name: 'Test', location: 'NZ', total_rows: 15 },
-        };
-        const { container } = render(<OrchardStep data={data} onUpdate={() => {}} />);
-        const inputs = container.querySelectorAll('input');
-        expect((inputs[0] as HTMLInputElement).value).toBe('ABC');
-        expect((inputs[1] as HTMLInputElement).value).toBe('Test');
-        expect((inputs[2] as HTMLInputElement).value).toBe('NZ');
-        expect((inputs[3] as HTMLInputElement).value).toBe('15');
+        render(<OrchardStep data={sampleWizardData} onUpdate={onUpdate} />);
+        fireEvent.change(screen.getByPlaceholderText('e.g. JP-01'), { target: { value: 'hb-02' } });
+        fireEvent.change(screen.getByLabelText('Orchard Name *'), { target: { value: 'Hawke Bay' } });
+        fireEvent.change(screen.getByLabelText('Location'), { target: { value: 'Hastings' } });
+        expect(onUpdate).toHaveBeenCalledWith('code', 'HB-02');
+        expect(onUpdate).toHaveBeenCalledWith('name', 'Hawke Bay');
+        expect(onUpdate).toHaveBeenCalledWith('location', 'Hastings');
     });
 });

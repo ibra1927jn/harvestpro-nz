@@ -41,7 +41,8 @@ describe('useSettings — form defaults', () => {
         min_wage_rate: 23.95,
         min_buckets_per_hour: 8,
         target_tons: 40,
-        variety: 'Cherry',
+        // Sin valor por defecto: antes «Cherry» acababa guardado en huertos de manzanas (B5)
+        variety: '',
     };
 
     it('has correct default piece rate', () => {
@@ -56,7 +57,30 @@ describe('useSettings — form defaults', () => {
         expect(defaults.target_tons).toBe(40);
     });
 
-    it('has correct default variety', () => {
-        expect(defaults.variety).toBe('Cherry');
+    it('has no default variety', () => {
+        expect(defaults.variety).toBe('');
+    });
+});
+
+// ── Variedades del huerto: de las filas (block_rows), no de orchards.crop_type ──
+import { varietiesOfRows } from './useSettings';
+
+describe('varietiesOfRows', () => {
+    it('lists the distinct row varieties of the orchard, alphabetically', () => {
+        const blocks = [
+            { rowVarieties: { 1: 'Royal Gala', 2: 'Royal Gala', 3: 'Braeburn' } },
+            { rowVarieties: { 16: 'Braeburn', 17: 'Royal Gala' } },
+        ];
+        expect(varietiesOfRows(blocks)).toEqual(['Braeburn', 'Royal Gala']);
+    });
+
+    it('ignores blank rows and the "Desconocida" placeholder the map slice uses', () => {
+        const blocks = [{ rowVarieties: { 1: '  ', 2: 'Desconocida', 3: 'Fuji ' } }];
+        expect(varietiesOfRows(blocks)).toEqual(['Fuji']);
+    });
+
+    it('returns an empty list when the orchard has no rows loaded', () => {
+        expect(varietiesOfRows([])).toEqual([]);
+        expect(varietiesOfRows([{ rowVarieties: {} }])).toEqual([]);
     });
 });

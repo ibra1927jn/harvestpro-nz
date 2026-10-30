@@ -11,9 +11,11 @@ function mockChain(result: { data?: unknown; error?: unknown }) {
         select: vi.fn(() => chain),
         eq: vi.fn(() => chain),
         in: vi.fn(() => chain),
+        update: vi.fn(() => chain),
         is: vi.fn(() => chain),
         order: vi.fn(() => chain),
         limit: vi.fn(() => chain),
+        range: vi.fn(() => chain),
         then: (onF?: (v: unknown) => unknown, onR?: (r: unknown) => unknown) =>
             Promise.resolve(result).then(onF, onR),
     };
@@ -72,9 +74,42 @@ describe('orchardMapRepository.getBlockRows', () => {
         expect(res.data).toHaveLength(1);
     });
 
+    it('pide por páginas en orden estable (más de 1000 filas) y ordena por número de fila', async () => {
+        const chain = mockChain({ data: [{ id: 'r2', block_id: 'b1', row_number: 2 }, { id: 'r1', block_id: 'b1', row_number: 1 }], error: null });
+        fromSpy.mockReturnValue(chain as never);
+        const res = await orchardMapRepository.getBlockRows(['b1']);
+        expect(chain.order).toHaveBeenCalledWith('id');
+        expect(chain.range).toHaveBeenCalledWith(0, 999);
+        expect(res.data?.map(r => r.row_number)).toEqual([1, 2]);
+    });
+
+    it('devuelve el error de la base', async () => {
+        fromSpy.mockReturnValue(mockChain({ data: null, error: { message: 'rls' } }) as never);
+        const res = await orchardMapRepository.getBlockRows(['b1']);
+        expect(res.data).toBeNull();
+        expect(res.error).toBeTruthy();
+    });
+
     it('acepta [] sin romper', async () => {
         fromSpy.mockReturnValue(mockChain({ data: [], error: null }) as never);
         const res = await orchardMapRepository.getBlockRows([]);
         expect(res.error).toBeNull();
+    });
+});
+
+describe('orchardMapRepository.setBlockVariety', () => {
+    it('sets one variety on every live row of the block and returns how many changed', async () => {
+        const chain = mockChain({ data: [{ id: 'r1' }, { id: 'r2' }], error: null });
+        fromSpy.mockReturnValue(chain as never);
+        expect(await orchardMapRepository.setBlockVariety('b1', ' Royal Gala ')).toBe(2);
+        expect(fromSpy).toHaveBeenCalledWith('block_rows');
+        expect(chain.update).toHaveBeenCalledWith({ variety: 'Royal Gala' });
+        expect(chain.eq).toHaveBeenCalledWith('block_id', 'b1');
+        expect(chain.is).toHaveBeenCalledWith('deleted_at', null);
+    });
+
+    it('throws when the database refuses', async () => {
+        fromSpy.mockReturnValue(mockChain({ data: null, error: { message: 'rls' } }) as never);
+        await expect(orchardMapRepository.setBlockVariety('b1', 'Fuji')).rejects.toBeTruthy();
     });
 });

@@ -7,7 +7,6 @@ import { render, screen, fireEvent } from '@/test-utils';
 
 const mockHandleChange = vi.fn();
 const mockHandleSave = vi.fn();
-const mockSetCompliance = vi.fn();
 const mockHandleNotifToggle = vi.fn();
 const mockHandleNotifType = vi.fn();
 const mockHandleSendTest = vi.fn();
@@ -25,21 +24,12 @@ vi.mock('@/hooks/useSettings', () => ({
             variety: 'Apple',
         },
         handleChange: mockHandleChange,
-        compliance: {
-            nz_employment_standards: true,
-            auto_wage_alerts: true,
-            safety_verification: false,
-            audit_trail: true,
-        },
-        setCompliance: mockSetCompliance,
+        setGeneralRate: vi.fn(),
         // Issue 2: permisos de edición de salario mínimo
         canEditMinWage: false,
         // Issue 3: floor de compliance
         complianceFloor: 4,
-        // Issue 4: orchard selector
-        availableOrchards: [{ id: 'o1', name: 'Green Valley Orchard', total_rows: 42 }],
         orchardVarieties: 'Apple',
-        handleOrchardSelect: vi.fn(),
         notifEnabled: true,
         handleNotifToggle: mockHandleNotifToggle,
         notifTypes: {
@@ -70,6 +60,10 @@ vi.mock('@/i18n', async (importOriginal) => {
         }),
     };
 });
+
+vi.mock('./settings/DailyPieceRatesEditor', () => ({
+    DailyPieceRatesEditor: ({ orchardId }: { orchardId?: string }) => <div data-testid="daily-piece-rates-editor">{orchardId}</div>,
+}));
 
 vi.mock('./DayClosureButton', () => ({
     DayClosureButton: () => <button data-testid="day-closure-btn">Close Day</button>,
@@ -131,6 +125,12 @@ describe('SettingsView', () => {
     it('renders Settings page header', () => {
         render(<SettingsView />);
         expect(screen.getByText('Settings')).toBeTruthy();
+    });
+
+    it('el precio por cubeta se edita por día (editor de hoy), no como campo general', () => {
+        render(<SettingsView />);
+        expect(screen.getByTestId('daily-piece-rates-editor').textContent).toBe('o1');
+        expect(screen.queryByTestId('field-Piece Rate (per bucket)')).toBeNull();
     });
 
     it('renders user profile card with initials', () => {
@@ -205,9 +205,14 @@ describe('SettingsView', () => {
         expect(screen.getByText(/Finalize payroll/)).toBeTruthy();
     });
 
-    it('renders Reset button in Danger Zone', () => {
+    it('no dead controls (B5): no Reset Today\'s Data, no compliance switches, no orchard selector', () => {
         render(<SettingsView />);
-        expect(screen.getByText('Reset')).toBeTruthy();
+        expect(screen.queryByText('Reset')).toBeNull();
+        expect(screen.queryByText('NZ Employment Standards')).toBeNull();
+        expect(screen.queryByLabelText('Select orchard')).toBeNull();
+        expect(screen.queryByRole('combobox', { name: /orchard/i })).toBeNull();
+        // El registro de auditoría sigue a la vista como «siempre activo»
+        expect(screen.getByText('Audit Trail Logging')).toBeTruthy();
     });
 
     it('renders language selector', () => {
@@ -258,7 +263,7 @@ describe('SettingsView', () => {
         expect(screen.getByText(/b\/hr/)).toBeTruthy();
     });
 
-    // ── Issue 4: Orchard selector ────────────────────────────────
+    // ── Huerto: solo se enseña (se cambia en la cabecera) ─────────────
     it('renders orchard details section', () => {
         render(<SettingsView />);
         expect(screen.getByText('Orchard Details')).toBeTruthy();
@@ -266,15 +271,24 @@ describe('SettingsView', () => {
 
     it('shows orchard name when only one orchard available', () => {
         render(<SettingsView />);
-        // Con un solo orchard, OrchardSelector muestra como texto (no dropdown)
         expect(screen.getByText('Green Valley Orchard')).toBeTruthy();
     });
 
     // ── Issue 6: Responsive layout ───────────────────────────────
-    it('uses responsive grid wrapper for settings sections', () => {
+    it('lays the sections out as a masonry (CSS columns), so a short card keeps its own height', () => {
         const { container } = render(<SettingsView />);
-        // El grid md:grid-cols-2 lg:grid-cols-3 debe estar en el DOM
-        const grid = container.querySelector('.grid.grid-cols-1');
-        expect(grid).toBeTruthy();
+        // Antes era un grid: cada fila se estiraba a la tarjeta más alta y
+        // «Detalles del huerto» (tres líneas) medía lo que «Cosecha».
+        const masonry = container.querySelector('.columns-1');
+        expect(masonry).toBeTruthy();
+        expect(masonry?.className).toContain('lg:columns-3');
+        expect(container.querySelector('.grid.grid-cols-1.md\\:grid-cols-2')).toBeNull();
+    });
+
+    it('no shift end time: only the planned start, with the explanation', () => {
+        render(<SettingsView />);
+        expect(screen.getByLabelText('Shift Start')).toBeTruthy();
+        expect(screen.queryByLabelText('Shift End')).toBeNull();
+        expect(screen.getByText(/There is no shift end time/)).toBeTruthy();
     });
 });

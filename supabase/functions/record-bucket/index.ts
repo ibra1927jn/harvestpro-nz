@@ -8,7 +8,7 @@ import {
     BucketRecordSchema,
 } from '../_shared/security.ts'
 import { z } from 'npm:zod@^4.3.6'
-import { checkScanTime, FUTURE_TOLERANCE_MS } from '../_shared/scan-time.ts'
+import { checkScanTime, measuredSkew } from '../_shared/scan-time.ts'
 
 /**
  * record-bucket — Server-side bucket/scan recording
@@ -33,7 +33,8 @@ const BatchScanSchema = z.object({
     scanned_by: z.string().regex(UUID_RE).optional().nullable(),
     scanned_at: z.string().min(10),
     /** Corrección (ms) que el móvil ya sumó a scanned_at con el desfase conocido */
-    clock_skew_ms: z.number().int().optional().nullable(),
+    // Sin .int(): un decimal de un móvil raro no debe rechazar la cubeta (se redondea al guardar)
+    clock_skew_ms: z.number().finite().optional().nullable(),
 })
 
 type Report = {
@@ -71,6 +72,13 @@ async function resolveBadge(supabase: any, code: string, orchardId: string): Pro
     return match?.id ?? null
 }
 
+/** Choques entre transacciones (interbloqueo, serialización): se arreglan reintentando al momento */
+function isTransientConflict(code: string): boolean {
+    return code === '40P01' || code === '40001'
+}
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 /** Errores que no se arreglan reintentando: datos (22xxx), integridad (23xxx), RLS, triggers */
 function isPermanent(code: string): boolean {
     return code.startsWith('22') || code.startsWith('23') || code === '42501' || code === 'P0001'
@@ -89,11 +97,20 @@ type InsertOutcome = { status: 'saved' | 'duplicate' | 'rejected' | 'retry'; rea
 // deno-lint-ignore no-explicit-any
 async function insertScan(supabase: any, row: Record<string, unknown> & { scanned_at: string }): Promise<InsertOutcome> {
     const base = Date.parse(row.scanned_at)
+    let conflicts = 0
     for (let shift = 0; shift < 50; shift++) {
         const scannedAt = shift === 0 || Number.isNaN(base) ? row.scanned_at : new Date(base + shift).toISOString()
         const { error } = await supabase.from('bucket_records').insert({ ...row, scanned_at: scannedAt })
         if (!error) return { status: 'saved' }
         const code = error.code ?? ''
+        // Interbloqueo con otro lote que guarda las mismas cubetas: reintentar el
+        // mismo instante (hasta 3 veces) en vez de devolver "retry" al móvil
+        if (isTransientConflict(code) && conflicts < 3) {
+            conflicts++
+            shift--
+            await sleep(20 + Math.random() * 80)
+            continue
+        }
         if (code === '23505') {
             const text = `${error.message ?? ''} ${error.details ?? ''}`
             if (text.includes('picker_scan_unique') && !Number.isNaN(base)) continue
@@ -136,12 +153,19 @@ serve(async (req) => {
         // su motivo para no reintentarlo para siempre.
         if (Array.isArray(body?.scans)) {
             const scans = body.scans.slice(0, 200) as unknown[]
-            const results: { id: string | null; status: 'saved' | 'duplicate' | 'rejected' | 'retry'; reason?: string; flag?: string }[] = []
+            type ScanResult = { id: string | null; status: 'saved' | 'duplicate' | 'rejected' | 'retry'; reason?: string; flag?: string }
+            // Un hueco por escaneo recibido: la respuesta sale en el mismo orden que el lote
+            const results: ScanResult[] = new Array(scans.length)
             const badgeCache = new Map<string, string | null>()
             const reports: Report[] = []
             const serverNow = Date.now()
-            const clientNow = typeof body.client_now === 'number' ? body.client_now : null
-            for (const raw of scans) {
+            const clientNow = typeof body.client_now === 'number' && Number.isFinite(body.client_now) ? body.client_now : null
+            // 1.ª pasada: validar y resolver tarjetas; las filas buenas se insertan
+            // juntas (1 viaje a la BD en vez de 1 por cubeta). Si el lote falla
+            // entero (trigger de día/semana cerrados, dos cubetas en el mismo
+            // milisegundo…) se vuelve al camino de una en una de siempre.
+            const ready: { idx: number; row: Record<string, unknown> & { id: string; scanned_at: string }; pickerId: string; time: ReturnType<typeof checkScanTime> }[] = []
+            for (const [idx, raw] of scans.entries()) {
                 const scanId = typeof (raw as { id?: unknown })?.id === 'string' ? (raw as { id: string }).id : null
                 const r = (raw ?? {}) as Record<string, unknown>
                 const report = (kind: Report['kind'], reason: string, pickerId: string | null, scannedAt?: string) => {
@@ -179,24 +203,79 @@ serve(async (req) => {
                         bin_id: s.bin_id,
                         scanned_by: s.scanned_by ?? user.id,
                         scanned_at: time.scannedAt,
+                        // Desfase del reloj del móvil, apuntado con la cubeta
+                        clock_skew_ms: measuredSkew(serverNow, clientNow, s.clock_skew_ms),
                     }
-                    const outcome = await insertScan(supabase, row)
-                    if (outcome.status !== 'saved') {
-                        if (outcome.status === 'rejected') report('rejected', outcome.reason ?? 'Rejected', pickerId)
-                        results.push({ id: s.id, ...outcome })
-                        continue
-                    }
-                    if (time.verdict === 'flag') {
-                        report('flagged', time.reason, pickerId, time.scannedAt)
-                        results.push({ id: s.id, status: 'saved', flag: time.reason })
-                    } else {
-                        results.push({ id: s.id, status: 'saved' })
-                    }
+                    ready.push({ idx, row, pickerId, time })
                 } catch (e) {
                     const msg = e instanceof Error ? e.message : String(e)
                     const transient = msg.startsWith('Badge lookup failed')
                     if (!transient) report('rejected', msg, resolvedPicker)
-                    results.push({ id: scanId, status: transient ? 'retry' : 'rejected', reason: msg })
+                    results[idx] = { id: scanId, status: transient ? 'retry' : 'rejected', reason: msg }
+                }
+            }
+            // 2.ª pasada: inserción en bloque, idempotente por id
+            // Filas únicas y ordenadas por id: dos lotes iguales en paralelo (reintento,
+            // dos pestañas) toman los bloqueos en el mismo orden. Si aun así choca
+            // (40P01) se reintenta una vez; si no, se va al camino de una en una,
+            // que también reintenta los choques. Todo es idempotente por id.
+            let bulkSaved: Set<string> | null = null
+            const firstById = new Map<string, typeof ready[number]['row']>()
+            for (const x of ready) if (!firstById.has(x.row.id)) firstById.set(x.row.id, x.row)
+            const uniqueRows = [...firstById.values()]
+                .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+            if (uniqueRows.length > 1) {
+                for (let attempt = 0; attempt < 2 && !bulkSaved; attempt++) {
+                    const { data, error } = await supabase
+                        .from('bucket_records')
+                        .upsert(uniqueRows, { onConflict: 'id', ignoreDuplicates: true })
+                        .select('id')
+                    if (!error) bulkSaved = new Set(((data ?? []) as { id: string }[]).map(d => d.id))
+                    else if (!isTransientConflict(error.code ?? '')) break
+                    else await sleep(20 + Math.random() * 80)
+                }
+            }
+            const seenIds = new Set<string>()
+            for (const { idx, row, pickerId, time } of ready) {
+                // El mismo id dos veces en el lote: la segunda es un reenvío
+                const repeated = seenIds.has(row.id)
+                seenIds.add(row.id)
+                // En bloque: lo que no volvió ya existía (reenvío) → duplicate
+                const outcome: InsertOutcome = repeated
+                    ? { status: 'duplicate' }
+                    : bulkSaved
+                        ? { status: bulkSaved.has(row.id) ? 'saved' : 'duplicate' }
+                        : await insertScan(supabase, row)
+                if (outcome.status !== 'saved') {
+                    if (outcome.status === 'rejected') {
+                        const r = (scans.find(x => (x as { id?: string })?.id === row.id) ?? {}) as Record<string, unknown>
+                        reports.push({
+                            id: row.id,
+                            picker_code: String(r.picker_id ?? '?').slice(0, 100),
+                            picker_id: pickerId,
+                            scanned_at: row.scanned_at,
+                            quality_grade: typeof row.quality_grade === 'string' ? row.quality_grade : null,
+                            kind: 'rejected',
+                            reason: outcome.reason ?? 'Rejected',
+                        })
+                    }
+                    results[idx] = { id: row.id, ...outcome }
+                    continue
+                }
+                if (time.verdict === 'flag') {
+                    const r = (scans.find(x => (x as { id?: string })?.id === row.id) ?? {}) as Record<string, unknown>
+                    reports.push({
+                        id: row.id,
+                        picker_code: String(r.picker_id ?? '?').slice(0, 100),
+                        picker_id: pickerId,
+                        scanned_at: time.scannedAt,
+                        quality_grade: typeof row.quality_grade === 'string' ? row.quality_grade : null,
+                        kind: 'flagged',
+                        reason: time.reason,
+                    })
+                    results[idx] = { id: row.id, status: 'saved', flag: time.reason }
+                } else {
+                    results[idx] = { id: row.id, status: 'saved' }
                 }
             }
             await reportScans(supabase, reports)
@@ -238,9 +317,17 @@ serve(async (req) => {
         }
 
         // ── Insert Bucket Record ─────────────────────
-        const scannedAt = input.scanned_at || new Date().toISOString()
-        if (Date.parse(scannedAt) > Date.now() + FUTURE_TOLERANCE_MS) {
-            throw new Error('SCAN_TIME_IN_FUTURE: scanned_at is ahead of server time (phone clock wrong?)')
+        // La hora la pone el servidor. Si el móvil manda la suya (cola sin red),
+        // se comprueba y corrige igual que en el lote y se apunta su desfase.
+        const serverNow = Date.now()
+        const clientNow = typeof input.client_now === 'number' ? input.client_now : null
+        let scannedAt = new Date(serverNow).toISOString()
+        let clockSkewMs: number | null = null
+        if (input.scanned_at) {
+            const time = checkScanTime(input.scanned_at, serverNow, clientNow, input.clock_skew_ms ?? 0)
+            if (time.verdict === 'reject') throw new Error(time.reason)
+            scannedAt = time.scannedAt
+            clockSkewMs = measuredSkew(serverNow, clientNow, input.clock_skew_ms)
         }
 
         const { data: record, error: insertErr } = await supabase
@@ -253,6 +340,7 @@ serve(async (req) => {
                 bin_id: input.bin_id,
                 scanned_by: input.scanned_by ?? user.id,
                 scanned_at: scannedAt,
+                clock_skew_ms: clockSkewMs,
             })
             .select('id, picker_id, scanned_at')
             .single()

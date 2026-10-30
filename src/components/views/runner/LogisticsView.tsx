@@ -2,9 +2,10 @@
 import React from 'react';
 import { bucketsInBin } from '@/services/bin.service';
 import { useHarvestStore } from '@/stores/useHarvestStore';
-import { avatarUrl } from '@/utils/avatarUrl';
 import type { RejectedScan } from '@/hooks/useRunnerData';
 import { useTranslation } from '@/i18n';
+import { useTodayPieceRate } from '@/hooks/useTodayPieceRate';
+import { formatNZD } from '@/utils/nzFormat';
 
 interface LogisticsViewProps {
   onScan: (type?: 'BIN' | 'BUCKET') => void;
@@ -16,7 +17,8 @@ interface LogisticsViewProps {
     raw?: { status: string; sunExposureStart?: number }[];
     [key: string]: unknown;
   };
-  onBroadcast?: (message: string) => void;
+  /** Campana: abre avisos y mensajes (los runners no pueden mandar avisos: solo manager/admin) */
+  onOpenNotifications?: () => void;
   /** Pide bins vacíos a Logística (crea la petición de transporte) */
   onRequestRefill?: () => void;
   selectedBinId?: string;
@@ -27,11 +29,13 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
   pendingUploads = 0,
   rejectedScans = [],
   inventory,
-  onBroadcast,
+  onOpenNotifications,
   onRequestRefill,
   selectedBinId,
 }) => {
   const { t } = useTranslation();
+  // Precio general de hoy del huerto (realtime de piece_rates: sin recargar)
+  const { rate: pieceRateToday } = useTodayPieceRate();
   const buckets = useHarvestStore(state => state.buckets);
   const bucketRecords = useHarvestStore(state => state.bucketRecords);
   // Cubetas en el bin activo (móvil + servidor, sin duplicar)
@@ -80,8 +84,7 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
 
   // El aviso de éxito o error lo da quien crea la petición (useRunnerData)
   const handleRefillRequest = () => {
-    if (onRequestRefill) onRequestRefill();
-    else onBroadcast?.('Runner needs empty bins');
+    onRequestRefill?.();
   };
 
   return (
@@ -96,21 +99,19 @@ const LogisticsView: React.FC<LogisticsViewProps> = ({
           <div>
             <h1 className="text-2xl font-black bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent tracking-tight">{t('runner.hub.title')}</h1>
             <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">{t('runner.hub.subtitle')}</p>
+            <p className="text-[11px] font-semibold text-slate-500 mt-0.5" data-testid="runner-price-today">{t('runner.price_today', { price: formatNZD(pieceRateToday) })}</p>
           </div>
           <div className="flex items-center gap-3">
             <button aria-label={t('settings.notifications')}
-              onClick={() => onBroadcast?.('Notification center requested')}
+              onClick={() => onOpenNotifications?.()}
               className="relative flex items-center justify-center rounded-2xl size-11 bg-white/80 border border-white/60 shadow-sm text-slate-500 hover:text-primary transition-colors hover:shadow-md"
             >
               <span aria-hidden="true" className="material-symbols-outlined text-[22px]">notifications</span>
               <span className="absolute top-3 right-3 size-2 bg-primary rounded-full shadow-[0_0_8px_rgba(37,99,235,0.8)]"></span>
             </button>
-            <div className="size-11 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden border border-white/60 shadow-sm">
-              <img
-                src={avatarUrl('Runner')}
-                alt={t('common.avatar')}
-                className="w-full h-full object-cover"
-              />
+            {/* Icono del rol (antes una imagen externa de ui-avatars.com sin función) */}
+            <div className="size-11 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center border border-white/60 shadow-sm text-slate-500">
+              <span aria-hidden="true" className="material-symbols-outlined text-[22px]">directions_run</span>
             </div>
           </div>
         </div>

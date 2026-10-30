@@ -83,6 +83,8 @@ describe('ProgressRing', () => {
 });
 
 // ── GoalProgress ─────────────────────────────────────
+// Sin hora de fin de turno (2026-10-21): la meta se expresa como hora estimada
+// al ritmo actual; no hay proyección «a fin de día» ni semáforo adelantado/atrasado.
 import GoalProgress from './GoalProgress';
 
 describe('GoalProgress', () => {
@@ -91,7 +93,7 @@ describe('GoalProgress', () => {
     currentTons: 6.5,
     targetTons: 10,
     eta: '3:30 PM',
-    etaStatus: 'on_track' as const,
+    etaStatus: 'projected' as const,
   };
 
   it('renders Daily Target label', () => {
@@ -109,18 +111,32 @@ describe('GoalProgress', () => {
     expect(screen.getByText('6.5 / 10 t')).toBeTruthy();
   });
 
-  it('shows ETA', () => {
+  it('shows the goal time at the current pace, without an ETA-vs-shift-end label', () => {
     render(<GoalProgress {...defaultProps} />);
-    expect(screen.getByText('ETA: 3:30 PM')).toBeTruthy();
+    expect(screen.getByText('At this pace: 3:30 PM')).toBeTruthy();
+    expect(screen.queryByText(/ETA:/)).toBeNull();
+    // Sin semáforo adelantado/atrasado: ni cohete ni aviso
+    expect(screen.queryByText('rocket_launch')).toBeNull();
+    expect(screen.queryByText('warning')).toBeNull();
   });
 
-  it('shows projection when hoursElapsed > 0.5', () => {
-    render(<GoalProgress {...defaultProps} hoursElapsed={4} totalBuckets={200} />);
-    expect(screen.getByText(/Projected end-of-day/)).toBeTruthy();
-  });
-
-  it('hides projection when hoursElapsed <= 0.5', () => {
-    render(<GoalProgress {...defaultProps} hoursElapsed={0.3} />);
+  it('shows pace and buckets left to the goal when hoursElapsed > 0.5', () => {
+    render(<GoalProgress {...defaultProps} hoursElapsed={4} totalBuckets={200} velocity={50} />);
+    expect(screen.getByText('Pace: 50 buckets/h')).toBeTruthy();
+    // 10 t × 72 = 720 cubetas de meta − 200 = 520
+    expect(screen.getByText('520 buckets to goal')).toBeTruthy();
     expect(screen.queryByText(/Projected end-of-day/)).toBeNull();
+  });
+
+  it('hides the pace row when hoursElapsed <= 0.5', () => {
+    render(<GoalProgress {...defaultProps} hoursElapsed={0.3} />);
+    expect(screen.queryByText(/Pace:/)).toBeNull();
+    expect(screen.queryByText(/buckets to goal/)).toBeNull();
+  });
+
+  it('hides the pace row once the goal is complete', () => {
+    render(<GoalProgress {...defaultProps} etaStatus="complete" eta="Complete!" progress={100} hoursElapsed={4} />);
+    expect(screen.getByText('Complete!')).toBeTruthy();
+    expect(screen.queryByText(/Pace:/)).toBeNull();
   });
 });

@@ -13,6 +13,7 @@ import { pickerHistoryService, type PickerHistory } from '@/services/picker-hist
 import { logger } from '@/utils/logger';
 import type { Picker } from '@/types';
 import { PAY_RULES } from '@/services/harvestMetrics/pay';
+import { useTodayPieceRate } from '@/hooks/useTodayPieceRate';
 
 export interface PickerTodayData {
     bins: number;
@@ -68,6 +69,9 @@ export function usePickerDrawerData(pickerId: string | null): PickerDrawerData {
         [crew, pickerId]
     );
 
+    // Precio de HOY de la variedad de su fila (o el general de hoy del huerto)
+    const { rate: pieceRate } = useTodayPieceRate(picker?.current_row);
+
     const pickerMetrics = useMemo(
         () => metrics.perPicker.find(p => p.pickerId === pickerId),
         [metrics.perPicker, pickerId]
@@ -101,7 +105,6 @@ export function usePickerDrawerData(pickerId: string | null): PickerDrawerData {
         rawRole === 'team_leader' || rawRole === 'runner' ? rawRole : 'picker';
 
     const minWage = settings?.min_wage_rate ?? PAY_RULES.minWageFloor;
-    const pieceRate = settings?.piece_rate ?? 6.5;
 
     return {
         picker,

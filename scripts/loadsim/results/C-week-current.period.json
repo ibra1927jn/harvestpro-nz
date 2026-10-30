@@ -1,0 +1,299 @@
+{
+  "label": "C-week-current",
+  "date": "2026-10-21",
+  "counts": {
+    "buckets": 50988,
+    "attendance": 1344,
+    "audit": 54478,
+    "chat": 818,
+    "days": 6
+  },
+  "dbMB": 79,
+  "sizes": [
+    {
+      "table": "audit_logs",
+      "rows": 53159,
+      "MB": 34.7,
+      "indexMB": 10.2
+    },
+    {
+      "table": "bucket_records",
+      "rows": 50927,
+      "MB": 23.6,
+      "indexMB": 14.1
+    },
+    {
+      "table": "daily_attendance",
+      "rows": 1344,
+      "MB": 1,
+      "indexMB": 0.5
+    },
+    {
+      "table": "chat_messages",
+      "rows": 808,
+      "MB": 0.7,
+      "indexMB": 0.1
+    },
+    {
+      "table": "qc_inspections",
+      "rows": 874,
+      "MB": 0.4,
+      "indexMB": 0.2
+    },
+    {
+      "table": "pickers",
+      "rows": 261,
+      "MB": 0.3,
+      "indexMB": 0.2
+    },
+    {
+      "table": "conversations",
+      "rows": 4,
+      "MB": 0.3,
+      "indexMB": 0.1
+    },
+    {
+      "table": "transport_requests",
+      "rows": 270,
+      "MB": 0.2,
+      "indexMB": 0.1
+    },
+    {
+      "table": "row_assignments",
+      "rows": 156,
+      "MB": 0.2,
+      "indexMB": 0
+    },
+    {
+      "table": "contracts",
+      "rows": 252,
+      "MB": 0.2,
+      "indexMB": 0.1
+    },
+    {
+      "table": "bins",
+      "rows": 600,
+      "MB": 0.2,
+      "indexMB": 0
+    },
+    {
+      "table": "block_rows",
+      "rows": 300,
+      "MB": 0.2,
+      "indexMB": 0.1
+    }
+  ],
+  "results": [
+    {
+      "op": "calculate-payroll (last week, company)",
+      "variant": "current",
+      "ok": false,
+      "ms": 8095,
+      "requests": 1,
+      "errors": 1,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": "Edge Function returned a non-2xx status code"
+    },
+    {
+      "op": "calculate-payroll (this week, company)",
+      "variant": "current",
+      "ok": false,
+      "ms": 13068,
+      "requests": 1,
+      "errors": 1,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": "Edge Function returned a non-2xx status code"
+    },
+    {
+      "op": "weekly report (manager, 7 days)",
+      "variant": "current",
+      "ok": true,
+      "ms": 33932,
+      "requests": 9,
+      "errors": 0,
+      "kbIn": 1504,
+      "kbInGzip": 136,
+      "note": {
+        "buckets": 7514,
+        "attendance": 206
+      }
+    },
+    {
+      "op": "day sheet: buckets of the day (orchard)",
+      "variant": "current",
+      "ok": true,
+      "ms": 842,
+      "requests": 2,
+      "errors": 0,
+      "kbIn": 196,
+      "kbInGzip": 14,
+      "note": {
+        "people": 77,
+        "got": 1000,
+        "real": 3066,
+        "status": 200
+      }
+    },
+    {
+      "op": "day sheet: buckets of the day (orchard)",
+      "variant": "optimized",
+      "ok": true,
+      "ms": 7605,
+      "requests": 5,
+      "errors": 0,
+      "kbIn": 595,
+      "kbInGzip": 53,
+      "note": {
+        "people": 77,
+        "got": 3066
+      }
+    },
+    {
+      "op": "HR employees: contracts IN (all staff)",
+      "variant": "current",
+      "ok": true,
+      "ms": 214,
+      "requests": 3,
+      "errors": 1,
+      "kbIn": 14,
+      "kbInGzip": 7,
+      "note": {
+        "ids": 274,
+        "status": 414,
+        "got": null
+      }
+    },
+    {
+      "op": "HR employees: contracts by chunks",
+      "variant": "optimized",
+      "ok": true,
+      "ms": 346,
+      "requests": 5,
+      "errors": 0,
+      "kbIn": 79,
+      "kbInGzip": 19,
+      "note": {
+        "ids": 274,
+        "got": 256
+      }
+    },
+    {
+      "op": "cold start runner: today buckets + crew",
+      "variant": "current",
+      "ok": true,
+      "ms": 3466,
+      "requests": 5,
+      "errors": 0,
+      "kbIn": 1660,
+      "kbInGzip": 190,
+      "note": {
+        "crew": 261,
+        "buckets": 3061
+      }
+    },
+    {
+      "op": "chat list: last messages (all rows)",
+      "variant": "current",
+      "ok": true,
+      "ms": 17,
+      "requests": 2,
+      "errors": 0,
+      "kbIn": 45,
+      "kbInGzip": 5,
+      "note": {
+        "conversations": 2,
+        "rows": 318,
+        "truncated": false
+      }
+    },
+    {
+      "op": "chat list: last_messages RPC",
+      "variant": "optimized",
+      "ok": false,
+      "ms": 15,
+      "requests": 2,
+      "errors": 1,
+      "kbIn": 1,
+      "kbInGzip": 1,
+      "note": "Could not find the function public.last_messages(p_conversation_ids) in the schema cache"
+    },
+    {
+      "op": "open orchard chat (asc, no limit)",
+      "variant": "current",
+      "ok": true,
+      "ms": 131,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 132,
+      "kbInGzip": 11,
+      "note": {
+        "total": 266,
+        "got": 266,
+        "newestShown": true
+      }
+    },
+    {
+      "op": "open orchard chat (latest 300)",
+      "variant": "optimized",
+      "ok": true,
+      "ms": 12,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 132,
+      "kbInGzip": 11,
+      "note": {
+        "got": 266
+      }
+    },
+    {
+      "op": "manager dashboard: 7-day bleed",
+      "variant": "current",
+      "ok": false,
+      "ms": 9891,
+      "requests": 4,
+      "errors": 1,
+      "kbIn": 284,
+      "kbInGzip": 40,
+      "note": "canceling statement due to statement timeout"
+    },
+    {
+      "op": "payroll: unclosed shifts 30d (company)",
+      "variant": "current",
+      "ok": true,
+      "ms": 10,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": {
+        "rows": 0
+      }
+    },
+    {
+      "op": "admin: audit log (100)",
+      "variant": "current",
+      "ok": true,
+      "ms": 117,
+      "requests": 1,
+      "errors": 0,
+      "kbIn": 127,
+      "kbInGzip": 11,
+      "note": {
+        "rows": 100
+      }
+    },
+    {
+      "op": "close-pay-week 2026-10-12",
+      "variant": "current",
+      "ok": false,
+      "ms": 8370,
+      "requests": 1,
+      "errors": 1,
+      "kbIn": 0,
+      "kbInGzip": 0,
+      "note": "Edge Function returned a non-2xx status code {\"error\":\"Request failed. Check parameters and try again.\",\"hint\":\"Unknown error\"}"
+    }
+  ]
+}

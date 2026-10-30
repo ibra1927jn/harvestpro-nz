@@ -27,7 +27,6 @@ describe('binBacklogSeries', () => {
       fills: [],
       runs: [],
       shiftStart: '07:00',
-      shiftEnd: '17:00',
       now: nowAt12,
     });
 
@@ -66,7 +65,6 @@ describe('binBacklogSeries', () => {
       fills,
       runs,
       shiftStart: '07:00',
-      shiftEnd: '17:00',
       now: nowAt12Extended,
     });
 
@@ -102,7 +100,6 @@ describe('binBacklogSeries', () => {
       fills,
       runs,
       shiftStart: '07:00',
-      shiftEnd: '17:00',
       now: nowAt12,
     });
 
@@ -117,7 +114,6 @@ describe('binBacklogSeries', () => {
       fills: [],
       runs: [],
       shiftStart: '07:00',
-      shiftEnd: '17:00',
       now: beforeShift,
     });
 

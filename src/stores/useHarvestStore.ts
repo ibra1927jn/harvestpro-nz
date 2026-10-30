@@ -63,6 +63,7 @@ export const useHarvestStore = create<HarvestStoreState>()(
       lastSyncAt: null,
       recentQcInspections: [],
       recentTimesheetUpdates: [],
+      attendanceChangedAt: 0,
 
       // === ORCHESTRATOR ACTIONS ===
       setGlobalState: data => set(data),
@@ -89,13 +90,20 @@ export const useHarvestStore = create<HarvestStoreState>()(
               document.removeEventListener('visibilitychange', _visibilityHandler);
             _visibilityHandler = () => {
               if (document.hidden) {
-                logger.info('[Store] Tab hidden — disconnecting realtime');
-                supabase.removeAllChannels();
+                // Solo el canal del huerto (el que trae cada cubeta). Antes
+                // removeAllChannels() cortaba también avisos, chat y logística,
+                // y al volver solo se recuperaba este: tras el primer bloqueo de
+                // pantalla el móvil dejaba de recibir avisos y mensajes en vivo.
+                logger.info('[Store] Tab hidden — pausing orchard realtime');
+                supabase
+                  .getChannels()
+                  .filter(ch => ch.topic.includes(`harvest-live-${activeOrchard.id}`))
+                  .forEach(ch => supabase.removeChannel(ch));
               } else {
                 logger.info('[Store] Tab visible — reconnecting realtime');
                 setupRealtimeSubscriptions(activeOrchard.id, get, set);
-                // Recalcular: los totales por picker salen de las cubetas recién bajadas
-                fetchOrchardData(get, set)
+                // Ponerse al día solo con lo que cambia (cubetas, fichajes, filas, bins)
+                fetchOrchardData(get, set, undefined, { catchUp: true })
                   .then(() => get().recalculateIntelligence())
                   .catch(() => {});
               }

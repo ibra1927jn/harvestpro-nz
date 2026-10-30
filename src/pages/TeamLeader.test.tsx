@@ -5,7 +5,9 @@
  */
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
+
+const { editorProps } = vi.hoisted(() => ({ editorProps: { last: null as Record<string, unknown> | null } }));
 
 // ── Mocks ────────────────────────────────────────────
 vi.mock('@/stores/useHarvestStore', () => ({
@@ -13,6 +15,12 @@ vi.mock('@/stores/useHarvestStore', () => ({
     const state = {
       fetchGlobalData: vi.fn(),
       orchard: { id: 'orch-1', name: 'Test Orchard' },
+      crew: [
+        { id: 'p1', name: 'Mine A', role: 'picker', status: 'active', team_leader_id: 'u1' },
+        { id: 'p2', name: 'Mine B', role: 'picker', status: 'active', team_leader_id: 'u1' },
+        { id: 'p3', name: 'Other', role: 'picker', status: 'active', team_leader_id: 'u2' },
+        { id: 'p4', name: 'Gone', role: 'picker', status: 'archived', team_leader_id: 'u1' },
+      ],
     };
     return selector(state);
   }),
@@ -50,9 +58,6 @@ vi.mock('../components/views/team-leader/TeamView', () => ({
 vi.mock('../components/views/team-leader/TasksView', () => ({
   default: () => <div>Tasks View</div>,
 }));
-vi.mock('../components/views/team-leader/ProfileView', () => ({
-  default: () => <div>Profile View</div>,
-}));
 vi.mock('../components/views/team-leader/MessagingView', () => ({
   default: () => <div>Messaging View</div>,
 }));
@@ -60,7 +65,14 @@ vi.mock('../components/views/team-leader/AttendanceView', () => ({
   default: () => <div>Attendance View</div>,
 }));
 vi.mock('@/components/views/manager/TimesheetEditor', () => ({
-  default: () => <div>Timesheet Editor</div>,
+  default: (props: Record<string, unknown>) => {
+    editorProps.last = props;
+    return <div>Timesheet Editor</div>;
+  },
+}));
+// #7: el cajón de perfil se monta en la página (igual que en Manager)
+vi.mock('@/components/PickerDrawer', () => ({
+  PickerDrawer: () => <div data-testid="picker-drawer" />,
 }));
 vi.mock('@/components/ui/ComponentErrorBoundary', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -71,8 +83,14 @@ vi.mock('@/components/common/NotificationPanel', () => ({
 vi.mock('@/components/ui/ThemeToggle', () => ({
   default: () => <div>Theme</div>,
 }));
+// «Mi cuenta» sustituye a la maqueta ProfileView del team leader (revisión 2026-10-21, #10)
+vi.mock('@/hooks/useAvatarUrl', () => ({ useAvatarSignedUrl: () => null, useUserAvatarUrl: () => null }));
+vi.mock('@/components/common/account/AccountSheet', () => ({
+  default: () => <div role="dialog" aria-label="My account">Account</div>,
+}));
 
 import TeamLeader from './TeamLeader';
+import { fireEvent } from '@testing-library/react';
 
 describe('TeamLeader Page', () => {
   it('renders the header with Team Leader title', () => {
@@ -85,6 +103,20 @@ describe('TeamLeader Page', () => {
     expect(await screen.findByTestId('home-view')).toBeTruthy();
   });
 
+  it('mounts the picker profile drawer (same component as Manager)', () => {
+    render(<TeamLeader />);
+    expect(screen.getByTestId('picker-drawer')).toBeTruthy();
+  });
+
+  // #9: el team leader solo ve y corrige los fichajes de SU equipo
+  it("scopes the timesheet editor to the team leader's own team", async () => {
+    render(<TeamLeader />);
+    fireEvent.click(screen.getByText('Timesheet'));
+    expect(await screen.findByText('Timesheet Editor')).toBeTruthy();
+    expect(editorProps.last?.orchardId).toBe('orch-1');
+    expect(editorProps.last?.pickerIds).toEqual(['p1', 'p2']);
+  });
+
   it('renders bottom navigation tabs', () => {
     render(<TeamLeader />);
     expect(screen.getByText('Home')).toBeTruthy();
@@ -92,5 +124,13 @@ describe('TeamLeader Page', () => {
     expect(screen.getByText('Map')).toBeTruthy();
     expect(screen.getByText('Timesheet')).toBeTruthy();
     expect(screen.getByText('Chat')).toBeTruthy();
+  });
+
+  it('has no profile tab any more: the avatar opens My account', async () => {
+    render(<TeamLeader />);
+    expect(screen.queryByText('Profile View')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Open profile settings' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Open my account' }));
+    expect(await screen.findByRole('dialog', { name: 'My account' })).toBeTruthy();
   });
 });

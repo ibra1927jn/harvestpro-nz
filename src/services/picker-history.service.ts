@@ -7,8 +7,10 @@
 import { pickerHistoryRepository } from '@/repositories/picker-history.repository';
 import { logger } from '@/utils/logger';
 import { nzMidnight } from '@/utils/nzst';
-import { payForRange, pieceRateFor, nzDateOf, PAY_RULES } from '@/services/harvestMetrics/pay';
-import { payRatesRepository, loadOrchardNames } from '@/repositories/pay-rates.repository';
+import { attendanceRowOf, payForRange, pieceRateOn, nzDateOf, PAY_RULES } from '@/services/harvestMetrics/pay';
+import { loadOrchardNames } from '@/repositories/pay-rates.repository';
+import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
+import { countCriteriaFailures, type CriterionFailureCount } from '@/services/qcCriteria';
 
 // --- Types ---
 export interface PickerProfile {
@@ -26,10 +28,20 @@ export interface DailyRecord {
   buckets: number;
   /** Horas pagables (descanso de 30 min no pagado ya descontado) */
   hours: number;
-  /** Pago total del día: cubetas + complemento al mínimo */
-  earnings: number;
+  /**
+   * Pago total del día: cubetas + complemento al mínimo. null = no se puede
+   * calcular: ese día cogió cubetas en otro huerto y esta cuenta no lee su
+   * precio (cada uno solo ve los de su huerto, migración 20261027050000)
+   */
+  earnings: number | null;
   /** Complemento al mínimo del día */
   topUp?: number;
+  /**
+   * Ese día trabajó también en otro huerto cuyos fichajes y cubetas esta cuenta
+   * no lee (el manager, migración 20261027070000): horas y cubetas son las de
+   * aquí y el pago no se calcula (earnings null); el pago está en Nómina
+   */
+  partElsewhere?: boolean;
   /** Horas estimadas (turno sin cerrar) */
   estimated?: boolean;
   variety: string | null;
@@ -44,6 +56,12 @@ export interface QualitySummary {
   gradeC: number;
   reject: number;
   score: number; // 0-100, A=100, B=70, C=40, reject=0
+  /**
+   * Criterios con regular / mal en las inspecciones del periodo (solo los que
+   * fallaron alguna vez, el peor primero). Vacío si las inspecciones no traen
+   * criterios (formato anterior).
+   */
+  flaggedCriteria: CriterionFailureCount[];
 }
 
 export interface RiskBadge {
@@ -103,8 +121,20 @@ class PickerHistoryService {
 
       // 6. Get day setups for variety info
       const daySetups = await pickerHistoryRepository.getDaySetupsSince(orchardId, sinceStr);
-      const rates = await payRatesRepository.load().catch(() => ({ varietyRates: [], orchardRates: {} }));
+      // Precio de cada día (piece_rates): un cambio de hoy no reescribe los días pasados
+      const priceBook = await pieceRatesRepository.loadForPay(sinceStr, nzDateOf(new Date())).catch(() => null);
+      const { rates, orchardFallbacks } = priceBook ?? { rates: [], orchardFallbacks: {} as Record<string, number> };
+      // Huertos cuyo precio lee esta cuenta (el suyo; admin, RRHH y nómina, todos).
+      // Sin respuesta del servidor no se oculta nada (se usa el respaldo, como antes).
+      const pricedOrchards = priceBook
+        ? new Set<string>([orchardId, ...rates.map(r => r.orchardId ?? ''), ...Object.keys(orchardFallbacks)])
+        : null;
       const orchardNames = await loadOrchardNames().catch(() => ({} as Record<string, string>));
+      // Días con trabajo en otro huerto (solo fechas): si aquí no se ven sus filas,
+      // el día está incompleto y su pago no se puede calcular
+      const daysElsewhere = await Promise.resolve()
+        .then(() => pickerHistoryRepository.getDaysElsewhere(pickerId, sinceStr))
+        .catch(() => new Set<string>());
 
       // --- Compute daily records ---
       // Horas y pago de cada día con el cálculo único (harvestMetrics/pay.ts):
@@ -136,21 +166,27 @@ class PickerHistoryService {
         const setup = daySetups.find((d: { date: string }) => d.date === date);
         const fallback = setup?.piece_rate || 6.5;
         const [pay] = payForRange({
-          attendance: shifts.map(a => ({ pickerId, date, orchardId: a.orchard_id, checkIn: a.check_in, checkOut: a.check_out, breakStart: a.break_start, breakMinutes: a.break_minutes })),
+          attendance: shifts.map(a => attendanceRowOf({ ...a, picker_id: pickerId, date })),
           buckets: dayBuckets.map(b => ({
             pickerId, scannedAt: b.scanned_at, qualityGrade: b.quality_grade, orchardId: b.orchard_id, variety: b.variety,
-            pieceRate: pieceRateFor({ orchardId: b.orchard_id, variety: b.variety }, { ...rates, fallback }),
+            pieceRate: pieceRateOn(rates, b.orchard_id, b.variety, nzDateOf(b.scanned_at), orchardFallbacks[b.orchard_id ?? ''] ?? fallback),
           })),
           pieceRate: fallback,
           minWage: setup?.min_wage_rate || PAY_RULES.minWageFloor,
         });
         if (!pay) continue;
+        const unpriced = !!pricedOrchards && dayBuckets.some(b => !!b.orchard_id && !pricedOrchards.has(b.orchard_id));
+        const partElsewhere = daysElsewhere.has(date)
+          && !shifts.some(s => !!s.orchard_id && s.orchard_id !== orchardId)
+          && !dayBuckets.some(b => !!b.orchard_id && b.orchard_id !== orchardId);
+        const noPay = unpriced || partElsewhere;
         dailyMap.set(date, {
           date,
           buckets: pay.buckets,
           hours: pay.hours,
-          earnings: pay.total,
-          topUp: pay.topUp,
+          earnings: noPay ? null : pay.total,
+          topUp: noPay ? undefined : pay.topUp,
+          ...(partElsewhere ? { partElsewhere: true } : {}),
           estimated: pay.estimatedDays > 0,
           // Variedades recogidas ese día y huertos donde trabajó (puede ser más de uno)
           variety: [...new Set(dayBuckets.map(b => b.variety).filter((v): v is string => !!v))].join(', ') || setup?.variety || null,
@@ -168,7 +204,7 @@ class PickerHistoryService {
       const todayRecord = dailyMap.get(today);
       const todayBuckets = todayRecord?.buckets ?? 0;
       const todayHours = todayRecord?.hours || 0;
-      const todayEarnings = todayRecord?.earnings || 0;
+      const todayEarnings = todayRecord?.earnings ?? 0;
 
       // --- Quality summary ---
       const quality = this.computeQuality(inspections);
@@ -211,9 +247,9 @@ class PickerHistoryService {
     }
   }
 
-  private computeQuality(inspections: Array<{ quality_grade: string | null }>): QualitySummary {
+  private computeQuality(inspections: Array<{ quality_grade: string | null; criteria?: unknown }>): QualitySummary {
     const total = inspections.length;
-    if (total === 0) return { total: 0, gradeA: 0, gradeB: 0, gradeC: 0, reject: 0, score: 0 };
+    if (total === 0) return { total: 0, gradeA: 0, gradeB: 0, gradeC: 0, reject: 0, score: 0, flaggedCriteria: [] };
 
     const gradeA = inspections.filter(
       i => i.quality_grade === 'A' || i.quality_grade === 'good'
@@ -226,8 +262,10 @@ class PickerHistoryService {
       i => i.quality_grade === 'reject' || i.quality_grade === 'bad'
     ).length;
     const score = Math.round((gradeA * 100 + gradeB * 70 + gradeC * 40) / total);
+    // Criterios (null en inspecciones antiguas: countCriteriaFailures los ignora)
+    const flaggedCriteria = countCriteriaFailures(inspections).filter(c => c.total > 0);
 
-    return { total, gradeA, gradeB, gradeC, reject, score };
+    return { total, gradeA, gradeB, gradeC, reject, score, flaggedCriteria };
   }
 
   private computeRiskBadges(
@@ -267,15 +305,16 @@ class PickerHistoryService {
 
     // 💸 Chronic Top-Up: needed min wage subsidy >60% of days
     if (dailyRecords.length >= 5) {
-      // Días con complemento según el cálculo único
-      const topUpDays = dailyRecords.filter(r => (r.topUp ?? 0) > 0).length;
-      const topUpRatio = topUpDays / dailyRecords.length;
-      if (topUpRatio > 0.6) {
+      // Días con complemento según el cálculo único (solo los días con pago conocido)
+      const paidDays = dailyRecords.filter(r => r.earnings !== null);
+      const topUpDays = paidDays.filter(r => (r.topUp ?? 0) > 0).length;
+      const topUpRatio = paidDays.length > 0 ? topUpDays / paidDays.length : 0;
+      if (paidDays.length >= 5 && topUpRatio > 0.6) {
         badges.push({
           type: 'chronic_topup',
           severity: topUpRatio > 0.8 ? 'critical' : 'warning',
           label: 'Chronic Top-Up',
-          detail: `Needed wage subsidy ${Math.round(topUpRatio * 100)}% of days (${topUpDays}/${dailyRecords.length})`,
+          detail: `Needed wage subsidy ${Math.round(topUpRatio * 100)}% of days (${topUpDays}/${paidDays.length})`,
         });
       }
     }

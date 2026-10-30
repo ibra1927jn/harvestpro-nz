@@ -17,7 +17,16 @@ export function outboxToMessage(m: OutboxMessage): DBMessage {
         read_by: [],
         created_at: m.timestamp,
         delivery: m.status,
+        ...(m.reply_to_id ? { reply_to_id: m.reply_to_id } : {}),
         ...(m.failure_reason ? { failure_reason: m.failure_reason } : {}),
+        ...(m.upload ? {
+            attachment_path: m.upload.path,
+            attachment_type: m.upload.type,
+            attachment_name: m.upload.name ?? null,
+            attachment_size: m.upload.size,
+            duration_ms: m.upload.duration_ms ?? null,
+            local_file_id: m.upload.file_id,
+        } : {}),
     };
 }
 

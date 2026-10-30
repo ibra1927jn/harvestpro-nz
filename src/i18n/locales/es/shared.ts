@@ -130,6 +130,11 @@ const shared: TranslationDict = {
     'ui.loading_app': 'Cargando la aplicación',
     'ui.otp_digit': 'Dígito {n} del código',
     'ui.loading': 'Cargando',
+    'nav.runners_now': 'Runners',
+    'nav.my_timesheet': 'Mi hoja',
+    'unclosed.summary_long_one': '{n} turno sin salida, de un día pasado o abierto desde hace más de 14 h ({people}). Se pagan como mucho 14 h hasta corregirlo.',
+    'unclosed.summary_long_other': '{n} turnos sin salida, de días pasados o abiertos desde hace más de 14 h ({people}). Se pagan como mucho 14 h hasta corregirlos.',
+    'unclosed.row_long': '{name} — abierto desde las {time} ({orchard}), más de 14 h',
 };
 
 export default shared;

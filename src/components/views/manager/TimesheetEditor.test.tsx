@@ -3,17 +3,26 @@
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
+import { useHarvestStore } from '@/stores/useHarvestStore';
+import { LIVE_REFRESH_MIN_MS } from '@/hooks/useAttendanceLiveRefresh';
 
 const mockGetAttendanceByDate = vi.fn();
 const mockCorrectAttendance = vi.fn();
+const mockCorrectAttendanceBatch = vi.fn();
 const mockShowToast = vi.fn();
+const network = vi.hoisted(() => ({ isOnline: true }));
 
 vi.mock('@/services/attendance.service', () => ({
     attendanceService: {
         getAttendanceByDate: (...args: unknown[]) => mockGetAttendanceByDate(...args),
         correctAttendance: (...args: unknown[]) => mockCorrectAttendance(...args),
+        correctAttendanceBatch: (...args: unknown[]) => mockCorrectAttendanceBatch(...args),
     },
+}));
+
+vi.mock('@/hooks/useNetworkStatus', () => ({
+    useNetworkStatus: () => ({ isOnline: network.isOnline, lastOnline: null, wasOffline: false, clearWasOffline: vi.fn() }),
 }));
 
 vi.mock('@/utils/nzst', async importOriginal => ({
@@ -50,6 +59,7 @@ describe('TimesheetEditor', () => {
         {
             id: 'att1',
             date: '2026-03-10',
+            picker_id: 'p-alice',
             picker: { name: 'Alice Smith', picker_id: 'PK-001' },
             check_in: '2026-03-10T07:00:00+13:00',
             check_out: '2026-03-10T15:00:00+13:00',
@@ -59,6 +69,7 @@ describe('TimesheetEditor', () => {
         {
             id: 'att2',
             date: '2026-03-10',
+            picker_id: 'p-bob',
             picker: { name: 'Bob Jones', picker_id: 'PK-002' },
             check_in: '2026-03-10T06:00:00+13:00',
             check_out: null,
@@ -68,6 +79,7 @@ describe('TimesheetEditor', () => {
         {
             id: 'att3',
             date: '2026-03-10',
+            picker_id: 'p-charlie',
             picker: { name: 'Charlie', picker_id: 'PK-003' },
             check_in: '2026-03-10T04:00:00+13:00',
             check_out: '2026-03-10T20:00:00+13:00',
@@ -78,8 +90,13 @@ describe('TimesheetEditor', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        network.isOnline = true;
         mockGetAttendanceByDate.mockResolvedValue(mockRecords);
         mockCorrectAttendance.mockResolvedValue(undefined);
+        mockCorrectAttendanceBatch.mockImplementation(async (items: { attendance_id: string }[]) => ({
+            success: true, total: items.length, succeeded: items.length, failed: 0,
+            results: items.map((it, index) => ({ index, attendance_id: it.attendance_id, success: true })),
+        }));
     });
 
     it('renders Timesheet Editor heading', async () => {
@@ -245,5 +262,194 @@ describe('TimesheetEditor', () => {
     it('shows picker ID in the table', async () => {
         render(<TimesheetEditor orchardId="o1" />);
         await waitFor(() => expect(screen.getByText('PK-001')).toBeTruthy());
+    });
+
+    // Auditoría 23-10 (C): el TL y el manager ven lo que decidió Nómina
+    it('shows the payroll review of each timesheet (approved / rejected with reason)', async () => {
+        mockGetAttendanceByDate.mockResolvedValueOnce([
+            { ...mockRecords[0], verified_by: 'pay-1', verified_at: '2026-03-11T09:00:00+13:00' },
+            { ...mockRecords[1], rejected_at: '2026-03-11T09:00:00+13:00', rejection_reason: 'Break time missing' },
+            { ...mockRecords[2], rejected_at: '2026-03-11T09:00:00+13:00', rejection_reason: null },
+        ]);
+        render(<TimesheetEditor orchardId="o1" />);
+        await waitFor(() => screen.getByText('Alice Smith'));
+        expect(screen.getAllByText('Approved by payroll')).toHaveLength(1);
+        expect(screen.getByText('Rejected: Break time missing')).toBeTruthy();
+        expect(screen.getByText('Rejected by payroll')).toBeTruthy();
+    });
+
+    // C5: el TL y el manager ven la decisión de Nómina sin salir y volver a entrar
+    it('refreshes live when payroll approves or rejects (realtime of daily_attendance)', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        try {
+            render(<TimesheetEditor orchardId="o1" />);
+            await waitFor(() => screen.getByText('Alice Smith'));
+            expect(screen.queryByText('Rejected: Break time missing')).toBeNull();
+
+            mockGetAttendanceByDate.mockResolvedValue([
+                { ...mockRecords[0], rejected_at: '2026-03-11T09:00:00+13:00', rejection_reason: 'Break time missing' },
+                mockRecords[1], mockRecords[2],
+            ]);
+            act(() => { useHarvestStore.setState({ attendanceChangedAt: Date.now() }); });
+            // Como mucho una recarga por minuto (useAttendanceLiveRefresh)
+            await act(async () => { await vi.advanceTimersByTimeAsync(LIVE_REFRESH_MIN_MS); });
+            await waitFor(() => expect(screen.getByText('Rejected: Break time missing')).toBeTruthy());
+            expect(mockGetAttendanceByDate).toHaveBeenCalledTimes(2);
+            // Recarga suave: la lista no se vacía mientras se recarga
+            expect(screen.getByText('Alice Smith')).toBeTruthy();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('shows no review badge on timesheets nobody reviewed yet', async () => {
+        render(<TimesheetEditor orchardId="o1" />);
+        await waitFor(() => screen.getByText('Alice Smith'));
+        expect(screen.queryByText('Approved by payroll')).toBeNull();
+        expect(screen.queryByText(/^Rejected/)).toBeNull();
+    });
+
+    // ── #9: alcance por pickerIds (team leader) ──────────────────────
+    describe('pickerIds scope (team leader)', () => {
+        it("shows only the given pickers' timesheets and says so", async () => {
+            render(<TimesheetEditor orchardId="o1" pickerIds={['p-alice', 'p-charlie']} />);
+            await waitFor(() => expect(screen.getByText('Alice Smith')).toBeTruthy());
+            expect(screen.getByText('Charlie')).toBeTruthy();
+            expect(screen.queryByText('Bob Jones')).toBeNull();
+            expect(screen.getByText("Showing your team's timesheets only.")).toBeTruthy();
+        });
+
+        it('shows the empty state for a team leader without a team (empty list)', async () => {
+            render(<TimesheetEditor orchardId="o1" pickerIds={[]} />);
+            await waitFor(() => expect(mockGetAttendanceByDate).toHaveBeenCalled());
+            await waitFor(() => expect(screen.getByText(/No attendance records for/)).toBeTruthy());
+            expect(screen.queryByText('Alice Smith')).toBeNull();
+        });
+
+        it('without pickerIds (manager) shows the whole orchard', async () => {
+            render(<TimesheetEditor orchardId="o1" />);
+            await waitFor(() => expect(screen.getByText('Bob Jones')).toBeTruthy());
+            expect(screen.queryByText("Showing your team's timesheets only.")).toBeNull();
+        });
+    });
+
+    // ── #9: selección múltiple y corrección en lote ───────────────────
+    describe('batch correction', () => {
+        const selectOf = (name: string) => screen.getByLabelText(`Select ${name}'s timesheet`);
+
+        it('shows the batch panel only when something is selected, with the count', async () => {
+            render(<TimesheetEditor orchardId="o1" />);
+            await waitFor(() => screen.getByText('Alice Smith'));
+            expect(screen.queryByRole('region', { name: /Correct \d+ timesheets/ })).toBeNull();
+            fireEvent.click(selectOf('Alice Smith'));
+            expect(screen.getByRole('region', { name: 'Correct 1 timesheets' })).toBeTruthy();
+            fireEvent.click(selectOf('Bob Jones'));
+            expect(screen.getByRole('region', { name: 'Correct 2 timesheets' })).toBeTruthy();
+            expect(screen.getByText('2 selected')).toBeTruthy();
+            // Deseleccionar
+            fireEvent.click(selectOf('Alice Smith'));
+            expect(screen.getByRole('region', { name: 'Correct 1 timesheets' })).toBeTruthy();
+        });
+
+        it('"Select all" selects every row and "Select flagged" only those without check-out or meal break', async () => {
+            render(<TimesheetEditor orchardId="o1" />);
+            await waitFor(() => screen.getByText('Alice Smith'));
+            fireEvent.click(screen.getByLabelText('Select all timesheets'));
+            expect(screen.getByRole('region', { name: 'Correct 3 timesheets' })).toBeTruthy();
+            // Alice (8 h sin descanso) y Charlie (16 h sin descanso) tienen aviso; Bob (sin salida) también
+            fireEvent.click(screen.getByRole('button', { name: 'Select flagged (3)' }));
+            expect(screen.getByRole('region', { name: 'Correct 3 timesheets' })).toBeTruthy();
+            fireEvent.click(screen.getByText('Clear selection'));
+            expect(screen.queryByRole('region', { name: /Correct/ })).toBeNull();
+        });
+
+        it('"Select flagged" leaves out complete timesheets', async () => {
+            mockGetAttendanceByDate.mockResolvedValueOnce([
+                { ...mockRecords[0], break_start: '2026-03-10T11:00:00+13:00' }, // completo
+                mockRecords[1], // sin salida
+            ]);
+            render(<TimesheetEditor orchardId="o1" />);
+            await waitFor(() => screen.getByText('Alice Smith'));
+            fireEvent.click(screen.getByRole('button', { name: 'Select flagged (1)' }));
+            expect(screen.getByRole('region', { name: 'Correct 1 timesheets' })).toBeTruthy();
+            expect((selectOf('Bob Jones') as HTMLInputElement).checked).toBe(true);
+            expect((selectOf('Alice Smith') as HTMLInputElement).checked).toBe(false);
+        });
+
+        it('applies the same correction to all selected rows with one reason (empty fields untouched)', async () => {
+            render(<TimesheetEditor orchardId="o1" />);
+            await waitFor(() => screen.getByText('Alice Smith'));
+            fireEvent.click(selectOf('Alice Smith'));
+            fireEvent.click(selectOf('Bob Jones'));
+            const panel = screen.getByRole('region', { name: 'Correct 2 timesheets' });
+            const apply = screen.getByRole('button', { name: 'Apply to 2' });
+            // Sin cambios ni motivo no se puede aplicar
+            expect(apply).toHaveProperty('disabled', true);
+            fireEvent.change(within(panel).getByLabelText('Check-Out'), { target: { value: '16:30' } });
+            expect(apply).toHaveProperty('disabled', true);
+            fireEvent.change(screen.getByPlaceholderText('Reason for all corrections *'), { target: { value: 'Everyone left at 16:30' } });
+            expect(apply).toHaveProperty('disabled', false);
+            fireEvent.click(apply);
+            await waitFor(() => expect(mockCorrectAttendanceBatch).toHaveBeenCalledTimes(1));
+            const [items, reason, adminId] = mockCorrectAttendanceBatch.mock.calls[0];
+            expect(reason).toBe('Everyone left at 16:30');
+            expect(adminId).toBe('admin1');
+            // 2026-03-10 es horario de verano NZ (+13): 16:30 NZ = 03:30 UTC
+            expect(items).toEqual([
+                { attendance_id: 'att1', check_out: '2026-03-10T03:30:00.000Z' },
+                { attendance_id: 'att2', check_out: '2026-03-10T03:30:00.000Z' },
+            ]);
+            // Éxito: aviso, selección limpia y recarga
+            await waitFor(() => expect(screen.getByText('Corrected 2 timesheets')).toBeTruthy());
+            expect(screen.queryByRole('region', { name: /Correct/ })).toBeNull();
+            expect(mockGetAttendanceByDate).toHaveBeenCalledTimes(2);
+        });
+
+        it('keeps the failed rows selected and warns when part of the batch fails', async () => {
+            mockCorrectAttendanceBatch.mockResolvedValueOnce({
+                success: false, total: 2, succeeded: 1, failed: 1,
+                results: [
+                    { index: 0, attendance_id: 'att1', success: true },
+                    { index: 1, attendance_id: 'att2', success: false, error: 'Not allowed to correct this timesheet' },
+                ],
+            });
+            render(<TimesheetEditor orchardId="o1" />);
+            await waitFor(() => screen.getByText('Alice Smith'));
+            fireEvent.click(screen.getByLabelText('Select all timesheets'));
+            fireEvent.click(selectOf('Charlie'));
+            const panel = screen.getByRole('region', { name: 'Correct 2 timesheets' });
+            fireEvent.change(within(panel).getByLabelText('Break'), { target: { value: '12:00' } });
+            fireEvent.change(screen.getByPlaceholderText('Reason for all corrections *'), { target: { value: 'Break not recorded' } });
+            fireEvent.click(screen.getByRole('button', { name: 'Apply to 2' }));
+            await waitFor(() => expect(mockShowToast).toHaveBeenCalledWith('1 corrected, 1 failed (still selected)', 'warning'));
+            await waitFor(() => expect(screen.getByRole('region', { name: 'Correct 1 timesheets' })).toBeTruthy());
+            expect((selectOf('Bob Jones') as HTMLInputElement).checked).toBe(true);
+            expect((selectOf('Alice Smith') as HTMLInputElement).checked).toBe(false);
+        });
+
+        it('disables the batch button offline and explains that batches are not queued', async () => {
+            network.isOnline = false;
+            render(<TimesheetEditor orchardId="o1" />);
+            await waitFor(() => screen.getByText('Alice Smith'));
+            fireEvent.click(selectOf('Alice Smith'));
+            const panel = screen.getByRole('region', { name: 'Correct 1 timesheets' });
+            fireEvent.change(within(panel).getByLabelText('Check-In'), { target: { value: '07:30' } });
+            fireEvent.change(screen.getByPlaceholderText('Reason for all corrections *'), { target: { value: 'Late clock-in fixed' } });
+            expect(screen.getByRole('button', { name: 'Apply to 1' })).toHaveProperty('disabled', true);
+            expect(within(panel).getByRole('status').textContent).toContain('not queued');
+            expect(mockCorrectAttendanceBatch).not.toHaveBeenCalled();
+        });
+
+        it('single-row editing still works alongside the selection', async () => {
+            render(<TimesheetEditor orchardId="o1" />);
+            await waitFor(() => screen.getByText('Alice Smith'));
+            fireEvent.click(selectOf('Bob Jones'));
+            fireEvent.click(screen.getByLabelText("Edit Alice Smith's timesheet"));
+            fireEvent.change(screen.getByTitle('Check-in time'), { target: { value: '07:30' } });
+            fireEvent.change(screen.getByPlaceholderText('Reason for correction *'), { target: { value: 'Wrong clock-in' } });
+            fireEvent.click(screen.getByLabelText('Save correction'));
+            await waitFor(() => expect(mockCorrectAttendance).toHaveBeenCalledTimes(1));
+            expect(mockCorrectAttendanceBatch).not.toHaveBeenCalled();
+        });
     });
 });

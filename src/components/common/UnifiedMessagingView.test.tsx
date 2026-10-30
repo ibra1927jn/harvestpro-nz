@@ -43,6 +43,7 @@ vi.mock('@/stores/useHarvestStore', () => ({
 vi.mock('../../services/simple-messaging.service', () => ({
   simpleMessagingService: {
     getUsers: vi.fn().mockResolvedValue([]),
+    getDirectory: vi.fn().mockResolvedValue({ contacts: [], names: {} }),
     subscribeToConversation: vi.fn().mockReturnValue(vi.fn()),
     sendMessage: vi.fn().mockResolvedValue({ error: null }),
     createDirectChat: vi.fn().mockResolvedValue({ data: { id: 'c1' }, error: null }),

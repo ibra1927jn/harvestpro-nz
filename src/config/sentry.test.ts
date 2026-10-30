@@ -72,7 +72,7 @@ describe('con DSN', () => {
   it('no carga el SDK hasta initSentry y reenvía lo encolado en orden', async () => {
     const m = await freshModule();
     const err = new Error('startup crash');
-    await m.setSentryUser({ id: 'u1', email: 'a@test.com', role: 'manager' });
+    await m.setSentryUser({ id: 'u1', role: 'manager' });
     await m.captureSentryError(err, { page: 'login' });
     await m.addSentryBreadcrumb('clicked', { id: 'b1' });
     expect(sdk.loaded).toBe(0);
@@ -81,7 +81,7 @@ describe('con DSN', () => {
     await m.initSentry();
 
     expect(sdk.init).toHaveBeenCalledTimes(1);
-    expect(sdk.setUser).toHaveBeenCalledWith({ id: 'u1', email: 'a@test.com', role: 'manager' });
+    expect(sdk.setUser).toHaveBeenCalledWith({ id: 'u1', role: 'manager' });
     expect(sdk.setContext).toHaveBeenCalledWith('error_context', { page: 'login' });
     expect(sdk.captureException).toHaveBeenCalledWith(err);
     expect(sdk.addBreadcrumb).toHaveBeenCalledWith(
@@ -138,5 +138,75 @@ describe('con DSN', () => {
     sdk.captureException.mockClear();
     window.dispatchEvent(new ErrorEvent('error', { message: 'later' }));
     expect(sdk.captureException).not.toHaveBeenCalled();
+  });
+});
+
+describe('datos personales (NZ Privacy Act)', () => {
+  beforeEach(() => vi.stubEnv('VITE_SENTRY_DSN', 'https://k@o0.ingest.sentry.io/1'));
+
+  type InitOptions = {
+    beforeSend: (e: Record<string, unknown>) => Record<string, unknown> | null;
+    beforeBreadcrumb: (b: Record<string, unknown>) => Record<string, unknown>;
+  };
+
+  async function initOptions(): Promise<InitOptions> {
+    const m = await freshModule();
+    await m.initSentry();
+    return sdk.init.mock.calls[0][0] as InitOptions;
+  }
+
+  it('setSentryUser no manda el email aunque se lo pasen', async () => {
+    const m = await freshModule();
+    await m.initSentry();
+    const conEmail = { id: 'u1', role: 'manager', email: 'a@test.com' };
+    await m.setSentryUser(conEmail);
+    expect(sdk.setUser).toHaveBeenCalledWith({ id: 'u1', role: 'manager' });
+  });
+
+  it('beforeSend limpia email, IRD y cuenta bancaria de todo el evento', async () => {
+    const { beforeSend } = await initOptions();
+    const out = beforeSend({
+      message: 'fallo para ana@example.co.nz',
+      exception: {
+        values: [
+          { value: 'IRD 123-456-789 inválido' },
+          { value: 'cuenta 12-3456-7890123-00 rechazada' },
+        ],
+      },
+      breadcrumbs: [
+        { message: 'GET /rest/v1/users?email=eq.bob@farm.nz', data: { picker_id: 'p-9' } },
+      ],
+      extra: { ird_number: '98765432', nota: 'llamar a ana@example.co.nz' },
+      contexts: { error_context: { bank_account: '01-0001-0000001-000' } },
+      request: { url: 'https://x/?ird=123456789', data: { email: 'c@d.nz' }, cookies: 'sb=1' },
+      user: { id: 'u1', email: 'a@test.com', ip_address: '1.2.3.4' },
+    });
+    const json = JSON.stringify(out);
+    for (const secreto of [
+      'ana@example.co.nz',
+      'bob@farm.nz',
+      'c@d.nz',
+      'a@test.com',
+      '123-456-789',
+      '123456789',
+      '98765432',
+      '12-3456-7890123-00',
+      '01-0001-0000001-000',
+      'p-9',
+      '1.2.3.4',
+      'sb=1',
+    ]) {
+      expect(json).not.toContain(secreto);
+    }
+    expect(out?.user).toEqual({ id: 'u1' });
+  });
+
+  it('beforeBreadcrumb limpia mensaje y datos', async () => {
+    const { beforeBreadcrumb } = await initOptions();
+    const out = beforeBreadcrumb({
+      message: 'login de ana@example.co.nz',
+      data: { url: '/x?email=ana@example.co.nz', full_name: 'Ana Pérez' },
+    });
+    expect(JSON.stringify(out)).not.toMatch(/ana@example|Ana Pérez/);
   });
 });

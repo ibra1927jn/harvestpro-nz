@@ -13,6 +13,9 @@
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
 import { AnomalyResponseSchema, validateResponseSafe } from '@/schemas/api.schemas';
 import { logger } from '@/utils/logger';
+import { anomalyDismissalsRepository, type AnomalyDismissalRow } from '@/repositories/anomaly-dismissals.repository';
+
+export type { AnomalyDismissalRow };
 
 export type AnomalyType =
     | 'impossible_velocity'
@@ -51,31 +54,13 @@ const DEFAULT_CONFIG: DetectionConfig = {
     shiftEndHour: 19,
 };
 
-/** Smart dismissal examples — for manager trust-building UI */
-export interface DismissedExample {
-    scenario: string;
-    reason: string;
-    rule: string;
+/**
+ * Clave estable de una anomalía: detect-anomalies genera ids nuevos en cada
+ * llamada, así que el descarte se guarda por tipo + recolector + hora del evento.
+ */
+export function anomalyKey(a: Pick<Anomaly, 'type' | 'pickerId' | 'timestamp'>): string {
+    return `${a.type}|${a.pickerId}|${a.timestamp}`;
 }
-
-/** Static dismissal explanations (no mock data, just documentation) */
-const DISMISSED_EXAMPLES: DismissedExample[] = [
-    {
-        scenario: 'Runner scanned 6 buckets for Juan in 10 seconds',
-        reason: 'Juan worked 2 hours since last collection. 6 ÷ 2h = 3/hr — perfectly normal rate. Buckets were accumulated under trees.',
-        rule: 'elapsed_velocity',
-    },
-    {
-        scenario: 'Entire Row 5 was picking at 2× average speed today',
-        reason: 'All 8 pickers in Row 5 showed elevated rates. Trees in that section are heavily loaded this season. Group elevation = good trees, not fraud.',
-        rule: 'peer_comparison',
-    },
-    {
-        scenario: 'María had zero scans for first 75 minutes of shift',
-        reason: 'Grace period (first 90 min) — workers set up ladders, fruit is cold, tractors haven\'t started yet. Normal warmup. No alert generated.',
-        rule: 'grace_period',
-    },
-];
 
 export const fraudDetectionService = {
     config: { ...DEFAULT_CONFIG },
@@ -109,8 +94,31 @@ export const fraudDetectionService = {
     },
 
     /**
-     * Get smart dismissal examples for the manager trust-building UI.
-     * These are static documentation, not mock data.
+     * Descartes reales del huerto desde una fecha (antes una lista fija de
+     * ejemplos en el código). Sin conexión o sin permiso: lista vacía.
      */
-    getDismissedExamples: (): DismissedExample[] => DISMISSED_EXAMPLES,
+    listDismissals: async (orchardId: string, sinceIso: string): Promise<AnomalyDismissalRow[]> => {
+        try {
+            return await anomalyDismissalsRepository.listSince(orchardId, sinceIso);
+        } catch (err) {
+            logger.warn('[FraudDetection] Could not load dismissals:', err);
+            return [];
+        }
+    },
+
+    /** Descarta una anomalía (falsa alarma) con un motivo opcional. Lanza si no se guarda. */
+    dismissAnomaly: (orchardId: string, anomaly: Anomaly, reason: string | null): Promise<AnomalyDismissalRow> =>
+        anomalyDismissalsRepository.insert({
+            orchard_id: orchardId,
+            anomaly_key: anomalyKey(anomaly),
+            anomaly_type: anomaly.type,
+            picker_id: /^[0-9a-f-]{36}$/i.test(anomaly.pickerId) ? anomaly.pickerId : null,
+            picker_name: anomaly.pickerName?.slice(0, 120) ?? null,
+            detail: anomaly.detail?.slice(0, 500) ?? null,
+            anomaly_at: anomaly.timestamp || null,
+            reason: reason?.trim().slice(0, 500) || null,
+        }),
+
+    /** Deshace un descarte (la anomalía vuelve a la lista) */
+    undoDismissal: (id: string): Promise<void> => anomalyDismissalsRepository.remove(id),
 };

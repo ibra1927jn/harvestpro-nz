@@ -1,7 +1,10 @@
 /**
  * close-pay-week — Cerrar o reabrir una semana de pago (lunes–domingo, NZ).
  *
- * close:  solo semanas ya terminadas y sin horas estimadas (tramos sin cerrar).
+ * close:  solo semanas ya terminadas, sin horas estimadas (tramos sin cerrar)
+ *         y con todos los tramos aprobados: ninguna hora se paga sin revisar
+ *         (unreviewedShifts de _shared/pay-rules.ts: sin aprobar, rechazados o
+ *         de más de 14 h sin corregir).
  *         Guarda la foto de la nómina (mismo cálculo que calculate-payroll) y, a
  *         partir de ahí, la base de datos no deja cambiar fichajes ni cubetas
  *         de esos días.
@@ -21,7 +24,9 @@ import {
     checkRateLimit,
 } from '../_shared/security.ts'
 import { computePayroll } from '../_shared/payroll-calc.ts'
-import { payWeekOf, nzDateOf } from '../_shared/pay-rules.ts'
+import { payWeekOf, nzDateOf, unreviewedShifts, type ReviewableShift } from '../_shared/pay-rules.ts'
+import { fetchAllRows } from '../_shared/fetch-all-rows.ts'
+import { fetchInChunks } from '../_shared/fetch-in-chunks.ts'
 import { writeAudit } from '../_shared/audit.ts'
 
 const InputSchema = z.object({
@@ -84,6 +89,34 @@ serve(async (req) => {
                 }))
             if (pending.length > 0) {
                 return jsonResponse({ week, closed: false, reason: 'ESTIMATED_HOURS', pending }, origin)
+            }
+
+            // Ninguna hora se paga sin revisar: todos los tramos de la semana (de
+            // todos los huertos) aprobados, ninguno rechazado sin volver a aprobar
+            const shifts = await fetchAllRows<ReviewableShift>((from, to) => supabase
+                .from('daily_attendance')
+                .select('id, picker_id, date, check_in, check_out, corrected_at, verified_at, rejected_at')
+                .is('deleted_at', null)
+                .gte('date', week.start)
+                .lte('date', week.end)
+                .order('id')
+                .range(from, to))
+            const issues = unreviewedShifts(shifts, week)
+            if (issues.length > 0) {
+                const ids = [...new Set(issues.map(i => i.pickerId))]
+                const names = await fetchInChunks<{ id: string; name: string }>(ids, (chunk, from, to) =>
+                    supabase.from('pickers').select('id, name').in('id', chunk).order('id').range(from, to))
+                const nameById = new Map(names.map(n => [n.id, n.name]))
+                const unreviewed = ids.map(id => {
+                    const mine = issues.filter(i => i.pickerId === id)
+                    return {
+                        picker_id: id,
+                        picker_name: nameById.get(id) ?? 'Unknown',
+                        dates: [...new Set(mine.map(i => i.date))],
+                        issues: mine.map(i => ({ date: i.date, issue: i.issue })),
+                    }
+                })
+                return jsonResponse({ week, closed: false, reason: 'UNREVIEWED_HOURS', pending: unreviewed }, origin)
             }
 
             const nowIso = new Date().toISOString()

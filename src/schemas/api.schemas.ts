@@ -57,6 +57,8 @@ export const PickerBreakdownSchema = z.object({
         buckets: z.number(),
         bucketsByVariety: z.record(z.string(), z.number()),
         pieceLines: z.array(z.object({
+            // Semanas cerradas antes de 2026-10-27: sin huerto en la línea
+            orchardId: z.string().nullable().default(null),
             variety: z.string(), rate: z.number(), buckets: z.number(), earnings: z.number(),
         })).default([]),
         byOrchard: z.array(z.object({
@@ -116,6 +118,8 @@ export const CheckInResponseSchema = z.object({
     already_checked_in: z.boolean(),
     /** Tramo cerrado en otro huerto al fichar aquí */
     closed_shift_id: z.string().nullable().optional(),
+    /** Hora del servidor (para medir el desfase del reloj del móvil) */
+    server_time: z.string().optional(),
 });
 
 export const CheckOutResponseSchema = z.object({
@@ -123,7 +127,37 @@ export const CheckOutResponseSchema = z.object({
     picker_id: z.string().min(1),
     check_out: z.string(),
     hours_worked: z.number().nonnegative(),
+    /** Reintento: ya estaba cerrado (no se cambió la salida) */
+    already_checked_out: z.boolean().optional(),
+    server_time: z.string().optional(),
 });
+
+/** manage-attendance break_start / break_end */
+export const BreakResponseSchema = z.object({
+    id: z.string().min(1),
+    picker_id: z.string().min(1),
+    break_start: z.string().nullable(),
+    break_end: z.string().nullable().optional(),
+    break_minutes: z.number().nullable().optional(),
+    /** Reintento: ya estaba anotado */
+    already: z.boolean(),
+    server_time: z.string().optional(),
+});
+
+/** Resultado de manage-attendance `correct_batch`: una entrada por fichaje enviado */
+export const CorrectBatchResponseSchema = z.object({
+    success: z.boolean(),
+    total: z.number().int().nonnegative(),
+    succeeded: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+    results: z.array(z.object({
+        index: z.number().int().nonnegative(),
+        attendance_id: z.string().min(1),
+        success: z.boolean(),
+        error: z.string().optional(),
+    })),
+});
+export type CorrectBatchResponse = z.infer<typeof CorrectBatchResponseSchema>;
 
 // ── Compliance Boundaries ──────────────────────────
 

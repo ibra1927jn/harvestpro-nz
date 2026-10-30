@@ -91,6 +91,8 @@ export interface RowSlice {
     rowAssignments: RowAssignment[];
     assignRow: (rowNumber: number, side: 'north' | 'south', pickerIds: string[]) => Promise<void>;
     assignRows: (rowNumbers: number[], side: 'north' | 'south', pickerIds: string[]) => Promise<void>;
+    /** Team leader: lleva a gente de su equipo a una fila que el manager asignó a su equipo */
+    moveTeamToRow: (rowNumber: number, pickerIds: string[]) => Promise<void>;
     updateRowProgress: (rowId: string, percentage: number) => Promise<void>;
     completeRow: (rowId: string) => Promise<void>;
 }
@@ -109,6 +111,8 @@ export interface OrchestratorSlice {
     // 🔧 U9: Changed from scalar to list to prevent event squashing
     recentQcInspections: Record<string, unknown>[];
     recentTimesheetUpdates: Record<string, unknown>[];
+    /** Hora (ms) del último cambio de daily_attendance llegado en vivo; 0 = ninguno */
+    attendanceChangedAt: number;
     // Orchestrator actions
     setGlobalState: (data: Partial<HarvestStoreState>) => void;
     fetchGlobalData: () => Promise<void>;

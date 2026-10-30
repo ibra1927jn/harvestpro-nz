@@ -7,7 +7,7 @@ import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { announce } from '../../services/announcer';
 import { useTranslation } from '@/i18n';
 import { formatNZDateTime } from '@/utils/nzFormat';
-import { syncTypeLabel } from './syncTypeLabel';
+import { syncTypeLabel, syncFailureReason } from './syncTypeLabel';
 import { onLocalDbChange } from '../../services/dbChanges';
 
 const SyncStatusMonitor: React.FC = () => {
@@ -216,7 +216,7 @@ const SyncStatusMonitor: React.FC = () => {
                     <ul className="mt-1 pl-7 text-[11px] text-red-700 list-disc space-y-0.5">
                         {deadLetters.map(d => (
                             <li key={d.id}>
-                                {syncTypeLabel(t, d.type)} — {d.failureReason} ({formatNZDateTime(d.movedAt)})
+                                {syncTypeLabel(t, d.type)} — {syncFailureReason(t, d.failureReason)} ({formatNZDateTime(d.movedAt)})
                             </li>
                         ))}
                     </ul>

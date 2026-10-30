@@ -6,6 +6,7 @@ import React from 'react';
 import { Picker, RowAssignment } from '@/types';
 import { RowData } from '@/hooks/useOrchardMap';
 import { getRowGradient, getVarietyStyle, AVATAR_COLORS } from '@/utils/orchardMapUtils';
+import type { RowTeamHighlight } from '@/services/harvestMetrics/rowTeams';
 import { useTranslation, translate as t } from '@/i18n';
 
 
@@ -16,6 +17,12 @@ interface RowCardProps {
     rowAssignments: RowAssignment[];
     onRowClick?: (rowNum: number) => void;
     isDimmed?: boolean;
+    /**
+     * Vista del team leader: 'mine' resalta la fila con el color del rol
+     * (índigo); 'other' la deja en gris con el nombre del otro team leader.
+     * Sin la prop (manager) la tarjeta no cambia.
+     */
+    teamHighlight?: RowTeamHighlight | null;
 }
 
 /* ── Avatar renderer ─────────────────────── */
@@ -45,31 +52,53 @@ function renderAvatar(p: Picker, pi: number) {
     );
 }
 
-const RowCard: React.FC<RowCardProps> = ({ rd, index, rowAssignments, onRowClick, isDimmed = false }) => {
+const RowCard: React.FC<RowCardProps> = ({ rd, index, rowAssignments, onRowClick, isDimmed = false, teamHighlight = null }) => {
     const isComplete = rd.progress >= 1;
     const hasActivePickers = rd.pickers.length > 0;
     const vs = getVarietyStyle(rd.variety);
     const { t } = useTranslation();
+    const isMine = teamHighlight?.kind === 'mine';
+    const isOtherTeam = teamHighlight?.kind === 'other';
+    const otherTeamLabel = isOtherTeam
+        ? (teamHighlight.leaderNames.length > 0
+            ? t('orchardMap.team.other', { name: teamHighlight.leaderNames.join(', ') })
+            : t('orchardMap.team.other_unknown'))
+        : '';
 
     return (
         <button
             onClick={() => onRowClick?.(rd.rowNum)}
             disabled={isDimmed}
+            data-team={teamHighlight?.kind}
             className={`
                 relative rounded-xl p-3 text-left
                 transition-all duration-300 ease-out
                 animate-slide-up row-card-bg anim-delay
                 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-1
                 shadow-sm hover:scale-[1.04] hover:shadow-lg active:scale-[0.98]
-                ${isComplete ? 'ring-1 ring-emerald-300' : ''}
+                ${isComplete && !isMine ? 'ring-1 ring-emerald-300' : ''}
+                ${isMine ? 'ring-2 ring-indigo-500 ring-offset-1' : ''}
+                ${isOtherTeam ? 'grayscale opacity-70' : ''}
             `}
             style={{
                 '--row-bg': getRowGradient(rd.progress),
-                '--row-border': isComplete ? '#10b981' : hasActivePickers ? '#fbbf24' : '#e2e8f0',
+                '--row-border': isMine ? '#4f46e5' : isOtherTeam ? '#94a3b8' : isComplete ? '#10b981' : hasActivePickers ? '#fbbf24' : '#e2e8f0',
                 '--delay': `${index * 0.03}s`,
                 minHeight: '80px',
             } as React.CSSProperties}
         >
+            {/* Equipo en la fila (solo en la vista del team leader) */}
+            {isMine && (
+                <span className="absolute -top-2 left-2 px-1.5 py-0.5 rounded-full bg-indigo-600 text-white text-[8px] font-bold uppercase tracking-wider shadow-sm">
+                    {t('orchardMap.team.mine')}
+                </span>
+            )}
+            {isOtherTeam && (
+                <span className="absolute -top-2 left-2 max-w-[90%] truncate px-1.5 py-0.5 rounded-full bg-slate-500 text-white text-[8px] font-bold uppercase tracking-wider shadow-sm" title={otherTeamLabel}>
+                    {otherTeamLabel}
+                </span>
+            )}
+
             {/* Row header */}
             <div className="flex items-center justify-between mb-1">
                 <span className={`text-sm font-black ${rd.progress > 0.5 ? 'text-white' : 'text-text-main'}`}>R{rd.rowNum}</span>
