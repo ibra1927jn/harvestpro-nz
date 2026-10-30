@@ -1,60 +1,50 @@
 /**
- * wizard.types — constants del setup wizard.
+ * wizard.types — pasos, datos iniciales y validación de temporada/bloques
  */
 import { describe, it, expect } from 'vitest';
-import { STEPS, INITIAL_DATA, VARIETIES } from './wizard.types';
+import { STEPS, VARIETIES, initialWizardData, newBlock, blockLetter, validateStructure } from './wizard.types';
+import { sampleWizardData } from './testData';
 
 describe('STEPS', () => {
-    it('expone 4 pasos con key/label/icon', () => {
-        expect(STEPS).toHaveLength(4);
-        for (const s of STEPS) {
-            expect(s.key).toBeTruthy();
-            expect(s.label).toBeTruthy();
-            expect(s.icon).toBeTruthy();
-        }
-    });
-
-    it('keys son orchard/teams/rates/summary', () => {
-        expect(STEPS.map((s) => s.key)).toEqual(['orchard', 'teams', 'rates', 'summary']);
+    it('orchard → structure → rates → summary, labels are i18n keys', () => {
+        expect(STEPS.map(s => s.key)).toEqual(['orchard', 'structure', 'rates', 'summary']);
+        for (const s of STEPS) expect(s.label.startsWith('owiz.step.')).toBe(true);
     });
 });
 
-describe('INITIAL_DATA', () => {
-    it('orchard default con total_rows 20', () => {
-        expect(INITIAL_DATA.orchard.total_rows).toBe(20);
-        expect(INITIAL_DATA.orchard.code).toBe('');
-        expect(INITIAL_DATA.orchard.name).toBe('');
+describe('initialWizardData', () => {
+    it('starts with an active-season name, today and one block of rows 1–10', () => {
+        const d = initialWizardData('2026-10-24', 'Season 2026–27', 'Block A');
+        expect(d.season).toEqual({ name: 'Season 2026–27', start_date: '2026-10-24', end_date: '' });
+        expect(d.blocks).toEqual([newBlock('Block A', 1)]);
+        expect(d.blocks[0]).toMatchObject({ row_from: 1, row_to: 10, target_buckets: 100 });
+        expect(VARIETIES).toContain(d.rates.variety);
     });
 
-    it('teams default con 1 equipo "Team Alpha"', () => {
-        expect(INITIAL_DATA.teams).toHaveLength(1);
-        expect(INITIAL_DATA.teams[0].name).toBe('Team Alpha');
-        expect(INITIAL_DATA.teams[0].max_pickers).toBe(15);
-    });
-
-    it('rates default variety=Lapin, piece_rate=1.80, start_time=06:30', () => {
-        expect(INITIAL_DATA.rates.variety).toBe('Lapin');
-        expect(INITIAL_DATA.rates.piece_rate).toBe(1.80);
-        expect(INITIAL_DATA.rates.start_time).toBe('06:30');
+    it('block letters go A, B, C…', () => {
+        expect([0, 1, 2, 25].map(blockLetter)).toEqual(['A', 'B', 'C', 'Z']);
     });
 });
 
-describe('VARIETIES', () => {
-    it('cubre 12 varieties cherry', () => {
-        expect(VARIETIES).toHaveLength(12);
+describe('validateStructure', () => {
+    it('accepts the sample', () => {
+        expect(validateStructure(sampleWizardData)).toBeNull();
     });
 
-    it('incluye Lapin (default) + Sweetheart + Kordia', () => {
-        expect(VARIETIES).toContain('Lapin');
-        expect(VARIETIES).toContain('Sweetheart');
-        expect(VARIETIES).toContain('Kordia');
-    });
-
-    it('todos los nombres son unique', () => {
-        expect(new Set(VARIETIES).size).toBe(VARIETIES.length);
-    });
-
-    it('variety default INITIAL_DATA.rates.variety está en VARIETIES', () => {
-        expect(VARIETIES).toContain(INITIAL_DATA.rates.variety);
+    it.each([
+        ['season without name', { season: { ...sampleWizardData.season, name: ' ' } }, 'owiz.err.season'],
+        ['end before start', { season: { ...sampleWizardData.season, end_date: '2026-01-01' } }, 'owiz.err.dates'],
+        ['no blocks', { blocks: [] }, 'owiz.err.no_blocks'],
+        ['season name over 80', { season: { ...sampleWizardData.season, name: 'S'.repeat(81) } }, 'owiz.err.season_long'],
+        ['block name over 60', { blocks: [{ ...sampleWizardData.blocks[0], name: 'B'.repeat(61) }] }, 'owiz.err.block_name_long'],
+        ['block without name', { blocks: [{ ...sampleWizardData.blocks[0], name: '' }] }, 'owiz.err.block_name'],
+        ['same name twice', { blocks: [sampleWizardData.blocks[0], { ...sampleWizardData.blocks[1], name: 'block a' }] }, 'owiz.err.block_dup'],
+        ['to before from', { blocks: [{ ...sampleWizardData.blocks[0], row_from: 9, row_to: 3 }] }, 'owiz.err.range'],
+        ['empty number', { blocks: [{ ...sampleWizardData.blocks[0], row_to: Number.NaN }] }, 'owiz.err.range'],
+        ['more than 1000 rows', { blocks: [{ ...sampleWizardData.blocks[0], row_from: 1, row_to: 1001 }] }, 'owiz.err.range'],
+        ['bad target', { blocks: [{ ...sampleWizardData.blocks[0], target_buckets: -1 }] }, 'owiz.err.target'],
+        ['overlap', { blocks: [sampleWizardData.blocks[0], { ...sampleWizardData.blocks[1], row_from: 15 }] }, 'owiz.err.overlap'],
+    ])('rejects %s', (_label, patch, key) => {
+        expect(validateStructure({ ...sampleWizardData, ...patch })).toBe(key);
     });
 });

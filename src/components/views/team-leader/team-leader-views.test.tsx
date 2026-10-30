@@ -2,12 +2,15 @@
  * Tests for team-leader views: HomeView
  */
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+
+const { mockOpenPickerProfile } = vi.hoisted(() => ({ mockOpenPickerProfile: vi.fn() }));
 
 // Mock the store — HomeView uses useHarvestStore() returning full object
 vi.mock('@/stores/useHarvestStore', () => ({
     useHarvestStore: () => ({
+        openPickerProfile: mockOpenPickerProfile,
         currentUser: { id: 'tl1', name: 'Maria Garcia', role: 'team_leader' },
         stats: { totalBuckets: 35, payEstimate: 105, tons: 2.8 },
         crew: [
@@ -38,6 +41,8 @@ vi.mock('@/context/AuthContext', () => ({
 import HomeView from './HomeView';
 
 describe('HomeView (TeamLeader)', () => {
+    beforeEach(() => mockOpenPickerProfile.mockClear());
+
     it('renders greeting with user name', () => {
         render(<HomeView />);
         expect(screen.getByText(/Kia Ora, Maria/i)).toBeTruthy();
@@ -82,5 +87,19 @@ describe('HomeView (TeamLeader)', () => {
         render(<HomeView />);
         expect(screen.getByText('Picker A')).toBeTruthy();
         expect(screen.getByText('Picker B')).toBeTruthy();
+    });
+
+    // #7: tocar a un picker del ranking abre su cajón de perfil (el mismo que el manager)
+    it('tapping a ranking card opens that picker\'s profile drawer', () => {
+        render(<HomeView />);
+        const card = screen.getByRole('button', { name: "Open Picker A's profile" });
+        fireEvent.click(card);
+        expect(mockOpenPickerProfile).toHaveBeenCalledWith('p1');
+    });
+
+    it('ranking cards are reachable by keyboard (real buttons)', () => {
+        render(<HomeView />);
+        const card = screen.getByRole('button', { name: "Open Picker B's profile" });
+        expect(card.tagName).toBe('BUTTON');
     });
 });

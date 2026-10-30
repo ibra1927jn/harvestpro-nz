@@ -15,9 +15,11 @@ interface MFASetupProps {
   onComplete?: () => void;
   onCancel?: () => void;
   requireSetup?: boolean; // If true, hides cancel button
+  /** Nombre del factor en Supabase (al regenerar hace falta uno distinto del que ya existe) */
+  friendlyName?: string;
 }
 
-export function MFASetup({ onComplete, onCancel, requireSetup = false }: MFASetupProps) {
+export function MFASetup({ onComplete, onCancel, requireSetup = false, friendlyName = 'HarvestPro Authenticator' }: MFASetupProps) {
   const { t } = useTranslation();
   const { qrCode, secret, factorId, isLoading, setupMFA, verifySetupCode } = useMFA();
   const [step, setStep] = useState<'generate' | 'scan' | 'verify'>('generate');
@@ -28,7 +30,7 @@ export function MFASetup({ onComplete, onCancel, requireSetup = false }: MFASetu
   const handleGenerateQR = async () => {
     setError(null);
     try {
-      await setupMFA('HarvestPro Authenticator');
+      await setupMFA(friendlyName);
       setStep('scan');
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : t('mfa.qr_failed');

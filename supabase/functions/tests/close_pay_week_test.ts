@@ -113,7 +113,8 @@ Deno.test({ name: 'close-pay-week', ...testOpts, fn: async t => {
                 token: leader.token,
                 body: { action: 'correct', attendance_id: att!.id, check_out: nzTime(tue, '17:00'), reason: 'late finish', admin_id: leader.id },
             })
-            assertEquals(fix.status, 400, show(fix))
+            // 409 con el código delante (lockedPeriodError de _shared/attendance-access.ts)
+            assertEquals(fix.status, 409, show(fix))
             assertStringIncludes(fix.text, 'PAY_WEEK_CLOSED')
             const { data: still } = must(await service.from('daily_attendance').select('check_out').eq('id', att!.id).single(), 'att')
             assertEquals(new Date(still!.check_out).toISOString(), nzTime(tue, '16:30'))

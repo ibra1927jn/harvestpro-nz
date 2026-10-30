@@ -19,20 +19,17 @@ vi.mock('@/utils/nzst', () => ({
 
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
 import { attendanceRepository } from '@/repositories/attendance.repository';
-import { pickerRepository } from '@/repositories/picker.repository';
 import { attendanceService } from '../attendance.service';
 
 describe('attendanceService', () => {
     let mockInvoke: ReturnType<typeof vi.spyOn>;
     let mockGetDailyWithPickers: ReturnType<typeof vi.spyOn>;
     let mockGetByDateWithPickers: ReturnType<typeof vi.spyOn>;
-    let mockGetPerformanceToday: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
         mockInvoke = vi.spyOn(edgeFunctionsRepository, 'invoke').mockResolvedValue({ data: null, error: null });
         mockGetDailyWithPickers = vi.spyOn(attendanceRepository, 'getDailyWithPickers').mockResolvedValue([]);
         mockGetByDateWithPickers = vi.spyOn(attendanceRepository, 'getByDateWithPickers').mockResolvedValue([]);
-        mockGetPerformanceToday = vi.spyOn(pickerRepository, 'getPerformanceToday').mockResolvedValue([]);
     });
 
     // ═══════════════════════════════
@@ -137,30 +134,17 @@ describe('attendanceService', () => {
 
             await expect(attendanceService.checkOutPicker('bad-id')).rejects.toThrow('Attendance record not found');
         });
-    });
 
-    // ═══════════════════════════════
-    // getTodayPerformance (read-only, via repository)
-    // ═══════════════════════════════
-    describe('getTodayPerformance', () => {
-        it('fetches performance for specific orchard', async () => {
-            const perfData = [
-                { picker_id: 'p-1', total_buckets: 10, orchard_id: 'orchard-1' },
-            ];
-            mockGetPerformanceToday.mockResolvedValue(perfData);
-
-            const result = await attendanceService.getTodayPerformance('orchard-1');
-
-            expect(mockGetPerformanceToday).toHaveBeenCalledWith('orchard-1');
-            expect(result).toEqual(perfData);
+        it('queued phone time: sends client_now and the correction already applied', async () => {
+            mockInvoke.mockResolvedValue({ data: { id: 'a', picker_id: 'p', check_out: 'x', hours_worked: 1 }, error: null });
+            await attendanceService.checkOutPicker('att-1', { at: '2026-10-23T05:00:00.000Z', skewApplied: 180_000 });
+            expect(mockInvoke.mock.lastCall?.[1]).toMatchObject({ at: '2026-10-23T05:00:00.000Z', clock_skew_ms: 180_000, client_now: expect.any(Number) });
         });
 
-        it('fetches all performance when no orchardId', async () => {
-            mockGetPerformanceToday.mockResolvedValue([]);
-
-            await attendanceService.getTodayPerformance();
-
-            expect(mockGetPerformanceToday).toHaveBeenCalledWith(undefined);
+        it('item queued by an older app (no correction recorded): no client_now, so the server does not correct it twice', async () => {
+            mockInvoke.mockResolvedValue({ data: { id: 'a', picker_id: 'p', check_out: 'x', hours_worked: 1 }, error: null });
+            await attendanceService.checkOutPicker('att-1', { at: '2026-10-23T05:00:00.000Z' });
+            expect(mockInvoke.mock.lastCall?.[1]).toEqual({ action: 'check_out', attendance_id: 'att-1', at: '2026-10-23T05:00:00.000Z' });
         });
     });
 
@@ -223,6 +207,69 @@ describe('attendanceService', () => {
                     'admin-1'
                 )
             ).rejects.toThrow('RLS violation');
+        });
+    });
+
+    // ═══════════════════════════════
+    // correctAttendanceBatch — via Edge Function (correct_batch)
+    // ═══════════════════════════════
+    describe('correctAttendanceBatch', () => {
+        const response = {
+            success: false, total: 2, succeeded: 1, failed: 1,
+            results: [
+                { index: 0, attendance_id: 'att-1', success: true },
+                { index: 1, attendance_id: 'att-2', success: false, error: 'Not allowed to correct this timesheet' },
+            ],
+        };
+
+        it('sends every item with only the fields that have a value, one reason for the batch', async () => {
+            mockInvoke.mockResolvedValue({ data: response, error: null });
+
+            const result = await attendanceService.correctAttendanceBatch(
+                [
+                    { attendance_id: 'att-1', check_out: '2026-10-21T03:30:00.000Z', break_start: undefined },
+                    { attendance_id: 'att-2', check_in: '2026-10-20T18:00:00.000Z', break_start: null },
+                ],
+                'Everyone forgot to check out',
+                'tl-1'
+            );
+
+            expect(mockInvoke).toHaveBeenCalledWith('manage-attendance', {
+                action: 'correct_batch',
+                items: [
+                    { attendance_id: 'att-1', check_out: '2026-10-21T03:30:00.000Z' },
+                    { attendance_id: 'att-2', check_in: '2026-10-20T18:00:00.000Z', break_start: null },
+                ],
+                reason: 'Everyone forgot to check out',
+                admin_id: 'tl-1',
+            });
+            // Resultados por fichaje: el que falla no tira el lote
+            expect(result.succeeded).toBe(1);
+            expect(result.failed).toBe(1);
+            expect(result.results[1].error).toContain('Not allowed');
+        });
+
+        it('does not call the server for an empty batch and refuses more than 200 items', async () => {
+            mockInvoke.mockClear();
+            const empty = await attendanceService.correctAttendanceBatch([], 'Nothing', 'tl-1');
+            expect(empty.total).toBe(0);
+            expect(mockInvoke).not.toHaveBeenCalled();
+
+            const tooMany = Array.from({ length: 201 }, (_, i) => ({ attendance_id: `att-${i}` }));
+            await expect(attendanceService.correctAttendanceBatch(tooMany, 'Bulk fix', 'tl-1')).rejects.toThrow('At most 200');
+            expect(mockInvoke).not.toHaveBeenCalled();
+        });
+
+        it('throws on Edge Function error and on a malformed response', async () => {
+            mockInvoke.mockResolvedValue({ data: null, error: { message: 'Function unavailable' } });
+            await expect(
+                attendanceService.correctAttendanceBatch([{ attendance_id: 'att-1', check_out: 'x' }], 'Reason here', 'tl-1')
+            ).rejects.toThrow('Function unavailable');
+
+            mockInvoke.mockResolvedValue({ data: { nope: true }, error: null });
+            await expect(
+                attendanceService.correctAttendanceBatch([{ attendance_id: 'att-1', check_out: 'x' }], 'Reason here', 'tl-1')
+            ).rejects.toThrow('Invalid correctAttendanceBatch response');
         });
     });
 });

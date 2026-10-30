@@ -45,9 +45,7 @@ vi.mock('@/repositories/picker-crud.repository', () => ({
 }));
 
 vi.mock('@/repositories/picker.repository', () => ({
-  pickerRepository: {
-    getPerformanceToday: vi.fn().mockResolvedValue([{ picker_id: 'p1', total_buckets: 50 }]),
-  },
+  pickerRepository: {},
 }));
 
 vi.mock('../optimistic-lock.service', () => ({
@@ -66,18 +64,18 @@ describe('pickerService — deep branch tests', () => {
   beforeEach(() => vi.clearAllMocks());
 
   describe('getPickersByTeam', () => {
-    it('returns mapped pickers with performance data', async () => {
+    it('returns mapped pickers (today\'s buckets come from the store, not the broken view)', async () => {
       const result = await pickerService.getPickersByTeam('t1', 'o1');
       expect(result.length).toBe(1);
-      expect(result[0].total_buckets_today).toBe(50);
+      expect(result[0].total_buckets_today).toBe(0);
       expect(result[0].avatar).toBe('AL');
     });
 
-    it('handles empty data with diagnostic log', async () => {
+    it('handles empty data without the extra diagnostic count', async () => {
       mockQuery.mockResolvedValueOnce([]);
       const result = await pickerService.getPickersByTeam('t1', 'o1');
       expect(result.length).toBe(0);
-      expect(mockGetTotalCount).toHaveBeenCalled();
+      expect(mockGetTotalCount).not.toHaveBeenCalled();
     });
 
     it('handles null picker name', async () => {

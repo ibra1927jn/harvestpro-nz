@@ -1,0 +1,4781 @@
+{
+  "meta": {
+    "date": "2026-10-21",
+    "speed": 60,
+    "variant": "current",
+    "chaos": false,
+    "devices": 31,
+    "realSeconds": 710
+  },
+  "integrity": {
+    "scansCreated": 1894,
+    "scansAcked": 1894,
+    "scansRejected": 0,
+    "scansInDb": 1894,
+    "scansLost": 0,
+    "duplicateRowsInDb": 0,
+    "duplicateSendsInjected": 0,
+    "openShiftsAtEnd": 0,
+    "truncatedQueries": 0,
+    "pendingInQueues": 0
+  },
+  "realtimeLagMs": {
+    "p50": 4144,
+    "p95": 19064,
+    "p99": 22283,
+    "n": 1019
+  },
+  "db": {
+    "bytesBefore": 14516224,
+    "bytesAfter": 20422656,
+    "growthBytes": 5906432
+  },
+  "docker": {
+    "db": {
+      "cpuAvg": 112.6,
+      "cpuMax": 186.03,
+      "memMaxMB": 350
+    },
+    "edge_runtime": {
+      "cpuAvg": 11.6,
+      "cpuMax": 41.91,
+      "memMaxMB": 661
+    },
+    "pg_meta": {
+      "cpuAvg": 1.8,
+      "cpuMax": 15.41,
+      "memMaxMB": 115
+    },
+    "storage": {
+      "cpuAvg": 0.3,
+      "cpuMax": 4.15,
+      "memMaxMB": 156
+    },
+    "rest": {
+      "cpuAvg": 14,
+      "cpuMax": 28.7,
+      "memMaxMB": 78
+    },
+    "realtime": {
+      "cpuAvg": 3.3,
+      "cpuMax": 8.79,
+      "memMaxMB": 197
+    },
+    "auth": {
+      "cpuAvg": 5.2,
+      "cpuMax": 13.03,
+      "memMaxMB": 16
+    },
+    "kong": {
+      "cpuAvg": 6.3,
+      "cpuMax": 20.91,
+      "memMaxMB": 192
+    }
+  },
+  "total": {
+    "calls": 34565,
+    "errors": 320,
+    "bytesIn": 294457119,
+    "bytesOut": 55566240,
+    "gzIn": 46002820
+  },
+  "rtTotal": {
+    "msgs": 1184,
+    "bytes": 941815
+  },
+  "byRole": {
+    "admin": {
+      "calls": 31,
+      "errors": 0,
+      "bytesIn": 582536,
+      "bytesOut": 47955,
+      "gzIn": 82556,
+      "rtMsgs": 139,
+      "rtBytes": 115860
+    },
+    "hr_admin": {
+      "calls": 83,
+      "errors": 13,
+      "bytesIn": 970542,
+      "bytesOut": 200381,
+      "gzIn": 197425,
+      "rtMsgs": 140,
+      "rtBytes": 117439
+    },
+    "logistics": {
+      "calls": 6735,
+      "errors": 0,
+      "bytesIn": 2710821,
+      "bytesOut": 10616752,
+      "gzIn": 2414441,
+      "rtMsgs": 145,
+      "rtBytes": 120248
+    },
+    "manager": {
+      "calls": 1391,
+      "errors": 21,
+      "bytesIn": 36716242,
+      "bytesOut": 2160864,
+      "gzIn": 2972173,
+      "rtMsgs": 421,
+      "rtBytes": 333537
+    },
+    "payroll_admin": {
+      "calls": 540,
+      "errors": 239,
+      "bytesIn": 827253,
+      "bytesOut": 889775,
+      "gzIn": 356098,
+      "rtMsgs": 141,
+      "rtBytes": 118082
+    },
+    "qc_inspector": {
+      "calls": 2085,
+      "errors": 0,
+      "bytesIn": 18092507,
+      "bytesOut": 3319355,
+      "gzIn": 3261865,
+      "rtMsgs": 47,
+      "rtBytes": 29181
+    },
+    "runner": {
+      "calls": 10132,
+      "errors": 45,
+      "bytesIn": 69155422,
+      "bytesOut": 16623620,
+      "gzIn": 12726564,
+      "rtMsgs": 96,
+      "rtBytes": 63427
+    },
+    "team_leader": {
+      "calls": 13568,
+      "errors": 2,
+      "bytesIn": 165401796,
+      "bytesOut": 21707538,
+      "gzIn": 23991698,
+      "rtMsgs": 55,
+      "rtBytes": 44041
+    }
+  },
+  "endpoints": [
+    {
+      "role": "team_leader",
+      "label": "GET bins",
+      "calls": 887,
+      "errors": 0,
+      "status": {
+        "200": 887
+      },
+      "p50": 31,
+      "p95": 425,
+      "p99": 1103,
+      "max": 2018,
+      "bytesIn": 61119415,
+      "bytesOut": 1326065,
+      "gzIn": 5212117
+    },
+    {
+      "role": "runner",
+      "label": "GET bins",
+      "calls": 602,
+      "errors": 0,
+      "status": {
+        "200": 602
+      },
+      "p50": 27,
+      "p95": 612,
+      "p99": 1262,
+      "max": 1821,
+      "bytesIn": 41478556,
+      "bytesOut": 899990,
+      "gzIn": 3540130
+    },
+    {
+      "role": "team_leader",
+      "label": "GET pickers",
+      "calls": 1125,
+      "errors": 0,
+      "status": {
+        "200": 1125
+      },
+      "p50": 121,
+      "p95": 2060,
+      "p99": 2601,
+      "max": 4920,
+      "bytesIn": 38468833,
+      "bytesOut": 1880837,
+      "gzIn": 3854257
+    },
+    {
+      "role": "team_leader",
+      "label": "GET daily_attendance",
+      "calls": 1553,
+      "errors": 0,
+      "status": {
+        "200": 1553
+      },
+      "p50": 810,
+      "p95": 2065,
+      "p99": 2679,
+      "max": 3978,
+      "bytesIn": 38213386,
+      "bytesOut": 2508591,
+      "gzIn": 4509890
+    },
+    {
+      "role": "manager",
+      "label": "fn detect-anomalies",
+      "calls": 9,
+      "errors": 0,
+      "status": {
+        "200": 9
+      },
+      "p50": 4153,
+      "p95": 7371,
+      "p99": 7371,
+      "max": 7371,
+      "bytesIn": 33203992,
+      "bytesOut": 13545,
+      "gzIn": 1915308
+    },
+    {
+      "role": "team_leader",
+      "label": "GET block_rows",
+      "calls": 887,
+      "errors": 0,
+      "status": {
+        "200": 887
+      },
+      "p50": 20,
+      "p95": 451,
+      "p99": 1084,
+      "max": 1593,
+      "bytesIn": 14183130,
+      "bytesOut": 1484838,
+      "gzIn": 2732654
+    },
+    {
+      "role": "runner",
+      "label": "GET block_rows",
+      "calls": 602,
+      "errors": 0,
+      "status": {
+        "200": 602
+      },
+      "p50": 15,
+      "p95": 521,
+      "p99": 1371,
+      "max": 2660,
+      "bytesIn": 9625980,
+      "bytesOut": 1007748,
+      "gzIn": 1854508
+    },
+    {
+      "role": "qc_inspector",
+      "label": "GET bins",
+      "calls": 136,
+      "errors": 0,
+      "status": {
+        "200": 136
+      },
+      "p50": 25,
+      "p95": 435,
+      "p99": 1926,
+      "max": 1965,
+      "bytesIn": 9370789,
+      "bytesOut": 203320,
+      "gzIn": 799964
+    },
+    {
+      "role": "runner",
+      "label": "GET pickers",
+      "calls": 611,
+      "errors": 0,
+      "status": {
+        "200": 611
+      },
+      "p50": 61,
+      "p95": 1722,
+      "p99": 2597,
+      "max": 6456,
+      "bytesIn": 7048524,
+      "bytesOut": 1044824,
+      "gzIn": 869486
+    },
+    {
+      "role": "team_leader",
+      "label": "GET bucket_records",
+      "calls": 887,
+      "errors": 0,
+      "status": {
+        "200": 887
+      },
+      "p50": 194,
+      "p95": 1000,
+      "p99": 1773,
+      "max": 3011,
+      "bytesIn": 4943729,
+      "bytesOut": 1433437,
+      "gzIn": 1078131
+    },
+    {
+      "role": "runner",
+      "label": "GET bucket_records",
+      "calls": 602,
+      "errors": 0,
+      "status": {
+        "200": 602
+      },
+      "p50": 334,
+      "p95": 1064,
+      "p99": 1772,
+      "max": 2255,
+      "bytesIn": 3938904,
+      "bytesOut": 972326,
+      "gzIn": 894928
+    },
+    {
+      "role": "team_leader",
+      "label": "GET row_assignments",
+      "calls": 887,
+      "errors": 0,
+      "status": {
+        "200": 887
+      },
+      "p50": 27,
+      "p95": 436,
+      "p99": 1331,
+      "max": 2316,
+      "bytesIn": 2604061,
+      "bytesOut": 1439601,
+      "gzIn": 1501450
+    },
+    {
+      "role": "runner",
+      "label": "GET row_assignments",
+      "calls": 602,
+      "errors": 0,
+      "status": {
+        "200": 602
+      },
+      "p50": 23,
+      "p95": 522,
+      "p99": 1002,
+      "max": 2931,
+      "bytesIn": 2238902,
+      "bytesOut": 977046,
+      "gzIn": 1262797
+    },
+    {
+      "role": "qc_inspector",
+      "label": "GET block_rows",
+      "calls": 136,
+      "errors": 0,
+      "status": {
+        "200": 136
+      },
+      "p50": 13,
+      "p95": 508,
+      "p99": 1244,
+      "max": 2038,
+      "bytesIn": 2174640,
+      "bytesOut": 227664,
+      "gzIn": 418948
+    },
+    {
+      "role": "qc_inspector",
+      "label": "GET qc_inspections",
+      "calls": 296,
+      "errors": 0,
+      "status": {
+        "200": 296
+      },
+      "p50": 15,
+      "p95": 449,
+      "p99": 1033,
+      "max": 1350,
+      "bytesIn": 1981978,
+      "bytesOut": 477512,
+      "gzIn": 488402
+    },
+    {
+      "role": "qc_inspector",
+      "label": "GET pickers",
+      "calls": 139,
+      "errors": 0,
+      "status": {
+        "200": 139
+      },
+      "p50": 57,
+      "p95": 1630,
+      "p99": 2215,
+      "max": 2247,
+      "bytesIn": 1944419,
+      "bytesOut": 237802,
+      "gzIn": 230721
+    },
+    {
+      "role": "team_leader",
+      "label": "auth token:refresh_token",
+      "calls": 837,
+      "errors": 0,
+      "status": {
+        "200": 837
+      },
+      "p50": 62,
+      "p95": 226,
+      "p99": 380,
+      "max": 575,
+      "bytesIn": 1835298,
+      "bytesOut": 1249641,
+      "gzIn": 1140079
+    },
+    {
+      "role": "manager",
+      "label": "GET bucket_records",
+      "calls": 35,
+      "errors": 15,
+      "status": {
+        "200": 20,
+        "500": 15
+      },
+      "p50": 6388,
+      "p95": 8245,
+      "p99": 8253,
+      "max": 8253,
+      "bytesIn": 1369115,
+      "bytesOut": 56809,
+      "gzIn": 187064
+    },
+    {
+      "role": "runner",
+      "label": "auth token:refresh_token",
+      "calls": 555,
+      "errors": 0,
+      "status": {
+        "200": 555
+      },
+      "p50": 58,
+      "p95": 166,
+      "p99": 246,
+      "max": 371,
+      "bytesIn": 1220244,
+      "bytesOut": 828615,
+      "gzIn": 753623
+    },
+    {
+      "role": "qc_inspector",
+      "label": "GET bucket_records",
+      "calls": 136,
+      "errors": 0,
+      "status": {
+        "200": 136
+      },
+      "p50": 284,
+      "p95": 997,
+      "p99": 1389,
+      "max": 1725,
+      "bytesIn": 1186087,
+      "bytesOut": 219664,
+      "gzIn": 237761
+    },
+    {
+      "role": "logistics",
+      "label": "GET fleet_vehicles",
+      "calls": 3346,
+      "errors": 0,
+      "status": {
+        "200": 3346
+      },
+      "p50": 6,
+      "p95": 142,
+      "p99": 621,
+      "max": 1912,
+      "bytesIn": 1183315,
+      "bytesOut": 5065644,
+      "gzIn": 1183315
+    },
+    {
+      "role": "logistics",
+      "label": "PATCH transport_requests",
+      "calls": 3349,
+      "errors": 0,
+      "status": {
+        "200": 3349
+      },
+      "p50": 9,
+      "p95": 152,
+      "p99": 607,
+      "max": 2452,
+      "bytesIn": 1180314,
+      "bytesOut": 5489258,
+      "gzIn": 1180314
+    },
+    {
+      "role": "team_leader",
+      "label": "GET orchard_blocks",
+      "calls": 887,
+      "errors": 0,
+      "status": {
+        "200": 887
+      },
+      "p50": 20,
+      "p95": 517,
+      "p99": 1129,
+      "max": 3037,
+      "bytesIn": 776125,
+      "bytesOut": 1428070,
+      "gzIn": 776125
+    },
+    {
+      "role": "team_leader",
+      "label": "GET variety_rates",
+      "calls": 887,
+      "errors": 0,
+      "status": {
+        "200": 887
+      },
+      "p50": 32,
+      "p95": 521,
+      "p99": 1312,
+      "max": 2445,
+      "bytesIn": 682990,
+      "bytesOut": 1393477,
+      "gzIn": 682990
+    },
+    {
+      "role": "runner",
+      "label": "fn record-bucket",
+      "calls": 1377,
+      "errors": 0,
+      "status": {
+        "200": 1377
+      },
+      "p50": 191,
+      "p95": 1296,
+      "p99": 2177,
+      "max": 4796,
+      "bytesIn": 645489,
+      "bytesOut": 2439469,
+      "gzIn": 645489
+    },
+    {
+      "role": "team_leader",
+      "label": "GET harvest_settings",
+      "calls": 887,
+      "errors": 0,
+      "status": {
+        "200": 887
+      },
+      "p50": 24,
+      "p95": 455,
+      "p99": 936,
+      "max": 1988,
+      "bytesIn": 613804,
+      "bytesOut": 1336709,
+      "gzIn": 613804
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET pickers",
+      "calls": 9,
+      "errors": 0,
+      "status": {
+        "200": 9
+      },
+      "p50": 1403,
+      "p95": 3067,
+      "p99": 3067,
+      "max": 3067,
+      "bytesIn": 559438,
+      "bytesOut": 14153,
+      "gzIn": 74334
+    },
+    {
+      "role": "team_leader",
+      "label": "GET orchards",
+      "calls": 899,
+      "errors": 0,
+      "status": {
+        "200": 899
+      },
+      "p50": 84,
+      "p95": 546,
+      "p99": 1249,
+      "max": 1703,
+      "bytesIn": 527162,
+      "bytesOut": 1340325,
+      "gzIn": 527162
+    },
+    {
+      "role": "runner",
+      "label": "GET orchard_blocks",
+      "calls": 602,
+      "errors": 0,
+      "status": {
+        "200": 602
+      },
+      "p50": 14,
+      "p95": 597,
+      "p99": 1089,
+      "max": 2558,
+      "bytesIn": 526750,
+      "bytesOut": 969220,
+      "gzIn": 526750
+    },
+    {
+      "role": "manager",
+      "label": "GET daily_attendance",
+      "calls": 30,
+      "errors": 0,
+      "status": {
+        "200": 30
+      },
+      "p50": 204,
+      "p95": 1101,
+      "p99": 1345,
+      "max": 1345,
+      "bytesIn": 524538,
+      "bytesOut": 49203,
+      "gzIn": 86002
+    },
+    {
+      "role": "runner",
+      "label": "fn submit-audit-log",
+      "calls": 1368,
+      "errors": 0,
+      "status": {
+        "200": 1368
+      },
+      "p50": 164,
+      "p95": 1344,
+      "p99": 2310,
+      "max": 3717,
+      "bytesIn": 514368,
+      "bytesOut": 2476041,
+      "gzIn": 514368
+    },
+    {
+      "role": "qc_inspector",
+      "label": "GET row_assignments",
+      "calls": 136,
+      "errors": 0,
+      "status": {
+        "200": 136
+      },
+      "p50": 17,
+      "p95": 494,
+      "p99": 836,
+      "max": 2039,
+      "bytesIn": 508154,
+      "bytesOut": 220728,
+      "gzIn": 286801
+    },
+    {
+      "role": "runner",
+      "label": "GET variety_rates",
+      "calls": 602,
+      "errors": 0,
+      "status": {
+        "200": 602
+      },
+      "p50": 32,
+      "p95": 597,
+      "p99": 1089,
+      "max": 3057,
+      "bytesIn": 463540,
+      "bytesOut": 945742,
+      "gzIn": 463540
+    },
+    {
+      "role": "team_leader",
+      "label": "GET harvest_seasons",
+      "calls": 887,
+      "errors": 0,
+      "status": {
+        "200": 887
+      },
+      "p50": 20,
+      "p95": 523,
+      "p99": 1079,
+      "max": 2170,
+      "bytesIn": 437291,
+      "bytesOut": 1411217,
+      "gzIn": 437291
+    },
+    {
+      "role": "runner",
+      "label": "GET harvest_settings",
+      "calls": 602,
+      "errors": 0,
+      "status": {
+        "200": 602
+      },
+      "p50": 25,
+      "p95": 508,
+      "p99": 959,
+      "max": 2267,
+      "bytesIn": 416584,
+      "bytesOut": 907214,
+      "gzIn": 416584
+    },
+    {
+      "role": "manager",
+      "label": "GET pickers",
+      "calls": 6,
+      "errors": 0,
+      "status": {
+        "200": 6
+      },
+      "p50": 143,
+      "p95": 303,
+      "p99": 303,
+      "max": 303,
+      "bytesIn": 381702,
+      "bytesOut": 11307,
+      "gzIn": 34764
+    },
+    {
+      "role": "runner",
+      "label": "GET orchards",
+      "calls": 611,
+      "errors": 0,
+      "status": {
+        "200": 611
+      },
+      "p50": 97,
+      "p95": 631,
+      "p99": 1333,
+      "max": 2514,
+      "bytesIn": 358307,
+      "bytesOut": 910938,
+      "gzIn": 358307
+    },
+    {
+      "role": "team_leader",
+      "label": "fn manage-attendance",
+      "calls": 654,
+      "errors": 0,
+      "status": {
+        "200": 654
+      },
+      "p50": 902,
+      "p95": 2850,
+      "p99": 4254,
+      "max": 6094,
+      "bytesIn": 314107,
+      "bytesOut": 1038408,
+      "gzIn": 314107
+    },
+    {
+      "role": "runner",
+      "label": "GET harvest_seasons",
+      "calls": 602,
+      "errors": 0,
+      "status": {
+        "200": 602
+      },
+      "p50": 15,
+      "p95": 524,
+      "p99": 1025,
+      "max": 2190,
+      "bytesIn": 296786,
+      "bytesOut": 957782,
+      "gzIn": 296786
+    },
+    {
+      "role": "manager",
+      "label": "GET qc_inspections",
+      "calls": 390,
+      "errors": 0,
+      "status": {
+        "200": 390
+      },
+      "p50": 29,
+      "p95": 671,
+      "p99": 1273,
+      "max": 1577,
+      "bytesIn": 292582,
+      "bytesOut": 589680,
+      "gzIn": 292582
+    },
+    {
+      "role": "qc_inspector",
+      "label": "auth token:refresh_token",
+      "calls": 133,
+      "errors": 0,
+      "status": {
+        "200": 133
+      },
+      "p50": 54,
+      "p95": 148,
+      "p99": 377,
+      "max": 390,
+      "bytesIn": 290859,
+      "bytesOut": 198569,
+      "gzIn": 181371
+    },
+    {
+      "role": "manager",
+      "label": "fn calculate-payroll",
+      "calls": 12,
+      "errors": 6,
+      "status": {
+        "200": 6,
+        "400": 5,
+        "503": 1
+      },
+      "p50": 8161,
+      "p95": 25832,
+      "p99": 25832,
+      "max": 25832,
+      "bytesIn": 259318,
+      "bytesOut": 18411,
+      "gzIn": 24428
+    },
+    {
+      "role": "payroll_admin",
+      "label": "fn approve-timesheet",
+      "calls": 476,
+      "errors": 237,
+      "status": {
+        "200": 239,
+        "429": 237
+      },
+      "p50": 65,
+      "p95": 520,
+      "p99": 1381,
+      "max": 2635,
+      "bytesIn": 242933,
+      "bytesOut": 770144,
+      "gzIn": 242933
+    },
+    {
+      "role": "payroll_admin",
+      "label": "GET daily_attendance",
+      "calls": 9,
+      "errors": 0,
+      "status": {
+        "200": 9
+      },
+      "p50": 193,
+      "p95": 1594,
+      "p99": 1594,
+      "max": 1594,
+      "bytesIn": 239528,
+      "bytesOut": 14925,
+      "gzIn": 40965
+    },
+    {
+      "role": "team_leader",
+      "label": "fn record-bucket",
+      "calls": 487,
+      "errors": 1,
+      "status": {
+        "200": 486,
+        "500": 1
+      },
+      "p50": 215,
+      "p95": 1509,
+      "p99": 2411,
+      "max": 3699,
+      "bytesIn": 226716,
+      "bytesOut": 856159,
+      "gzIn": 226716
+    },
+    {
+      "role": "runner",
+      "label": "GET daily_attendance",
+      "calls": 602,
+      "errors": 0,
+      "status": {
+        "200": 602
+      },
+      "p50": 1117,
+      "p95": 2264,
+      "p99": 2895,
+      "max": 4498,
+      "bytesIn": 211904,
+      "bytesOut": 973434,
+      "gzIn": 211904
+    },
+    {
+      "role": "manager",
+      "label": "GET bins",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 6,
+      "p95": 6,
+      "p99": 6,
+      "max": 6,
+      "bytesIn": 206244,
+      "bytesOut": 4485,
+      "gzIn": 17229
+    },
+    {
+      "role": "manager",
+      "label": "GET transport_requests",
+      "calls": 390,
+      "errors": 0,
+      "status": {
+        "200": 390
+      },
+      "p50": 29,
+      "p95": 554,
+      "p99": 1486,
+      "max": 1596,
+      "bytesIn": 198869,
+      "bytesOut": 601380,
+      "gzIn": 198869
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET contracts",
+      "calls": 23,
+      "errors": 7,
+      "status": {
+        "200": 16,
+        "414": 7
+      },
+      "p50": 38,
+      "p95": 1198,
+      "p99": 1973,
+      "max": 1973,
+      "bytesIn": 198755,
+      "bytesOut": 108393,
+      "gzIn": 74777
+    },
+    {
+      "role": "payroll_admin",
+      "label": "GET pickers",
+      "calls": 12,
+      "errors": 0,
+      "status": {
+        "200": 12
+      },
+      "p50": 117,
+      "p95": 1878,
+      "p99": 1878,
+      "max": 1878,
+      "bytesIn": 190863,
+      "bytesOut": 37835,
+      "gzIn": 32359
+    },
+    {
+      "role": "admin",
+      "label": "GET pickers",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 197,
+      "p95": 2227,
+      "p99": 2227,
+      "max": 2227,
+      "bytesIn": 190674,
+      "bytesOut": 4991,
+      "gzIn": 21167
+    },
+    {
+      "role": "team_leader",
+      "label": "fn submit-audit-log",
+      "calls": 475,
+      "errors": 1,
+      "status": {
+        "200": 474,
+        "503": 1
+      },
+      "p50": 192,
+      "p95": 1382,
+      "p99": 2365,
+      "max": 3729,
+      "bytesIn": 178574,
+      "bytesOut": 855089,
+      "gzIn": 178574
+    },
+    {
+      "role": "admin",
+      "label": "GET audit_logs",
+      "calls": 2,
+      "errors": 0,
+      "status": {
+        "200": 2
+      },
+      "p50": 1652,
+      "p95": 1652,
+      "p99": 1652,
+      "max": 1652,
+      "bytesIn": 177445,
+      "bytesOut": 2964,
+      "gzIn": 21495
+    },
+    {
+      "role": "logistics",
+      "label": "GET bins",
+      "calls": 9,
+      "errors": 0,
+      "status": {
+        "200": 9
+      },
+      "p50": 83,
+      "p95": 394,
+      "p99": 394,
+      "max": 394,
+      "bytesIn": 157516,
+      "bytesOut": 13191,
+      "gzIn": 14988
+    },
+    {
+      "role": "manager",
+      "label": "GET hr_documents",
+      "calls": 390,
+      "errors": 0,
+      "status": {
+        "200": 390
+      },
+      "p50": 24,
+      "p95": 652,
+      "p99": 1322,
+      "max": 2116,
+      "bytesIn": 137280,
+      "bytesOut": 616200,
+      "gzIn": 137280
+    },
+    {
+      "role": "logistics",
+      "label": "GET pickers",
+      "calls": 2,
+      "errors": 0,
+      "status": {
+        "200": 2
+      },
+      "p50": 1492,
+      "p95": 1492,
+      "p99": 1492,
+      "max": 1492,
+      "bytesIn": 131259,
+      "bytesOut": 3457,
+      "gzIn": 11859
+    },
+    {
+      "role": "qc_inspector",
+      "label": "GET orchard_blocks",
+      "calls": 136,
+      "errors": 0,
+      "status": {
+        "200": 136
+      },
+      "p50": 13,
+      "p95": 594,
+      "p99": 2662,
+      "max": 2947,
+      "bytesIn": 119000,
+      "bytesOut": 218960,
+      "gzIn": 119000
+    },
+    {
+      "role": "qc_inspector",
+      "label": "GET variety_rates",
+      "calls": 136,
+      "errors": 0,
+      "status": {
+        "200": 136
+      },
+      "p50": 20,
+      "p95": 753,
+      "p99": 969,
+      "max": 1062,
+      "bytesIn": 104720,
+      "bytesOut": 213656,
+      "gzIn": 104720
+    },
+    {
+      "role": "qc_inspector",
+      "label": "GET harvest_settings",
+      "calls": 136,
+      "errors": 0,
+      "status": {
+        "200": 136
+      },
+      "p50": 15,
+      "p95": 498,
+      "p99": 1310,
+      "max": 1690,
+      "bytesIn": 94112,
+      "bytesOut": 204952,
+      "gzIn": 94112
+    },
+    {
+      "role": "qc_inspector",
+      "label": "POST qc_inspections",
+      "calls": 133,
+      "errors": 0,
+      "status": {
+        "201": 133
+      },
+      "p50": 33,
+      "p95": 661,
+      "p99": 1097,
+      "max": 1353,
+      "bytesIn": 85573,
+      "bytesOut": 220180,
+      "gzIn": 85573
+    },
+    {
+      "role": "qc_inspector",
+      "label": "GET orchards",
+      "calls": 139,
+      "errors": 0,
+      "status": {
+        "200": 139
+      },
+      "p50": 64,
+      "p95": 648,
+      "p99": 1239,
+      "max": 1294,
+      "bytesIn": 81541,
+      "bytesOut": 207228,
+      "gzIn": 81541
+    },
+    {
+      "role": "team_leader",
+      "label": "GET pickers_performance_today",
+      "calls": 226,
+      "errors": 0,
+      "status": {
+        "200": 226
+      },
+      "p50": 37,
+      "p95": 243,
+      "p99": 557,
+      "max": 660,
+      "bytesIn": 79552,
+      "bytesOut": 331090,
+      "gzIn": 79552
+    },
+    {
+      "role": "team_leader",
+      "label": "GET chat_messages",
+      "calls": 12,
+      "errors": 0,
+      "status": {
+        "200": 12
+      },
+      "p50": 23,
+      "p95": 68,
+      "p99": 68,
+      "max": 68,
+      "bytesIn": 73692,
+      "bytesOut": 18888,
+      "gzIn": 12948
+    },
+    {
+      "role": "admin",
+      "label": "GET bucket_records",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 1496,
+      "p95": 1496,
+      "p99": 1496,
+      "max": 1496,
+      "bytesIn": 72087,
+      "bytesOut": 1619,
+      "gzIn": 8722
+    },
+    {
+      "role": "admin",
+      "label": "GET bins",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 69,
+      "p95": 69,
+      "p99": 69,
+      "max": 69,
+      "bytesIn": 68824,
+      "bytesOut": 1495,
+      "gzIn": 5837
+    },
+    {
+      "role": "payroll_admin",
+      "label": "GET bins",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 78,
+      "p95": 78,
+      "p99": 78,
+      "max": 78,
+      "bytesIn": 68774,
+      "bytesOut": 1495,
+      "gzIn": 5785
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET bins",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 44,
+      "p95": 44,
+      "p99": 44,
+      "max": 44,
+      "bytesIn": 68774,
+      "bytesOut": 1495,
+      "gzIn": 5785
+    },
+    {
+      "role": "qc_inspector",
+      "label": "GET harvest_seasons",
+      "calls": 136,
+      "errors": 0,
+      "status": {
+        "200": 136
+      },
+      "p50": 15,
+      "p95": 561,
+      "p99": 1041,
+      "max": 1925,
+      "bytesIn": 67048,
+      "bytesOut": 216376,
+      "gzIn": 67048
+    },
+    {
+      "role": "runner",
+      "label": "GET chat_messages",
+      "calls": 9,
+      "errors": 0,
+      "status": {
+        "200": 9
+      },
+      "p50": 86,
+      "p95": 583,
+      "p99": 583,
+      "max": 583,
+      "bytesIn": 55269,
+      "bytesOut": 14166,
+      "gzIn": 9711
+    },
+    {
+      "role": "manager",
+      "label": "GET block_rows",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 4,
+      "p95": 5,
+      "p99": 5,
+      "max": 5,
+      "bytesIn": 47970,
+      "bytesOut": 5022,
+      "gzIn": 9242
+    },
+    {
+      "role": "qc_inspector",
+      "label": "GET daily_attendance",
+      "calls": 136,
+      "errors": 0,
+      "status": {
+        "200": 136
+      },
+      "p50": 1068,
+      "p95": 2058,
+      "p99": 2797,
+      "max": 3228,
+      "bytesIn": 47872,
+      "bytesOut": 219912,
+      "gzIn": 47872
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET bucket_records",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 372,
+      "p95": 372,
+      "p99": 372,
+      "max": 372,
+      "bytesIn": 47837,
+      "bytesOut": 1619,
+      "gzIn": 6198
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET daily_attendance",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 1134,
+      "p95": 1134,
+      "p99": 1134,
+      "max": 1134,
+      "bytesIn": 30595,
+      "bytesOut": 1617,
+      "gzIn": 5167
+    },
+    {
+      "role": "admin",
+      "label": "GET daily_attendance",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 901,
+      "p95": 901,
+      "p99": 901,
+      "max": 901,
+      "bytesIn": 30595,
+      "bytesOut": 1617,
+      "gzIn": 5167
+    },
+    {
+      "role": "logistics",
+      "label": "GET transport_requests",
+      "calls": 12,
+      "errors": 0,
+      "status": {
+        "200": 12
+      },
+      "p50": 29,
+      "p95": 406,
+      "p99": 406,
+      "max": 406,
+      "bytesIn": 30148,
+      "bytesOut": 18544,
+      "gzIn": 10599
+    },
+    {
+      "role": "payroll_admin",
+      "label": "GET bucket_records",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 274,
+      "p95": 274,
+      "p99": 274,
+      "max": 274,
+      "bytesIn": 27128,
+      "bytesOut": 1619,
+      "gzIn": 3900
+    },
+    {
+      "role": "team_leader",
+      "label": "auth token:password",
+      "calls": 12,
+      "errors": 0,
+      "status": {
+        "200": 12
+      },
+      "p50": 79,
+      "p95": 86,
+      "p99": 86,
+      "max": 86,
+      "bytesIn": 26599,
+      "bytesOut": 18516,
+      "gzIn": 16519
+    },
+    {
+      "role": "manager",
+      "label": "fn manage-attendance",
+      "calls": 54,
+      "errors": 0,
+      "status": {
+        "200": 54
+      },
+      "p50": 234,
+      "p95": 710,
+      "p99": 770,
+      "max": 770,
+      "bytesIn": 26505,
+      "bytesOut": 84099,
+      "gzIn": 26505
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET users",
+      "calls": 9,
+      "errors": 0,
+      "status": {
+        "200": 9
+      },
+      "p50": 154,
+      "p95": 462,
+      "p99": 462,
+      "max": 462,
+      "bytesIn": 26124,
+      "bytesOut": 13806,
+      "gzIn": 8624
+    },
+    {
+      "role": "manager",
+      "label": "GET chat_messages",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 12,
+      "p95": 14,
+      "p99": 14,
+      "max": 14,
+      "bytesIn": 22791,
+      "bytesOut": 4839,
+      "gzIn": 3704
+    },
+    {
+      "role": "team_leader",
+      "label": "GET users",
+      "calls": 24,
+      "errors": 0,
+      "status": {
+        "200": 24
+      },
+      "p50": 53,
+      "p95": 97,
+      "p99": 113,
+      "max": 113,
+      "bytesIn": 21876,
+      "bytesOut": 39684,
+      "gzIn": 21876
+    },
+    {
+      "role": "runner",
+      "label": "POST broadcasts",
+      "calls": 45,
+      "errors": 45,
+      "status": {
+        "403": 45
+      },
+      "p50": 43,
+      "p95": 944,
+      "p99": 1496,
+      "max": 1496,
+      "bytesIn": 21285,
+      "bytesOut": 76500,
+      "gzIn": 21285
+    },
+    {
+      "role": "runner",
+      "label": "auth token:password",
+      "calls": 9,
+      "errors": 0,
+      "status": {
+        "200": 9
+      },
+      "p50": 85,
+      "p95": 99,
+      "p99": 99,
+      "max": 99,
+      "bytesIn": 20006,
+      "bytesOut": 13923,
+      "gzIn": 12344
+    },
+    {
+      "role": "runner",
+      "label": "POST transport_requests",
+      "calls": 45,
+      "errors": 0,
+      "status": {
+        "201": 45
+      },
+      "p50": 67,
+      "p95": 591,
+      "p99": 2310,
+      "max": 2310,
+      "bytesIn": 19929,
+      "bytesOut": 77302,
+      "gzIn": 19929
+    },
+    {
+      "role": "qc_inspector",
+      "label": "GET chat_messages",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 22,
+      "p95": 46,
+      "p99": 46,
+      "max": 46,
+      "bytesIn": 18423,
+      "bytesOut": 4722,
+      "gzIn": 3237
+    },
+    {
+      "role": "team_leader",
+      "label": "PATCH row_assignments",
+      "calls": 48,
+      "errors": 0,
+      "status": {
+        "204": 48
+      },
+      "p50": 115,
+      "p95": 794,
+      "p99": 844,
+      "max": 844,
+      "bytesIn": 16800,
+      "bytesOut": 74760,
+      "gzIn": 16800
+    },
+    {
+      "role": "runner",
+      "label": "GET users",
+      "calls": 18,
+      "errors": 0,
+      "status": {
+        "200": 18
+      },
+      "p50": 100,
+      "p95": 541,
+      "p99": 541,
+      "max": 541,
+      "bytesIn": 16434,
+      "bytesOut": 29763,
+      "gzIn": 16434
+    },
+    {
+      "role": "logistics",
+      "label": "GET block_rows",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 13,
+      "p95": 13,
+      "p99": 13,
+      "max": 13,
+      "bytesIn": 15990,
+      "bytesOut": 1674,
+      "gzIn": 3070
+    },
+    {
+      "role": "payroll_admin",
+      "label": "GET block_rows",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 454,
+      "p95": 454,
+      "p99": 454,
+      "max": 454,
+      "bytesIn": 15990,
+      "bytesOut": 1674,
+      "gzIn": 3070
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET block_rows",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 30,
+      "p95": 30,
+      "p99": 30,
+      "max": 30,
+      "bytesIn": 15990,
+      "bytesOut": 1674,
+      "gzIn": 3070
+    },
+    {
+      "role": "admin",
+      "label": "GET block_rows",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 37,
+      "p95": 37,
+      "p99": 37,
+      "max": 37,
+      "bytesIn": 15990,
+      "bytesOut": 1674,
+      "gzIn": 3070
+    },
+    {
+      "role": "runner",
+      "label": "PATCH bins",
+      "calls": 39,
+      "errors": 0,
+      "status": {
+        "204": 39
+      },
+      "p50": 108,
+      "p95": 665,
+      "p99": 3277,
+      "max": 3277,
+      "bytesIn": 13650,
+      "bytesOut": 60879,
+      "gzIn": 13650
+    },
+    {
+      "role": "team_leader",
+      "label": "POST row_assignments",
+      "calls": 36,
+      "errors": 0,
+      "status": {
+        "201": 36
+      },
+      "p50": 183,
+      "p95": 972,
+      "p99": 2996,
+      "max": 2996,
+      "bytesIn": 12600,
+      "bytesOut": 92454,
+      "gzIn": 12600
+    },
+    {
+      "role": "team_leader",
+      "label": "PATCH pickers",
+      "calls": 36,
+      "errors": 0,
+      "status": {
+        "204": 36
+      },
+      "p50": 609,
+      "p95": 1807,
+      "p99": 1884,
+      "max": 1884,
+      "bytesIn": 12600,
+      "bytesOut": 77802,
+      "gzIn": 12600
+    },
+    {
+      "role": "team_leader",
+      "label": "GET broadcasts",
+      "calls": 12,
+      "errors": 0,
+      "status": {
+        "200": 12
+      },
+      "p50": 78,
+      "p95": 160,
+      "p99": 160,
+      "max": 160,
+      "bytesIn": 12120,
+      "bytesOut": 18384,
+      "gzIn": 12120
+    },
+    {
+      "role": "payroll_admin",
+      "label": "GET chat_messages",
+      "calls": 6,
+      "errors": 0,
+      "status": {
+        "200": 6
+      },
+      "p50": 80,
+      "p95": 319,
+      "p99": 319,
+      "max": 319,
+      "bytesIn": 11904,
+      "bytesOut": 9400,
+      "gzIn": 4485
+    },
+    {
+      "role": "runner",
+      "label": "GET broadcasts",
+      "calls": 9,
+      "errors": 0,
+      "status": {
+        "200": 9
+      },
+      "p50": 283,
+      "p95": 656,
+      "p99": 656,
+      "max": 656,
+      "bytesIn": 11582,
+      "bytesOut": 13788,
+      "gzIn": 11582
+    },
+    {
+      "role": "team_leader",
+      "label": "GET conversations",
+      "calls": 12,
+      "errors": 0,
+      "status": {
+        "200": 12
+      },
+      "p50": 17,
+      "p95": 64,
+      "p99": 64,
+      "max": 64,
+      "bytesIn": 11508,
+      "bytesOut": 18444,
+      "gzIn": 11508
+    },
+    {
+      "role": "payroll_admin",
+      "label": "GET users",
+      "calls": 7,
+      "errors": 0,
+      "status": {
+        "200": 7
+      },
+      "p50": 149,
+      "p95": 282,
+      "p99": 282,
+      "max": 282,
+      "bytesIn": 10569,
+      "bytesOut": 11658,
+      "gzIn": 5501
+    },
+    {
+      "role": "admin",
+      "label": "GET users",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 27,
+      "p95": 303,
+      "p99": 303,
+      "max": 303,
+      "bytesIn": 9587,
+      "bytesOut": 4760,
+      "gzIn": 3327
+    },
+    {
+      "role": "runner",
+      "label": "GET conversations",
+      "calls": 9,
+      "errors": 0,
+      "status": {
+        "200": 9
+      },
+      "p50": 80,
+      "p95": 542,
+      "p99": 542,
+      "max": 542,
+      "bytesIn": 8631,
+      "bytesOut": 13833,
+      "gzIn": 8631
+    },
+    {
+      "role": "manager",
+      "label": "GET users",
+      "calls": 6,
+      "errors": 0,
+      "status": {
+        "200": 6
+      },
+      "p50": 27,
+      "p95": 47,
+      "p99": 47,
+      "max": 47,
+      "bytesIn": 6822,
+      "bytesOut": 10623,
+      "gzIn": 4937
+    },
+    {
+      "role": "manager",
+      "label": "auth token:password",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 82,
+      "p95": 83,
+      "p99": 83,
+      "max": 83,
+      "bytesIn": 6662,
+      "bytesOut": 4638,
+      "gzIn": 4110
+    },
+    {
+      "role": "qc_inspector",
+      "label": "auth token:password",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 83,
+      "p95": 95,
+      "p99": 95,
+      "max": 95,
+      "bytesIn": 6633,
+      "bytesOut": 4623,
+      "gzIn": 4135
+    },
+    {
+      "role": "qc_inspector",
+      "label": "GET users",
+      "calls": 6,
+      "errors": 0,
+      "status": {
+        "200": 6
+      },
+      "p50": 126,
+      "p95": 150,
+      "p99": 150,
+      "max": 150,
+      "bytesIn": 5460,
+      "bytesOut": 9921,
+      "gzIn": 5460
+    },
+    {
+      "role": "team_leader",
+      "label": "rpc my_unread_counts",
+      "calls": 12,
+      "errors": 0,
+      "status": {
+        "200": 12
+      },
+      "p50": 20,
+      "p95": 77,
+      "p99": 77,
+      "max": 77,
+      "bytesIn": 5064,
+      "bytesOut": 17436,
+      "gzIn": 5064
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET hr_documents",
+      "calls": 14,
+      "errors": 0,
+      "status": {
+        "200": 14
+      },
+      "p50": 23,
+      "p95": 243,
+      "p99": 243,
+      "max": 243,
+      "bytesIn": 4928,
+      "bytesOut": 21247,
+      "gzIn": 4928
+    },
+    {
+      "role": "team_leader",
+      "label": "fn check-compliance",
+      "calls": 12,
+      "errors": 0,
+      "status": {
+        "200": 12
+      },
+      "p50": 45,
+      "p95": 109,
+      "p99": 109,
+      "max": 109,
+      "bytesIn": 4764,
+      "bytesOut": 17616,
+      "gzIn": 4764
+    },
+    {
+      "role": "manager",
+      "label": "GET conversations",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 8,
+      "p95": 12,
+      "p99": 12,
+      "max": 12,
+      "bytesIn": 4440,
+      "bytesOut": 4611,
+      "gzIn": 2737
+    },
+    {
+      "role": "payroll_admin",
+      "label": "GET conversations",
+      "calls": 5,
+      "errors": 0,
+      "status": {
+        "200": 5
+      },
+      "p50": 346,
+      "p95": 1057,
+      "p99": 1057,
+      "max": 1057,
+      "bytesIn": 4345,
+      "bytesOut": 7685,
+      "gzIn": 4345
+    },
+    {
+      "role": "manager",
+      "label": "GET rejected_scans",
+      "calls": 12,
+      "errors": 0,
+      "status": {
+        "200": 12
+      },
+      "p50": 65,
+      "p95": 702,
+      "p99": 702,
+      "max": 702,
+      "bytesIn": 4224,
+      "bytesOut": 20172,
+      "gzIn": 4224
+    },
+    {
+      "role": "runner",
+      "label": "rpc my_unread_counts",
+      "calls": 9,
+      "errors": 0,
+      "status": {
+        "200": 9
+      },
+      "p50": 85,
+      "p95": 412,
+      "p99": 412,
+      "max": 412,
+      "bytesIn": 3798,
+      "bytesOut": 13077,
+      "gzIn": 3798
+    },
+    {
+      "role": "payroll_admin",
+      "label": "GET row_assignments",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 31,
+      "p95": 31,
+      "p99": 31,
+      "max": 31,
+      "bytesIn": 3691,
+      "bytesOut": 1623,
+      "gzIn": 2080
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET row_assignments",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 28,
+      "p95": 28,
+      "p99": 28,
+      "max": 28,
+      "bytesIn": 3691,
+      "bytesOut": 1623,
+      "gzIn": 2080
+    },
+    {
+      "role": "admin",
+      "label": "GET row_assignments",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 85,
+      "p95": 85,
+      "p99": 85,
+      "max": 85,
+      "bytesIn": 3691,
+      "bytesOut": 1623,
+      "gzIn": 2080
+    },
+    {
+      "role": "manager",
+      "label": "GET orchards",
+      "calls": 6,
+      "errors": 0,
+      "status": {
+        "200": 6
+      },
+      "p50": 31,
+      "p95": 37,
+      "p99": 37,
+      "max": 37,
+      "bytesIn": 3603,
+      "bytesOut": 8925,
+      "gzIn": 3603
+    },
+    {
+      "role": "manager",
+      "label": "GET broadcasts",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 9,
+      "p95": 31,
+      "p99": 31,
+      "max": 31,
+      "bytesIn": 3030,
+      "bytesOut": 4596,
+      "gzIn": 3030
+    },
+    {
+      "role": "hr_admin",
+      "label": "fn calculate-payroll",
+      "calls": 7,
+      "errors": 6,
+      "status": {
+        "200": 1,
+        "400": 6
+      },
+      "p50": 15327,
+      "p95": 26206,
+      "p99": 26206,
+      "max": 26206,
+      "bytesIn": 2990,
+      "bytesOut": 10493,
+      "gzIn": 2990
+    },
+    {
+      "role": "qc_inspector",
+      "label": "GET conversations",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 135,
+      "p95": 229,
+      "p99": 229,
+      "max": 229,
+      "bytesIn": 2877,
+      "bytesOut": 4611,
+      "gzIn": 2877
+    },
+    {
+      "role": "manager",
+      "label": "GET orchard_blocks",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 6,
+      "p95": 8,
+      "p99": 8,
+      "max": 8,
+      "bytesIn": 2625,
+      "bytesOut": 4830,
+      "gzIn": 2625
+    },
+    {
+      "role": "manager",
+      "label": "GET variety_rates",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 7,
+      "p95": 7,
+      "p99": 7,
+      "max": 7,
+      "bytesIn": 2310,
+      "bytesOut": 4713,
+      "gzIn": 2310
+    },
+    {
+      "role": "payroll_admin",
+      "label": "auth token:password",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 112,
+      "p95": 112,
+      "p99": 112,
+      "max": 112,
+      "bytesIn": 2226,
+      "bytesOut": 1544,
+      "gzIn": 1373
+    },
+    {
+      "role": "logistics",
+      "label": "auth token:password",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 82,
+      "p95": 82,
+      "p99": 82,
+      "max": 82,
+      "bytesIn": 2225,
+      "bytesOut": 1546,
+      "gzIn": 1359
+    },
+    {
+      "role": "admin",
+      "label": "auth token:password",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 132,
+      "p95": 132,
+      "p99": 132,
+      "max": 132,
+      "bytesIn": 2199,
+      "bytesOut": 1542,
+      "gzIn": 1364
+    },
+    {
+      "role": "hr_admin",
+      "label": "auth token:password",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 86,
+      "p95": 86,
+      "p99": 86,
+      "max": 86,
+      "bytesIn": 2193,
+      "bytesOut": 1539,
+      "gzIn": 1362
+    },
+    {
+      "role": "manager",
+      "label": "POST broadcasts",
+      "calls": 6,
+      "errors": 0,
+      "status": {
+        "201": 6
+      },
+      "p50": 36,
+      "p95": 66,
+      "p99": 66,
+      "max": 66,
+      "bytesIn": 2100,
+      "bytesOut": 10344,
+      "gzIn": 2100
+    },
+    {
+      "role": "manager",
+      "label": "GET harvest_settings",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 5,
+      "p95": 5,
+      "p99": 5,
+      "max": 5,
+      "bytesIn": 2076,
+      "bytesOut": 4521,
+      "gzIn": 2076
+    },
+    {
+      "role": "payroll_admin",
+      "label": "rpc my_unread_counts",
+      "calls": 5,
+      "errors": 0,
+      "status": {
+        "200": 5
+      },
+      "p50": 88,
+      "p95": 405,
+      "p99": 405,
+      "max": 405,
+      "bytesIn": 1898,
+      "bytesOut": 7265,
+      "gzIn": 1898
+    },
+    {
+      "role": "admin",
+      "label": "GET orchards",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 49,
+      "p95": 230,
+      "p99": 230,
+      "max": 230,
+      "bytesIn": 1816,
+      "bytesOut": 4459,
+      "gzIn": 1816
+    },
+    {
+      "role": "logistics",
+      "label": "GET chat_messages",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 54,
+      "p95": 54,
+      "p99": 54,
+      "max": 54,
+      "bytesIn": 1804,
+      "bytesOut": 1574,
+      "gzIn": 687
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET chat_messages",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 58,
+      "p95": 58,
+      "p99": 58,
+      "max": 58,
+      "bytesIn": 1804,
+      "bytesOut": 1574,
+      "gzIn": 687
+    },
+    {
+      "role": "admin",
+      "label": "GET chat_messages",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 18,
+      "p95": 18,
+      "p99": 18,
+      "max": 18,
+      "bytesIn": 1804,
+      "bytesOut": 1574,
+      "gzIn": 687
+    },
+    {
+      "role": "payroll_admin",
+      "label": "GET broadcasts",
+      "calls": 5,
+      "errors": 0,
+      "status": {
+        "200": 5
+      },
+      "p50": 386,
+      "p95": 766,
+      "p99": 766,
+      "max": 766,
+      "bytesIn": 1760,
+      "bytesOut": 7660,
+      "gzIn": 1760
+    },
+    {
+      "role": "admin",
+      "label": "GET conversations",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 7,
+      "p95": 18,
+      "p99": 18,
+      "max": 18,
+      "bytesIn": 1618,
+      "bytesOut": 4502,
+      "gzIn": 1618
+    },
+    {
+      "role": "logistics",
+      "label": "GET users",
+      "calls": 2,
+      "errors": 0,
+      "status": {
+        "200": 2
+      },
+      "p50": 160,
+      "p95": 160,
+      "p99": 160,
+      "max": 160,
+      "bytesIn": 1520,
+      "bytesOut": 3229,
+      "gzIn": 1520
+    },
+    {
+      "role": "manager",
+      "label": "rpc my_unread_counts",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 13,
+      "p95": 14,
+      "p99": 14,
+      "max": 14,
+      "bytesIn": 1486,
+      "bytesOut": 4359,
+      "gzIn": 1486
+    },
+    {
+      "role": "manager",
+      "label": "GET harvest_seasons",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 5,
+      "p95": 9,
+      "p99": 9,
+      "max": 9,
+      "bytesIn": 1479,
+      "bytesOut": 4773,
+      "gzIn": 1479
+    },
+    {
+      "role": "admin",
+      "label": "GET broadcasts",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 23,
+      "p95": 23,
+      "p99": 23,
+      "max": 23,
+      "bytesIn": 1367,
+      "bytesOut": 1532,
+      "gzIn": 1367
+    },
+    {
+      "role": "qc_inspector",
+      "label": "rpc my_unread_counts",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 168,
+      "p95": 199,
+      "p99": 199,
+      "max": 199,
+      "bytesIn": 1266,
+      "bytesOut": 4359,
+      "gzIn": 1266
+    },
+    {
+      "role": "payroll_admin",
+      "label": "fn calculate-payroll",
+      "calls": 3,
+      "errors": 2,
+      "status": {
+        "200": 1,
+        "400": 2
+      },
+      "p50": 13038,
+      "p95": 22829,
+      "p99": 22829,
+      "max": 22829,
+      "bytesIn": 1262,
+      "bytesOut": 4477,
+      "gzIn": 1262
+    },
+    {
+      "role": "logistics",
+      "label": "GET orchards",
+      "calls": 2,
+      "errors": 0,
+      "status": {
+        "200": 2
+      },
+      "p50": 132,
+      "p95": 132,
+      "p99": 132,
+      "max": 132,
+      "bytesIn": 1201,
+      "bytesOut": 2975,
+      "gzIn": 1201
+    },
+    {
+      "role": "payroll_admin",
+      "label": "GET orchards",
+      "calls": 2,
+      "errors": 0,
+      "status": {
+        "200": 2
+      },
+      "p50": 479,
+      "p95": 479,
+      "p99": 479,
+      "max": 479,
+      "bytesIn": 1201,
+      "bytesOut": 2975,
+      "gzIn": 1201
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET orchards",
+      "calls": 2,
+      "errors": 0,
+      "status": {
+        "200": 2
+      },
+      "p50": 186,
+      "p95": 186,
+      "p99": 186,
+      "max": 186,
+      "bytesIn": 1201,
+      "bytesOut": 2975,
+      "gzIn": 1201
+    },
+    {
+      "role": "manager",
+      "label": "fn check-compliance",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 94,
+      "p95": 774,
+      "p99": 774,
+      "max": 774,
+      "bytesIn": 1191,
+      "bytesOut": 4404,
+      "gzIn": 1191
+    },
+    {
+      "role": "manager",
+      "label": "fn record-bucket",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 66,
+      "p95": 791,
+      "p99": 791,
+      "max": 791,
+      "bytesIn": 1182,
+      "bytesOut": 4395,
+      "gzIn": 1182
+    },
+    {
+      "role": "manager",
+      "label": "GET row_assignments",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 4,
+      "p95": 5,
+      "p99": 5,
+      "max": 5,
+      "bytesIn": 1056,
+      "bytesOut": 4869,
+      "gzIn": 1056
+    },
+    {
+      "role": "qc_inspector",
+      "label": "GET broadcasts",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 308,
+      "p95": 500,
+      "p99": 500,
+      "max": 500,
+      "bytesIn": 1056,
+      "bytesOut": 4596,
+      "gzIn": 1056
+    },
+    {
+      "role": "hr_admin",
+      "label": "HEAD pickers",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "200": 3
+      },
+      "p50": 2440,
+      "p95": 3809,
+      "p99": 3809,
+      "max": 3809,
+      "bytesIn": 1050,
+      "bytesOut": 4344,
+      "gzIn": 1050
+    },
+    {
+      "role": "manager",
+      "label": "POST day_closures",
+      "calls": 3,
+      "errors": 0,
+      "status": {
+        "201": 3
+      },
+      "p50": 8,
+      "p95": 32,
+      "p99": 32,
+      "max": 32,
+      "bytesIn": 1050,
+      "bytesOut": 5111,
+      "gzIn": 1050
+    },
+    {
+      "role": "logistics",
+      "label": "GET orchard_blocks",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 4,
+      "p95": 4,
+      "p99": 4,
+      "max": 4,
+      "bytesIn": 875,
+      "bytesOut": 1610,
+      "gzIn": 875
+    },
+    {
+      "role": "payroll_admin",
+      "label": "GET orchard_blocks",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 132,
+      "p95": 132,
+      "p99": 132,
+      "max": 132,
+      "bytesIn": 875,
+      "bytesOut": 1610,
+      "gzIn": 875
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET orchard_blocks",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 44,
+      "p95": 44,
+      "p99": 44,
+      "max": 44,
+      "bytesIn": 875,
+      "bytesOut": 1610,
+      "gzIn": 875
+    },
+    {
+      "role": "admin",
+      "label": "GET orchard_blocks",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 79,
+      "p95": 79,
+      "p99": 79,
+      "max": 79,
+      "bytesIn": 875,
+      "bytesOut": 1610,
+      "gzIn": 875
+    },
+    {
+      "role": "logistics",
+      "label": "GET conversations",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 39,
+      "p95": 39,
+      "p99": 39,
+      "max": 39,
+      "bytesIn": 869,
+      "bytesOut": 1537,
+      "gzIn": 869
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET conversations",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 587,
+      "p95": 587,
+      "p99": 587,
+      "max": 587,
+      "bytesIn": 869,
+      "bytesOut": 1537,
+      "gzIn": 869
+    },
+    {
+      "role": "logistics",
+      "label": "GET variety_rates",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 257,
+      "p95": 257,
+      "p99": 257,
+      "max": 257,
+      "bytesIn": 770,
+      "bytesOut": 1571,
+      "gzIn": 770
+    },
+    {
+      "role": "payroll_admin",
+      "label": "GET variety_rates",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 14,
+      "p95": 14,
+      "p99": 14,
+      "max": 14,
+      "bytesIn": 770,
+      "bytesOut": 1571,
+      "gzIn": 770
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET variety_rates",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 112,
+      "p95": 112,
+      "p99": 112,
+      "max": 112,
+      "bytesIn": 770,
+      "bytesOut": 1571,
+      "gzIn": 770
+    },
+    {
+      "role": "admin",
+      "label": "GET variety_rates",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 27,
+      "p95": 27,
+      "p99": 27,
+      "max": 27,
+      "bytesIn": 770,
+      "bytesOut": 1571,
+      "gzIn": 770
+    },
+    {
+      "role": "hr_admin",
+      "label": "PATCH contracts",
+      "calls": 2,
+      "errors": 0,
+      "status": {
+        "204": 2
+      },
+      "p50": 82,
+      "p95": 82,
+      "p99": 82,
+      "max": 82,
+      "bytesIn": 700,
+      "bytesOut": 3028,
+      "gzIn": 700
+    },
+    {
+      "role": "logistics",
+      "label": "GET harvest_settings",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 79,
+      "p95": 79,
+      "p99": 79,
+      "max": 79,
+      "bytesIn": 692,
+      "bytesOut": 1507,
+      "gzIn": 692
+    },
+    {
+      "role": "payroll_admin",
+      "label": "GET harvest_settings",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 16,
+      "p95": 16,
+      "p99": 16,
+      "max": 16,
+      "bytesIn": 692,
+      "bytesOut": 1507,
+      "gzIn": 692
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET harvest_settings",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 33,
+      "p95": 33,
+      "p99": 33,
+      "max": 33,
+      "bytesIn": 692,
+      "bytesOut": 1507,
+      "gzIn": 692
+    },
+    {
+      "role": "admin",
+      "label": "GET harvest_settings",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 38,
+      "p95": 38,
+      "p99": 38,
+      "max": 38,
+      "bytesIn": 692,
+      "bytesOut": 1507,
+      "gzIn": 692
+    },
+    {
+      "role": "logistics",
+      "label": "GET harvest_seasons",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 10,
+      "p95": 10,
+      "p99": 10,
+      "max": 10,
+      "bytesIn": 493,
+      "bytesOut": 1591,
+      "gzIn": 493
+    },
+    {
+      "role": "payroll_admin",
+      "label": "GET harvest_seasons",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 28,
+      "p95": 28,
+      "p99": 28,
+      "max": 28,
+      "bytesIn": 493,
+      "bytesOut": 1591,
+      "gzIn": 493
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET harvest_seasons",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 6,
+      "p95": 6,
+      "p99": 6,
+      "max": 6,
+      "bytesIn": 493,
+      "bytesOut": 1591,
+      "gzIn": 493
+    },
+    {
+      "role": "admin",
+      "label": "GET harvest_seasons",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 212,
+      "p95": 212,
+      "p99": 212,
+      "max": 212,
+      "bytesIn": 493,
+      "bytesOut": 1591,
+      "gzIn": 493
+    },
+    {
+      "role": "logistics",
+      "label": "rpc my_unread_counts",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 51,
+      "p95": 51,
+      "p99": 51,
+      "max": 51,
+      "bytesIn": 422,
+      "bytesOut": 1453,
+      "gzIn": 422
+    },
+    {
+      "role": "admin",
+      "label": "rpc my_unread_counts",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 21,
+      "p95": 21,
+      "p99": 21,
+      "max": 21,
+      "bytesIn": 422,
+      "bytesOut": 1453,
+      "gzIn": 422
+    },
+    {
+      "role": "hr_admin",
+      "label": "rpc my_unread_counts",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 337,
+      "p95": 337,
+      "p99": 337,
+      "max": 337,
+      "bytesIn": 421,
+      "bytesOut": 1453,
+      "gzIn": 421
+    },
+    {
+      "role": "admin",
+      "label": "fn manage-attendance",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 90,
+      "p95": 90,
+      "p99": 90,
+      "max": 90,
+      "bytesIn": 398,
+      "bytesOut": 1469,
+      "gzIn": 398
+    },
+    {
+      "role": "admin",
+      "label": "fn calculate-payroll",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 181,
+      "p95": 181,
+      "p99": 181,
+      "max": 181,
+      "bytesIn": 398,
+      "bytesOut": 1469,
+      "gzIn": 398
+    },
+    {
+      "role": "admin",
+      "label": "fn check-compliance",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 94,
+      "p95": 94,
+      "p99": 94,
+      "max": 94,
+      "bytesIn": 397,
+      "bytesOut": 1468,
+      "gzIn": 397
+    },
+    {
+      "role": "admin",
+      "label": "fn record-bucket",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 179,
+      "p95": 179,
+      "p99": 179,
+      "max": 179,
+      "bytesIn": 394,
+      "bytesOut": 1465,
+      "gzIn": 394
+    },
+    {
+      "role": "logistics",
+      "label": "GET broadcasts",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 416,
+      "p95": 416,
+      "p99": 416,
+      "max": 416,
+      "bytesIn": 352,
+      "bytesOut": 1532,
+      "gzIn": 352
+    },
+    {
+      "role": "logistics",
+      "label": "GET bucket_records",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 38,
+      "p95": 38,
+      "p99": 38,
+      "max": 38,
+      "bytesIn": 352,
+      "bytesOut": 1619,
+      "gzIn": 352
+    },
+    {
+      "role": "logistics",
+      "label": "GET daily_attendance",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 218,
+      "p95": 218,
+      "p99": 218,
+      "max": 218,
+      "bytesIn": 352,
+      "bytesOut": 1617,
+      "gzIn": 352
+    },
+    {
+      "role": "logistics",
+      "label": "GET row_assignments",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 15,
+      "p95": 15,
+      "p99": 15,
+      "max": 15,
+      "bytesIn": 352,
+      "bytesOut": 1623,
+      "gzIn": 352
+    },
+    {
+      "role": "hr_admin",
+      "label": "GET broadcasts",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 591,
+      "p95": 591,
+      "p99": 591,
+      "max": 591,
+      "bytesIn": 352,
+      "bytesOut": 1532,
+      "gzIn": 352
+    },
+    {
+      "role": "payroll_admin",
+      "label": "rpc mark_conversation_read",
+      "calls": 1,
+      "errors": 0,
+      "status": {
+        "200": 1
+      },
+      "p50": 361,
+      "p95": 361,
+      "p99": 361,
+      "max": 361,
+      "bytesIn": 351,
+      "bytesOut": 1517,
+      "gzIn": 351
+    }
+  ],
+  "realtime": [
+    {
+      "role": "manager",
+      "channel": "daily_attendance",
+      "msgs": 172,
+      "bytes": 177594
+    },
+    {
+      "role": "runner",
+      "channel": "broadcasts",
+      "msgs": 1,
+      "bytes": 489
+    },
+    {
+      "role": "team_leader",
+      "channel": "broadcasts",
+      "msgs": 8,
+      "bytes": 3912
+    },
+    {
+      "role": "manager",
+      "channel": "broadcasts",
+      "msgs": 5,
+      "bytes": 2445
+    },
+    {
+      "role": "runner",
+      "channel": "daily_attendance",
+      "msgs": 17,
+      "bytes": 14667
+    },
+    {
+      "role": "qc_inspector",
+      "channel": "daily_attendance",
+      "msgs": 7,
+      "bytes": 6157
+    },
+    {
+      "role": "team_leader",
+      "channel": "daily_attendance",
+      "msgs": 18,
+      "bytes": 18141
+    },
+    {
+      "role": "logistics",
+      "channel": "bucket_records",
+      "msgs": 64,
+      "bytes": 41156
+    },
+    {
+      "role": "runner",
+      "channel": "bucket_records",
+      "msgs": 69,
+      "bytes": 44367
+    },
+    {
+      "role": "manager",
+      "channel": "bucket_records",
+      "msgs": 214,
+      "bytes": 137644
+    },
+    {
+      "role": "payroll_admin",
+      "channel": "bucket_records",
+      "msgs": 62,
+      "bytes": 39871
+    },
+    {
+      "role": "hr_admin",
+      "channel": "daily_attendance",
+      "msgs": 68,
+      "bytes": 72551
+    },
+    {
+      "role": "payroll_admin",
+      "channel": "daily_attendance",
+      "msgs": 68,
+      "bytes": 72551
+    },
+    {
+      "role": "logistics",
+      "channel": "daily_attendance",
+      "msgs": 67,
+      "bytes": 71532
+    },
+    {
+      "role": "admin",
+      "channel": "daily_attendance",
+      "msgs": 66,
+      "bytes": 70483
+    },
+    {
+      "role": "hr_admin",
+      "channel": "bucket_records",
+      "msgs": 61,
+      "bytes": 39228
+    },
+    {
+      "role": "admin",
+      "channel": "bucket_records",
+      "msgs": 61,
+      "bytes": 39228
+    },
+    {
+      "role": "manager",
+      "channel": "qc_inspections",
+      "msgs": 27,
+      "bytes": 11732
+    },
+    {
+      "role": "logistics",
+      "channel": "qc_inspections",
+      "msgs": 10,
+      "bytes": 4351
+    },
+    {
+      "role": "logistics",
+      "channel": "transport_requests",
+      "msgs": 3,
+      "bytes": 1900
+    },
+    {
+      "role": "payroll_admin",
+      "channel": "qc_inspections",
+      "msgs": 10,
+      "bytes": 4351
+    },
+    {
+      "role": "runner",
+      "channel": "qc_inspections",
+      "msgs": 9,
+      "bytes": 3904
+    },
+    {
+      "role": "hr_admin",
+      "channel": "qc_inspections",
+      "msgs": 10,
+      "bytes": 4351
+    },
+    {
+      "role": "admin",
+      "channel": "qc_inspections",
+      "msgs": 10,
+      "bytes": 4351
+    },
+    {
+      "role": "team_leader",
+      "channel": "bucket_records",
+      "msgs": 18,
+      "bytes": 11581
+    },
+    {
+      "role": "qc_inspector",
+      "channel": "bucket_records",
+      "msgs": 27,
+      "bytes": 17385
+    },
+    {
+      "role": "team_leader",
+      "channel": "qc_inspections",
+      "msgs": 5,
+      "bytes": 2163
+    },
+    {
+      "role": "qc_inspector",
+      "channel": "qc_inspections",
+      "msgs": 13,
+      "bytes": 5639
+    },
+    {
+      "role": "admin",
+      "channel": "broadcasts",
+      "msgs": 1,
+      "bytes": 489
+    },
+    {
+      "role": "logistics",
+      "channel": "row_assignments",
+      "msgs": 1,
+      "bytes": 1309
+    },
+    {
+      "role": "team_leader",
+      "channel": "row_assignments",
+      "msgs": 6,
+      "bytes": 8244
+    },
+    {
+      "role": "payroll_admin",
+      "channel": "row_assignments",
+      "msgs": 1,
+      "bytes": 1309
+    },
+    {
+      "role": "admin",
+      "channel": "row_assignments",
+      "msgs": 1,
+      "bytes": 1309
+    },
+    {
+      "role": "manager",
+      "channel": "row_assignments",
+      "msgs": 3,
+      "bytes": 4122
+    },
+    {
+      "role": "hr_admin",
+      "channel": "row_assignments",
+      "msgs": 1,
+      "bytes": 1309
+    }
+  ],
+  "eventCounts": {
+    "transport_conflict": 3319,
+    "server_error": 18,
+    "task_error": 15,
+    "uri_too_long": 7,
+    "rate_limited": 237,
+    "approve_failed": 237
+  },
+  "events": [
+    {
+      "t": 101505,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 103571,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 105640,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 108315,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 108663,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 110773,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 110820,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 112882,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 112927,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 115057,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 115103,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 117188,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 117227,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 119476,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 119864,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 122619,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 123123,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 125359,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 125623,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 127940,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 127991,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 128101,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 130263,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 130482,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 130613,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 130676,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 130840,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 130883,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 133094,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 133196,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 133255,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 133283,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 133353,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 133411,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 135660,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 135687,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 135700,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 135716,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 135731,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 135747,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 137858,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 137967,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 137987,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 137999,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 138013,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 138048,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 140707,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 140799,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 141480,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 141817,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 142079,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 142780,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 144801,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 144836,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 144867,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 144881,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 144897,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 144913,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 147141,
+      "kind": "server_error",
+      "role": "manager",
+      "label": "GET bucket_records",
+      "status": 500,
+      "body": "{\"code\":\"57014\",\"details\":null,\"hint\":null,\"message\":\"canceling statement due to statement timeout\"}"
+    },
+    {
+      "t": 147141,
+      "kind": "task_error",
+      "at": 480,
+      "message": "canceling statement due to statement timeout"
+    },
+    {
+      "t": 147160,
+      "kind": "server_error",
+      "role": "manager",
+      "label": "GET bucket_records",
+      "status": 500,
+      "body": "{\"code\":\"57014\",\"details\":null,\"hint\":null,\"message\":\"canceling statement due to statement timeout\"}"
+    },
+    {
+      "t": 147161,
+      "kind": "task_error",
+      "at": 480,
+      "message": "canceling statement due to statement timeout"
+    },
+    {
+      "t": 147422,
+      "kind": "server_error",
+      "role": "manager",
+      "label": "GET bucket_records",
+      "status": 500,
+      "body": "{\"code\":\"57014\",\"details\":null,\"hint\":null,\"message\":\"canceling statement due to statement timeout\"}"
+    },
+    {
+      "t": 147422,
+      "kind": "task_error",
+      "at": 480,
+      "message": "canceling statement due to statement timeout"
+    },
+    {
+      "t": 147655,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 147946,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 148268,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 148457,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 148654,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 149172,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 151388,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 151401,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 151411,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 151422,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 151434,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 151445,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 153468,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 153479,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 153487,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 153503,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 153522,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 153539,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 155591,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 155615,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 155644,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 155660,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 155683,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 155699,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 157733,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 157772,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 157800,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 157832,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 157863,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 157893,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 159913,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 159927,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 159945,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 160016,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 160051,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 160114,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 162696,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 163235,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 163569,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 164087,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 164356,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 164434,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 166201,
+      "kind": "server_error",
+      "role": "team_leader",
+      "label": "fn record-bucket",
+      "status": 500,
+      "body": "{\"code\":\"Internal Server Error\",\"message\":\"Request failed due to an internal server error\"}"
+    },
+    {
+      "t": 166470,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 166536,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 166613,
+      "kind": "server_error",
+      "role": "team_leader",
+      "label": "fn submit-audit-log",
+      "status": 503,
+      "body": ""
+    },
+    {
+      "t": 166633,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 166771,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 166806,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 166831,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 169280,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 169339,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 169405,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 169431,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 169460,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 169677,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 172339,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 172522,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 172921,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 172996,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 173025,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 173042,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 175334,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 175468,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 175650,
+      "kind": "uri_too_long",
+      "role": "hr_admin",
+      "what": "contracts IN 274 ids"
+    },
+    {
+      "t": 175669,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 175693,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 175741,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 175751,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 175836,
+      "kind": "uri_too_long",
+      "role": "hr_admin",
+      "what": "contracts IN 274 ids"
+    },
+    {
+      "t": 177781,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 177805,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 177901,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 177974,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 178032,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 178103,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 180151,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 180252,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 180298,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 180399,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 180412,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 180455,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 182475,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 182488,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 182509,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 182541,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 182562,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 182585,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 184613,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 184644,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 184666,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 184699,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 184715,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 184751,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 186763,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 186800,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 186808,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 186818,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 186829,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 186843,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 189035,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 189802,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 189924,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 189954,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 190011,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 190033,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 192159,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 192177,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 192196,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 192217,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 192241,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 192259,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 194493,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 194658,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 194832,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 195103,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 195184,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 195598,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 195851,
+      "kind": "transport_conflict",
+      "id": "cd9b8e6c-9e98-4729-9f14-ec682ac8650a",
+      "stage": "assign"
+    },
+    {
+      "t": 196866,
+      "kind": "transport_conflict",
+      "id": "c7ecebf6-7846-4ab0-9e7c-4456df10af4c",
+      "stage": "assign"
+    },
+    {
+      "t": 198942,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 198988,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 199004,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 199078,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 199101,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 199149,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 199291,
+      "kind": "transport_conflict",
+      "id": "cd9b8e6c-9e98-4729-9f14-ec682ac8650a",
+      "stage": "assign"
+    },
+    {
+      "t": 199523,
+      "kind": "transport_conflict",
+      "id": "c7ecebf6-7846-4ab0-9e7c-4456df10af4c",
+      "stage": "assign"
+    },
+    {
+      "t": 201812,
+      "kind": "transport_conflict",
+      "id": "558b9ef4-0375-4f9c-b8e0-5385b7c4b1f1",
+      "stage": "assign"
+    },
+    {
+      "t": 202002,
+      "kind": "transport_conflict",
+      "id": "13ceaaa5-f419-427c-a722-e3a08746cb25",
+      "stage": "assign"
+    },
+    {
+      "t": 202134,
+      "kind": "transport_conflict",
+      "id": "03738c8d-1f68-4e02-902e-70f2f31ad3f6",
+      "stage": "assign"
+    },
+    {
+      "t": 202393,
+      "kind": "transport_conflict",
+      "id": "d7b9dc27-b199-4f57-996e-c91ca98a36a9",
+      "stage": "assign"
+    },
+    {
+      "t": 202473,
+      "kind": "transport_conflict",
+      "id": "13c85b1d-dfc2-415f-87de-3dc26a4c0d4d",
+      "stage": "assign"
+    },
+    {
+      "t": 202632,
+      "kind": "transport_conflict",
+      "id": "5878ca59-a28f-4b0e-8aef-08490b37ab67",
+      "stage": "assign"
+    },
+    {
+      "t": 202751,
+      "kind": "transport_conflict",
+      "id": "cd9b8e6c-9e98-4729-9f14-ec682ac8650a",
+      "stage": "assign"
+    },
+    {
+      "t": 202784,
+      "kind": "transport_conflict",
+      "id": "c7ecebf6-7846-4ab0-9e7c-4456df10af4c",
+      "stage": "assign"
+    }
+  ],
+  "topSql": [
+    {
+      "calls": 1632,
+      "total_ms": 1636094,
+      "mean_ms": 1002.51,
+      "rows": 1632,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"daily_attendance\".\"picker_id\", \"public\".\"daily_attendance\".\"orchard_id\", \"public\".\"daily_attendance\".\"check_in\", row_to_json(\"daily_attendance_orchards_1\".*)::jsonb AS \"orchards\" F"
+    },
+    {
+      "calls": 270,
+      "total_ms": 445311,
+      "mean_ms": 1649.3,
+      "rows": 270,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"pickers\".*, COALESCE( \"pickers_daily_attendance_1\".\"pickers_daily_attendance_1\", $8) AS \"daily_attendance\" FROM \"public\".\"pickers\" LEFT JOIN LATERAL ( SELECT json_agg(\"pickers_dail"
+    },
+    {
+      "calls": 654,
+      "total_ms": 409035,
+      "mean_ms": 625.44,
+      "rows": 654,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"daily_attendance\".*, row_to_json(\"daily_attendance_picker_1\".*)::jsonb AS \"picker\" FROM \"public\".\"daily_attendance\" LEFT JOIN LATERAL ( SELECT \"pickers_1\".\"name\", \"pickers_1\".\"role"
+    },
+    {
+      "calls": 1362,
+      "total_ms": 346551,
+      "mean_ms": 254.44,
+      "rows": 1362,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"bucket_records\".* FROM \"public\".\"bucket_records\" WHERE \"public\".\"bucket_records\".\"orchard_id\" = $1 AND \"public\".\"bucket_records\".\"scanned_at\" >= $2 AND \"public\".\"bucket_records\".\"u"
+    },
+    {
+      "calls": 340,
+      "total_ms": 225836,
+      "mean_ms": 664.22,
+      "rows": 639,
+      "query": "SELECT wal->>$5 as type, wal->>$6 as schema, wal->>$7 as table, COALESCE(wal->>$8, $9) as columns, COALESCE(wal->>$10, $11) as record, COALESCE(wal->>$12, $13) as old_record, wal->>$14 as commit_timestamp, subscription_i"
+    },
+    {
+      "calls": 1362,
+      "total_ms": 136077,
+      "mean_ms": 99.91,
+      "rows": 1362,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"pickers\".*, COALESCE( \"pickers_daily_attendance_1\".\"pickers_daily_attendance_1\", $8) AS \"daily_attendance\" FROM \"public\".\"pickers\" LEFT JOIN LATERAL ( SELECT json_agg(\"pickers_dail"
+    },
+    {
+      "calls": 214,
+      "total_ms": 134234,
+      "mean_ms": 627.26,
+      "rows": 214,
+      "query": "WITH pgrst_source AS (UPDATE \"public\".\"daily_attendance\" SET \"break_start\" = \"pgrst_body\".\"break_start\", \"corrected_at\" = \"pgrst_body\".\"corrected_at\", \"corrected_by\" = \"pgrst_body\".\"corrected_by\", \"correction_reason\" = \""
+    },
+    {
+      "calls": 32,
+      "total_ms": 131155,
+      "mean_ms": 4098.6,
+      "rows": 32,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"bucket_records\".\"picker_id\", \"public\".\"bucket_records\".\"orchard_id\", \"public\".\"bucket_records\".\"variety\", \"public\".\"bucket_records\".\"scanned_at\", \"public\".\"bucket_records\".\"quality"
+    },
+    {
+      "calls": 235,
+      "total_ms": 106780,
+      "mean_ms": 454.38,
+      "rows": 235,
+      "query": "WITH pgrst_source AS (UPDATE \"public\".\"daily_attendance\" SET \"check_out\" = \"pgrst_body\".\"check_out\", \"hours_worked\" = \"pgrst_body\".\"hours_worked\", \"status\" = \"pgrst_body\".\"status\" FROM (SELECT $1 AS json_data) pgrst_payl"
+    },
+    {
+      "calls": 223,
+      "total_ms": 65474,
+      "mean_ms": 293.6,
+      "rows": 223,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"daily_attendance\".\"check_in\", \"public\".\"daily_attendance\".\"check_out\", \"public\".\"daily_attendance\".\"break_start\", \"public\".\"daily_attendance\".\"break_minutes\" FROM \"public\".\"daily_a"
+    },
+    {
+      "calls": 235,
+      "total_ms": 57753,
+      "mean_ms": 245.76,
+      "rows": 235,
+      "query": "WITH pgrst_source AS (INSERT INTO \"public\".\"daily_attendance\"(\"check_in\", \"date\", \"orchard_id\", \"picker_id\", \"recorded_by\", \"status\") SELECT \"pgrst_body\".\"check_in\", \"pgrst_body\".\"date\", \"pgrst_body\".\"orchard_id\", \"pgrst"
+    },
+    {
+      "calls": 235,
+      "total_ms": 55083,
+      "mean_ms": 234.4,
+      "rows": 235,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"daily_attendance\".\"id\", \"public\".\"daily_attendance\".\"picker_id\", \"public\".\"daily_attendance\".\"check_in\", \"public\".\"daily_attendance\".\"break_start\", \"public\".\"daily_attendance\".\"bre"
+    },
+    {
+      "calls": 12,
+      "total_ms": 43444,
+      "mean_ms": 3620.35,
+      "rows": 12,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"bucket_records\".\"picker_id\", \"public\".\"bucket_records\".\"scanned_at\" FROM \"public\".\"bucket_records\" WHERE \"public\".\"bucket_records\".\"orchard_id\" = $1 AND \"public\".\"bucket_records\".\""
+    },
+    {
+      "calls": 1894,
+      "total_ms": 32169,
+      "mean_ms": 16.98,
+      "rows": 1894,
+      "query": "WITH pgrst_source AS (INSERT INTO \"public\".\"bucket_records\"(\"id\", \"orchard_id\", \"picker_id\", \"quality_grade\", \"row_number\", \"scanned_at\", \"scanned_by\") SELECT \"pgrst_body\".\"id\", \"pgrst_body\".\"orchard_id\", \"pgrst_body\".\"p"
+    },
+    {
+      "calls": 239,
+      "total_ms": 22039,
+      "mean_ms": 92.21,
+      "rows": 239,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"daily_attendance\".\"updated_at\" FROM \"public\".\"daily_attendance\" WHERE \"public\".\"daily_attendance\".\"id\" = $1 LIMIT $2 OFFSET $3 ) SELECT $4::bigint AS total_result_set, pg_catalog.c"
+    },
+    {
+      "calls": 1632,
+      "total_ms": 21116,
+      "mean_ms": 12.94,
+      "rows": 1632,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"bins\".* FROM \"public\".\"bins\" WHERE \"public\".\"bins\".\"orchard_id\" = $1 LIMIT $2 OFFSET $3 ) SELECT $4::bigint AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, coale"
+    },
+    {
+      "calls": 9,
+      "total_ms": 20062,
+      "mean_ms": 2229.12,
+      "rows": 9,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"bucket_records\".\"id\", \"public\".\"bucket_records\".\"picker_id\", \"public\".\"bucket_records\".\"row_number\", \"public\".\"bucket_records\".\"scanned_at\", row_to_json(\"bucket_records_pickers_1\"."
+    },
+    {
+      "calls": 5971,
+      "total_ms": 19562,
+      "mean_ms": 3.28,
+      "rows": 5971,
+      "query": "with sub_tables as ( select rr.entity from pg_publication_tables pub, lateral ( select format($12, pub.schemaname, pub.tablename)::regclass entity ) rr where pub.pubname = $1 and pub.schemaname like (case $2 when $13 the"
+    },
+    {
+      "calls": 36,
+      "total_ms": 15598,
+      "mean_ms": 433.27,
+      "rows": 36,
+      "query": "WITH pgrst_source AS (UPDATE \"public\".\"pickers\" SET \"current_row\" = \"pgrst_body\".\"current_row\" FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"current_row\" FROM json_to_record(pgrst_payload.json_data) AS _("
+    },
+    {
+      "calls": 226,
+      "total_ms": 14839,
+      "mean_ms": 65.66,
+      "rows": 226,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"pickers\".* FROM \"public\".\"pickers\" WHERE ( \"public\".\"pickers\".\"team_leader_id\" = $1) LIMIT $2 OFFSET $3 ) SELECT $4::bigint AS total_result_set, pg_catalog.count(_postgrest_t) AS p"
+    },
+    {
+      "calls": 2,
+      "total_ms": 14742,
+      "mean_ms": 7370.94,
+      "rows": 2,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"bucket_records\".\"scanned_at\", \"public\".\"bucket_records\".\"picker_id\" FROM \"public\".\"bucket_records\" WHERE \"public\".\"bucket_records\".\"orchard_id\" = $1 AND \"public\".\"bucket_records\".\""
+    },
+    {
+      "calls": 3319,
+      "total_ms": 9124,
+      "mean_ms": 2.75,
+      "rows": 3319,
+      "query": "WITH pgrst_source AS (UPDATE \"public\".\"transport_requests\" SET \"assigned_by\" = \"pgrst_body\".\"assigned_by\", \"status\" = \"pgrst_body\".\"status\" FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"assigned_by\", \"sta"
+    },
+    {
+      "calls": 1632,
+      "total_ms": 8669,
+      "mean_ms": 5.31,
+      "rows": 1632,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"variety_rates\".\"id\", \"public\".\"variety_rates\".\"orchard_id\", \"public\".\"variety_rates\".\"variety\", \"public\".\"variety_rates\".\"piece_rate\" FROM \"public\".\"variety_rates\" WHERE ( \"public\""
+    },
+    {
+      "calls": 270,
+      "total_ms": 8643,
+      "mean_ms": 32.01,
+      "rows": 270,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"bucket_records\".* FROM \"public\".\"bucket_records\" WHERE \"public\".\"bucket_records\".\"orchard_id\" = $1 AND \"public\".\"bucket_records\".\"scanned_at\" >= $2 AND \"public\".\"bucket_records\".\"d"
+    },
+    {
+      "calls": 7,
+      "total_ms": 8496,
+      "mean_ms": 1213.79,
+      "rows": 7,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"pickers\".\"id\", \"public\".\"pickers\".\"name\", \"public\".\"pickers\".\"role\", \"public\".\"pickers\".\"status\", \"public\".\"pickers\".\"created_at\", \"public\".\"pickers\".\"orchard_id\", \"public\".\"picker"
+    },
+    {
+      "calls": 3,
+      "total_ms": 7703,
+      "mean_ms": 2567.59,
+      "rows": 3,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"pickers\".\"id\" FROM \"public\".\"pickers\" LIMIT $1 OFFSET $2 ) , pgrst_source_count AS (SELECT $3 FROM \"public\".\"pickers\") SELECT (SELECT pg_catalog.count(*) FROM pgrst_source_count) A"
+    },
+    {
+      "calls": 1632,
+      "total_ms": 6807,
+      "mean_ms": 4.17,
+      "rows": 1632,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"row_assignments\".\"id\", \"public\".\"row_assignments\".\"row_number\", \"public\".\"row_assignments\".\"side\", \"public\".\"row_assignments\".\"assigned_pickers\", \"public\".\"row_assignments\".\"comple"
+    },
+    {
+      "calls": 1632,
+      "total_ms": 6145,
+      "mean_ms": 3.77,
+      "rows": 1632,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"block_rows\".\"id\", \"public\".\"block_rows\".\"block_id\", \"public\".\"block_rows\".\"row_number\", \"public\".\"block_rows\".\"variety\", \"public\".\"block_rows\".\"target_buckets\" FROM \"public\".\"block"
+    },
+    {
+      "calls": 35,
+      "total_ms": 5981,
+      "mean_ms": 170.88,
+      "rows": 35,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"broadcasts\".* FROM \"public\".\"broadcasts\" WHERE \"public\".\"broadcasts\".\"orchard_id\" = $1 ORDER BY \"public\".\"broadcasts\".\"created_at\" DESC LIMIT $2 OFFSET $3 ) SELECT $4::bigint AS to"
+    },
+    {
+      "calls": 12,
+      "total_ms": 5813,
+      "mean_ms": 484.42,
+      "rows": 12,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"daily_attendance\".\"picker_id\", \"public\".\"daily_attendance\".\"date\", \"public\".\"daily_attendance\".\"check_in\", \"public\".\"daily_attendance\".\"check_out\", \"public\".\"daily_attendance\".\"bre"
+    },
+    {
+      "calls": 3,
+      "total_ms": 5447,
+      "mean_ms": 1815.78,
+      "rows": 3,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"bucket_records\".\"row_number\", \"public\".\"bucket_records\".\"picker_id\", \"public\".\"bucket_records\".\"scanned_at\" FROM \"public\".\"bucket_records\" WHERE \"public\".\"bucket_records\".\"orchard_"
+    },
+    {
+      "calls": 1843,
+      "total_ms": 5154,
+      "mean_ms": 2.8,
+      "rows": 1843,
+      "query": "WITH pgrst_source AS (INSERT INTO \"public\".\"audit_logs\"(\"action\", \"created_at\", \"ip_address\", \"new_values\", \"record_id\", \"table_name\", \"user_email\", \"user_id\") SELECT \"pgrst_body\".\"action\", \"pgrst_body\".\"created_at\", \"pg"
+    },
+    {
+      "calls": 1632,
+      "total_ms": 5075,
+      "mean_ms": 3.11,
+      "rows": 1632,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"orchards\".* FROM \"public\".\"orchards\" WHERE \"public\".\"orchards\".\"id\" = $1 LIMIT $2 OFFSET $3 ) SELECT $4::bigint AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, c"
+    },
+    {
+      "calls": 6,
+      "total_ms": 4060,
+      "mean_ms": 676.65,
+      "rows": 6,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"contracts\".\"id\", \"public\".\"contracts\".\"employee_id\", \"public\".\"contracts\".\"end_date\" FROM \"public\".\"contracts\" WHERE \"public\".\"contracts\".\"status\" = $1 AND \"public\".\"contracts\".\"en"
+    },
+    {
+      "calls": 39736,
+      "total_ms": 2482,
+      "mean_ms": 0.06,
+      "rows": 39736,
+      "query": "select set_config('search_path', $1, true), set_config($2, $3, true), set_config('role', $4, true), set_config('request.jwt.claims', $5, true), set_config('request.method', $6, true), set_config('request.path', $7, true)"
+    },
+    {
+      "calls": 1632,
+      "total_ms": 2298,
+      "mean_ms": 1.41,
+      "rows": 1632,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"harvest_settings\".* FROM \"public\".\"harvest_settings\" WHERE \"public\".\"harvest_settings\".\"orchard_id\" = $1 LIMIT $2 OFFSET $3 ) SELECT $4::bigint AS total_result_set, pg_catalog.coun"
+    },
+    {
+      "calls": 1632,
+      "total_ms": 2001,
+      "mean_ms": 1.23,
+      "rows": 1632,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"orchard_blocks\".\"id\", \"public\".\"orchard_blocks\".\"name\", \"public\".\"orchard_blocks\".\"total_rows\", \"public\".\"orchard_blocks\".\"start_row\", \"public\".\"orchard_blocks\".\"color_code\", \"publ"
+    },
+    {
+      "calls": 1632,
+      "total_ms": 1850,
+      "mean_ms": 1.13,
+      "rows": 1632,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"harvest_seasons\".\"id\", \"public\".\"harvest_seasons\".\"name\", \"public\".\"harvest_seasons\".\"start_date\", \"public\".\"harvest_seasons\".\"end_date\", \"public\".\"harvest_seasons\".\"status\" FROM \""
+    },
+    {
+      "calls": 239,
+      "total_ms": 1783,
+      "mean_ms": 7.46,
+      "rows": 239,
+      "query": "WITH pgrst_source AS (SELECT \"pgrst_call\".* FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_attendance_id\", \"p_decision\", \"p_reason\" FROM json_to_record(pgrst_payload.json_data) AS _(\"p_attendance_id\" uui"
+    },
+    {
+      "calls": 3334,
+      "total_ms": 1712,
+      "mean_ms": 0.51,
+      "rows": 3334,
+      "query": "WITH pgrst_source AS ( SELECT \"public\".\"fleet_vehicles\".\"id\" FROM \"public\".\"fleet_vehicles\" WHERE \"public\".\"fleet_vehicles\".\"orchard_id\" = $1 LIMIT $2 OFFSET $3 ) SELECT $4::bigint AS total_result_set, pg_catalog.count(_"
+    }
+  ]
+}

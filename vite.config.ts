@@ -73,7 +73,9 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          // woff2: fuentes autoalojadas (Inter + iconos) precacheadas → arranque offline con iconos
+          // Avisos push (mostrar y abrir al tocar) en el mismo service worker
+          importScripts: ['/sw-push.js'],
+          // woff2:fuentes autoalojadas (Inter + iconos) precacheadas → arranque offline con iconos
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
           globIgnores: [
             // informe del bundle (rollup-plugin-visualizer), ~700 KB: no es parte de la app
@@ -86,6 +88,19 @@ export default defineConfig(() => {
             // configurados: no gastar ~200 KB de datos en la instalación del SW
             'assets/vendor-sentry-*.js',
             'assets/vendor-analytics-*.js',
+            // RRHH es trabajo de oficina con conexión (escrituras directas, sin cola
+            // offline): sus pantallas no se descargan al instalar la PWA en el móvil
+            // de campo; se cachean la primera vez que se abren (CacheFirst abajo)
+            'assets/HHRR-*.js',
+            'assets/EmployeesTab-*.js',
+            'assets/ContractsTab-*.js',
+            'assets/PayrollTab-*.js',
+            'assets/DocumentsTab-*.js',
+            'assets/CalendarTab-*.js',
+            'assets/SeasonalPlanningTab-*.js',
+            // «Mi cuenta» (foto, datos, contraseña): todo lo que hace necesita red, así que
+            // no se precachea; se guarda en caché la primera vez que se abre (CacheFirst abajo)
+            'assets/AccountSheet-*.js',
           ],
           runtimeCaching: [
             {
@@ -100,12 +115,14 @@ export default defineConfig(() => {
             {
               // Chunks con hash excluidos del precache: inmutables → CacheFirst
               urlPattern: ({ url, sameOrigin }) =>
-                sameOrigin && /^\/assets\/vendor-(sentry|analytics)-[\w-]+\.js$/.test(url.pathname),
+                sameOrigin &&
+                /^\/assets\/(vendor-(sentry|analytics)|HHRR|EmployeesTab|ContractsTab|PayrollTab|DocumentsTab|CalendarTab|SeasonalPlanningTab|AccountSheet)-[\w-]+\.js$/.test(url.pathname),
               handler: 'CacheFirst',
               options: {
                 cacheName: 'deferred-vendor-chunks',
                 cacheableResponse: { statuses: [200] },
-                expiration: { maxEntries: 6, maxAgeSeconds: 60 * 60 * 24 * 90 },
+                // 2 vendor + 7 de RRHH + Mi cuenta (y una versión anterior de cada uno tras un deploy)
+                expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 90 },
               },
             },
             {

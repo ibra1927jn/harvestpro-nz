@@ -62,12 +62,18 @@ describe('cross-role invariants', () => {
         expect(ids).toContain('audit');
     });
 
-    it('hhrr covers 6 HR domains', () => {
-        expect(HR_NAV_ITEMS).toHaveLength(6);
+    it('hhrr covers 6 HR domains + chat', () => {
+        expect(HR_NAV_ITEMS).toHaveLength(7);
         const ids = HR_NAV_ITEMS.map((n) => n.id);
         expect(ids).toEqual(
-            expect.arrayContaining(['employees', 'contracts', 'payroll', 'documents', 'calendar', 'planning']),
+            expect.arrayContaining(['employees', 'contracts', 'payroll', 'documents', 'calendar', 'planning', 'messaging']),
         );
+    });
+
+    it('every role has the chat tab', () => {
+        for (const items of [HR_NAV_ITEMS, LOG_NAV_ITEMS, ADMIN_NAV_ITEMS, QC_NAV_TABS]) {
+            expect(items.map((n) => n.id)).toContain('messaging');
+        }
     });
 
     it('manager mobile is subset of desktop (same ids appear on desktop)', () => {

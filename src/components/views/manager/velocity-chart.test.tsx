@@ -24,9 +24,9 @@ vi.mock('@/services/analytics.service', () => ({
     },
 }));
 
-// Mock buildShiftSlots para modo shift window
+// Mock buildShiftSlotsUntilNow para modo ventana de turno
 vi.mock('@/utils/time', () => ({
-    buildShiftSlots: vi.fn().mockReturnValue([
+    buildShiftSlotsUntilNow: vi.fn().mockReturnValue([
         { hour: 7, slotStartMs: 1_000_000, slotEndMs: 1_003_600 },
         { hour: 8, slotStartMs: 1_003_600, slotEndMs: 1_007_200 },
     ]),
@@ -42,7 +42,7 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 beforeEach(() => cleanup());
 
 // ─────────────────────────────────────────────────────────
-// Modo legacy (sin shiftStart/shiftEnd)
+// Modo legacy (sin shiftStart)
 // ─────────────────────────────────────────────────────────
 describe('VelocityChart — modo legacy', () => {
     it('renderiza el título', () => {
@@ -81,19 +81,18 @@ describe('VelocityChart — modo legacy', () => {
 });
 
 // ─────────────────────────────────────────────────────────
-// Modo shift window (con shiftStart + shiftEnd + onBarClick)
+// Modo ventana de turno (con shiftStart + onBarClick; sin hora de fin)
 // ─────────────────────────────────────────────────────────
 describe('VelocityChart — modo shift window', () => {
-    it('muestra subtítulo con ventana de turno', () => {
+    it('muestra subtítulo «desde el inicio de turno» (sin hora de fin)', () => {
         render(
             <VelocityChart
                 bucketRecords={[]}
                 shiftStart="07:00"
-                shiftEnd="17:00"
             />,
             { wrapper: Wrapper }
         );
-        expect(screen.getByText('07:00–17:00')).toBeTruthy();
+        expect(screen.getByText('Since 07:00')).toBeTruthy();
     });
 
     it('renderiza barras con role=button cuando onBarClick está definido', () => {
@@ -101,7 +100,6 @@ describe('VelocityChart — modo shift window', () => {
             <VelocityChart
                 bucketRecords={[]}
                 shiftStart="07:00"
-                shiftEnd="09:00"
                 onBarClick={vi.fn()}
             />,
             { wrapper: Wrapper }
@@ -126,7 +124,6 @@ describe('VelocityChart — modo shift window', () => {
             <VelocityChart
                 bucketRecords={[record as any]}
                 shiftStart="07:00"
-                shiftEnd="09:00"
                 onBarClick={onBarClick}
             />,
             { wrapper: Wrapper }
@@ -159,7 +156,6 @@ describe('VelocityChart — modo shift window', () => {
             <VelocityChart
                 bucketRecords={[record as any]}
                 shiftStart="07:00"
-                shiftEnd="09:00"
                 onBarClick={onBarClick}
             />,
             { wrapper: Wrapper }

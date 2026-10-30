@@ -10,6 +10,8 @@ vi.mock('@/services/qc.service', () => ({
             { id: 'i1', picker_id: 'p1', quality_grade: 'A' },
             { id: 'i2', picker_id: 'p2', quality_grade: 'B' },
         ]),
+        getGradeDistribution: vi.fn().mockResolvedValue({ A: 0, B: 0, C: 0, reject: 0, total: 0 }),
+        logInspection: vi.fn().mockResolvedValue({ id: 'i3' }),
         submitGrade: vi.fn().mockResolvedValue({ id: 'i3' }),
         uploadPhoto: vi.fn().mockResolvedValue('https://cdn.example.com/photo.jpg'),
     },
@@ -29,8 +31,9 @@ vi.mock('@/stores/useHarvestStore', () => ({
     }),
 }));
 
+const authState = { appUser: { id: 'u1', role: 'qc_inspector' } as { id: string; role: string } | null };
 vi.mock('@/context/AuthContext', () => ({
-    useAuth: () => ({ appUser: { id: 'u1', role: 'qc_inspector' } }),
+    useAuth: () => authState,
 }));
 
 vi.mock('@/utils/logger', () => ({
@@ -87,5 +90,63 @@ describe('useQC', () => {
             result.current.setNotes('Test note');
         });
         expect(result.current.notes).toBe('Test note');
+    });
+
+    describe('canViewWellbeing', () => {
+        it('is false for the QC inspector (wellbeing answers are not part of the public profile)', () => {
+            authState.appUser = { id: 'u1', role: 'qc_inspector' };
+            const { result } = renderHook(() => useQC());
+            expect(result.current.canViewWellbeing).toBe(false);
+        });
+
+        it.each(['team_leader', 'manager', 'hr_admin', 'admin'])('is true for %s', role => {
+            authState.appUser = { id: 'u1', role };
+            const { result } = renderHook(() => useQC());
+            expect(result.current.canViewWellbeing).toBe(true);
+        });
+
+        it.each(['runner', 'logistics', 'payroll_admin'])('is false for %s', role => {
+            authState.appUser = { id: 'u1', role };
+            const { result } = renderHook(() => useQC());
+            expect(result.current.canViewWellbeing).toBe(false);
+        });
+
+        it('is false without a user', () => {
+            authState.appUser = null;
+            const { result } = renderHook(() => useQC());
+            expect(result.current.canViewWellbeing).toBe(false);
+        });
+    });
+
+    describe('handleGrade', () => {
+        it('passes the details through and defaults the row to the picker current row', async () => {
+            authState.appUser = { id: 'u1', role: 'qc_inspector' };
+            const { qcService } = await import('@/services/qc.service');
+            const { result } = renderHook(() => useQC());
+            act(() => {
+                result.current.setSelectedPicker({ ...result.current.crew[0], current_row: 4 });
+            });
+            let saved = false;
+            await act(async () => {
+                saved = await result.current.handleGrade('B', null, { criteria: { size: 'warn' }, score: 50, informed: true });
+            });
+            expect(saved).toBe(true);
+            expect(vi.mocked(qcService.logInspection)).toHaveBeenCalledWith(expect.objectContaining({
+                orchardId: 'o1', pickerId: 'p1', inspectorId: 'u1', grade: 'B',
+                criteria: { size: 'warn' }, score: 50, informed: true, rowNumber: 4,
+            }));
+        });
+
+        it('row is null when the picker has no row', async () => {
+            const { qcService } = await import('@/services/qc.service');
+            const { result } = renderHook(() => useQC());
+            act(() => {
+                result.current.setSelectedPicker({ ...result.current.crew[1], current_row: 0 });
+            });
+            await act(async () => {
+                await result.current.handleGrade('A');
+            });
+            expect(vi.mocked(qcService.logInspection)).toHaveBeenLastCalledWith(expect.objectContaining({ pickerId: 'p2', rowNumber: null }));
+        });
     });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { shiftHours, dayPay, nzDateOf, payWeekOf, payForRange, isNZPublicHoliday, PAY_RULES, pieceRateFor, mealBreakMissing } from './pay';
+import { shiftHours, dayPay, nzDateOf, payWeekOf, payForRange, isNZPublicHoliday, PAY_RULES, pieceRateOn, mealBreakMissing, type DailyPieceRate } from './pay';
 
 // Fechas en NZDT (UTC+13) — 11 oct 2026
 const at = (hhmm: string) => `2026-10-11T${hhmm}:00+13:00`;
@@ -356,21 +356,85 @@ describe('payForRange — trayecto', () => {
     });
 });
 
-describe('pieceRateFor', () => {
-    const rates = {
-        varietyRates: [
-            { orchardId: 'A', variety: 'Braeburn', pieceRate: 9 },
-            { orchardId: null, variety: 'braeburn', pieceRate: 8 },
-            { orchardId: null, variety: 'Royal Gala', pieceRate: 7 },
-        ],
-        orchardRates: { A: 6.5, B: 6 },
-        fallback: 5,
-    };
-    it('huerto+variedad > empresa+variedad > huerto > general', () => {
-        expect(pieceRateFor({ orchardId: 'A', variety: 'Braeburn' }, rates)).toBe(9);
-        expect(pieceRateFor({ orchardId: 'B', variety: 'BRAEBURN ' }, rates)).toBe(8);
-        expect(pieceRateFor({ orchardId: 'B', variety: 'Fuji' }, rates)).toBe(6);
-        expect(pieceRateFor({ orchardId: 'C', variety: null }, rates)).toBe(5);
+// Decisión del dueño (2026-10-23): el precio vive por (huerto, variedad, día)
+describe('pieceRateOn — precio por día, huerto y variedad', () => {
+    const rates: DailyPieceRate[] = [
+        { orchardId: 'A', variety: null, effectiveDate: '2026-10-01', pieceRate: 6.5 },
+        { orchardId: 'A', variety: null, effectiveDate: '2026-10-07', pieceRate: 7.25 },
+        { orchardId: 'A', variety: 'Braeburn', effectiveDate: '2026-10-05', pieceRate: 8.1 },
+        { orchardId: 'A', variety: 'Braeburn', effectiveDate: '2026-10-08', pieceRate: 8.5 },
+        { orchardId: 'B', variety: null, effectiveDate: '2026-10-01', pieceRate: 6 },
+        { orchardId: 'B', variety: 'braeburn', effectiveDate: '2026-10-01', pieceRate: 7 },
+    ];
+
+    it('un cambio a mitad de semana no toca los días anteriores', () => {
+        expect(pieceRateOn(rates, 'A', null, '2026-10-05', 5)).toBe(6.5);
+        expect(pieceRateOn(rates, 'A', null, '2026-10-06', 5)).toBe(6.5);
+        expect(pieceRateOn(rates, 'A', null, '2026-10-07', 5)).toBe(7.25);
+    });
+
+    it('si nadie lo cambia, vale el último precio fijado', () => {
+        expect(pieceRateOn(rates, 'A', null, '2026-10-20', 5)).toBe(7.25);
+        expect(pieceRateOn(rates, 'A', 'Braeburn', '2026-12-01', 5)).toBe(8.5);
+    });
+
+    it('cada variedad tiene su precio por día', () => {
+        expect(pieceRateOn(rates, 'A', 'Braeburn', '2026-10-05', 5)).toBe(8.1);
+        expect(pieceRateOn(rates, 'A', 'Braeburn', '2026-10-07', 5)).toBe(8.1);
+        expect(pieceRateOn(rates, 'A', 'Braeburn', '2026-10-08', 5)).toBe(8.5);
+    });
+
+    it('variedad sin precio (o antes de su primer precio) usa la general del huerto ese día', () => {
+        expect(pieceRateOn(rates, 'A', 'Fuji', '2026-10-06', 5)).toBe(6.5);
+        expect(pieceRateOn(rates, 'A', 'Fuji', '2026-10-07', 5)).toBe(7.25);
+        expect(pieceRateOn(rates, 'A', 'Braeburn', '2026-10-04', 5)).toBe(6.5);
+        expect(pieceRateOn(rates, 'A', '   ', '2026-10-07', 5)).toBe(7.25);
+        expect(pieceRateOn(rates, 'A', null, '2026-10-07', 5)).toBe(7.25);
+    });
+
+    it('dos huertos: el precio de uno no se usa en el otro', () => {
+        expect(pieceRateOn(rates, 'B', 'Braeburn', '2026-10-08', 5)).toBe(7);
+        expect(pieceRateOn(rates, 'B', null, '2026-10-08', 5)).toBe(6);
+        expect(pieceRateOn(rates, 'B', 'Fuji', '2026-10-08', 5)).toBe(6);
+    });
+
+    it('variedad sin distinguir mayúsculas ni espacios', () => {
+        expect(pieceRateOn(rates, 'A', ' BRAEBURN ', '2026-10-08', 5)).toBe(8.5);
+        expect(pieceRateOn(rates, 'B', 'Braeburn', '2026-10-01', 5)).toBe(7);
+    });
+
+    it('sin precios, sin huerto o antes del primer precio: fallback', () => {
+        expect(pieceRateOn(rates, 'A', null, '2026-09-30', 5)).toBe(5);
+        expect(pieceRateOn(rates, 'C', 'Braeburn', '2026-10-08', 5)).toBe(5);
+        expect(pieceRateOn(rates, null, 'Braeburn', '2026-10-08', 5)).toBe(5);
+        expect(pieceRateOn([], 'A', null, '2026-10-08', 5)).toBe(5);
+    });
+
+    it('acepta la fecha con hora y respeta un precio 0', () => {
+        expect(pieceRateOn(rates, 'A', null, '2026-10-07T23:59:00', 5)).toBe(7.25);
+        expect(pieceRateOn([{ orchardId: 'Z', variety: null, effectiveDate: '2026-01-01', pieceRate: 0 }], 'Z', 'Envy', '2026-10-01', 5)).toBe(0);
+    });
+
+    it('el orden de las filas no importa', () => {
+        const shuffled = [...rates].reverse();
+        expect(pieceRateOn(shuffled, 'A', null, '2026-10-06', 5)).toBe(6.5);
+        expect(pieceRateOn(shuffled, 'A', 'Braeburn', '2026-10-07', 5)).toBe(8.1);
+    });
+
+    it('semana con cambio el miércoles: el pago del lunes y martes no cambia', () => {
+        const at = (d: string) => `${d}T10:00:00+13:00`;
+        const bucketsOf = (d: string, n: number, variety: string | null = null) =>
+            Array.from({ length: n }, () => ({
+                pickerId: 'p1', scannedAt: at(d), orchardId: 'A', variety,
+                pieceRate: pieceRateOn(rates, 'A', variety, nzDateOf(at(d)), 5),
+            }));
+        const buckets = [...bucketsOf('2026-10-05', 20), ...bucketsOf('2026-10-06', 20), ...bucketsOf('2026-10-07', 20), ...bucketsOf('2026-10-08', 10, 'Braeburn')];
+        const [r] = payForRange({ attendance: [], buckets, pieceRate: 5, minWage: 23.95, now: new Date('2026-10-12T12:00:00+13:00') });
+        const byDate = Object.fromEntries(r.dayDetails.map(d => [d.date, d.pieceEarnings]));
+        expect(byDate['2026-10-05']).toBe(130);   // 20 × 6.50
+        expect(byDate['2026-10-06']).toBe(130);   // 20 × 6.50
+        expect(byDate['2026-10-07']).toBe(145);   // 20 × 7.25 (desde el miércoles)
+        expect(byDate['2026-10-08']).toBe(85);    // 10 × 8.50 Braeburn
     });
 });
 

@@ -4,6 +4,8 @@
  * así zod no va en el bundle inicial (login / runner).
  */
 import { z } from 'zod';
+import { QcCriteriaSchema } from '@/schemas/zod.schemas';
+import { REACTION_EMOJIS } from './chat-reactions.logic';
 
 // 🔧 BUG-3 fix: Zod schemas for sync queue payload validation
 // Replaces unsafe `as unknown as` double-casts that silenced corrupt payloads
@@ -21,12 +23,6 @@ export const ScanPayloadSchema = z
 export const AssignmentPayloadSchema = z.object({
   userId: z.string(),
   orchardId: z.string(),
-});
-
-export const MessagePayloadSchema = z.object({
-  receiverId: z.string(),
-  content: z.string(),
-  type: z.string().optional(),
 });
 
 // 🔧 BUG-3 fix continued: Zod schemas for remaining sync payload types
@@ -76,15 +72,69 @@ export const PickerPayloadSchema = z.object({
   team_leader_id: z.string().nullable().optional(),
 }).passthrough();
 
+// Inspección con criterios (revisión 2026-10-21, punto 15). Este esquema es
+// estricto (sin passthrough): si no lista las columnas nuevas, zod las quita
+// del payload encolado y la inspección llega a la BD solo con la nota.
 export const QCInspectionPayloadSchema = z.object({
+  id: z.string().uuid().optional(),
   orchard_id: z.string(),
   picker_id: z.string(),
   inspector_id: z.string(),
   grade: z.enum(['A', 'B', 'C', 'reject']),
   notes: z.string().nullable().optional(),
   photo_url: z.string().nullable().optional(),
+  /** {ladder: 'ok'|'warn'|'bad', ...}; null = inspección solo con nota */
+  criteria: QcCriteriaSchema.nullable().optional(),
+  score: z.number().int().min(0).max(100).nullable().optional(),
+  row_number: z.number().int().min(0).max(9999).nullable().optional(),
+  informed: z.boolean().nullable().optional(),
+  comfortable: z.boolean().nullable().optional(),
+  wellbeing_notes: z.string().max(500).nullable().optional(),
+  /** Foto en el móvil (pending_files) y ruta donde subirla en qc-photos */
+  photo_file_id: z.string().nullable().optional(),
+  photo_path: z.string().max(1000).regex(/^[0-9a-f-]{36}\/\d{4}-\d{2}-\d{2}\/[0-9a-f-]{36}\.webp$/).nullable().optional(),
 });
+
+/** Bins del runner: alta (id del móvil) o cambio de estado */
+export const BinPayloadSchema = z
+  .object({
+    action: z.enum(['register', 'status']),
+    bin_id: z.string().uuid(),
+    orchard_id: z.string().uuid().optional(),
+    bin_code: z.string().min(1).max(100).optional(),
+    status: z.enum(['empty', 'partial', 'full', 'collected']).optional(),
+    filled_at: z.string().nullable().optional(),
+  })
+  .refine(p => p.action !== 'register' || (!!p.orchard_id && !!p.bin_code), {
+    message: 'register needs orchard_id and bin_code',
+  })
+  .refine(p => p.action !== 'status' || !!p.status, { message: 'status change needs status' });
 
 export const UnlinkPayloadSchema = z.object({
   userId: z.string(),
+});
+
+// Ausencia pedida por el team leader sin red (tipo LEAVE_REQUEST). Mismas
+// reglas que NewLeaveRequestSchema; el id lo pone el móvil (reintento idempotente).
+export const LeaveRequestPayloadSchema = z.object({
+  id: z.string().uuid(),
+  orchard_id: z.string().uuid(),
+  picker_id: z.string().uuid(),
+  type: z.enum(['annual', 'sick', 'bereavement', 'family_violence', 'unpaid', 'day_off', 'other']),
+  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  half_day: z.boolean(),
+  reason: z.string().max(500).nullable(),
+  requested_by: z.string().uuid(),
+}).refine(v => v.end_date >= v.start_date, { path: ['end_date'] })
+  .refine(v => !v.half_day || v.start_date === v.end_date, { path: ['half_day'] });
+
+// Reacción del chat sin red (tipo CHAT_REACTION). Mismo conjunto de emojis que
+// el CHECK de chat_message_reactions.
+export const ChatReactionPayloadSchema = z.object({
+  op: z.enum(['add', 'remove']),
+  conversation_id: z.string().uuid(),
+  message_id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  emoji: z.enum(REACTION_EMOJIS),
 });

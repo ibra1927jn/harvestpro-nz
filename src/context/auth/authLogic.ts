@@ -97,6 +97,19 @@ export function decideAuthChange(
 }
 
 /** ¿Toca refrescar el token al volver la app a primer plano? */
+/**
+ * Al volver a primer plano solo hace falta renovar el token si está cerca de
+ * caducar. En el campo el móvil se desbloquea decenas de veces al día y cada
+ * vez se pedía un token nuevo (72 renovaciones por team leader y día en la
+ * prueba de carga 2026-10-21); con un token de 60 min bastan ~2.
+ */
+export const REFRESH_IF_EXPIRES_WITHIN_MS = 15 * 60 * 1000;
+
+export function tokenNeedsRefresh(expiresAtSeconds: number | null | undefined, now: number): boolean {
+  if (!expiresAtSeconds) return true;
+  return expiresAtSeconds * 1000 - now < REFRESH_IF_EXPIRES_WITHIN_MS;
+}
+
 export function shouldRefreshOnVisible(
   visible: boolean,
   online: boolean,

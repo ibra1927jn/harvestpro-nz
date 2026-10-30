@@ -52,10 +52,12 @@ vi.mock('@/services/api-keys.service', () => ({
 }));
 
 vi.mock('@/services/fraud-detection.service', () => ({
+  anomalyKey: (a: { type: string; pickerId: string; timestamp: string }) => `${a.type}|${a.pickerId}|${a.timestamp}`,
   fraudDetectionService: {
     fetchAnomalies: vi.fn().mockResolvedValue([]),
-    getDismissedExamples: vi.fn().mockReturnValue([]),
+    listDismissals: vi.fn().mockResolvedValue([]),
     dismissAnomaly: vi.fn(),
+    undoDismissal: vi.fn(),
   },
 }));
 

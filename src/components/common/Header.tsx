@@ -4,10 +4,13 @@
  * Used by all BottomNav pages: TeamLeader, Runner, Manager, QC
  * Features: App branding, notifications with unread badge + dropdown, user avatar, sign-out with offline guard
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useAvatarSignedUrl } from '@/hooks/useAvatarUrl';
+import UserAvatar from './account/UserAvatar';
+import { LazyAccountSheet as AccountSheet } from './account/lazyAccountSheet';
 import { logger } from '@/utils/logger';
-import { useMessaging } from '@/context/MessagingContext';
+import { useNotificationBadge } from '@/hooks/useNotificationBadge';
 import { useNavigate } from 'react-router-dom';
 import { offlineService } from '@/services/offline.service';
 import NotificationPanel from './NotificationPanel';
@@ -15,10 +18,11 @@ import ThemeToggle from '@/components/ui/ThemeToggle';
 import OrchardSwitcher from './OrchardSwitcher';
 import { useTranslation } from '@/i18n';
 
+
 interface HeaderProps {
   title: string;
   subtitle: string;
-  /** Optional callback when profile avatar is tapped (e.g. open settings) */
+  /** Qué hace el avatar. Sin él, abre «Mi cuenta» (la misma pantalla para todos los roles). */
   onProfileClick?: () => void;
   /** Callback to navigate to messaging tab */
   onNavigateToMessaging?: () => void;
@@ -32,18 +36,15 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { t } = useTranslation();
   const { appUser, signOut } = useAuth();
-  const { unreadCount } = useMessaging();
+  // Campana: chat sin leer + avisos (calidad, avisos del huerto) sin ver
+    const unreadCount = useNotificationBadge();
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-
-  // Derive user initials from full name
-  const initials = (appUser?.full_name || 'U')
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  const [accountOpen, setAccountOpen] = useState(false);
+  // Foto propia (almacén privado, enlace firmado) o iniciales
+  const avatarUrl = useAvatarSignedUrl(appUser?.avatar_url);
+  const displayName = appUser?.full_name || 'U';
 
   const handleSignOut = useCallback(async () => {
     if (signingOut) return;
@@ -115,20 +116,14 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Profile avatar */}
-          {onProfileClick ? (
-            <button
-              onClick={onProfileClick}
-              className="size-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-sm shadow-md shadow-primary/20 hover:bg-primary-dim transition-colors"
-              aria-label={t('header.open_profile')}
-            >
-              {initials}
-            </button>
-          ) : (
-            <div className="size-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-sm shadow-md shadow-primary/20">
-              {initials}
-            </div>
-          )}
+          {/* Profile avatar: la página decide (onProfileClick) o se abre «Mi cuenta» */}
+          <button
+            onClick={onProfileClick ?? (() => setAccountOpen(true))}
+            className="size-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-md shadow-primary/20 hover:bg-primary-dim transition-colors overflow-hidden"
+            aria-label={onProfileClick ? t('header.open_profile') : t('account.open')}
+          >
+            <UserAvatar name={displayName} url={avatarUrl} className="size-10 rounded-xl" textClassName="text-sm" />
+          </button>
 
           {/* Sign-out button */}
           <button
@@ -144,6 +139,12 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
       </div>
+
+      {accountOpen && (
+        <Suspense fallback={null}>
+          <AccountSheet onClose={() => setAccountOpen(false)} />
+        </Suspense>
+      )}
     </header>
   );
 };

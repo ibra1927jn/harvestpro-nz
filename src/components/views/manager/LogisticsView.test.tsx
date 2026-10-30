@@ -1,14 +1,18 @@
 /**
- * Tests para el nuevo LogisticsView (§16 — panel de salud logística del manager).
+ * Tests para LogisticsView del manager: una sola pantalla con el resumen de
+ * salud arriba y la logística completa (flota, solicitudes, bins, historial)
+ * debajo, sin botón a otra página (regresión d5ce6e3 deshecha el 2026-10-21).
  *
  * Verifica:
- * - Que los elementos de la versión anterior (botones, filtros, alerts) han sido eliminados.
- * - Que los nuevos sub-componentes se renderizan correctamente.
+ * - Que los elementos de la versión de febrero (botones, filtros, alerts) no vuelven.
+ * - Que el panel de salud se renderiza.
+ * - Que las cuatro pestañas de logística están en la misma página y cambian de contenido.
+ * - Que no hay enlace «Ver logística completa».
  * - Estado de carga (skeleton).
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
@@ -27,11 +31,21 @@ vi.mock('@/hooks/useLogisticsHealth', () => ({
 
 vi.mock('@/hooks/useLogistics', () => ({
   useLogistics: () => ({
+    summary: { fullBins: 3, emptyBins: 7, binsInTransit: 1, activeTractors: 2, pendingRequests: 4 },
+    tractors: [],
+    bins: [],
     requests: [],
     history: [],
     isLoading: false,
+    reload: vi.fn(),
   }),
 }));
+
+// Pestañas de logística: marcadores para saber cuál está montada
+vi.mock('@/components/views/logistics/FleetTab', () => ({ default: () => <div data-testid="tab-fleet" /> }));
+vi.mock('@/components/views/logistics/BinsTab', () => ({ default: () => <div data-testid="tab-bins" /> }));
+vi.mock('@/components/views/logistics/RequestsTab', () => ({ default: () => <div data-testid="tab-requests" /> }));
+vi.mock('@/components/views/logistics/HistoryTab', () => ({ default: () => <div data-testid="tab-history" /> }));
 
 vi.mock('@/services/supabase', () => ({
   supabase: {
@@ -123,6 +137,27 @@ describe('LogisticsView — §16 refactor', () => {
   it('does NOT render old filter pills (in queue, to bin, loading, returning)', () => {
     render(<LogisticsView />, { wrapper });
     expect(screen.queryByText(/^in queue$|^to bin$|^loading$|^returning$/i)).toBeNull();
+  });
+
+  it('una sola página: las cuatro pestañas de logística están aquí y cambian el contenido', async () => {
+    render(<LogisticsView />, { wrapper });
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs.map(t => t.textContent?.trim())).toEqual(
+      expect.arrayContaining([expect.stringMatching(/Fleet/), expect.stringMatching(/Bin/), expect.stringMatching(/Requests/), expect.stringMatching(/History/)])
+    );
+    // Solicitudes es la pestaña inicial (lo que el manager atiende) con su badge
+    expect(screen.getByRole('tab', { selected: true }).textContent).toMatch(/Requests/);
+    expect(await screen.findByTestId('tab-requests')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Fleet/ }));
+    await waitFor(() => expect(screen.getByTestId('tab-fleet')).toBeDefined());
+    expect(screen.queryByTestId('tab-requests')).toBeNull();
+  });
+
+  it('no hay enlace a otra página de logística', () => {
+    render(<LogisticsView />, { wrapper });
+    expect(screen.queryByText(/full logistics/i)).toBeNull();
+    expect(screen.queryByText(/logistics-dept/)).toBeNull();
   });
 
   it('renders skeleton cards when isLoading is true', async () => {

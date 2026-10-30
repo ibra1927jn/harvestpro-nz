@@ -40,8 +40,11 @@ Deno.test({ name: 'check-compliance and detect-anomalies', ...testOpts, fn: asyn
             scan(worker.id, '07:00'), scan(worker.id, '08:00'),
             // early: escaneo a las 05:00 (fuera de turno 06–19)
             scan(early.id, '05:00'),
-            // sharers: misma fila con 1 minuto de diferencia (¿tarjeta compartida?)
+            // Compañeros en la misma fila con 1 minuto de diferencia: lo normal en
+            // una cuadrilla, NO es anomalía. La misma persona dos veces en 20 s sí
+            // (escaneo repetido o tarjeta compartida).
             scan(sharerA.id, '14:00', { row_number: 7 }), scan(sharerB.id, '14:01', { row_number: 7 }),
+            { ...scan(sharerB.id, '14:01', { row_number: 7 }), scanned_at: new Date(Date.parse(nzTime(today, '14:01')) + 20_000).toISOString() },
         ]
         // fast: 20 cubetas en 10 minutos (físicamente imposible)
         const fastStart = new Date(nzTime(today, '10:00')).getTime()
@@ -78,14 +81,15 @@ Deno.test({ name: 'check-compliance and detect-anomalies', ...testOpts, fn: asyn
             // (el nombre sí: la ficha de personas es de toda la empresa)
         })
 
-        await t.step('detect-anomalies: off-hours, impossible velocity and shared tag (NZ time)', async () => {
+        await t.step('detect-anomalies: off-hours, impossible velocity and double scan (NZ time)', async () => {
             const r = await call<{ anomalies: Anomaly[] }>('detect-anomalies', { token: leader.token, body: { orchard_id: orchard } })
             assertEquals(r.status, 200, show(r))
             const has = (type: string, pickerId: string) => r.json.anomalies.some(a => a.type === type && a.pickerId === pickerId)
             assert(has('off_hours', early.id), `05:00 NZ scan flagged: ${show(r)}`)
             assert(!has('off_hours', worker.id), '07:00/08:00 NZ scans are within the shift')
             assert(has('impossible_velocity', fast.id), 'fast picker flagged')
-            assert(has('duplicate_proximity', sharerB.id), 'same row 1 min apart flagged')
+            assert(has('duplicate_proximity', sharerB.id), 'same person twice within 20 s flagged')
+            assert(!has('duplicate_proximity', sharerA.id), 'a crew mate on the same row 1 min later is not an anomaly')
         })
 
         await t.step('detect-anomalies: another orchard\'s team leader sees none of it', async () => {

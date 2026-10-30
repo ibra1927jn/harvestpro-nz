@@ -1,10 +1,11 @@
 /**
  * manage-admin: solo admin cambia roles y da de baja / alta; el cambio se
  * aplica de verdad (y si no hay nadie a quien aplicarlo, no se responde
- * "success"); una cuenta dada de baja deja de pasar requireRole.
+ * "success"); una cuenta dada de baja queda baneada en Auth, sin sesiones,
+ * y deja de pasar requireRole.
  */
-import { assertEquals } from 'https://deno.land/std@0.168.0/testing/asserts.ts'
-import { call, cleanupAll, makeOrchard, makeUser, must, service, show, testOpts } from './_helpers.ts'
+import { assert, assertEquals, assertRejects } from 'https://deno.land/std@0.168.0/testing/asserts.ts'
+import { call, cleanupAll, loginAal1, makeOrchard, makeUser, must, service, show, testOpts } from './_helpers.ts'
 
 Deno.test({ name: 'manage-admin', ...testOpts, fn: async t => {
     try {
@@ -45,7 +46,7 @@ Deno.test({ name: 'manage-admin', ...testOpts, fn: async t => {
             }
         })
 
-        await t.step('deactivate → the account is locked out of functions; reactivate → back in', async () => {
+        await t.step('deactivate → banned in Auth, sessions closed, locked out; reactivate → can sign in again', async () => {
             const before = await call('submit-audit-log', {
                 token: target.token, body: { entries: [{ event_type: 'eft', severity: 'info', action: 'ping' }] },
             })
@@ -54,13 +55,20 @@ Deno.test({ name: 'manage-admin', ...testOpts, fn: async t => {
             const off = await call('manage-admin', { token: admin.token, body: { action: 'deactivate', user_id: target.id } })
             assertEquals(off.status, 200, show(off))
             assertEquals((await roleOf(target.id)).is_active, false)
+            // Sesión cerrada (401) o cuenta de baja (403): nunca 200
             const locked = await call('record-bucket', { token: target.token, body: { _warmup: true } })
-            assertEquals(locked.status, 403, show(locked))
+            assert([401, 403].includes(locked.status), show(locked))
+            // Ban en Auth (trigger trg_sync_auth_ban_with_active): no puede volver a entrar
+            const { data: authUser } = await service.auth.admin.getUserById(target.id)
+            assert(authUser.user?.banned_until && new Date(authUser.user.banned_until).getTime() > Date.now(), 'banned in Auth')
+            await assertRejects(() => loginAal1(target.email, target.password))
 
             const on = await call('manage-admin', { token: admin.token, body: { action: 'reactivate', user_id: target.id } })
             assertEquals(on.status, 200, show(on))
             assertEquals((await roleOf(target.id)).is_active, true)
-            const back = await call('record-bucket', { token: target.token, body: { _warmup: true } })
+            // La sesión antigua se cerró al dar de baja: se entra otra vez
+            const fresh = await loginAal1(target.email, target.password)
+            const back = await call('record-bucket', { token: fresh, body: { _warmup: true } })
             assertEquals(back.status, 200, show(back))
         })
     } finally {

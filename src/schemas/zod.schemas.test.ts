@@ -10,6 +10,12 @@ import {
     PickerSchema,
     AttendanceRecordSchema,
     HarvestSettingsSchema,
+    QcCriteriaSchema,
+    QcInspectionInsertSchema,
+    LeaveRequestSchema,
+    NewLeaveRequestSchema,
+    LEAVE_TYPES,
+    LEAVE_STATUSES,
     safeParse,
     safeParseArray,
 } from './zod.schemas';
@@ -379,5 +385,86 @@ describe('boundary schemas — exact messages and anchors', () => {
         expect(safeParse(HarvestSettingsSchema, { ...ok, piece_rate: 100.5 })).toEqual({ success: false, error: 'piece_rate: Piece rate seems unreasonably high' });
         expect(HarvestSettingsSchema.safeParse({ ...ok, min_wage_rate: 500, piece_rate: 100, min_buckets_per_hour: 200, target_tons: 10000 }).success).toBe(true);
         expect(HarvestSettingsSchema.safeParse({ ...ok, min_buckets_per_hour: 3.5 }).success).toBe(false);
+    });
+});
+
+// ─── QcInspectionInsertSchema ───────────────────────────────────────────────
+
+describe('QcInspectionInsertSchema', () => {
+    const base = { orchard_id: 'o1', picker_id: 'p1', inspector_id: 'u1', grade: 'B' as const };
+
+    it('accepts an inspection with only a grade (previous format)', () => {
+        expect(QcInspectionInsertSchema.safeParse(base).success).toBe(true);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, notes: null, photo_url: null, criteria: null, score: null, row_number: null, informed: null, comfortable: null, wellbeing_notes: null }).success).toBe(true);
+    });
+
+    it('accepts partial criteria and the wellbeing answers', () => {
+        const r = QcInspectionInsertSchema.safeParse({
+            ...base,
+            criteria: { ladder: 'ok', size: 'warn' },
+            score: 75,
+            row_number: 3,
+            informed: false,
+            comfortable: true,
+            wellbeing_notes: 'short comment',
+        });
+        expect(r.success).toBe(true);
+        if (r.success) expect(r.data.criteria).toEqual({ ladder: 'ok', size: 'warn' });
+    });
+
+    it('rejects unknown grades, criterion states, out-of-range score and row', () => {
+        expect(QcInspectionInsertSchema.safeParse({ ...base, grade: 'D' }).success).toBe(false);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, criteria: { ladder: 'fine' } }).success).toBe(false);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, score: 101 }).success).toBe(false);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, score: -1 }).success).toBe(false);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, score: 50.5 }).success).toBe(false);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, row_number: -1 }).success).toBe(false);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, informed: 'yes' }).success).toBe(false);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, wellbeing_notes: 'x'.repeat(501) }).success).toBe(false);
+        expect(QcInspectionInsertSchema.safeParse({ ...base, picker_id: '' }).success).toBe(false);
+    });
+
+    it('QcCriteriaSchema drops nothing it knows and ignores unknown keys', () => {
+        const r = QcCriteriaSchema.safeParse({ ladder: 'bad', bogus: 'ok' });
+        expect(r.success).toBe(true);
+        if (r.success) expect(r.data).toEqual({ ladder: 'bad' });
+    });
+});
+
+// ─── Leave requests (RRHH: ausencias y permisos) ────────────────────────────
+
+describe('leave request schemas', () => {
+    const U1 = '11111111-1111-4111-8111-111111111111';
+    const U2 = '22222222-2222-4222-8222-222222222222';
+    const base = { orchard_id: U1, picker_id: U2, type: 'annual', start_date: '2026-10-20', end_date: '2026-10-22' };
+
+    it('domains match the DB check constraints', () => {
+        expect(LEAVE_TYPES).toEqual(['annual', 'sick', 'bereavement', 'family_violence', 'unpaid', 'day_off', 'other']);
+        expect(LEAVE_STATUSES).toEqual(['requested', 'approved', 'rejected', 'cancelled']);
+    });
+
+    it('NewLeaveRequestSchema: defaults and trimming', () => {
+        const r = NewLeaveRequestSchema.safeParse({ ...base, reason: '  late flight  ' });
+        expect(r.success).toBe(true);
+        if (r.success) expect(r.data).toEqual({ ...base, half_day: false, reason: 'late flight', requested_by: null, status: 'requested' });
+    });
+
+    it('NewLeaveRequestSchema: end before start, half day over several days, bad dates and ids', () => {
+        expect(safeParse(NewLeaveRequestSchema, { ...base, end_date: '2026-10-19' })).toEqual({ success: false, error: 'end_date: End date must be on or after the start date' });
+        expect(safeParse(NewLeaveRequestSchema, { ...base, half_day: true })).toEqual({ success: false, error: 'half_day: A half day is a single day' });
+        expect(NewLeaveRequestSchema.safeParse({ ...base, half_day: true, end_date: '2026-10-20' }).success).toBe(true);
+        expect(NewLeaveRequestSchema.safeParse({ ...base, start_date: '20/10/2026' }).success).toBe(false);
+        expect(NewLeaveRequestSchema.safeParse({ ...base, picker_id: 'p1' }).success).toBe(false);
+        expect(NewLeaveRequestSchema.safeParse({ ...base, type: 'holiday' }).success).toBe(false);
+        expect(NewLeaveRequestSchema.safeParse({ ...base, reason: 'x'.repeat(501) }).success).toBe(false);
+    });
+
+    it('LeaveRequestSchema: a DB row parses, null defaults fill in, bad status fails', () => {
+        const row = { id: U1, ...base, status: 'approved', created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-01T00:00:00Z' };
+        const r = LeaveRequestSchema.safeParse(row);
+        expect(r.success).toBe(true);
+        if (r.success) expect(r.data).toMatchObject({ half_day: false, reason: null, requested_by: null, decided_by: null, decided_at: null, decision_note: null });
+        expect(LeaveRequestSchema.safeParse({ ...row, status: 'pending' }).success).toBe(false);
+        expect(safeParseArray(LeaveRequestSchema, [row, { id: 'nope' }])).toHaveLength(1);
     });
 });

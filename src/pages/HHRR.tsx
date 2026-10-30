@@ -15,11 +15,16 @@ import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import { useHHRR } from '@/hooks/useHHRR';
 import { HR_NAV_ITEMS } from '@/config/navigation/hhrr.nav';
+import { CHAT_TAB_ID, withChatBadge } from '@/config/navigation/chat.nav';
+import { useMessaging } from '@/context/MessagingContext';
+import ChatTabView from '@/components/common/messaging/ChatTabView';
 import AddPickerModal from '@/components/modals/AddPickerModal';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { setEmployeeActive, type Employee } from '@/services/hhrr.service';
 import { formatNZD } from '@/utils/nzFormat';
 import { useTranslation } from '@/i18n';
+import Toast from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
 
 // Lazy-loaded views (code-split for performance)
 const EmployeesTab = React.lazy(() => import('@/components/views/hhrr/EmployeesTab'));
@@ -37,6 +42,8 @@ const TabLoader = () => (
 
 const HHRR: React.FC = () => {
     const { t } = useTranslation();
+    // Alta de picker: confirmación al guardar
+    const { toast, showToast, hideToast } = useToast();
     const [activeTab, setActiveTab] = useState('employees');
     const { summary, employees, payroll, alerts, isLoading, reload } = useHHRR();
     const addPicker = useHarvestStore(s => s.addPicker);
@@ -54,10 +61,11 @@ const HHRR: React.FC = () => {
         }
     };
 
-    const navItems = HR_NAV_ITEMS.map(item => ({
+    const { unreadCount } = useMessaging();
+    const navItems = withChatBadge(HR_NAV_ITEMS.map(item => ({
         ...item,
         badge: item.id === 'employees' ? summary.complianceAlerts : undefined,
-    }));
+    })), unreadCount);
 
     if (isLoading) {
         return (
@@ -74,13 +82,14 @@ const HHRR: React.FC = () => {
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'employees': return <ComponentErrorBoundary componentName="Employees"><EmployeesTab employees={employees} alerts={alerts} onUpdateEmployee={updateEmployee} onAddPicker={() => setShowAddPicker(true)} /></ComponentErrorBoundary>;
+            case 'employees': return <ComponentErrorBoundary componentName="Employees"><EmployeesTab employees={employees} alerts={alerts} onUpdateEmployee={updateEmployee} onAddPicker={() => setShowAddPicker(true)} showInvitations /></ComponentErrorBoundary>;
             case 'contracts': return <ComponentErrorBoundary componentName="Contracts"><ContractsTab employees={employees} summary={summary} onRefresh={reload} /></ComponentErrorBoundary>;
             case 'payroll': return <ComponentErrorBoundary componentName="Payroll"><PayrollTab payroll={payroll} summary={summary} /></ComponentErrorBoundary>;
             case 'documents': return <ComponentErrorBoundary componentName="Documents"><DocumentsTab /></ComponentErrorBoundary>;
-            case 'calendar': return <ComponentErrorBoundary componentName="Calendar"><CalendarTab /></ComponentErrorBoundary>;
+            case 'calendar': return <ComponentErrorBoundary componentName="Calendar"><CalendarTab employees={employees} onChanged={reload} /></ComponentErrorBoundary>;
+            case CHAT_TAB_ID: return <ChatTabView />;
             case 'planning': return <ComponentErrorBoundary componentName="Seasonal Planning"><SeasonalPlanningTab employees={employees} /></ComponentErrorBoundary>;
-            default: return <ComponentErrorBoundary componentName="Employees"><EmployeesTab employees={employees} alerts={alerts} onUpdateEmployee={updateEmployee} onAddPicker={() => setShowAddPicker(true)} /></ComponentErrorBoundary>;
+            default: return <ComponentErrorBoundary componentName="Employees"><EmployeesTab employees={employees} alerts={alerts} onUpdateEmployee={updateEmployee} onAddPicker={() => setShowAddPicker(true)} showInvitations /></ComponentErrorBoundary>;
         }
     };
 
@@ -95,18 +104,19 @@ const HHRR: React.FC = () => {
             accentColor="purple"
             titleIcon="badge"
         >
-            {/* Summary Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+            {/* Summary Cards (no en el chat) */}
+            {activeTab !== CHAT_TAB_ID && <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
                 <SummaryCard icon="group" iconColor="text-emerald-500" label={t('hr.active_workers')} value={summary.activeWorkers} />
                 <SummaryCard icon="description" iconColor="text-amber-500" label={t('hr.pending_contracts')} value={summary.pendingContracts} />
                 <SummaryCard icon="payments" iconColor="text-indigo-500" label={t('hr.payroll_week')} value={`${formatNZD(summary.payrollThisWeek / 1000, 1)}k`} />
                 <SummaryCard icon="warning" iconColor="text-red-500" label={t('hr.compliance_alerts')} value={summary.complianceAlerts} />
-            </div>
+            </div>}
 
+            {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
             {showAddPicker && (
                 <AddPickerModal
                     onClose={() => setShowAddPicker(false)}
-                    onAdd={async (p) => { await addPicker(p); reload(); }}
+                    onAdd={async (p) => { await addPicker(p); reload(); showToast(t('comms.picker_added', { name: p.name }), 'success'); }}
                 />
             )}
 

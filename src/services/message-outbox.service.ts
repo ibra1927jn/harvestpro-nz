@@ -8,12 +8,17 @@
 import { db, type QueuedMessage } from './db';
 import { encryptRecord, decryptRecord } from './dbCrypto';
 import { messagingRepository } from '@/repositories/messaging.repository';
+import { chatAttachmentsService } from './chat-attachments.service';
+import { pendingFiles } from './pending-uploads.service';
 import { logger } from '@/utils/logger';
 
 const isNetworkError = (e: unknown) => {
     const msg = (e as { message?: string })?.message ?? String(e);
-    return /fetch|network|offline|timeout/i.test(msg);
+    return /fetch|network|offline|timeout|load failed/i.test(msg);
 };
+
+/** El archivo del adjunto ya no está en el móvil (se borraron los datos de la app) */
+const ATTACHMENT_LOST = 'Attachment file is no longer on this device';
 
 let flushing = false;
 
@@ -87,6 +92,12 @@ export const messageOutbox = {
         await this.flush();
     },
 
+    /** Quita el mensaje de la bandeja y, si llevaba adjunto, su archivo */
+    async remove(m: Pick<QueuedMessage, 'id' | 'upload'>): Promise<void> {
+        await db.message_queue.delete(m.id);
+        if (m.upload) await pendingFiles.delete(m.upload.file_id);
+    },
+
     async pendingCount(): Promise<number> {
         return db.message_queue.where('synced').equals(0).count();
     },
@@ -105,11 +116,23 @@ export const messageOutbox = {
 
             for (const m of items) {
                 try {
+                    const a = m.upload;
+                    if (a) {
+                        // Primero el archivo (subir dos veces la misma ruta no falla), luego el mensaje
+                        const blob = await pendingFiles.get(a.file_id);
+                        if (blob) {
+                            await chatAttachmentsService.upload(a.path, blob, a.mime);
+                        } else if (!(await alreadyDelivered(m.id))) {
+                            throw new Error(ATTACHMENT_LOST);
+                        }
+                    }
                     await messagingRepository.sendMessage(m.recipient_id, m.sender_id, m.content, {
                         id: m.id,
                         createdAt: m.timestamp,
+                        ...(m.reply_to_id ? { replyToId: m.reply_to_id } : {}),
+                        ...(a ? { attachment: { path: a.path, type: a.type, name: a.name, size: a.size, duration_ms: a.duration_ms } } : {}),
                     });
-                    await db.message_queue.delete(m.id);
+                    await this.remove(m);
                     sent++;
                 } catch (e) {
                     const code = (e as { code?: string })?.code;
@@ -118,7 +141,7 @@ export const messageOutbox = {
                     }
                     if (code === '23505' || (await alreadyDelivered(m.id))) {
                         // Ya había llegado en un intento anterior
-                        await db.message_queue.delete(m.id);
+                        await this.remove(m);
                         sent++;
                     } else {
                         logger.error('[Outbox] Message rejected:', e);

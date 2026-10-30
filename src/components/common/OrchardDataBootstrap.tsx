@@ -16,6 +16,15 @@ export const OrchardDataBootstrap = () => {
     const fetchGlobalData = useHarvestStore(s => s.fetchGlobalData) as (orchardId?: string) => Promise<void>;
     const loadedFor = useRef<string | null>(null);
 
+    // Quién es, siempre al día (también si cambian el rol o el nombre a mitad de
+    // sesión): el rol decide si la presencia sale de los fichajes o de
+    // presence_today y quién edita el mínimo; el id cierra el día y firma las
+    // cubetas guardadas sin red
+    useEffect(() => {
+        if (!appUser?.id) return;
+        useHarvestStore.setState({ currentUser: { id: appUser.id, name: appUser.full_name, role: appUser.role } });
+    }, [appUser?.id, appUser?.full_name, appUser?.role]);
+
     useEffect(() => {
         if (!appUser?.id) return;
         const key = `${appUser.id}|${appUser.orchard_id ?? ''}`;

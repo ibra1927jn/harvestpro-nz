@@ -211,9 +211,9 @@ const TrendsTab: React.FC<TrendsTabProps> = ({ orchardId }) => {
                   <span className="text-sm font-medium text-text-primary flex-1">
                     {picker.name}
                   </span>
-                  <span className="text-xs text-green-600 font-bold">{aPct}% A</span>
+                  <span className="text-xs text-green-600 font-bold" title={gradeLabel(t, 'A')}>{aPct}% A</span>
                   {rejPct > 0 && (
-                    <span className="text-xs text-red-500 font-bold">{rejPct}% ✗</span>
+                    <span className="text-xs text-red-500 font-bold" title={gradeLabel(t, 'reject')}>{rejPct}% ✗</span>
                   )}
                   <span className="text-xs text-text-muted">{t('qc.inspected_n', { n: picker.total })}</span>
                 </div>

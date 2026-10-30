@@ -17,6 +17,13 @@ vi.mock('@/stores/useHarvestStore', () => ({
     ),
 }));
 
+// Foto de la cuenta del team leader (Mi cuenta): el enlace firmado llega ya resuelto
+const avatarMocks = vi.hoisted(() => ({ byUser: {} as Record<string, string> }));
+vi.mock('@/hooks/useAvatarUrl', () => ({
+    useAvatarSignedUrl: () => null,
+    useUserAvatarUrl: (userId: string | null | undefined) => (userId ? avatarMocks.byUser[userId] ?? null : null),
+}));
+
 import TeamLeaderCard from './TeamLeaderCard';
 
 const makeLeader = () => ({
@@ -106,10 +113,23 @@ describe('TeamLeaderCard', () => {
         expect(screen.getByText('No crew members assigned yet.')).toBeTruthy();
     });
 
-    it('shows leader avatar', () => {
+    it('shows leader avatar (initials, no external avatar service)', () => {
         render(<TeamLeaderCard {...defaultProps} />);
-        const imgs = screen.getAllByRole('img');
+        const imgs = screen.getAllByRole('img', { name: 'John Leader' });
         expect(imgs.length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('JL').length).toBeGreaterThanOrEqual(1);
+        expect(document.querySelector('img[src*="ui-avatars"]')).toBeNull();
+    });
+
+    it('shows the account photo when the team leader uploaded one in My account', () => {
+        avatarMocks.byUser = { leader1: 'https://signed.example/leader1.jpg' };
+        try {
+            render(<TeamLeaderCard {...defaultProps} />);
+            const photo = document.querySelector('img[src="https://signed.example/leader1.jpg"]');
+            expect(photo).not.toBeNull();
+        } finally {
+            avatarMocks.byUser = {};
+        }
     });
 
     it('calls onSelectUser when avatar is clicked', () => {

@@ -37,6 +37,11 @@ const manager2: TranslationDict = {
     'apikeys.requests': '{n} peticiones',
     'apikeys.last_used': 'Último uso {date}',
     'apikeys.expires_on': 'Caduca el {date}',
+    'close.already_closed': 'Día cerrado',
+    'close.closed_status': 'Hoy está cerrado y bloqueado: no se aceptan más cubetas ni cambios de fichajes de hoy.',
+    'close.banner_title': 'El día está cerrado',
+    'close.banner_body': 'El manager cerró el día de hoy. No se aceptan cubetas nuevas ni cambios de fichajes de hoy.',
+    'close.scan_blocked': 'El día está cerrado: esta cubeta no se ha registrado',
 };
 
 export default manager2;

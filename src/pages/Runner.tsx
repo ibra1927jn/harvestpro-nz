@@ -17,6 +17,7 @@ import Toast from '@/components/ui/Toast';
 import SyncStatusMonitor from '@/components/common/SyncStatusMonitor';
 import { useRunnerData } from '@/hooks/useRunnerData';
 import { RUNNER_NAV_TABS, type RunnerTab } from '@/config/navigation/runner.nav';
+import DayClosedBanner from '@/components/common/DayClosedBanner';
 import { useTranslation } from '@/i18n';
 
 // Lazy-loaded views (code-split for performance)
@@ -24,16 +25,14 @@ const loadLogistics = () => import('@/components/views/runner/LogisticsView');
 const loadRunners = () => import('@/components/views/runner/RunnersView');
 const loadWarehouse = () => import('@/components/views/runner/WarehouseView');
 const loadMessaging = () => import('@/components/views/runner/MessagingView');
-const loadTimesheet = () => import('@/components/views/manager/TimesheetEditor');
+const loadTimesheet = () => import('@/components/views/runner/MyTimesheetView');
 const loadScanner = () => import('@/components/modals/ScannerModal');
-const loadQuality = () => import('@/components/modals/QualityRatingModal');
 const LogisticsView = React.lazy(loadLogistics);
 const RunnersView = React.lazy(loadRunners);
 const WarehouseView = React.lazy(loadWarehouse);
 const MessagingView = React.lazy(loadMessaging);
-const TimesheetEditor = React.lazy(loadTimesheet);
+const MyTimesheetView = React.lazy(loadTimesheet);
 const ScannerModal = React.lazy(loadScanner);
-const QualityRatingModal = React.lazy(loadQuality);
 
 /**
  * Precarga lo que el runner usa en el campo. Sin esto, si se quedaba sin
@@ -43,7 +42,7 @@ const QualityRatingModal = React.lazy(loadQuality);
  */
 export function preloadRunnerModules(): Promise<unknown> {
   return Promise.all(
-    [loadScanner, loadQuality, loadLogistics, loadRunners, loadWarehouse, loadMessaging, loadTimesheet].map(load =>
+    [loadScanner, loadLogistics, loadRunners, loadWarehouse, loadMessaging, loadTimesheet].map(load =>
       load().catch(() => undefined)
     )
   );
@@ -82,6 +81,7 @@ const Runner = () => {
           <div className="absolute bottom-[-5%] right-[-10%] w-[50%] h-[40%] rounded-full bg-sky-500/10 blur-[80px] pointer-events-none" />
 
           <SyncStatusMonitor />
+          <DayClosedBanner />
 
           <div key={activeTab} className="animate-fade-in relative z-10">
             <Suspense fallback={<TabLoader />}>
@@ -92,7 +92,7 @@ const Runner = () => {
                     pendingUploads={runner.pendingUploads}
                     rejectedScans={runner.rejectedScans}
                     inventory={runner.inventory}
-                    onBroadcast={runner.handleBroadcast}
+                    onOpenNotifications={() => setActiveTab('messaging')}
                     onRequestRefill={runner.handleRequestRefill}
                     selectedBinId={runner.selectedBinId}
                   />
@@ -105,12 +105,8 @@ const Runner = () => {
               )}
               {activeTab === 'warehouse' && (
                 <ComponentErrorBoundary componentName="Warehouse">
-                  <WarehouseView
-                    inventory={runner.inventory}
-                    onTransportRequest={() =>
-                      runner.handleBroadcast('Warehouse is full. Pickup needed.')
-                    }
-                  />
+                  {/* «Solicitar transporte» crea la solicitud desde la propia vista (antes solo un mensaje) */}
+                  <WarehouseView inventory={runner.inventory} />
                 </ComponentErrorBoundary>
               )}
               {activeTab === 'messaging' && (
@@ -120,9 +116,8 @@ const Runner = () => {
               )}
               {activeTab === 'timesheet' && (
                 <ComponentErrorBoundary componentName="Timesheet">
-                  <div className="p-4">
-                    <TimesheetEditor orchardId={runner.orchard?.id || ''} />
-                  </div>
+                  {/* Solo la hoja de la persona: el runner no ve ni corrige los fichajes de otros */}
+                  <MyTimesheetView />
                 </ComponentErrorBoundary>
               )}
             </Suspense>
@@ -155,15 +150,6 @@ const Runner = () => {
             onBatchScan={codes => runner.handleScanComplete(codes)}
             scanType={runner.scanType || 'BUCKET'}
             batchMode={runner.scanType === 'BUCKET'}
-          />
-        </Suspense>
-      )}
-      {runner.qualityScan?.step === 'QUALITY' && (
-        <Suspense fallback={<TabLoader />}>
-          <QualityRatingModal
-            scannedCode={runner.qualityScan.code}
-            onRate={runner.submitQuality}
-            onCancel={() => runner.setQualityScan(null)}
           />
         </Suspense>
       )}

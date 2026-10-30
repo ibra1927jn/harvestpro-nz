@@ -18,6 +18,10 @@ export interface Employee {
   /** Contrato vigente (si tiene) */
   contract_id?: string;
   contract_updated_at?: string;
+  /** Copia firmada del contrato vigente (hr_documents employment_agreement con contract_id) */
+  contract_document?: { id: string; storage_path: string };
+  /** Lo que falta para el alta completa (semáforo); contrato / copia firmada ponen status = pending */
+  missing_items?: ('contract' | 'signed_copy' | 'visa' | 'tax_declaration' | 'health_safety_cert')[];
   /** staff = plantilla (pickers, TL, runners); office = cuenta de oficina */
   source?: 'staff' | 'office';
   phone?: string;

@@ -3,10 +3,12 @@
  */
 import React, { useState, useRef } from 'react';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
+import type { ExportSections } from '@/utils/weeklyReportExport';
 
 interface ExportModalProps {
     onClose: () => void;
-    onExportPDF: () => void;
+    /** Recibe las secciones marcadas (antes se ignoraban) */
+    onExportPDF: (sections: ExportSections) => void;
     onExportCSV: () => void;
 }
 
@@ -22,7 +24,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ onClose, onExportPDF, onExpor
     useDialogA11y(dialogRef, { onClose });
 
     const [format, setFormat] = useState<'pdf' | 'csv'>('pdf');
-    const [sections, setSections] = useState({ summary: true, charts: true, teams: true, pickerDetail: true });
+    const [sections, setSections] = useState<ExportSections>({ summary: true, charts: true, teams: true, pickerDetail: true });
     const toggleSection = (key: keyof typeof sections) => setSections(prev => ({ ...prev, [key]: !prev[key] }));
 
     return (
@@ -114,7 +116,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ onClose, onExportPDF, onExpor
                 {/* Action Button */}
                 <div className="p-5 pt-0">
                     <button
-                        onClick={format === 'pdf' ? onExportPDF : onExportCSV}
+                        onClick={() => (format === 'pdf' ? onExportPDF(sections) : onExportCSV())}
                         className={`w-full py-3.5 rounded-xl text-white font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 ${format === 'pdf' ? 'bg-gradient-to-r from-rose-500 to-rose-600 shadow-rose-500/25' : 'bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-emerald-500/25'}`}
                     >
                         <span aria-hidden="true" className="material-symbols-outlined">download</span>

@@ -1,8 +1,10 @@
 /**
- * GoalProgress — Daily target with ETA + Smart Projection
- * 
- * Shows current progress AND forward-looking projection:
- * "At current pace, we'll hit X buckets by end of day"
+ * GoalProgress — Meta del día con hora estimada al ritmo actual
+ *
+ * No hay hora de fin de turno (cada equipo y runner termina cuando termina,
+ * decisión del dueño 2026-10-21): no se proyecta «a fin de día» ni se da un
+ * semáforo adelantado/atrasado. Se enseña el avance, «a este ritmo la meta
+ * se alcanza a las HH:MM», el ritmo y lo que falta.
  */
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from '@/i18n';
@@ -13,12 +15,11 @@ interface GoalProgressProps {
     currentTons: number;
     targetTons: number;
     eta: string;
-    etaStatus: 'ahead' | 'on_track' | 'behind' | 'complete' | 'no_data';
+    etaStatus: 'complete' | 'no_data' | 'projected';
+    /** Cubetas por hora (ritmo de las últimas 2 h) */
     velocity?: number;
     totalBuckets?: number;
     hoursElapsed?: number;
-    /** Pre-computed projection from useHarvestMetrics (evita jitter por render) */
-    projectedBuckets?: number;
 }
 
 const GoalProgress: React.FC<GoalProgressProps> = ({
@@ -27,9 +28,9 @@ const GoalProgress: React.FC<GoalProgressProps> = ({
     targetTons,
     eta,
     etaStatus,
+    velocity = 0,
     totalBuckets = 0,
     hoursElapsed = 0,
-    projectedBuckets: projectedBucketsProp,
 }) => {
     const { t } = useTranslation();
     // Animated progress bar — fills from 0 on mount
@@ -40,12 +41,8 @@ const GoalProgress: React.FC<GoalProgressProps> = ({
         return () => clearTimeout(timeout);
     }, [progress]);
 
-    // Usar la proyección pre-computada si viene como prop; fallback al cálculo inline
-    const projectedBuckets = projectedBucketsProp !== undefined
-        ? projectedBucketsProp
-        : hoursElapsed > 0 ? Math.round((totalBuckets / hoursElapsed) * 8) : 0;
-    const targetBuckets = Math.round(targetTons * 72); // ~72 buckets per ton
-    const isOnTrack = projectedBuckets >= targetBuckets || etaStatus === 'ahead' || etaStatus === 'complete';
+    const targetBuckets = Math.round(targetTons * 72); // ~72 cubetas por tonelada
+    const remainingBuckets = Math.max(0, targetBuckets - totalBuckets);
 
     return (
         <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white p-6 !rounded-3xl shadow-xl relative overflow-hidden dash-card-enter">
@@ -59,14 +56,14 @@ const GoalProgress: React.FC<GoalProgressProps> = ({
                 </div>
                 <div className="text-right">
                     <p className="text-xl font-bold">{currentTons.toFixed(1)} / {targetTons} t</p>
-                    <div className={`flex items-center gap-1 mt-1 text-sm font-bold ${etaStatus === 'ahead' ? 'text-green-300' :
-                        etaStatus === 'on_track' ? 'text-yellow-300' : 'text-red-300'
+                    <div className={`flex items-center gap-1 mt-1 text-sm font-bold ${etaStatus === 'complete' ? 'text-green-300' :
+                        etaStatus === 'projected' ? 'text-indigo-100' : 'text-white/60'
                         }`}>
                         <span aria-hidden="true" className="material-symbols-outlined text-sm">
-                            {etaStatus === 'ahead' ? 'rocket_launch' :
-                                etaStatus === 'on_track' ? 'schedule' : 'warning'}
+                            {etaStatus === 'complete' ? 'check_circle' :
+                                etaStatus === 'projected' ? 'schedule' : 'hourglass_empty'}
                         </span>
-                        <span>{t('dashboard.eta')}: {eta}</span>
+                        <span>{etaStatus === 'projected' ? t('dashboard.eta_at_pace', { time: eta }) : eta}</span>
                     </div>
                 </div>
             </div>
@@ -84,12 +81,12 @@ const GoalProgress: React.FC<GoalProgressProps> = ({
                 </div>
             </div>
 
-            {/* Smart Projection */}
-            {hoursElapsed > 0.5 && (
+            {/* Ritmo y lo que falta — sin proyección a una hora de fin que no existe */}
+            {hoursElapsed > 0.5 && etaStatus !== 'complete' && (
                 <div className="relative z-10 mt-4 pt-3 border-t border-white/20 flex justify-between items-center text-sm animate-fade-in anim-delay" style={{ '--delay': '0.5s', animationFillMode: 'both' } as React.CSSProperties}>
-                    <span className="text-white/80">{t('dashboard.projected')} (8h):</span>
-                    <span className={`font-bold flex items-center gap-1.5 ${isOnTrack ? 'text-green-300' : 'text-amber-300'}`}>
-                        {isOnTrack ? '🟢' : '⚠️'} {formatNZNumber(projectedBuckets)} {t('dashboard.buckets')}
+                    <span className="text-white/80">{t('dashboard.pace_now', { n: formatNZNumber(Math.round(velocity)) })}</span>
+                    <span className="font-bold text-indigo-100">
+                        {t('dashboard.remaining_to_goal', { n: formatNZNumber(remainingBuckets) })}
                     </span>
                 </div>
             )}

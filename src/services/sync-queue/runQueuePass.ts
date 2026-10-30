@@ -12,6 +12,7 @@ import type { QueuedSyncItem } from '../db';
 import { dispatchSyncItem } from './dispatchItem';
 import { maxRetriesFor } from './categorizeError';
 import type { SyncErrorCategory } from './categorizeError';
+import { isSyncRejected } from './rejectedError';
 
 /** Lo que la pasada usa del servicio (por `this`, para que se pueda espiar/sustituir) */
 export interface QueuePassDeps {
@@ -28,6 +29,19 @@ type FailureOutcome = 'stop' | 'removed' | 'kept';
 
 interface PassState {
   consecutiveNetworkErrors: number;
+  /** Grupos con un elemento sin enviar en esta pasada: los de detrás esperan */
+  blockedGroups: Set<string>;
+}
+
+/**
+ * Elementos que deben llegar en orden (entrada → descanso → salida de la misma
+ * persona): si uno no se pudo enviar, los siguientes del grupo esperan a la
+ * próxima pasada en vez de llegar antes que él.
+ */
+export function orderGroupOf(item: QueuedSyncItem): string | null {
+  if (item.type !== 'ATTENDANCE') return null;
+  const pickerId = (item.payload as { picker_id?: unknown }).picker_id;
+  return typeof pickerId === 'string' ? `ATTENDANCE:${pickerId}` : null;
 }
 
 /** Tipo que esta versión no sabe procesar: a la dead letter queue con el motivo */
@@ -73,6 +87,14 @@ async function handleFailure(
   error: unknown,
   state: PassState
 ): Promise<FailureOutcome> {
+  // Rechazo definitivo del servidor: a la cola de fallidos con su motivo, ya
+  if (isSyncRejected(error)) {
+    logger.warn(`[SyncService] Item ${item.id} rejected by the server: ${error.message}`);
+    state.consecutiveNetworkErrors = 0;
+    const moved = await deps.moveToDeadLetter(item, error.message, 'REJECTED', item.retryCount + 1);
+    return moved ? 'removed' : 'kept';
+  }
+
   const category = deps.categorizeError(error);
   logger.error(`[SyncService] Failed to sync item ${item.id} (${category})`, error);
 
@@ -108,9 +130,11 @@ export async function runQueuePass(deps: QueuePassDeps): Promise<void> {
   const schemas = await import('../sync.schemas');
 
   const processedIds: string[] = [];
-  const state: PassState = { consecutiveNetworkErrors: 0 };
+  const state: PassState = { consecutiveNetworkErrors: 0, blockedGroups: new Set() };
 
   for (const item of queue) {
+    const group = orderGroupOf(item);
+    if (group && state.blockedGroups.has(group)) continue;
     try {
       if (await dispatchSyncItem(item, schemas)) {
         processedIds.push(item.id);
@@ -122,6 +146,7 @@ export async function runQueuePass(deps: QueuePassDeps): Promise<void> {
       const outcome = await handleFailure(deps, item, e, state);
       if (outcome === 'stop') break;
       if (outcome === 'removed') processedIds.push(item.id);
+      else if (group) state.blockedGroups.add(group);
     }
   }
 

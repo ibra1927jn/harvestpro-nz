@@ -10,6 +10,8 @@ import {
   pendingSignOutMessage,
   resolveWhitelistRegistration,
   shouldRefreshOnVisible,
+  tokenNeedsRefresh,
+  REFRESH_IF_EXPIRES_WITHIN_MS,
   VISIBILITY_REFRESH_COOLDOWN_MS,
 } from './authLogic';
 
@@ -76,6 +78,17 @@ describe('shouldRefreshOnVisible', () => {
   it('no refresca oculto ni sin red', () => {
     expect(shouldRefreshOnVisible(false, true, now, 0)).toBe(false);
     expect(shouldRefreshOnVisible(true, false, now, 0)).toBe(false);
+  });
+});
+
+describe('tokenNeedsRefresh', () => {
+  const now = 1_000_000_000;
+  it('renueva si caduca pronto o no se sabe', () => {
+    expect(tokenNeedsRefresh(Math.floor((now + REFRESH_IF_EXPIRES_WITHIN_MS - 1000) / 1000), now)).toBe(true);
+    expect(tokenNeedsRefresh(null, now)).toBe(true);
+  });
+  it('no renueva con un token aún válido mucho rato', () => {
+    expect(tokenNeedsRefresh(Math.floor((now + 50 * 60_000) / 1000), now)).toBe(false);
   });
 });
 

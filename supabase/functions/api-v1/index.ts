@@ -19,6 +19,8 @@
  */
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/security.ts';
+import { pieceRateOn, nzDateOf } from '../_shared/pay-rules.ts';
+import { loadDailyPieceRates } from '../_shared/piece-rates.ts';
 
 // Metodos HTTP permitidos por este endpoint
 const ALLOWED_METHODS = 'GET, POST, OPTIONS';
@@ -139,26 +141,35 @@ async function handleGetPayroll(supabase: SupabaseClient, orchardId: string) {
     .eq('orchard_id', orchardId)
     .single();
 
+  // Día NZ de hoy y precio de hoy (piece_rates): cada cubeta al de su variedad
+  const todayNZ = nzDateOf(new Date());
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const dailyRates = await loadDailyPieceRates(supabase, todayNZ, todayNZ);
+  const fallback = Number(settings?.piece_rate || 0);
+  const pieceRate = pieceRateOn(dailyRates, orchardId, null, todayNZ, fallback);
 
   const { data: buckets } = await supabase
     .from('bucket_records')
-    .select('picker_id')
+    .select('picker_id, variety, scanned_at, quality_grade')
     .eq('orchard_id', orchardId)
+    .is('deleted_at', null)
     .gte('scanned_at', today.toISOString());
 
   // Aggregate by picker
-  const pickerCounts = new Map<string, number>();
-  for (const b of buckets || []) {
-    pickerCounts.set(b.picker_id, (pickerCounts.get(b.picker_id) || 0) + 1);
+  const pickerCounts = new Map<string, { count: number; gross: number }>();
+  for (const b of (buckets || []) as { picker_id: string; variety: string | null; scanned_at: string; quality_grade: string | null }[]) {
+    if (b.quality_grade === 'reject') continue;
+    const acc = pickerCounts.get(b.picker_id) ?? { count: 0, gross: 0 };
+    acc.count += 1;
+    acc.gross = Math.round((acc.gross + pieceRateOn(dailyRates, orchardId, b.variety, nzDateOf(b.scanned_at), fallback)) * 100) / 100;
+    pickerCounts.set(b.picker_id, acc);
   }
 
-  const pieceRate = settings?.piece_rate || 0;
-  const summary = Array.from(pickerCounts.entries()).map(([pickerId, count]) => ({
+  const summary = Array.from(pickerCounts.entries()).map(([pickerId, acc]) => ({
     picker_id: pickerId,
-    bucket_count: count,
-    gross_pay: count * pieceRate,
+    bucket_count: acc.count,
+    gross_pay: acc.gross,
     piece_rate: pieceRate,
   }));
 
@@ -167,7 +178,7 @@ async function handleGetPayroll(supabase: SupabaseClient, orchardId: string) {
       date: today.toISOString().split('T')[0],
       piece_rate: pieceRate,
       total_pickers: summary.length,
-      total_buckets: buckets?.length || 0,
+      total_buckets: summary.reduce((sum, s) => sum + s.bucket_count, 0),
       total_gross: summary.reduce((sum, s) => sum + s.gross_pay, 0),
       pickers: summary,
     },

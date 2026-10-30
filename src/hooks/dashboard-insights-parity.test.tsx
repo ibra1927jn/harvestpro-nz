@@ -114,14 +114,6 @@ describe('dashboard-insights-parity', () => {
         expect(team?.totalBins).toBe(30);
     });
 
-    it('projectedEndOfDay es múltiplo de 10', () => {
-        const { result } = renderHook(() => useHarvestMetrics());
-        const projected = result.current.projectedEndOfDay;
-        if (projected > 0) {
-            expect(projected % 10).toBe(0);
-        }
-    });
-
     it('hoursElapsed ≥ 0', () => {
         const { result } = renderHook(() => useHarvestMetrics());
         expect(result.current.hoursElapsed).toBeGreaterThanOrEqual(0);

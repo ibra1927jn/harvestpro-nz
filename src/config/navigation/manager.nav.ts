@@ -26,5 +26,6 @@ export const DESKTOP_NAV: NavItem[] = [
   // { id: 'mpi', label: 'MPI Export', icon: 'verified' },
   // { id: 'api-keys', label: 'API Keys', icon: 'key' },
   { id: 'messaging', label: 'Messaging', icon: 'chat' },
+  { id: 'structure', label: 'Orchard setup', icon: 'grid_view' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
 ];

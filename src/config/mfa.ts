@@ -15,3 +15,13 @@ const MFA_ROLES: ReadonlySet<string> = new Set(['manager', 'admin', 'payroll_adm
 export function mfaRequiredFor(role: string | null | undefined): boolean {
   return MFA_ENFORCED && MFA_ROLES.has(role ?? '');
 }
+
+/**
+ * ¿Es un rol con 2FA (aunque en desarrollo esté apagado)? Mi cuenta solo ofrece
+ * configurar / regenerar el 2FA a estos roles: a los demás nadie les pide el
+ * código al entrar, así que un factor enrolado no protegería nada y además
+ * bloquearía el cambio de contraseña (GoTrue exige aal2 con factor verificado).
+ */
+export function isMfaRole(role: string | null | undefined): boolean {
+  return MFA_ROLES.has(role ?? '');
+}

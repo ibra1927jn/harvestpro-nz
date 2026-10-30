@@ -1,10 +1,66 @@
 import { logger } from '@/utils/logger';
 import { todayNZST } from '@/utils/nzst';
-import type { SupabasePicker, SupabasePerformanceStat } from '../types/database.types';
+import type { SupabasePicker } from '../types/database.types';
 import { attendanceRepository } from '@/repositories/attendance.repository';
-import { pickerRepository } from '@/repositories/picker.repository';
 import { edgeFunctionsRepository } from '@/repositories/edge-functions.repository';
 import { analytics } from '@/config/analytics';
+import type { CorrectBatchResponse } from '@/schemas/api.schemas';
+
+/** Pase de lista sin red: id del tramo hecho en el móvil y hora del móvil */
+export interface RollCallTiming {
+  /** check_in: id del tramo generado en el móvil (reintentar no duplica) */
+  clientId?: string;
+  /** Hora del móvil (ya corregida con el desfase medido); solo desde la cola sin red */
+  at?: string;
+  /** Corrección (ms) que el móvil ya sumó a `at` */
+  skewApplied?: number;
+  /** check_out / descanso: si el tramo del móvil no existe, el abierto de esta persona */
+  pickerId?: string;
+}
+
+export type BreakAction = 'break_start' | 'break_end';
+
+/**
+ * Hora del móvil para el servidor: `at`, la corrección ya aplicada y la hora
+ * del móvil al enviar (client_now): con ellas mide el desfase de ahora, corrige
+ * y lo apunta. Sin `at` no se manda nada: la hora la pone el servidor.
+ * Elementos guardados por una versión anterior de la app (sin clock_skew_ms):
+ * su `at` ya venía corregido y no se sabe cuánto, así que se manda sin
+ * client_now y el servidor no lo vuelve a corregir (solo lo acota).
+ */
+function deviceTime(timing: RollCallTiming): Record<string, string | number> {
+  if (!timing.at) return {};
+  if (timing.skewApplied === undefined) return { at: timing.at };
+  return { at: timing.at, client_now: Date.now(), clock_skew_ms: Math.round(timing.skewApplied) };
+}
+
+/** Llama a manage-attendance midiendo el desfase del reloj del móvil */
+async function invokeAttendance(body: Record<string, unknown>): Promise<unknown> {
+  const sentAt = Date.now();
+  const { data, error } = await edgeFunctionsRepository.invoke('manage-attendance', body);
+  if (error) throw error instanceof Error ? error : new Error(error.message);
+  const receivedAt = Date.now();
+  const serverTime = (data as { server_time?: unknown } | null)?.server_time;
+  if (typeof serverTime === 'string') {
+    // Import diferido: bucket-upload.service lee el store, que importa este servicio
+    void import('./bucket-upload.service')
+      .then(m => m.updateClockSkew(serverTime, sentAt, receivedAt))
+      .catch(() => undefined);
+  }
+  return data;
+}
+
+/** Una corrección dentro de un lote: campos opcionales (sin valor = no tocar) */
+export interface AttendanceCorrectionItem {
+  attendance_id: string;
+  check_in?: string;
+  check_out?: string;
+  /** null = quitar el descanso anotado */
+  break_start?: string | null;
+}
+
+/** Máximo de fichajes por lote (el mismo que la Edge Function) */
+export const ATTENDANCE_BATCH_MAX = 200;
 
 export const attendanceService = {
   // --- DAILY ATTENDANCE (LIVE OPERATIONS) ---
@@ -17,21 +73,21 @@ export const attendanceService = {
   /**
    * Check in a picker — via Edge Function (server-side)
    */
-  async checkInPicker(pickerId: string, orchardId: string, verifiedBy?: string) {
+  async checkInPicker(pickerId: string, orchardId: string, verifiedBy?: string, timing: RollCallTiming = {}) {
     try {
-      const { data, error } = await edgeFunctionsRepository.invoke('manage-attendance', {
+      const data = await invokeAttendance({
         action: 'check_in',
         picker_id: pickerId,
         orchard_id: orchardId,
         verified_by: verifiedBy,
+        ...(timing.clientId ? { client_id: timing.clientId } : {}),
+        ...deviceTime(timing),
       });
-
-      if (error) throw new Error(error.message);
       // Esquemas (zod) bajo demanda: no van en el bundle inicial
       const { CheckInResponseSchema, validateResponse } = await import('@/schemas/api.schemas');
       const result = validateResponse(CheckInResponseSchema, data, 'checkInPicker');
       // 📊 PostHog: Track picker check-in event
-      analytics.trackCheckIn(pickerId);
+      analytics.trackCheckIn();
       return result;
     } catch (err) {
       logger.error('[Attendance] Check-in via Edge Function failed:', err);
@@ -42,14 +98,14 @@ export const attendanceService = {
   /**
    * Check out a picker — via Edge Function (server-side)
    */
-  async checkOutPicker(attendanceId: string) {
+  async checkOutPicker(attendanceId: string, timing: RollCallTiming = {}) {
     try {
-      const { data, error } = await edgeFunctionsRepository.invoke('manage-attendance', {
+      const data = await invokeAttendance({
         action: 'check_out',
         attendance_id: attendanceId,
+        ...deviceTime(timing),
+        ...(timing.pickerId ? { picker_id: timing.pickerId } : {}),
       });
-
-      if (error) throw new Error(error.message);
       const { CheckOutResponseSchema, validateResponse } = await import('@/schemas/api.schemas');
       return validateResponse(CheckOutResponseSchema, data, 'checkOutPicker');
     } catch (err) {
@@ -58,8 +114,21 @@ export const attendanceService = {
     }
   },
 
-  async getTodayPerformance(orchardId?: string) {
-    return pickerRepository.getPerformanceToday(orchardId);
+  /** Inicio o fin del descanso de comida desde el pase de lista */
+  async recordBreak(action: BreakAction, attendanceId: string, timing: RollCallTiming = {}) {
+    try {
+      const data = await invokeAttendance({
+        action,
+        attendance_id: attendanceId,
+        ...deviceTime(timing),
+        ...(timing.pickerId ? { picker_id: timing.pickerId } : {}),
+      });
+      const { BreakResponseSchema, validateResponse } = await import('@/schemas/api.schemas');
+      return validateResponse(BreakResponseSchema, data, 'recordBreak');
+    } catch (err) {
+      logger.error(`[Attendance] ${action} via Edge Function failed:`, err);
+      throw err;
+    }
   },
 
   // 4. Get Active Pickers for Live Ops (Runner View)
@@ -67,12 +136,11 @@ export const attendanceService = {
     const today = todayNZST();
 
     const attendanceData = await attendanceRepository.getActivePickers(orchardId, today);
-    const perfData = await pickerRepository.getPerformanceToday(orchardId);
+    // (Sin pickers_performance_today: vista rota, siempre 0; auditoría 2026-10-23)
 
     return (attendanceData || []).map((record: unknown) => {
       const rec = record as Record<string, unknown>;
       const p = rec.pickers as SupabasePicker;
-      const perf = perfData?.find((stat: SupabasePerformanceStat) => stat.picker_id === p.id);
 
       const checkInTime = rec.check_in as string | null;
       let hoursWorked = 0;
@@ -88,7 +156,7 @@ export const attendanceService = {
         name: p.name || 'Unknown',
         avatar: (p.name || '??').substring(0, 2).toUpperCase(),
         hours: hoursWorked,
-        total_buckets_today: perf?.total_buckets || 0,
+        total_buckets_today: 0,
         current_row: p.current_row || 0,
         status: (p.status !== 'archived' && p.status !== 'inactive' ? 'active' : 'inactive') as
           | 'active'
@@ -136,6 +204,46 @@ export const attendanceService = {
       if (error) throw new Error(error.message);
     } catch (err) {
       logger.error('[Attendance] Correction via Edge Function failed:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * Corrige varios fichajes de una vez (misma corrección y motivo para todos)
+   * — Edge Function `correct_batch`. Devuelve el resultado por fichaje: una
+   * fila que falla (p. ej. RLS) no tira el lote. Requiere conexión: la
+   * corrección no se encola en Dexie (tampoco la simple).
+   */
+  async correctAttendanceBatch(
+    items: AttendanceCorrectionItem[],
+    reason: string,
+    adminId: string
+  ): Promise<CorrectBatchResponse> {
+    if (items.length === 0) {
+      return { success: true, total: 0, succeeded: 0, failed: 0, results: [] };
+    }
+    if (items.length > ATTENDANCE_BATCH_MAX) {
+      throw new Error(`At most ${ATTENDANCE_BATCH_MAX} timesheets per batch`);
+    }
+    try {
+      const { data, error } = await edgeFunctionsRepository.invoke('manage-attendance', {
+        action: 'correct_batch',
+        // Solo los campos con valor: la Edge Function no toca lo que no viene
+        items: items.map(item => ({
+          attendance_id: item.attendance_id,
+          ...(item.check_in ? { check_in: item.check_in } : {}),
+          ...(item.check_out ? { check_out: item.check_out } : {}),
+          ...(item.break_start !== undefined ? { break_start: item.break_start } : {}),
+        })),
+        reason,
+        admin_id: adminId,
+      });
+
+      if (error) throw new Error(error.message);
+      const { CorrectBatchResponseSchema, validateResponse } = await import('@/schemas/api.schemas');
+      return validateResponse(CorrectBatchResponseSchema, data, 'correctAttendanceBatch');
+    } catch (err) {
+      logger.error('[Attendance] Batch correction via Edge Function failed:', err);
       throw err;
     }
   },

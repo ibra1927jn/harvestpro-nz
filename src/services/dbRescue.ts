@@ -29,7 +29,7 @@ export interface RescueSnapshot {
 }
 
 /** Tablas cuyo contenido entero es trabajo pendiente */
-const KEEP_ALL = ['sync_queue', 'dead_letter_queue', 'recovery'];
+const KEEP_ALL = ['sync_queue', 'dead_letter_queue', 'recovery', 'pending_files'];
 /** Tablas con flag synced: se guarda solo lo que no se subió */
 const KEEP_UNSYNCED = ['bucket_queue', 'message_queue'];
 

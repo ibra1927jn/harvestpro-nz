@@ -1,6 +1,6 @@
 /**
  * i18n/english-smell.ts — Strings canónicas por sección que DEBEN estar
- * traducidas al ES (y al resto de locales con cobertura propia).
+ * traducidas al ES y al FR (english-smell.test.ts).
  *
  * Cada entrada registra:
  *   section  — agrupación lógica para reportes legibles
@@ -121,6 +121,14 @@ export const CANONICAL_TRANSLATIONS: SmellEntry[] = [
     // ── Misc ──────────────────────────────────────────────────────
     { section: 'misc', key: 'timesheet.title', en: 'Timesheet Editor' },
     { section: 'misc', key: 'sync.all_clear',  en: 'All Clear!' },
+
+    // ── Estructura del huerto y huerto nuevo ─────────────────────
+    { section: 'orchard-setup', key: 'nav.structure',          en: 'Orchard setup' },
+    { section: 'orchard-setup', key: 'ostruct.seasons',        en: 'Seasons' },
+    { section: 'orchard-setup', key: 'ostruct.add_block',      en: 'Add block' },
+    { section: 'orchard-setup', key: 'ostruct.mode_range',     en: 'Set a range' },
+    { section: 'orchard-setup', key: 'owiz.title',             en: 'New Orchard Setup' },
+    { section: 'orchard-setup', key: 'owiz.step.structure',    en: 'Season & blocks' },
 ];
 
 /**
@@ -133,3 +141,35 @@ export const EXEMPT_FROM_DIFF_CHECK = new Set<string>([
     'common.hours_short',  // 'h' — abreviatura universal
     'common.bins',         // puede coincidir según traducción
 ]);
+
+// ─── Francés ─────────────────────────────────────────────────────────
+
+/** Palabras que se escriben igual en inglés y en francés (o que se dejan en inglés a propósito). */
+export const FR_SAME_AS_EN_WORDS: ReadonlySet<string> = new Set<string>([
+    // Términos del sector y del producto que no se traducen
+    'bin', 'bins', 'runner', 'runners', 'kia', 'ora',
+    // Marcas, formatos y siglas
+    'nzd', 'csv', 'excel', 'google', 'sheets', 'xero', 'paysauce', 'pdf', 'qr', 'id', 'rej', 'ok',
+    'kiwisaver', 'ird', 'paye', 'email',
+    // Unidades
+    'h', 'min',
+    // Palabras francesas que coinciden con el inglés
+    'photo', 'conversation', 'conversations', 'direct', 'production', 'stable', 'type', 'visa',
+    'notes', 'total', 'transit', 'zone', 'inactive', 'action', 'date', 'message', 'acceptable',
+    'stock', 'transport', 'active', 'notifications', 'avatar', 'menu', 'documents', 'maintenance',
+    'permanent', 'cycles',
+]);
+
+/** Palabras de un texto (sin placeholders {x}, números ni signos). */
+function words(text: string): string[] {
+    return text
+        .replace(/\{[A-Za-z_][A-Za-z0-9_]*\}/g, ' ')
+        .toLowerCase()
+        .split(/[^a-zà-ÿœæ]+/)
+        .filter(Boolean);
+}
+
+/** true si un texto inglés puede quedarse igual en francés (todas sus palabras están en la lista). */
+export function frSameAsEnIsOk(text: string): boolean {
+    return words(text).every(w => FR_SAME_AS_EN_WORDS.has(w));
+}

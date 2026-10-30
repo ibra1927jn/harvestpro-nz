@@ -17,6 +17,7 @@ const baseQuality = {
     reject: 2,
     total: 20,
     score: 75,
+    flaggedCriteria: [],
 };
 
 describe('QualityTab', () => {
@@ -35,7 +36,7 @@ describe('QualityTab', () => {
 
     it('quality.total 0 muestra empty state icon search_off', () => {
         const { getByText } = renderWithI18n(
-            <QualityTab quality={{ gradeA: 0, gradeB: 0, gradeC: 0, reject: 0, total: 0, score: 0 }} />,
+            <QualityTab quality={{ gradeA: 0, gradeB: 0, gradeC: 0, reject: 0, total: 0, score: 0, flaggedCriteria: [] }} />,
         );
         expect(getByText('search_off')).toBeInTheDocument();
     });
@@ -47,8 +48,43 @@ describe('QualityTab', () => {
 
     it('score 0 renderizado sin crash', () => {
         const { getByText } = renderWithI18n(
-            <QualityTab quality={{ gradeA: 0, gradeB: 0, gradeC: 0, reject: 0, total: 0, score: 0 }} />,
+            <QualityTab quality={{ gradeA: 0, gradeB: 0, gradeC: 0, reject: 0, total: 0, score: 0, flaggedCriteria: [] }} />,
         );
         expect(getByText('0/100')).toBeInTheDocument();
+    });
+
+    it('usa las etiquetas de la inspección del picker (Bien / Aceptable / A corregir / Grave)', () => {
+        const { getByText, queryByText } = renderWithI18n(<QualityTab quality={baseQuality} />);
+        expect(getByText('Good')).toBeInTheDocument();
+        expect(getByText('Acceptable')).toBeInTheDocument();
+        expect(getByText('Needs correcting')).toBeInTheDocument();
+        expect(getByText('Severe')).toBeInTheDocument();
+        expect(queryByText('Grade A')).toBeNull();
+    });
+
+    it('enseña los criterios con aviso en rojo (mal) o ámbar (regular)', () => {
+        const { getByTestId, getByText } = renderWithI18n(
+            <QualityTab
+                quality={{
+                    ...baseQuality,
+                    flaggedCriteria: [
+                        { key: 'ladder', warn: 0, bad: 2, total: 2 },
+                        { key: 'size', warn: 1, bad: 0, total: 1 },
+                    ],
+                }}
+            />,
+        );
+        const box = getByTestId('flagged-criteria');
+        expect(box).toBeInTheDocument();
+        expect(getByText('Ladder use').closest('li')?.className).toContain('bg-red-100');
+        expect(getByText('Size').closest('li')?.className).toContain('bg-amber-100');
+        expect(getByText('2 bad · 0 so-so')).toBeInTheDocument();
+    });
+
+    it('sin criterios (inspecciones antiguas o flaggedCriteria ausente) no enseña la sección', () => {
+        const { queryByTestId } = renderWithI18n(
+            <QualityTab quality={{ ...baseQuality, flaggedCriteria: undefined as never }} />,
+        );
+        expect(queryByTestId('flagged-criteria')).toBeNull();
     });
 });

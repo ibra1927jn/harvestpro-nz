@@ -26,4 +26,19 @@ describe('buildWeekBreakdown', () => {
             totalHours: 19, totalEarnings: 747.53, costPerBin: 8.31, avgBPA: 4.7,
         });
     });
+
+    it('cada cubeta al precio de su día: subir el precio el martes no cambia el lunes', () => {
+        const buckets = [
+            ...Array.from({ length: 10 }, () => ({ picker_id: 'p1', orchard_id: 'o1', variety: 'Braeburn', scanned_at: t('2026-10-05', '10:00') })),
+            ...Array.from({ length: 10 }, () => ({ picker_id: 'p1', orchard_id: 'o1', variety: 'Braeburn', scanned_at: t('2026-10-06', '10:00') })),
+        ];
+        const rows = buildWeekBreakdown({
+            attendance: [], buckets, crew: [{ id: 'p1', name: 'Ana' }], pieceRate: 9, minWage: 23.95,
+            dailyRates: [
+                { orchardId: 'o1', variety: null, effectiveDate: '2026-09-01', pieceRate: 6.5 },
+                { orchardId: 'o1', variety: 'Braeburn', effectiveDate: '2026-10-06', pieceRate: 8 },
+            ],
+        });
+        expect(rows[0].piece_rate_earnings).toBe(145); // lunes 10 × 6.50 (general) + martes 10 × 8 (Braeburn)
+    });
 });

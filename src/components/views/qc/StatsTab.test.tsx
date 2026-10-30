@@ -3,7 +3,7 @@
  */
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 
 vi.mock('./DistributionBar', () => ({
     default: ({ distribution }: any) => (
@@ -45,12 +45,13 @@ describe('StatsTab', () => {
         expect(screen.getByText('10')).toBeTruthy();
     });
 
-    it('shows grade labels', () => {
+    it('shows the picker-inspection grade labels (not fruit grades)', () => {
         render(<StatsTab distribution={distribution} />);
-        expect(screen.getByText('Grade A')).toBeTruthy();
-        expect(screen.getByText('Grade B')).toBeTruthy();
-        expect(screen.getByText('Grade C')).toBeTruthy();
-        expect(screen.getByText('Reject')).toBeTruthy();
+        expect(screen.getByText('Good')).toBeTruthy();
+        expect(screen.getByText('Acceptable')).toBeTruthy();
+        expect(screen.getByText('Needs correcting')).toBeTruthy();
+        expect(screen.getByText('Severe')).toBeTruthy();
+        expect(screen.queryByText('Export')).toBeNull();
     });
 
     it('shows percentages', () => {
@@ -73,9 +74,9 @@ describe('StatsTab', () => {
         expect(screen.getByText('100')).toBeTruthy();
     });
 
-    it('shows Export Quality percentage', () => {
+    it('shows the Good (A) rate', () => {
         render(<StatsTab distribution={distribution} />);
-        expect(screen.getByText('Export Quality (A)')).toBeTruthy();
+        expect(screen.getByText('Good (A) rate')).toBeTruthy();
     });
 
     it('shows Rejection Rate', () => {
@@ -87,5 +88,35 @@ describe('StatsTab', () => {
         render(<StatsTab distribution={{ A: 0, B: 0, C: 0, reject: 0, total: 0 }} />);
         expect(screen.getByTestId('empty-state')).toBeTruthy();
         expect(screen.getByText('Grade distribution analytics')).toBeTruthy();
+    });
+
+    describe('most failed criterion', () => {
+        const inspections = [
+            { id: '1', grade: 'B', criteria: { ladder: 'ok', size: 'warn', damaged_fruit: 'bad' } },
+            { id: '2', grade: 'C', criteria: { size: 'bad', bucket_fill: 'warn' } },
+            { id: '3', grade: 'A', criteria: null },
+            { id: '4', grade: 'A' },
+        ] as any[];
+
+        it('names the criterion with most warn/bad marks today and its counts', () => {
+            render(<StatsTab distribution={distribution} inspections={inspections} />);
+            const card = screen.getByTestId('top-failing');
+            expect(within(card).getByText('Most failed criterion today')).toBeTruthy();
+            // size: 1 bad + 1 so-so = 2; damaged_fruit y bucket_fill: 1 cada uno
+            const [highlight] = within(card).getAllByText('Size');
+            expect(highlight.closest('div')?.textContent).toContain('1 bad · 1 so-so');
+            // Los seis criterios aparecen en el desglose
+            expect(within(card).getAllByRole('listitem')).toHaveLength(6);
+        });
+
+        it('says so when nothing failed (only-grade inspections)', () => {
+            render(<StatsTab distribution={distribution} inspections={[{ id: '4', grade: 'A' }] as any[]} />);
+            expect(screen.getByText('No criterion failed today')).toBeTruthy();
+        });
+
+        it('works without the inspections prop', () => {
+            render(<StatsTab distribution={distribution} />);
+            expect(screen.getByText('No criterion failed today')).toBeTruthy();
+        });
     });
 });

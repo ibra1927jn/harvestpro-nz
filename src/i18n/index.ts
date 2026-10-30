@@ -24,11 +24,7 @@ export { translations, isLocaleLoaded, loadLocale } from './locales';
 export const SUPPORTED_LOCALES: LocaleInfo[] = [
     { code: 'en', label: 'English',          nativeName: 'English',       flag: '🇳🇿' },
     { code: 'es', label: 'Spanish',          nativeName: 'Español',       flag: '🇪🇸' },
-    { code: 'mi', label: 'Māori',            nativeName: 'Te Reo Māori',  flag: '🇳🇿' },
-    { code: 'sm', label: 'Samoan',           nativeName: 'Gagana Samoa',  flag: '🇼🇸' },
-    { code: 'hi', label: 'Hindi',            nativeName: 'हिन्दी',         flag: '🇮🇳' },
-    { code: 'to', label: 'Tongan',           nativeName: 'Lea Faka-Tonga',flag: '🇹🇴' },
-    { code: 'tl', label: 'Filipino/Tagalog', nativeName: 'Filipino',      flag: '🇵🇭' },
+    { code: 'fr', label: 'French',           nativeName: 'Français',      flag: '🇫🇷' },
 ];
 
 // ─── Context ──────────────────────────────────────────────────

@@ -1,7 +1,26 @@
-import React from 'react';
-import EmptyState from '@/components/ui/EmptyState';
-import { avatarUrl } from '@/utils/avatarUrl';
+/**
+ * WarehouseView — Almacén del runner.
+ *
+ * Qué enseña (revisión 2026-10-21, punto 12):
+ *   - contadores del huerto: bins llenos / vacíos / en curso (sin adornos);
+ *   - «Solicitar transporte» crea una solicitud de transporte real (antes solo
+ *     mandaba un mensaje al chat) que aparece abajo al momento;
+ *   - MIS solicitudes de transporte con su estado real (pendiente / asignada /
+ *     en curso) y vehículo, con «cancelar» mientras estén pendientes;
+ *   - bins por zona, llenos primero, para saber dónde hay que recoger.
+ * Antes: tres contadores, una campana sin función, un avatar externo y un
+ * «transporte solicitado» que salía con más de 10 bins llenos aunque no hubiera
+ * ninguna solicitud.
+ */
+import React, { useState } from 'react';
 import { useTranslation } from '@/i18n';
+import EmptyState from '@/components/ui/EmptyState';
+import Toast from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
+import { useRunnerWarehouse } from '@/hooks/useRunnerWarehouse';
+import type { BinInventory, TransportRequest } from '@/services/logistics-dept.service';
+import { formatNZTime } from '@/utils/nzFormat';
+import { logger } from '@/utils/logger';
 
 interface WarehouseViewProps {
     inventory?: {
@@ -10,156 +29,160 @@ interface WarehouseViewProps {
         in_progress: number;
         total: number;
     };
-    onTransportRequest?: () => void;
 }
 
-const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory, onTransportRequest }) => {
+const REQUEST_STATUS: Record<TransportRequest['status'], { key: string; className: string; icon: string }> = {
+    pending: { key: 'runner.warehouse.req_pending', className: 'bg-amber-50 text-amber-700 border-amber-100', icon: 'hourglass_top' },
+    assigned: { key: 'runner.warehouse.req_assigned', className: 'bg-indigo-50 text-indigo-700 border-indigo-100', icon: 'agriculture' },
+    in_progress: { key: 'runner.warehouse.req_in_progress', className: 'bg-sky-50 text-sky-700 border-sky-100', icon: 'local_shipping' },
+    completed: { key: 'runner.warehouse.req_completed', className: 'bg-emerald-50 text-emerald-700 border-emerald-100', icon: 'check_circle' },
+    cancelled: { key: 'runner.warehouse.req_cancelled', className: 'bg-slate-100 text-slate-500 border-slate-200', icon: 'cancel' },
+};
+
+const BIN_STATUS: Record<BinInventory['status'], { key: string; dot: string }> = {
+    full: { key: 'runner.warehouse.bin_full', dot: 'bg-red-500' },
+    filling: { key: 'runner.warehouse.bin_filling', dot: 'bg-amber-400' },
+    in_transit: { key: 'runner.warehouse.bin_in_transit', dot: 'bg-sky-500' },
+    at_warehouse: { key: 'runner.warehouse.bin_at_warehouse', dot: 'bg-indigo-400' },
+    empty: { key: 'runner.warehouse.bin_empty', dot: 'bg-emerald-500' },
+};
+
+const WarehouseView: React.FC<WarehouseViewProps> = ({ inventory }) => {
     const { t } = useTranslation();
+    const { zones, myRequests, loading, requestPickup, cancelMine } = useRunnerWarehouse();
+    const { toast, showToast, hideToast } = useToast();
+    const [requesting, setRequesting] = useState(false);
     const fullBins = inventory?.full_bins || 0;
     const emptyBins = inventory?.empty_bins || 0;
     const inProgress = inventory?.in_progress || 0;
 
-    // Estado vacio: sin inventario
-    if (!inventory || (fullBins === 0 && emptyBins === 0 && inProgress === 0)) {
-        return (
-            <div className="flex flex-col h-full bg-slate-50 relative overflow-hidden">
-                {/* OmniCore Ambient Background */}
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/10 blur-3xl pointer-events-none"></div>
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500/10 blur-3xl pointer-events-none"></div>
-
-                <header className="flex-none bg-white/70 backdrop-blur-xl z-30 border-b border-white/50 shadow-[0_4px_30px_-5px_rgba(0,0,0,0.05)] pt-6">
-                    <div className="flex flex-wrap gap-y-2 items-center px-6 py-4 justify-between">
-                        <div>
-                            <h2 className="text-2xl font-black bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent tracking-tight leading-tight">{t('runner.warehouse.title')}</h2>
-                            <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">{t('runner.warehouse.subtitle')}</p>
-                        </div>
-                    </div>
-                </header>
-                <div className="flex-1 flex items-center justify-center relative z-10 px-6">
-                    <EmptyState
-                        icon="warehouse"
-                        title={t('runner.warehouse.empty_title')}
-                        subtitle={t('runner.warehouse.empty_desc')}
-                        iconColor="text-primary"
-                        action={onTransportRequest ? {
-                            label: t('runner.warehouse.request_transport'),
-                            onClick: onTransportRequest,
-                            icon: 'local_shipping',
-                        } : undefined}
-                    />
-                </div>
-            </div>
-        );
-    }
+    // Solicitud de transporte real (en cola sin red): aparece en «mis solicitudes»
+    const handleRequestPickup = async () => {
+        if (requesting) return;
+        setRequesting(true);
+        try {
+            const request = await requestPickup(fullBins);
+            showToast(t('runner.warehouse.pickup_sent', { n: request.bins_count }), 'success');
+        } catch (e) {
+            logger.error('[Warehouse] pickup request failed', e);
+            showToast(t('runner.warehouse.pickup_failed'), 'error');
+        } finally {
+            setRequesting(false);
+        }
+    };
 
     return (
         <div className="flex flex-col h-full bg-slate-50 relative overflow-hidden">
-            {/* OmniCore Ambient Background */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/10 blur-[80px] pointer-events-none"></div>
-            <div className="absolute bottom-[10%] right-[-10%] w-[50%] h-[40%] rounded-full bg-indigo-500/10 blur-[80px] pointer-events-none"></div>
-
-            <header className="flex-none bg-white/70 backdrop-blur-xl z-30 border-b border-white/50 shadow-[0_4px_30px_-5px_rgba(0,0,0,0.05)] pt-6">
-                <div className="flex flex-wrap gap-y-2 items-center px-6 py-4 justify-between">
+            {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
+            <header className="flex-none bg-white/80 backdrop-blur-xl z-30 border-b border-slate-100 pt-6">
+                <div className="flex items-center px-6 py-4 justify-between gap-3">
                     <div>
-                        <h2 className="text-2xl font-black bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent tracking-tight leading-tight">{t('runner.warehouse.title')}</h2>
+                        <h2 className="text-2xl font-black text-slate-800 tracking-tight leading-tight">{t('runner.warehouse.title')}</h2>
                         <p className="text-[10px] font-bold text-primary uppercase tracking-widest mt-0.5">{t('runner.warehouse.subtitle')}</p>
                     </div>
-                    <div className="flex items-center justify-end gap-3">
-                        <button aria-label={t('settings.notifications')} className="relative flex items-center justify-center rounded-2xl size-11 bg-white/80 border border-white/60 shadow-sm text-slate-500 hover:text-primary transition-colors hover:shadow-md">
-                            <span aria-hidden="true" className="material-symbols-outlined text-[22px]">notifications</span>
-                        </button>
-                        <div className="size-11 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden border border-white/60 shadow-sm">
-                            <img src={avatarUrl('Warehouse')} alt={t('common.avatar')} className="w-full h-full object-cover" />
-                        </div>
-                    </div>
+                    <button
+                        type="button"
+                        onClick={() => { void handleRequestPickup(); }}
+                        disabled={requesting}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-wider shadow-md active:scale-95 min-h-[44px] disabled:opacity-60"
+                    >
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">local_shipping</span>
+                        {t('runner.warehouse.request_transport')}
+                    </button>
                 </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-5 pb-28 z-10 no-scrollbar">
-                {/* Hero Card */}
-                <div className="group relative bg-white/80 backdrop-blur-md p-6 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all">
-                    <div className="absolute top-0 left-0 w-2.5 h-full bg-gradient-to-b from-primary to-blue-500 group-hover:w-3.5 transition-all"></div>
-                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-70"></div>
-                    
-                    <div className="flex items-start justify-between pl-3">
-                        <div>
-                            <h3 className="text-[11px] font-bold text-primary uppercase tracking-widest mb-1.5">{t('runner.warehouse.harvested')}</h3>
-                            <h2 className="text-2xl font-black text-slate-800 tracking-tight">{t('runner.warehouse.full_bins')}</h2>
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 pb-24">
+                {/* Contadores */}
+                <div className="grid grid-cols-3 gap-3" aria-label={t('runner.warehouse.title')}>
+                    {[
+                        { value: fullBins, label: t('runner.warehouse.full_bins'), color: 'text-red-600', bg: 'bg-red-50 border-red-100' },
+                        { value: emptyBins, label: t('runner.empty_bins'), color: emptyBins < 5 ? 'text-amber-700' : 'text-emerald-700', bg: emptyBins < 5 ? 'bg-amber-50 border-amber-100' : 'bg-emerald-50 border-emerald-100' },
+                        { value: inProgress, label: t('orchardMap.status.in_progress'), color: 'text-sky-700', bg: 'bg-sky-50 border-sky-100' },
+                    ].map(c => (
+                        <div key={c.label} className={`rounded-2xl border p-3 text-center ${c.bg}`}>
+                            <p className={`text-2xl font-black tabular-nums ${c.color}`}>{c.value}</p>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-tight">{c.label}</p>
                         </div>
-                        <div className="size-14 rounded-2xl bg-gradient-to-br from-primary/5 to-blue-500/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
-                            <span aria-hidden="true" className="material-symbols-outlined text-[28px]">inventory_2</span>
-                        </div>
-                    </div>
-                    <div className="mt-8 flex items-baseline gap-2.5 pl-3">
-                        <span className="text-7xl font-black text-slate-800 tracking-tighter leading-none">{fullBins}</span>
-                        <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">{t('runner.warehouse.filled')}</span>
-                    </div>
-                    <div className="mt-6 pt-5 border-t border-slate-100/50 flex items-center justify-between pl-3">
-                        <div className="flex items-center gap-2">
-                            <span aria-hidden="true" className={`material-symbols-outlined text-xl ${fullBins > 0 ? 'text-emerald-500' : 'text-slate-400'}`}>check_circle</span>
-                            <span className={`text-xs font-bold uppercase tracking-wider ${fullBins > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>{fullBins > 0 ? t('runner.warehouse.ready') : t('runner.warehouse.awaiting')}</span>
-                        </div>
-                    </div>
+                    ))}
                 </div>
+                {emptyBins < 5 && (
+                    <p className="text-xs font-bold text-amber-700 flex items-center gap-1.5">
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">warning</span>
+                        {t('runner.warehouse.critical')}
+                    </p>
+                )}
 
-                {/* Grid */}
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white/80 backdrop-blur-md rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 flex flex-col h-full hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all">
-                        <div className="flex items-start justify-between mb-5">
-                            <div className="size-12 rounded-xl bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center text-orange-500 border border-orange-200/50 shadow-inner">
-                                <span aria-hidden="true" className="material-symbols-outlined text-[24px]">grid_view</span>
-                            </div>
-                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${emptyBins < 5 ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
-                                {emptyBins < 5 ? t('runner.warehouse.critical') : t('runner.stock_ok')}
-                            </span>
-                        </div>
-                        <div className="flex-1 flex flex-col justify-end">
-                            <span className="text-4xl font-black text-slate-800 block leading-tight tracking-tight mb-1">{emptyBins}</span>
-                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block leading-tight">{t('runner.empty_bins')}</span>
-                        </div>
-                    </div>
-                    <div className="bg-white/80 backdrop-blur-md rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 flex flex-col h-full hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all">
-                        <div className="flex items-start justify-between mb-5">
-                            <div className="size-12 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center text-blue-500 border border-blue-200/50 shadow-inner">
-                                <span aria-hidden="true" className="material-symbols-outlined text-[24px]">shopping_basket</span>
-                            </div>
-                            <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-blue-50 text-blue-600 uppercase tracking-widest border border-blue-100">{t('runner.warehouse.in_flow')}</span>
-                        </div>
-                        <div className="flex-1 flex flex-col justify-end">
-                            <span className="text-4xl font-black text-slate-800 block leading-tight tracking-tight mb-1">{inProgress}</span>
-                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block leading-tight">{t('orchardMap.status.in_progress')}</span>
-                        </div>
-                    </div>
-                </div>
+                {/* Mis solicitudes */}
+                <section aria-labelledby="my-requests-title">
+                    <h3 id="my-requests-title" className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">{t('runner.warehouse.my_requests')}</h3>
+                    {myRequests.length === 0 ? (
+                        <p className="text-sm text-slate-500 bg-white rounded-2xl border border-slate-100 p-4">{t('runner.warehouse.no_requests')}</p>
+                    ) : (
+                        <ul className="space-y-2">
+                            {myRequests.map(r => {
+                                const st = REQUEST_STATUS[r.status];
+                                return (
+                                    <li key={r.id} className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center justify-between gap-3" data-testid="my-request">
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-800">{t('runner.warehouse.req_line', { n: r.bins_count, zone: r.zone })}</p>
+                                            <p className="text-[11px] text-slate-500 tabular-nums">{formatNZTime(r.created_at)}{r.assigned_tractor ? ` · ${t('runner.warehouse.vehicle_assigned')}` : ''}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${st.className}`}>
+                                                <span aria-hidden="true" className="material-symbols-outlined text-[12px]">{st.icon}</span>
+                                                {t(st.key)}
+                                            </span>
+                                            {r.status === 'pending' && (
+                                                <button type="button" onClick={() => { void cancelMine(r); }} aria-label={t('runner.warehouse.cancel_request')} className="size-9 rounded-xl bg-slate-100 text-slate-500 hover:text-red-600 flex items-center justify-center">
+                                                    <span aria-hidden="true" className="material-symbols-outlined text-base">close</span>
+                                                </button>
+                                            )}
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
+                </section>
 
-                {/* Truck Info */}
-                <div className="bg-gradient-to-br from-slate-50/80 to-slate-100/50 rounded-[1.5rem] p-5 flex gap-4 border border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-                    <div className="size-12 rounded-full bg-white flex items-center justify-center text-slate-400 shadow-sm border border-slate-100 shrink-0">
-                        <span aria-hidden="true" className="material-symbols-outlined text-[24px]">local_shipping</span>
-                    </div>
-                    <div className="flex-1">
-                        <p className="text-xs font-black text-slate-800 uppercase tracking-widest mb-1.5">{t('runner.warehouse.transport')}</p>
-                        <p className="text-xs font-medium text-slate-500 leading-relaxed">
-                            {fullBins > 10 ? t('runner.warehouse.dispatch_requested') : t('runner.warehouse.use_button')}
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Action Button */}
-            <div className="absolute bottom-5 left-0 w-full px-6 z-30">
-                <button
-                    onClick={onTransportRequest}
-                    disabled={fullBins === 0}
-                    className="w-full h-14 bg-slate-900 border border-slate-800 text-white rounded-2xl shadow-[0_10px_20px_rgba(15,23,42,0.2)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all group disabled:opacity-50 disabled:shadow-none hover:bg-slate-800"
-                >
-                    <span aria-hidden="true" className="material-symbols-outlined text-[24px] text-emerald-400 group-active:scale-90 transition-transform">local_shipping</span>
-                    <span className="text-sm font-black uppercase tracking-widest">{t('runner.warehouse.request_transport')}</span>
-                </button>
+                {/* Bins por zona */}
+                <section aria-labelledby="bins-by-zone-title">
+                    <h3 id="bins-by-zone-title" className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">{t('runner.warehouse.bins_by_zone')}</h3>
+                    {loading ? (
+                        <div className="flex justify-center py-6" role="status" aria-busy="true">
+                            <div className="w-7 h-7 border-3 border-primary/20 border-t-primary rounded-full animate-spin" />
+                        </div>
+                    ) : zones.length === 0 ? (
+                        <EmptyState icon="warehouse" title={t('runner.warehouse.empty_title')} subtitle={t('runner.warehouse.empty_desc')} iconColor="text-primary" />
+                    ) : (
+                        <div className="space-y-3">
+                            {zones.map(z => (
+                                <div key={z.zone} className="bg-white rounded-2xl border border-slate-100 p-4" data-testid="zone-card">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <p className="text-sm font-black text-slate-800">{t('runner.warehouse.zone', { zone: z.zone })}</p>
+                                        <p className="text-[11px] font-bold text-slate-500">{t('runner.warehouse.zone_counts', { full: z.full, empty: z.empty })}</p>
+                                    </div>
+                                    <ul className="flex flex-wrap gap-2">
+                                        {z.bins.map(b => {
+                                            const bs = BIN_STATUS[b.status];
+                                            return (
+                                                <li key={b.id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-100 text-xs font-semibold text-slate-700" title={t(bs.key)}>
+                                                    <span aria-hidden="true" className={`size-2 rounded-full ${bs.dot}`} />
+                                                    {b.bin_code}
+                                                    <span className="sr-only">{t(bs.key)}</span>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
             </div>
         </div>
     );
 };
 
 export default WarehouseView;
-

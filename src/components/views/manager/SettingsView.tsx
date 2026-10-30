@@ -6,13 +6,16 @@
  *   useSettings.ts             — Data hook (state, handlers, save logic)
  *   settings/
  *     ├── SettingsFormComponents.tsx — Reusable: SettingsSection, FormField, ReadonlyField, ToggleRow
- *     ├── SettingsFields.tsx     — LockedField, ComplianceTargetField, OrchardSelector
+ *     ├── SettingsFields.tsx     — LockedField, ComplianceTargetField
  *     └── settingsLogic.ts       — Pure helpers (compliance floor clamp, warning text)
  *
  * Responsive layout:
- *   Mobile  (<768px) : single column
- *   Tablet  (≥768px) : 2-column grid
- *   Desktop (≥1024px): 3-column grid, max-width 1200px centered
+ *   Mobile  (<768px) : una columna
+ *   Tablet  (≥768px) : 2 columnas
+ *   Desktop (≥1024px): 3 columnas, max-width 1200px centrado
+ *   Las tarjetas van en columnas CSS (tipo mosaico): cada una mide lo suyo y las
+ *   cortas rellenan debajo de otras, en vez de estirarse a la altura de la vecina
+ *   (antes «Detalles del huerto», con tres líneas, medía lo que «Cosecha»).
  *   Profile card and Danger Zone always span full width.
  */
 import React from 'react';
@@ -21,9 +24,10 @@ import { useTranslation, SUPPORTED_LOCALES, type Locale } from '@/i18n';
 import { DayClosureButton } from './DayClosureButton';
 import PageHeader from '@/components/ui/PageHeader';
 import { SettingsSection, FormField, ReadonlyField, ToggleRow } from './settings/SettingsFormComponents';
-import { VarietyRatesEditor } from './settings/VarietyRatesEditor';
-import { LockedField, ComplianceTargetField, OrchardSelector } from './settings/SettingsFields';
+import { DailyPieceRatesEditor } from './settings/DailyPieceRatesEditor';
+import { LockedField, ComplianceTargetField } from './settings/SettingsFields';
 import { roleLabel } from '@/i18n/roleLabel';
+import { PushStatusHint } from '@/components/common/PushStatusHint';
 
 
 const SettingsView: React.FC = () => {
@@ -78,13 +82,13 @@ const SettingsView: React.FC = () => {
                 </div>
             </section>
 
-            {/* ── Settings Grid — responsive: 1 col mobile / 2 col tablet / 3 col desktop ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* ── Settings — mosaico: 1 col móvil / 2 tablet / 3 escritorio, cada tarjeta con su altura ── */}
+            <div className="columns-1 md:columns-2 lg:columns-3 gap-5 [&>section]:mb-5 [&>section]:break-inside-avoid">
 
             {/* ── Harvest Configuration ────────────────── */}
             <SettingsSection icon="tune" iconBg="bg-indigo-50" iconColor="text-indigo-600" title={t('settings.harvest.title')} subtitle={t('settings.harvest.subtitle')} accentColor="border-l-indigo-500" stagger={2}>
-                <FormField label={t('settings.harvest.piece_rate')} value={s.formData.piece_rate} onChange={(v) => s.handleChange('piece_rate', v)} prefix="$" type="number" step="0.50" />
-                <VarietyRatesEditor orchardId={s.orchard?.id} defaultRate={Number(s.formData.piece_rate) || 0} />
+                {/* Precio por cubeta de HOY por huerto y variedad (piece_rates): no reescribe días pasados */}
+                <DailyPieceRatesEditor orchardId={s.orchard?.id} onGeneralRateChange={s.setGeneralRate} />
                 {s.canEditMinWage
                     ? <FormField label={t('settings.harvest.min_wage')} value={s.formData.min_wage_rate} onChange={(v) => s.handleChange('min_wage_rate', v)} prefix="$" suffix="NZD" type="number" step="0.05" />
                     : <LockedField label={t('settings.harvest.min_wage')} value={`$${s.formData.min_wage_rate} NZD`} tooltip={t('settings.locked_by_hr')} />
@@ -97,7 +101,8 @@ const SettingsView: React.FC = () => {
                     onChange={(v) => s.handleChange('min_buckets_per_hour', v)}
                 />
                 <FormField label={t('settings.harvest.daily_target')} value={s.formData.target_tons} onChange={(v) => s.handleChange('target_tons', v)} type="number" step="1" />
-                {/* Shift timing — ancla todos los cálculos de ETA/horas restantes */}
+                {/* Hora prevista de inicio: ancla el recorte de horas y el eje de las gráficas.
+                    No hay hora de fin de turno: cada equipo y runner termina cuando ficha su salida. */}
                 <div className="border-t border-slate-100 pt-3 mt-1">
                     <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest mb-3">{t('settings.harvest.shift_hours')}</p>
                     <div className="flex items-center justify-between py-1">
@@ -113,38 +118,22 @@ const SettingsView: React.FC = () => {
                             className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-text-main font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
                         />
                     </div>
-                    <div className="flex items-center justify-between py-1">
-                        <label className="text-sm font-medium text-text-sub flex items-center gap-1.5">
-                            <span aria-hidden="true" className="material-symbols-outlined text-sm text-indigo-400">schedule</span>
-                            {t('settings.harvest.shift_end')}
-                        </label>
-                        <input
-                            type="time"
-                            value={s.formData.shift_end_time}
-                            onChange={(e) => s.handleChange('shift_end_time', e.target.value)}
-                            aria-label={t('settings.harvest.shift_end')}
-                            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-text-main font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
-                        />
-                    </div>
+                    <p className="text-[11px] text-text-muted mt-1">{t('settings.harvest.shift_end_by_person')}</p>
                 </div>
             </SettingsSection>
 
             {/* ── Orchard Details ──────────────────────── */}
             <SettingsSection icon="park" iconBg="bg-emerald-50" iconColor="text-emerald-600" title={t('settings.orchard.title')} subtitle={t('settings.orchard.subtitle')} accentColor="border-l-emerald-500" stagger={3}>
-                <OrchardSelector
-                    orchards={s.availableOrchards}
-                    selectedId={s.orchard?.id ?? ''}
-                    onSelect={s.handleOrchardSelect}
-                />
+                {/* Huerto: el de la cabecera (OrchardSwitcher); aquí solo se enseña */}
+                <ReadonlyField label={t('settings.orchard.label')} value={s.orchard?.name ?? '—'} icon="location_on" />
                 <ReadonlyField label={t('settings.orchard.total_rows')} value={String(s.orchard?.total_rows ?? '—')} icon="grid_view" />
                 <ReadonlyField label={t('settings.orchard.varieties')} value={s.orchardVarieties} icon="eco" />
             </SettingsSection>
 
             {/* ── Compliance ──────────────────────────── */}
             <SettingsSection icon="verified_user" iconBg="bg-green-50" iconColor="text-green-600" title={t('settings.compliance.title')} subtitle={t('settings.compliance.subtitle')} accentColor="border-l-green-500" stagger={4}>
-                <ToggleRow label={t('settings.compliance.nz_standards')} description={t('settings.compliance.nz_standards_desc')} checked={s.compliance.nz_employment_standards} onChange={(v) => s.setCompliance(prev => ({ ...prev, nz_employment_standards: v }))} icon="gavel" />
-                <ToggleRow label={t('settings.compliance.wage_alerts')} description={t('settings.compliance.wage_alerts_desc')} checked={s.compliance.auto_wage_alerts} onChange={(v) => s.setCompliance(prev => ({ ...prev, auto_wage_alerts: v }))} icon="notification_important" />
-                <ToggleRow label={t('settings.compliance.safety')} description={t('settings.compliance.safety_desc')} checked={s.compliance.safety_verification} onChange={(v) => s.setCompliance(prev => ({ ...prev, safety_verification: v }))} icon="health_and_safety" />
+                {/* Los 3 interruptores de cumplimiento eran estado local sin efecto (B5): fuera.
+                    El cumplimiento (salario mínimo, descansos) lo aplica siempre el cálculo. */}
                 {/* Audit Trail — siempre activo, no es toggle interactivo */}
                 <div className="flex items-center justify-between py-1">
                     <div className="flex items-start gap-2 flex-1">
@@ -164,6 +153,7 @@ const SettingsView: React.FC = () => {
             {/* ── Notifications ────────────────────────── */}
             <SettingsSection icon="notifications_active" iconBg="bg-amber-50" iconColor="text-amber-600" title={t('settings.notifications')} subtitle={t('settings.notif.subtitle')} accentColor="border-l-amber-500" stagger={5}>
                 <ToggleRow label={t('settings.notif.enable')} description={t('settings.notif.enable_desc')} checked={s.notifEnabled} onChange={s.handleNotifToggle} icon="notifications" />
+                <PushStatusHint enabled={s.notifEnabled} />
                 {s.notifEnabled && (
                     <>
                         <div className="border-t border-slate-100 pt-3 mt-1">
@@ -258,20 +248,6 @@ const SettingsView: React.FC = () => {
                             </div>
                         </div>
                         <DayClosureButton />
-                    </div>
-                    <div className="border-t border-red-100 pt-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-start gap-3">
-                                <span aria-hidden="true" className="material-symbols-outlined text-base text-text-muted mt-0.5">delete_sweep</span>
-                                <div>
-                                    <p className="text-sm font-semibold text-text-main">{t('settings.danger.reset_title')}</p>
-                                    <p className="text-xs text-text-muted">{t('settings.danger.reset_desc')}</p>
-                                </div>
-                            </div>
-                            <button className="px-3.5 py-2 text-sm font-semibold text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-all active:scale-[0.96]">
-                                {t('settings.danger.reset_btn')}
-                            </button>
-                        </div>
                     </div>
                 </div>
             </section>

@@ -5,7 +5,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useHarvestStore } from '@/stores/useHarvestStore';
 import { settingsService } from '@/services/settings.service';
 import { notificationService } from '@/services/notification.service';
-import { supabase } from '@/services/supabase';
 import { logger } from '@/utils/logger';
 import { PAY_RULES } from '@/services/harvestMetrics/pay';
 
@@ -13,33 +12,39 @@ import { PAY_RULES } from '@/services/harvestMetrics/pay';
 const WAGE_EDIT_ROLES = new Set(['admin', 'hr_admin']);
 
 export interface SettingsFormData {
+    /**
+     * Precio general de HOY (solo lectura en el formulario: se cambia en
+     * «Precio por cubeta — hoy», que escribe piece_rates). Sirve para el
+     * objetivo mínimo de cubetas/hora.
+     */
     piece_rate: number;
     min_wage_rate: number;
     min_buckets_per_hour: number;
     target_tons: number;
+    /** Variedad guardada (no se edita aquí ni se escribe al guardar: fallo B5) */
     variety: string;
-    /** Hora de inicio de turno (formato HH:MM, 24h) */
+    /**
+     * Hora prevista de inicio de turno (HH:MM, 24h). No hay hora de fin: cada
+     * equipo y runner termina cuando ficha su salida (decisión del dueño 2026-10-21).
+     */
     shift_start_time: string;
-    /** Hora de fin de turno (formato HH:MM, 24h) */
-    shift_end_time: string;
 }
 
-export interface ComplianceToggles {
-    nz_employment_standards: boolean;
-    auto_wage_alerts: boolean;
-    safety_verification: boolean;
-    audit_trail: boolean;
-}
-
-export interface OrchardOption {
-    id: string;
-    name: string;
-    total_rows?: number;
-    varieties?: string;
+/** Variedades distintas de las filas del huerto (block_rows), en orden alfabético */
+export function varietiesOfRows(blocks: ReadonlyArray<{ rowVarieties: Record<number, string> }>): string[] {
+    const names = new Set<string>();
+    for (const b of blocks) {
+        for (const v of Object.values(b.rowVarieties)) {
+            const name = (v ?? '').trim();
+            if (name && name !== 'Desconocida') names.add(name);
+        }
+    }
+    return [...names].sort((a, b) => a.localeCompare(b));
 }
 
 export function useSettings() {
     const { orchard, settings, currentUser } = useHarvestStore();
+    const orchardBlocks = useHarvestStore(s => s.orchardBlocks);
     const orchardId = orchard?.id;
 
     // Form data
@@ -48,23 +53,17 @@ export function useSettings() {
         min_wage_rate: settings?.min_wage_rate ?? PAY_RULES.minWageFloor,
         min_buckets_per_hour: settings?.min_buckets_per_hour ?? 8,
         target_tons: settings?.target_tons ?? 40,
-        variety: settings?.variety ?? 'Cherry',
+        variety: settings?.variety ?? '',
         shift_start_time: settings?.shift_start_time ?? '07:00',
-        shift_end_time: settings?.shift_end_time ?? '17:00',
     });
 
-    const [compliance, setCompliance] = useState<ComplianceToggles>({
-        nz_employment_standards: true,
-        auto_wage_alerts: true,
-        safety_verification: true,
-        audit_trail: true,
-    });
-
-    // Orchard selector: lista de huertos disponibles para este manager
-    const [availableOrchards, setAvailableOrchards] = useState<OrchardOption[]>(
-        orchard ? [{ id: orchard.id, name: orchard.name ?? 'Orchard', total_rows: orchard.total_rows }] : []
-    );
-    const [orchardVarieties, setOrchardVarieties] = useState<string>('—');
+    // Variedades del huerto: las de sus filas (block_rows). El selector de
+    // huerto de Ajustes se quitó (B5): el cambio de huerto es el OrchardSwitcher
+    // de la cabecera, y guardar con otro huerto elegido chocaba con la RLS.
+    const orchardVarieties = useMemo(() => {
+        const fromRows = varietiesOfRows(orchardBlocks);
+        return fromRows.length > 0 ? fromRows.join(', ') : '—';
+    }, [orchardBlocks]);
 
     // Notification state
     const [notifEnabled, setNotifEnabled] = useState(() => notificationService.getPrefs().enabled);
@@ -97,9 +96,8 @@ export function useSettings() {
                 min_wage_rate: settings.min_wage_rate,
                 min_buckets_per_hour: Math.max(settings.min_buckets_per_hour, Math.ceil(settings.min_wage_rate / settings.piece_rate)),
                 target_tons: settings.target_tons,
-                variety: settings.variety ?? 'Cherry',
+                variety: settings.variety ?? '',
                 shift_start_time: settings.shift_start_time ?? '07:00',
-                shift_end_time: settings.shift_end_time ?? '17:00',
             });
         }
     }, [settings]);
@@ -115,39 +113,6 @@ export function useSettings() {
             return prev;
         });
     }, [complianceFloor]);
-
-    // Cargar lista de huertos disponibles (para el selector del Issue 4)
-    useEffect(() => {
-        let cancelled = false;
-        async function loadOrchards() {
-            try {
-                const { data, error } = await supabase
-                    .from('orchards')
-                    .select('id, name, total_rows, crop_type')
-                    .is('deleted_at', null)
-                    .order('name');
-                if (error || !data || cancelled) return;
-                const options: OrchardOption[] = data.map((o: { id: string; name: string; total_rows?: number; crop_type?: string }) => ({
-                    id: o.id,
-                    name: o.name,
-                    total_rows: o.total_rows,
-                    varieties: o.crop_type ?? undefined,
-                }));
-                if (options.length > 0) setAvailableOrchards(options);
-            } catch (e) {
-                logger.error('[useSettings] Failed to load orchards:', e);
-            }
-        }
-        void loadOrchards();
-        return () => { cancelled = true; };
-    }, []);
-
-    // Actualizar variedades cuando cambia el huerto seleccionado
-    useEffect(() => {
-        if (!orchardId) return;
-        const found = availableOrchards.find(o => o.id === orchardId);
-        setOrchardVarieties(found?.varieties ?? '—');
-    }, [orchardId, availableOrchards]);
 
     const handleChange = useCallback((field: keyof SettingsFormData, value: string | number) => {
         setFormData(prev => {
@@ -178,34 +143,23 @@ export function useSettings() {
         setSaveStatus('idle');
     }, []);
 
-    /** Cambia el huerto activo y auto-rellena Total Rows y Variety */
-    const handleOrchardSelect = useCallback((id: string) => {
-        const selected = availableOrchards.find(o => o.id === id);
-        if (!selected) return;
-        // Actualizar el orchard activo en el store (sólo los campos expuestos en Settings)
-        useHarvestStore.setState({ orchard: { id: selected.id, name: selected.name, total_rows: selected.total_rows } });
-        // Cargar los ajustes de ESE huerto: antes el formulario seguía con los del
-        // anterior y al guardar los copiaba encima
-        void settingsService.getHarvestSettings(selected.id).then(s => {
-            if (!s) return;
-            setFormData(prev => ({
+    /**
+     * Precio general de hoy (lo avisa el editor de precios al cargar o guardar).
+     * Ya está guardado: no marca cambios pendientes; sí recalcula el objetivo
+     * mínimo de cubetas/hora si estaba en el mínimo legal.
+     */
+    const setGeneralRate = useCallback((rate: number) => {
+        setFormData(prev => {
+            if (Number(prev.piece_rate) === rate) return prev;
+            const oldFloor = Number(prev.piece_rate) > 0 ? Math.ceil(Number(prev.min_wage_rate) / Number(prev.piece_rate)) : 1;
+            const newFloor = rate > 0 ? Math.ceil(Number(prev.min_wage_rate) / rate) : 1;
+            return {
                 ...prev,
-                piece_rate: s.piece_rate,
-                min_wage_rate: s.min_wage_rate,
-                min_buckets_per_hour: s.min_buckets_per_hour,
-                target_tons: s.target_tons,
-                variety: s.variety ?? prev.variety,
-            }));
-        }).catch(e => logger.warn('[Settings] Could not load settings for orchard:', e));
-        // Recargar el mapa de bloques para el nuevo orchard
-        void useHarvestStore.getState().fetchBlocks(selected.id);
-        if (selected.varieties) {
-            setFormData(prev => ({ ...prev, variety: selected.varieties as string }));
-        }
-        setOrchardVarieties(selected.varieties ?? '—');
-        setHasChanges(true);
-        setSaveStatus('idle');
-    }, [availableOrchards]);
+                piece_rate: rate,
+                min_buckets_per_hour: prev.min_buckets_per_hour <= oldFloor ? newFloor : prev.min_buckets_per_hour,
+            };
+        });
+    }, []);
 
     const handleSave = async () => {
         if (!orchardId) return;
@@ -213,14 +167,14 @@ export function useSettings() {
         setSaveStatus('idle');
         setSaveError(null);
         try {
+            // Sin piece_rate (el precio de hoy se guarda en «Precio por cubeta — hoy»,
+            // tabla piece_rates) y sin variety: antes escribía «Cherry» por defecto
+            // en huertos de manzanas (auditoría 23-10, B5)
             const payload = {
-                piece_rate: Number(formData.piece_rate),
                 min_wage_rate: Number(formData.min_wage_rate),
                 min_buckets_per_hour: Number(formData.min_buckets_per_hour),
                 target_tons: Number(formData.target_tons),
-                variety: formData.variety,
                 shift_start_time: formData.shift_start_time,
-                shift_end_time: formData.shift_end_time,
             };
             const result = await settingsService.updateHarvestSettings(orchardId, payload);
             if (!result.ok) {
@@ -269,15 +223,12 @@ export function useSettings() {
         // Context
         orchard, currentUser, initials,
         // Form
-        formData, handleChange,
-        compliance, setCompliance,
+        formData, handleChange, setGeneralRate,
         // Permissions & compliance floor
         canEditMinWage,
         complianceFloor,
-        // Orchard selector
-        availableOrchards,
+        // Orchard details
         orchardVarieties,
-        handleOrchardSelect,
         // Save
         isSaving, saveStatus, saveError, hasChanges, handleSave,
         // Notifications

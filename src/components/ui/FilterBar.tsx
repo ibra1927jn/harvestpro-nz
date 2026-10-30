@@ -23,16 +23,27 @@ import { useTranslation } from '@/i18n';
 import { statusLabel } from '@/i18n/statusLabel';
 
 /* ── Types ── */
+/** Opción con texto y recuento: las de 0 salen en gris pero se pueden elegir */
+export interface FilterChoice {
+    value: string;
+    /** Texto a mostrar; si falta, status.<value> */
+    label?: string;
+    /** Cuántos elementos tienen este valor */
+    count?: number;
+}
+
 export interface FilterOption {
     /** Unique filter key (matches data property) */
     key: string;
     /** Display label */
     label: string;
-    /** Selectable values */
-    options: string[];
+    /** Selectable values (plain values or value + label + count) */
+    options: (string | FilterChoice)[];
     /** Optional icon name from material-symbols */
     icon?: string;
 }
+
+const toChoice = (opt: string | FilterChoice): FilterChoice => (typeof opt === 'string' ? { value: opt } : opt);
 
 export interface FilterBarProps {
     /** Current search text */
@@ -70,9 +81,12 @@ const FilterDropdown: React.FC<{
         return () => document.removeEventListener('mousedown', handler);
     }, [open]);
 
+    const choices = filter.options.map(toChoice);
+    const labelOf = (c: FilterChoice) => c.label ?? statusLabel(t, c.value);
     const isActive = activeValue !== '';
+    const active = choices.find(c => c.value === activeValue);
     const displayLabel = isActive
-        ? statusLabel(t, activeValue)
+        ? (active ? labelOf(active) : statusLabel(t, activeValue))
         : filter.label;
 
     return (
@@ -105,15 +119,19 @@ const FilterDropdown: React.FC<{
                         {t('ui.all_of', { label: filter.label })}
                         {!isActive && <span aria-hidden="true" className="material-symbols-outlined text-xs ml-auto">check</span>}
                     </button>
-                    {filter.options.map(opt => (
+                    {choices.map(opt => (
                         <button
-                            key={opt}
-                            onClick={() => { onChange(filter.key, opt); setOpen(false); }}
+                            key={opt.value}
+                            onClick={() => { onChange(filter.key, opt.value); setOpen(false); }}
+                            data-count={opt.count}
                             className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-background-light transition-colors flex items-center gap-2 capitalize
-                                ${activeValue === opt ? 'text-indigo-700 bg-indigo-50/50' : 'text-text-secondary'}`}
+                                ${activeValue === opt.value ? 'text-indigo-700 bg-indigo-50/50' : opt.count === 0 ? 'text-text-muted' : 'text-text-secondary'}`}
                         >
-                            {statusLabel(t, opt)}
-                            {activeValue === opt && <span aria-hidden="true" className="material-symbols-outlined text-xs ml-auto">check</span>}
+                            {labelOf(opt)}
+                            {opt.count !== undefined && (
+                                <span className={`tabular-nums ${opt.count === 0 ? 'text-text-muted' : 'text-text-secondary'}`}>({opt.count})</span>
+                            )}
+                            {activeValue === opt.value && <span aria-hidden="true" className="material-symbols-outlined text-xs ml-auto">check</span>}
                         </button>
                     ))}
                 </div>
@@ -134,6 +152,10 @@ const FilterBar: React.FC<FilterBarProps> = ({
 }) => {
     const { t } = useTranslation();
     const hasActiveFilters = Object.values(activeFilters).some(v => v !== '') || searchValue !== '';
+    const pillLabel = (key: string, value: string) => {
+        const choice = filters.find(f => f.key === key)?.options.map(toChoice).find(c => c.value === value);
+        return choice?.label ?? statusLabel(t, value);
+    };
 
     return (
         <div className="space-y-2">
@@ -195,7 +217,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
                         .filter(([, v]) => v !== '')
                         .map(([k, v]) => (
                             <span key={k} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full font-medium capitalize flex items-center gap-1">
-                                {statusLabel(t, v)}
+                                {pillLabel(k, v)}
                                 <button aria-label={t('ui.remove_filter', { name: k })}
                                     onClick={() => onFilterChange(k, '')}
                                     className="hover:text-red-600 transition-colors"

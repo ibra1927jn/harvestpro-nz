@@ -22,6 +22,7 @@ export interface AttendanceRecord {
   check_out?: string | null;
   break_start?: string | null;
   break_minutes?: number | null;
+  corrected_at?: string | null;
   orchard_id: string;
 }
 
@@ -43,6 +44,23 @@ export interface OpenShiftElsewhere {
   orchard_id: string;
   check_in: string | null;
   orchards: { name: string | null } | null;
+}
+
+/**
+ * Fila de presence_today(huerto): quién está, desde cuándo, descanso, permiso,
+ * si ya salió o si está en otro huerto. Sin horas ni pago (migración
+ * 20261024021000): es lo que ve quien no puede leer los fichajes.
+ */
+export interface PresenceRow {
+  picker_id: string;
+  present: boolean;
+  since: string | null;
+  on_break: boolean;
+  on_leave: boolean;
+  checked_in_today: boolean;
+  left_at: string | null;
+  elsewhere_orchard_id: string | null;
+  elsewhere_orchard_name: string | null;
 }
 
 /** Margen al pedir cambios por delta (evita perder filas por desfase de reloj) */
@@ -98,10 +116,16 @@ export function shouldUseDelta(params: {
   todayNZ: string;
   crewCount: number;
   bucketCount: number;
+  /**
+   * Las cubetas de hoy ya se bajaron en esta sesión aunque sean 0 (primera
+   * hora de la mañana). Sin esto, hasta la primera cubeta del día cada
+   * desbloqueo del móvil hacía una carga completa (prueba de carga 2026-10-21).
+   */
+  bucketsLoaded?: boolean;
 }): boolean {
-  const { lastSyncAt, todayNZ, crewCount, bucketCount } = params;
+  const { lastSyncAt, todayNZ, crewCount, bucketCount, bucketsLoaded } = params;
   const sameNZDay = !!lastSyncAt && NZ_DAY_FMT.format(new Date(lastSyncAt)) === todayNZ;
-  return sameNZDay && crewCount > 0 && bucketCount > 0;
+  return sameNZDay && crewCount > 0 && (bucketCount > 0 || !!bucketsLoaded);
 }
 
 /** Desde cuándo pedir cambios en modo delta */
@@ -138,6 +162,62 @@ export function mergeBucketDelta(records: BucketRecord[], incoming: BucketRecord
     isRemoved: b => !!b.deleted_at,
     toItem: b => b,
     idOf: b => b.id,
+  });
+}
+
+/* ── Presencia sin leer fichajes ──────────── */
+
+/**
+ * Rellena la presencia de las personas cuyos fichajes este usuario no lee
+ * (sin tramos visibles) con presence_today: fichada desde X (check_in), en
+ * descanso (on_break_now), salió a las Y (check_out) o nada. A quien tiene
+ * tramos visibles (su equipo, o todo para el manager) no se le toca. Devuelve
+ * el mismo objeto cuando no cambia nada.
+ */
+export function applyPresence(crew: Picker[], rows: ReadonlyArray<PresenceRow>): Picker[] {
+  const byPicker = new Map(rows.map(r => [r.picker_id, r]));
+  return crew.map(p => {
+    if ((p.shifts?.length ?? 0) > 0) return p;
+    const r = byPicker.get(p.id);
+    const next: Pick<Picker, 'checked_in_today' | 'check_in' | 'check_out' | 'break_start' | 'break_minutes' | 'on_break_now'> = !r || !r.checked_in_today
+      ? { checked_in_today: false, check_in: undefined, check_out: undefined, break_start: undefined, break_minutes: undefined, on_break_now: false }
+      : r.present
+        ? { checked_in_today: true, check_in: r.since ?? undefined, check_out: undefined, break_start: undefined, break_minutes: undefined, on_break_now: r.on_break }
+        : { checked_in_today: true, check_in: undefined, check_out: r.left_at ?? undefined, break_start: undefined, break_minutes: undefined, on_break_now: false };
+    // Sin valor, null y false cuentan igual (no re-render por nada)
+    const norm = (v: unknown) => (v === undefined || v === null || v === false ? undefined : v);
+    const same = (Object.keys(next) as (keyof typeof next)[]).every(k => norm(p[k]) === norm(next[k]));
+    return same ? p : { ...p, ...next };
+  });
+}
+
+/** Personas que presence_today ve trabajando ahora en otro huerto */
+export function elsewhereFromPresence(rows: ReadonlyArray<PresenceRow>): OpenShiftElsewhere[] {
+  return rows
+    .filter(r => !!r.elsewhere_orchard_id)
+    .map(r => ({
+      picker_id: r.picker_id,
+      orchard_id: r.elsewhere_orchard_id as string,
+      check_in: null,
+      orchards: { name: r.elsewhere_orchard_name },
+    }));
+}
+
+/**
+ * Relectura periódica de presence_today: presencia y «ahora en otro huerto» de
+ * quien no tiene tramos visibles; a los demás no se les toca.
+ */
+export function refreshPresenceOf(crew: Picker[], rows: ReadonlyArray<PresenceRow>): Picker[] {
+  const elsewhere = new Map(elsewhereFromPresence(rows).map(e => [e.picker_id, e]));
+  return applyPresence(crew, rows).map(p => {
+    if ((p.shifts?.length ?? 0) > 0) return p;
+    const o = elsewhere.get(p.id);
+    const next = o && !(p.check_in && !p.check_out)
+      ? { orchard_id: o.orchard_id, orchard_name: o.orchards?.name ?? 'another orchard', since: null }
+      : null;
+    if ((p.elsewhere ?? null) === null && next === null) return p;
+    if (p.elsewhere && next && p.elsewhere.orchard_id === next.orchard_id && p.elsewhere.orchard_name === next.orchard_name) return p;
+    return { ...p, elsewhere: next };
   });
 }
 
@@ -259,12 +339,14 @@ export function applyAttendanceRecord(p: Picker, record: AttendanceRecord): Pick
     check_out: record.check_out,
     break_start: record.break_start,
     break_minutes: record.break_minutes,
+    corrected_at: record.corrected_at ?? null,
   };
   const others = (p.shifts ?? []).filter(s => !shift.id || s.id !== shift.id);
   const shifts = record.deleted_at ? others : [...others, shift];
   const fields = attendanceFields(shifts);
   const here = !!fields.check_in && !fields.check_out;
-  return { ...p, ...fields, ...(here ? { elsewhere: null } : {}) };
+  // Tramos visibles: manda lo que dicen, no presence_today
+  return { ...p, ...fields, on_break_now: undefined, ...(here ? { elsewhere: null } : {}) };
 }
 
 /* ── Bins ─────────────────────────────────── */
@@ -274,4 +356,27 @@ export function mergeBins(serverBins: Bin[], local: Bin[] | undefined): Bin[] {
   const serverIds = new Set(serverBins.map(b => b.id));
   const localOnly = (local || []).filter(b => !serverIds.has(b.id) && b.bin_code);
   return [...serverBins, ...localOnly];
+}
+
+/* ── Ajustes del huerto en vivo ───────────── */
+
+/** Campos de harvest_settings que llegan en vivo (el precio va por piece_rates) */
+const LIVE_SETTINGS_FIELDS = ['min_buckets_per_hour', 'target_tons', 'min_wage_rate', 'variety', 'shift_start_time'] as const;
+
+/**
+ * Aplica una fila de harvest_settings llegada por realtime: meta, mínimo y
+ * objetivo cambian; el precio (piece_rate / piece_rates) se queda como está.
+ */
+export function applyHarvestSettingsChange<S extends object>(settings: S, row: Record<string, unknown> | null | undefined): S {
+  if (!row) return settings;
+  const next = { ...settings } as Record<string, unknown>;
+  let changed = false;
+  for (const key of LIVE_SETTINGS_FIELDS) {
+    if (!(key in row)) continue;
+    const raw = row[key];
+    const value = key === 'variety' || key === 'shift_start_time' ? raw : raw == null ? raw : Number(raw);
+    if (value === undefined || (typeof value === 'number' && Number.isNaN(value))) continue;
+    if (next[key] !== value) { next[key] = value; changed = true; }
+  }
+  return changed ? (next as unknown as S) : settings;
 }

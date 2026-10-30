@@ -1,8 +1,8 @@
 /**
  * Smoke tests for runner views — LogisticsView (265L) and WarehouseView (116L)
  */
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 
 vi.mock('@/stores/useHarvestStore', () => ({
@@ -13,6 +13,9 @@ vi.mock('@/stores/useHarvestStore', () => ({
         { orchard_id: 'o1', id: 'b2' },
       ],
       stats: { totalBuckets: 10 },
+      orchard: { id: 'o1', name: 'A' },
+      orchardBlocks: [],
+      settings: { piece_rate: 7, piece_rates: [{ orchardId: 'o1', variety: null, effectiveDate: '2000-01-01', pieceRate: 7.4 }] },
     }),
 }));
 
@@ -41,6 +44,12 @@ describe('runner LogisticsView', () => {
     const onScan = vi.fn();
     const { container } = render(<LogisticsView onScan={onScan} />);
     expect(container.firstChild).not.toBeNull();
+  });
+
+  // Auditoría 23-10 A4: el runner no enseñaba ningún precio
+  it('shows today\'s piece rate of the orchard', () => {
+    const { getByTestId } = render(<LogisticsView onScan={vi.fn()} />);
+    expect(getByTestId('runner-price-today').textContent).toContain('$7.40');
   });
 
   it('renders with inventory data', () => {
@@ -76,15 +85,39 @@ describe('runner LogisticsView', () => {
   });
 });
 
+const warehouseHook = vi.hoisted(() => ({
+  zones: [] as unknown[],
+  myRequests: [] as unknown[],
+  loading: false,
+  reload: vi.fn(),
+  requestPickup: vi.fn(),
+  cancelMine: vi.fn(),
+}));
+vi.mock('@/hooks/useRunnerWarehouse', () => ({ useRunnerWarehouse: () => warehouseHook }));
+
 describe('WarehouseView', () => {
   let WarehouseView: React.ComponentType<{
     inventory?: { full_bins: number; empty_bins: number; in_progress: number; total: number };
-    onTransportRequest?: () => void;
   }>;
 
   beforeAll(async () => {
     const mod = await import('./WarehouseView');
     WarehouseView = mod.default;
+  });
+
+  beforeEach(() => {
+    warehouseHook.zones = [];
+    warehouseHook.myRequests = [];
+    warehouseHook.loading = false;
+    warehouseHook.cancelMine.mockClear();
+    warehouseHook.requestPickup.mockReset();
+    warehouseHook.requestPickup.mockResolvedValue({ id: 'new', bins_count: 10, status: 'pending' });
+  });
+
+  it('«Solicitar transporte» crea una solicitud real con los bins llenos del huerto', async () => {
+    render(<WarehouseView inventory={{ full_bins: 10, empty_bins: 5, in_progress: 2, total: 17 }} />);
+    fireEvent.click(screen.getByText('Request Transport'));
+    await waitFor(() => expect(warehouseHook.requestPickup).toHaveBeenCalledWith(10));
   });
 
   it('renders warehouse inventory header', () => {
@@ -102,5 +135,44 @@ describe('WarehouseView', () => {
   it('renders empty state with defaults', () => {
     const { container } = render(<WarehouseView />);
     expect(container.firstChild).not.toBeNull();
+    expect(screen.getByText('No Warehouse Inventory')).toBeDefined();
+    expect(screen.getByText(/No open requests/)).toBeDefined();
+  });
+
+  it('mis solicitudes con estado real; solo las pendientes se pueden cancelar', () => {
+    warehouseHook.myRequests = [
+      { id: 'q1', requested_by: 'me', requester_name: 'Me', zone: 'Row 4', bins_count: 2, priority: 'normal', status: 'pending', created_at: '2026-10-12T09:00:00+13:00' },
+      { id: 'q2', requested_by: 'me', requester_name: 'Me', zone: 'Row 9', bins_count: 1, priority: 'normal', status: 'assigned', assigned_tractor: 't1', created_at: '2026-10-12T08:00:00+13:00' },
+    ];
+    render(<WarehouseView inventory={{ full_bins: 1, empty_bins: 9, in_progress: 0, total: 10 }} />);
+    expect(screen.getAllByTestId('my-request')).toHaveLength(2);
+    expect(screen.getByText('Pending')).toBeDefined();
+    expect(screen.getByText('Assigned')).toBeDefined();
+    expect(screen.getByText(/vehicle assigned/)).toBeDefined();
+    const cancelButtons = screen.getAllByLabelText('Cancel request');
+    expect(cancelButtons).toHaveLength(1);
+    fireEvent.click(cancelButtons[0]);
+    expect(warehouseHook.cancelMine).toHaveBeenCalledWith(expect.objectContaining({ id: 'q1' }));
+  });
+
+  it('bins agrupados por zona con su estado', () => {
+    warehouseHook.zones = [
+      { zone: 'B2', full: 2, empty: 1, bins: [
+        { id: '1', bin_code: 'B2-01', status: 'full', zone: 'B2', fill_percentage: 100, last_scan: '' },
+        { id: '2', bin_code: 'B2-02', status: 'full', zone: 'B2', fill_percentage: 100, last_scan: '' },
+        { id: '3', bin_code: 'B2-03', status: 'empty', zone: 'B2', fill_percentage: 0, last_scan: '' },
+      ] },
+    ];
+    render(<WarehouseView inventory={{ full_bins: 2, empty_bins: 1, in_progress: 0, total: 3 }} />);
+    expect(screen.getByText('Zone B2')).toBeDefined();
+    expect(screen.getByText('2 full · 1 empty')).toBeDefined();
+    expect(screen.getByText('B2-01')).toBeDefined();
+    expect(screen.getAllByTestId('zone-card')).toHaveLength(1);
+  });
+
+  it('no decorative bell nor fake "dispatch requested" text', () => {
+    render(<WarehouseView inventory={{ full_bins: 20, empty_bins: 10, in_progress: 0, total: 30 }} />);
+    expect(screen.queryByText(/Dispatch requested/)).toBeNull();
+    expect(screen.queryByLabelText('Notifications')).toBeNull();
   });
 });

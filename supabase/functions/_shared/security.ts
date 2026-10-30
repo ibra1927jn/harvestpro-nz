@@ -254,17 +254,44 @@ export const AnomalyInputSchema = z.object({
 });
 
 // Attendance Management
+// Hora del móvil (cola sin red): hora del móvil al ENVIAR (ms) y corrección
+// que ya sumó a `at` con el desfase que conocía. Con ellas el servidor corrige
+// la hora con el desfase medido ahora y lo apunta (_shared/device-time.ts).
+const DeviceClockFields = {
+  client_now: z.number().optional(),
+  clock_skew_ms: z.number().finite().optional().nullable(),
+};
+
 export const AttendanceCheckInSchema = z.object({
   action: z.literal('check_in'),
   picker_id: z.string().uuid('picker_id must be a valid UUID'),
   orchard_id: z.string().uuid('orchard_id must be a valid UUID'),
   // Se ignora: quien verifica el fichaje es siempre quien llama (clientes antiguos lo mandan)
   verified_by: z.string().optional(),
+  // Pase de lista sin red: id del tramo generado en el móvil (reintentar no
+  // duplica el turno) y hora del móvil al fichar
+  client_id: z.string().uuid('client_id must be a valid UUID').optional(),
+  at: z.string().datetime({ offset: true }).optional(),
+  ...DeviceClockFields,
 });
 
 export const AttendanceCheckOutSchema = z.object({
   action: z.literal('check_out'),
   attendance_id: z.string().uuid('attendance_id must be a valid UUID'),
+  at: z.string().datetime({ offset: true }).optional(),
+  // Si el tramo no existe con ese id (la entrada sin red encontró uno abierto),
+  // se usa el tramo abierto de hoy de esta persona
+  picker_id: z.string().uuid('picker_id must be a valid UUID').optional(),
+  ...DeviceClockFields,
+});
+
+// Descanso desde el pase de lista (inicio y fin), también desde la cola sin red
+export const AttendanceBreakSchema = z.object({
+  action: z.enum(['break_start', 'break_end']),
+  attendance_id: z.string().uuid('attendance_id must be a valid UUID'),
+  at: z.string().datetime({ offset: true }).optional(),
+  picker_id: z.string().uuid('picker_id must be a valid UUID').optional(),
+  ...DeviceClockFields,
 });
 
 export const AttendanceCorrectionSchema = z.object({
@@ -281,10 +308,38 @@ export const AttendanceCorrectionSchema = z.object({
   admin_id: z.string().optional(),
 });
 
+// Un fichaje dentro de un lote de correcciones: cada campo es opcional
+// (vacío = no tocar); break_start null = quitar el descanso anotado
+export const AttendanceBatchItemSchema = z.object({
+  attendance_id: z.string().uuid('attendance_id must be a valid UUID'),
+  check_in: z.string().datetime({ offset: true }).optional(),
+  check_out: z.string().datetime({ offset: true }).optional(),
+  break_start: z.string().datetime({ offset: true }).nullable().optional(),
+});
+
+/** Máximo de fichajes por lote (un día de un huerto grande cabe de sobra) */
+export const ATTENDANCE_BATCH_MAX = 200;
+
+export const AttendanceBatchCorrectionSchema = z.object({
+  action: z.literal('correct_batch'),
+  items: z.array(AttendanceBatchItemSchema)
+    .min(1, 'At least one item is required')
+    .max(ATTENDANCE_BATCH_MAX, `At most ${ATTENDANCE_BATCH_MAX} items per batch`),
+  // Un solo motivo para todo el lote (va a la auditoría de cada fichaje);
+  // mismo mínimo que `correct`, con tope para no inflar N filas de auditoría
+  reason: z.string()
+    .min(5, 'Correction reason must be at least 5 characters')
+    .max(500, 'Correction reason must be at most 500 characters'),
+  // Se ignora: quien corrige es siempre quien llama
+  admin_id: z.string().optional(),
+});
+
 export const AttendanceInputSchema = z.discriminatedUnion('action', [
   AttendanceCheckInSchema,
   AttendanceCheckOutSchema,
+  AttendanceBreakSchema,
   AttendanceCorrectionSchema,
+  AttendanceBatchCorrectionSchema,
 ]);
 
 // Bucket Recording
@@ -296,6 +351,9 @@ export const BucketRecordSchema = z.object({
   bin_id: z.string().optional(),
   scanned_by: z.string().uuid('scanned_by must be a valid UUID').optional(),
   scanned_at: z.string().optional(),
+  // Cola sin red: hora del móvil al enviar (ms) y corrección que ya aplicó
+  client_now: z.number().optional(),
+  clock_skew_ms: z.number().finite().optional().nullable(),
 });
 
 // Admin User Management
@@ -340,9 +398,22 @@ export const TimesheetApprovalSchema = z.object({
   // manda 'current_user' (no es un UUID) y antes toda aprobación daba 400.
   verified_by: z.string().optional(),
   current_updated_at: z.string().optional(),
+}).superRefine((v, ctx) => {
+  // Rechazar vuelve la hoja a quien la corrige: sin motivo no sabe qué cambiar (B10)
+  if (v.decision === 'reject' && (!v.reason || v.reason.length < 3 || v.reason.length > 200)) {
+    ctx.addIssue({ code: 'custom', path: ['reason'], message: 'A rejection needs a reason of 3 to 200 characters' });
+  }
 });
 
 // Audit Log Submission
+/** Aprobación en lote (Nómina, «Aprobar todas»): hasta 500 hojas por llamada */
+export const TimesheetBatchApprovalSchema = z.object({
+  items: z.array(z.object({
+    attendance_id: z.string().uuid('attendance_id must be a valid UUID'),
+    current_updated_at: z.string().optional(),
+  })).min(1).max(500),
+});
+
 export const AuditLogEntrySchema = z.object({
   event_type: z.string().min(1),
   severity: z.enum(['info', 'warning', 'error', 'critical']),

@@ -2,6 +2,22 @@
 
 All notable changes to HarvestPro NZ will be documented in this file.
 
+## [Unreleased] - 2026-10-27
+
+### Changed
+
+- Removed everything tied to the deleted Supabase Cloud project: `scripts/seed-users.cjs`, `scripts/run-e2e-hetzner.sh`, the Hetzner E2E guide, the project refs in archived docs and the "rotate its keys" items in `PROGRESS.md` and the branch inventory (the cloud projects were deleted on 2026-10-16).
+- Integration branch `integracion/fase-0` (Fase 0 of `docs/PLAN_NIVEL.md`): brings `main` from 2026-10-19 up to 2026-10-27 — `review/combined-2026-10-24b` (role reviews, daily piece rates, offline roll call, chat and push, orchard structure, load-test fixes, local backups), the inventory security fixes and the October audit documents.
+- `PROGRESS.md` rewritten as a short current status; README, `CLAUDE.md` and the plan's Fase 0 brought up to date.
+
+### Security
+
+- No worker PII to Sentry or PostHog (`src/utils/piiScrub.ts`); logout wipes Cache Storage and `sessionStorage`; `harvest_settings` read only for the caller's orchard (`20261027010000`); QC photos only in the caller's orchard folder (`20261027020000`).
+
+### Added
+
+- Audit documents: `docs/audits/2026-10-21-manager-review.md`, `docs/audits/2026-10-23-wiring-audit.md` (+ `2026-10-23-wiring/`), `docs/audits/2026-10-27-inventario-ramas.md`.
+
 ## [Unreleased] - 2026-10-16
 
 ### Changed

@@ -7,6 +7,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import { useTranslation } from '@/i18n';
 import { roleLabel } from '@/i18n/roleLabel';
+import InvitationsPanel from '@/components/common/invitations/InvitationsPanel';
 
 // Color de cada rol (el nombre sale de roleLabel, en el idioma de la app)
 const ROLE_COLORS: Record<string, string> = {
@@ -40,6 +41,8 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
     return (
     <ComponentErrorBoundary componentName="Users">
         <div className="space-y-4">
+            {/* Invitar: sin invitación nadie puede darse de alta (B1) */}
+            <InvitationsPanel canInviteAdmin />
             {actionError && (
                 <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">{actionError}</div>
             )}

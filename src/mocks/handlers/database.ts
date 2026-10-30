@@ -29,28 +29,6 @@ function isSingleQuery(request: Request): boolean {
 
 // Handlers para RPC — deben ir ANTES del handler genérico de tablas
 export const rpcHandlers = [
-  // Rate limiting — siempre permitir en mock
-  http.post('*/rest/v1/rpc/check_rate_limit', () => {
-    return HttpResponse.json({
-      allowed: true,
-      locked: false,
-      remaining_attempts: 5,
-      failed_count: 0,
-    });
-  }),
-
-  http.post('*/rest/v1/rpc/is_account_locked', () => {
-    return HttpResponse.json(false);
-  }),
-
-  http.post('*/rest/v1/rpc/get_failed_login_count', () => {
-    return HttpResponse.json(0);
-  }),
-
-  http.post('*/rest/v1/rpc/unlock_account', () => {
-    return HttpResponse.json(true);
-  }),
-
   http.post('*/rest/v1/rpc/health_check', () => {
     return HttpResponse.json({
       status: 'healthy',

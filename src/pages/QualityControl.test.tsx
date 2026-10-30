@@ -5,7 +5,7 @@
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeAll } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 
 // Prevent jsdom crash: OrchardSwitcher calls location.reload() which jsdom doesn't implement
 beforeAll(() => {
@@ -38,7 +38,10 @@ vi.mock('@/context/AuthContext', () => ({
 }));
 
 vi.mock('@/context/MessagingContext', () => ({
-  useMessaging: () => ({ unreadCount: 0 }),
+  useMessaging: () => ({ unreadCount: 2 }),
+}));
+vi.mock('@/components/common/messaging/ChatTabView', () => ({
+  default: () => <div data-testid="chat-tab">Chat</div>,
 }));
 
 vi.mock('react-router-dom', () => ({
@@ -115,5 +118,12 @@ describe('QualityControl Page', () => {
     render(<QualityControl />);
     const inspectContent = await screen.findByTestId('inspect-tab');
     expect(inspectContent).toBeTruthy();
+  });
+
+  it('QC has the chat tab too, with the unread count', async () => {
+    render(<QualityControl />);
+    const tabs = await screen.findAllByRole('button', { name: 'Chat (2)' });
+    fireEvent.click(tabs[0]);
+    expect(await screen.findByTestId('chat-tab')).toBeInTheDocument();
   });
 });

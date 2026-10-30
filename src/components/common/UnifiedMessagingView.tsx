@@ -13,7 +13,14 @@ import { logger } from '../../utils/logger';
 import MessagingSidebar from './messaging/MessagingSidebar';
 import ChatWindow from './messaging/ChatWindow';
 import NewChatModal from './messaging/NewChatModal';
+import ChatInfoPanel from './messaging/ChatInfoPanel';
+import type { OutgoingAttachment } from '../../context/messaging.types';
+import { useConversationLive } from '../../hooks/useConversationLive';
+import type { ChatMessage } from '../../services/simple-messaging.service';
 import { useTranslation } from '@/i18n';
+
+/** Sondeo de la barra lateral: solo red de seguridad, los cambios llegan por realtime */
+const SIDEBAR_POLL_MS = 60_000;
 
 const UnifiedMessagingView = () => {
   const { t } = useTranslation();
@@ -24,6 +31,9 @@ const UnifiedMessagingView = () => {
     loadConversation,
     retryMessage,
     sendMessage,
+    sendAttachment,
+    updateConversation,
+    setConversationMuted,
     sendBroadcast,
     getOrCreateConversation,
     createChatGroup,
@@ -42,6 +52,7 @@ const UnifiedMessagingView = () => {
   >([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   // No leídos: vienen del servidor (antes siempre 0)
   const unreadCounts = useMemo(
@@ -50,18 +61,38 @@ const UnifiedMessagingView = () => {
   );
 
   const isManager = appUser?.role === Role.MANAGER;
+  // Gestionan cualquier grupo en el que estén (además de quien lo creó)
+  const canManageAnyGroup = appUser?.role === Role.MANAGER || appUser?.role === Role.ADMIN;
+
+  // La conversación abierta sigue a la lista (renombrar, personas, silenciar)
+  useEffect(() => {
+    if (!selectedChat) return;
+    const fresh = chatGroups.find(g => g.id === selectedChat.id);
+    if (fresh && (fresh.name !== selectedChat.name || fresh.muted !== selectedChat.muted
+      || fresh.members.join(',') !== selectedChat.members.join(',') || fresh.createdBy !== selectedChat.createdBy)) {
+      setSelectedChat(prev => (prev && prev.id === fresh.id ? { ...prev, ...fresh } : prev));
+    }
+  }, [chatGroups, selectedChat]);
+  // Nombres de todas las cuentas (también dadas de baja): los mensajes antiguos siguen con nombre
+  const [allNames, setAllNames] = useState<Record<string, string>>({});
   const userNameMap = useMemo(() => {
-    const map: Record<string, string> = {};
+    const map: Record<string, string> = { ...allNames };
     availableUsers.forEach(u => {
       map[u.id] = u.name;
     });
     return map;
-  }, [availableUsers]);
+  }, [availableUsers, allNames]);
 
   // ── Initial Load ──
   useEffect(() => {
     refreshMessages();
-    simpleMessagingService.getUsers().then(setAvailableUsers);
+    simpleMessagingService
+      .getDirectory()
+      .then(d => {
+        setAvailableUsers(d.contacts);
+        setAllNames(d.names);
+      })
+      .catch(e => logger.warn('[Messaging] People not loaded:', e));
   }, [refreshMessages]);
 
   // ── Load messages + subscribe to real-time ──
@@ -72,22 +103,6 @@ const UnifiedMessagingView = () => {
     }
     loadConversation(selectedChat.id).then(setMessages);
     if (window.innerWidth < 768) setIsSidebarOpen(false);
-    const unsubscribe = simpleMessagingService.subscribeToConversation(selectedChat.id, newMsg => {
-      if (newMsg.sender_id !== appUser?.id) {
-        // Está abierta: el mensaje cuenta como leído
-        void markConversationRead(newMsg.conversation_id);
-        const dbMsg: DBMessage = {
-          id: newMsg.id,
-          sender_id: newMsg.sender_id,
-          content: newMsg.content,
-          created_at: newMsg.created_at,
-          conversation_id: newMsg.conversation_id,
-          priority: 'normal' as MessagePriority,
-          read_by: [],
-        };
-        setMessages(prev => [...prev, dbMsg]);
-      }
-    });
     // Bandeja de salida: al enviarse, fallar o reintentar un mensaje propio,
     // la conversación se recarga (sale como enviado / "Not sent")
     const chatId = selectedChat.id;
@@ -95,13 +110,45 @@ const UnifiedMessagingView = () => {
       loadConversation(chatId).then(setMessages);
     });
     return () => {
-      unsubscribe();
       unsubscribeOutbox();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChat?.id, loadConversation]);
 
-  // ── Sidebar real-time refresh (Safe polling without race conditions) ──
+  // ── En vivo (canal único de la conversación): mensajes, reacciones, «Escribiendo…» ──
+  const handleIncoming = useCallback((newMsg: ChatMessage) => {
+    if (newMsg.sender_id === appUser?.id) return;
+    // Está abierta: el mensaje cuenta como leído
+    void markConversationRead(newMsg.conversation_id);
+    const dbMsg: DBMessage = {
+      id: newMsg.id,
+      sender_id: newMsg.sender_id,
+      content: newMsg.content,
+      created_at: newMsg.created_at,
+      conversation_id: newMsg.conversation_id,
+      priority: 'normal' as MessagePriority,
+      read_by: [],
+      attachment_path: newMsg.attachment_path ?? null,
+      attachment_type: newMsg.attachment_type ?? null,
+      attachment_name: newMsg.attachment_name ?? null,
+      attachment_size: newMsg.attachment_size ?? null,
+      duration_ms: newMsg.duration_ms ?? null,
+      reply_to_id: newMsg.reply_to_id ?? null,
+    };
+    // Sin duplicar si ya llegó por la recarga
+    setMessages(prev => (prev.some(m => m.id === dbMsg.id) ? prev : [...prev, dbMsg]));
+  }, [appUser?.id, markConversationRead]);
+
+  const live = useConversationLive({
+    conversationId: selectedChat?.id ?? null,
+    me: appUser?.id || '',
+    messages,
+    onIncomingMessage: handleIncoming,
+  });
+
+  // ── Sidebar: red de seguridad por si se pierde algún evento de realtime ──
+  // (los mensajes nuevos y los contadores ya llegan por realtime; antes se
+  // sondeaba cada 15 s con 5-6 consultas por vuelta)
   useEffect(() => {
     let isMounted = true;
     let timerId: ReturnType<typeof setTimeout>;
@@ -116,11 +163,11 @@ const UnifiedMessagingView = () => {
         }
       }
       if (isMounted) {
-        timerId = setTimeout(poll, 15000);
+        timerId = setTimeout(poll, SIDEBAR_POLL_MS);
       }
     };
 
-    timerId = setTimeout(poll, 15000);
+    timerId = setTimeout(poll, SIDEBAR_POLL_MS);
     return () => {
       isMounted = false;
       clearTimeout(timerId);
@@ -133,17 +180,27 @@ const UnifiedMessagingView = () => {
   };
 
   const handleSend = useCallback(
-    async (content: string) => {
+    async (content: string, replyToId?: string) => {
       if (!content.trim() || !selectedChat || isSending) return;
       setIsSending(true);
       try {
-        const sent = await sendMessage(selectedChat.id, content);
+        const sent = await sendMessage(selectedChat.id, content, 'normal', replyToId ? { replyToId } : undefined);
         if (sent) setMessages(prev => [...prev, sent]);
       } finally {
         setIsSending(false);
       }
     },
     [selectedChat, isSending, sendMessage]
+  );
+
+  const handleSendAttachment = useCallback(
+    async (file: OutgoingAttachment) => {
+      if (!selectedChat) return 'failed' as const;
+      const { message, error } = await sendAttachment(selectedChat.id, file);
+      if (message) setMessages(prev => (prev.some(m => m.id === message.id) ? prev : [...prev, message]));
+      return error;
+    },
+    [selectedChat, sendAttachment]
   );
 
   const handleRetry = useCallback(
@@ -210,7 +267,14 @@ const UnifiedMessagingView = () => {
             userNameMap={userNameMap}
             isSending={isSending}
             onSend={handleSend}
+            onSendAttachment={handleSendAttachment}
+            onOpenInfo={() => setShowInfo(true)}
             onRetry={handleRetry}
+            reactions={live.reactions}
+            onToggleReaction={live.toggleReaction}
+            typingUserIds={live.typingUserIds}
+            onTyping={live.notifyTyping}
+            onSent={live.resetTyping}
             onBack={() => {
               setSelectedChat(null);
               setIsSidebarOpen(true);
@@ -248,6 +312,31 @@ const UnifiedMessagingView = () => {
         )}
       </section>
 
+      {showInfo && selectedChat && (
+        <ChatInfoPanel
+          chat={selectedChat}
+          messages={messages}
+          appUserId={appUser?.id || ''}
+          canManageAny={canManageAnyGroup}
+          availableUsers={availableUsers.filter(u => u.id !== appUser?.id)}
+          onClose={() => setShowInfo(false)}
+          onUpdate={changes => updateConversation(selectedChat.id, changes)}
+          onSetMuted={muted => setConversationMuted(selectedChat.id, muted)}
+          onCreateGroup={async (name, ids) => {
+            setActionError(null);
+            try {
+              const group = await createChatGroup(name, ids);
+              if (group) {
+                setShowInfo(false);
+                setSelectedChat(group);
+              }
+            } catch (e) {
+              setActionError(t('chat.group_not_created', { error: e instanceof Error ? e.message : t('chat.try_again') }));
+              setShowInfo(false);
+            }
+          }}
+        />
+      )}
       {showNewChatModal && (
         <NewChatModal
           availableUsers={availableUsers}
@@ -273,9 +362,9 @@ const UnifiedMessagingView = () => {
       {showBroadcastModal && isManager && (
         <BroadcastModal
           onClose={() => setShowBroadcastModal(false)}
-          onSend={async (title, content, priority) => {
+          onSend={async (title, content, priority, targetRoles) => {
             // Si no se guardó, el modal no se cierra y se avisa
-            const ok = await sendBroadcast(title, content, priority as MessagePriority);
+            const ok = await sendBroadcast(title, content, priority as MessagePriority, targetRoles);
             if (!ok) {
               setActionError(t('chat.broadcast_failed'));
               throw new Error('Broadcast not sent');

@@ -19,12 +19,6 @@ vi.mock('@/repositories/attendance.repository', () => ({
     },
 }));
 
-vi.mock('@/repositories/picker.repository', () => ({
-    pickerRepository: {
-        getPerformanceToday: vi.fn().mockResolvedValue([]),
-    },
-}));
-
 vi.mock('@/repositories/edge-functions.repository', () => ({
     edgeFunctionsRepository: {
         invoke: vi.fn().mockResolvedValue({ data: null, error: null }),
@@ -37,7 +31,6 @@ describe('attendanceService — deep tests', () => {
     it('exports getDailyAttendance', () => expect(attendanceService.getDailyAttendance).toBeDefined());
     it('exports checkInPicker', () => expect(attendanceService.checkInPicker).toBeDefined());
     it('exports checkOutPicker', () => expect(attendanceService.checkOutPicker).toBeDefined());
-    it('exports getTodayPerformance', () => expect(attendanceService.getTodayPerformance).toBeDefined());
     it('exports getActivePickersForLiveOps', () => expect(attendanceService.getActivePickersForLiveOps).toBeDefined());
     it('exports getAttendanceByDate', () => expect(attendanceService.getAttendanceByDate).toBeDefined());
     it('exports correctAttendance', () => expect(attendanceService.correctAttendance).toBeDefined());

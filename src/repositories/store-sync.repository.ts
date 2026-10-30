@@ -3,6 +3,10 @@
  */
 import { supabase } from '@/services/supabase';
 import { fetchAllRows } from '@/utils/fetchAllRows';
+import { todayNZST } from '@/utils/nzst';
+import { pieceRatesRepository } from '@/repositories/piece-rates.repository';
+import { pieceRateOn, type DailyPieceRate } from '@/services/harvestMetrics/pay';
+import type { PresenceRow } from '@/stores/storeSyncLogic';
 
 export const storeSyncRepository = {
     /** Get first orchard */
@@ -16,20 +20,21 @@ export const storeSyncRepository = {
         const { data } = await supabase
             .from('harvest_settings').select('*').eq('orchard_id', orchardId).maybeSingle();
         if (!data) return data;
-        // Precios por variedad: los de este huerto y los de la empresa. Si no se
-        // pueden leer, se paga a piece_rate (como antes).
-        let rates: { id: string; orchard_id: string | null; variety: string; piece_rate: number }[] | null = null;
+        // Precios por cubeta que valen HOY (piece_rates): el general y el de cada
+        // variedad. piece_rate pasa a ser el general de hoy (lo que enseñan el TL,
+        // el runner y el perfil del picker). Si no se pueden leer, el guardado.
+        const today = todayNZST();
+        let rates: DailyPieceRate[] = [];
         try {
-            ({ data: rates } = await supabase
-                .from('variety_rates')
-                .select('id, orchard_id, variety, piece_rate')
-                .or(`orchard_id.eq.${orchardId},orchard_id.is.null`));
+            rates = await pieceRatesRepository.loadRange(today, today, orchardId);
         } catch {
-            rates = null;
+            rates = [];
         }
+        const stored = Number(data.piece_rate ?? 0);
         return {
             ...data,
-            variety_rates: (rates ?? []).map(r => ({ ...r, piece_rate: Number(r.piece_rate) })),
+            piece_rate: pieceRateOn(rates, orchardId, null, today, stored),
+            piece_rates: rates,
         };
     },
 
@@ -43,7 +48,7 @@ export const storeSyncRepository = {
         // unido es solo el de hoy EN ESTE huerto: presente aquí = fichado aquí.
         const q = supabase
             .from('pickers')
-            .select(`*, daily_attendance!left(id, check_in, check_out, break_start, break_minutes, orchard_id, deleted_at)`)
+            .select(`*, daily_attendance!left(id, check_in, check_out, break_start, break_minutes, corrected_at, orchard_id, deleted_at)`)
             .eq('daily_attendance.date', today)
             .eq('daily_attendance.orchard_id', orchardId);
         return opts.onlyStaff ? q.eq('status', 'active').is('deleted_at', null) : q;
@@ -64,6 +69,17 @@ export const storeSyncRepository = {
         return (data ?? []) as unknown as { picker_id: string; orchard_id: string; check_in: string | null; orchards: { name: string | null } | null }[];
     },
 
+    /**
+     * Quién está fichado hoy en el huerto, sin horas ni pago (presence_today):
+     * lo usan los roles que no leen los fichajes de todos (runner, QC,
+     * logística, y el team leader para la gente que no es de su equipo).
+     */
+    async getPresenceToday(orchardId: string): Promise<PresenceRow[]> {
+        const { data, error } = await supabase.rpc('presence_today', { p_orchard_id: orchardId });
+        if (error) throw error;
+        return (data ?? []) as PresenceRow[];
+    },
+
     /** Get bucket records since a date — returns query builder for delta chaining */
     getBucketRecordsQuery(orchardId: string, since: string) {
         return supabase
@@ -76,7 +92,7 @@ export const storeSyncRepository = {
         return fetchAllRows<{ picker_id: string; id: string; orchard_id: string | null; variety: string | null; scanned_at: string | null; quality_grade: string | null; deleted_at: string | null }>((from, to) => {
             let query = supabase.from('bucket_records').select('picker_id, id, orchard_id, variety, scanned_at, quality_grade, deleted_at').gte('scanned_at', since);
             if (orchardId) query = query.eq('orchard_id', orchardId);
-            return query.order('id').range(from, to);
+            return query.order('scanned_at').order('id').range(from, to);
         });
     },
 

@@ -26,13 +26,6 @@ const insights: TranslationDict = {
     'insights.trend.title': 'Cost Per Bin — 7 Day Trend',
     'insights.trend.subtitle': 'Red dots = above break-even threshold',
     'insights.trend.breakeven': 'Break-even',
-    'insights.trend.day.mon': 'Mon',
-    'insights.trend.day.tue': 'Tue',
-    'insights.trend.day.wed': 'Wed',
-    'insights.trend.day.thu': 'Thu',
-    'insights.trend.day.fri': 'Fri',
-    'insights.trend.day.sat': 'Sat',
-    'insights.trend.day.sun': 'Sun',
     // Team cost
     'insights.team_cost.title': 'Cost Per Team',
     'insights.team_cost.subtitle': 'Lower cost/bin = more efficient',

@@ -10,6 +10,8 @@ vi.mock('@/utils/logger', () => ({
 vi.mock('@/utils/nzst', () => ({
   todayNZST: vi.fn(() => '2026-03-04'),
   toNZST: vi.fn((d: Date) => d.toISOString()),
+  nzMidnight: vi.fn((d: string) => `${d}T00:00:00+13:00`),
+  nzEndOfDay: vi.fn((d: string) => `${d}T23:59:59.999+13:00`),
 }));
 
 vi.mock('../sync.service', () => ({
@@ -76,7 +78,7 @@ describe('qcService', () => {
       });
 
       expect(syncService.addToQueue).toHaveBeenCalledWith('QC_INSPECTION', expect.any(Object));
-      expect(result?.id).toBe('pending-sync');
+      expect(result?.id).toMatch(/^pending-/);
 
       // Restore
       Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });

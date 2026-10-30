@@ -108,3 +108,18 @@ export function buildShiftSlots(
     }
     return slots;
 }
+
+/**
+ * Tramos de una hora desde el inicio de turno hasta la hora actual NZ (incluida).
+ * No hay hora de fin de turno (cada equipo acaba cuando acaba): la ventana
+ * crece durante el día. Antes del inicio devuelve solo el primer tramo.
+ */
+export function buildShiftSlotsUntilNow(
+    shiftStartHHMM: string,
+    ref: Date = new Date()
+): Array<{ hour: number; slotStartMs: number; slotEndMs: number }> {
+    const [startH] = shiftStartHHMM.split(':').map(Number);
+    const nowH = Number(toNZISO(ref).slice(11, 13));
+    const endH = Math.min(24, Math.max(startH + 1, nowH + 1));
+    return buildShiftSlots(shiftStartHHMM, `${String(endH).padStart(2, '0')}:00`, ref);
+}

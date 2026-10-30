@@ -33,15 +33,17 @@ const MessagingView = React.lazy(() => import('@/components/views/manager/Messag
 const MapToggleView = React.lazy(() => import('@/components/views/manager/MapToggleView'));
 const InsightsView = React.lazy(() => import('@/components/views/manager/InsightsView'));
 const SettingsView = React.lazy(() => import('@/components/views/manager/SettingsView'));
+const OrchardStructureView = React.lazy(() => import('@/components/views/orchard-structure/OrchardStructureView'));
 
 import { PickerDrawer as PickerProfileDrawer } from '@/components/PickerDrawer';
 import ComponentErrorBoundary from '@/components/ui/ComponentErrorBoundary';
 import Header from '@/components/common/Header';
 
 // Modals
-import DaySettingsModal from '@/components/modals/DaySettingsModal';
 import BroadcastModal from '@/components/views/manager/BroadcastModal';
 import RowAssignmentModal from '@/components/views/manager/RowAssignmentModal';
+import Toast from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
 
 /* ── Lazy loading fallback ─────────────────────────── */
 const TabLoader = () => {
@@ -61,7 +63,6 @@ const Manager = () => {
     crew,
     orchard,
     settings,
-    updateSettings,
     addPicker: _addPicker,
     removePicker: _removePicker,
     updatePicker: _updatePicker,
@@ -80,7 +81,12 @@ const Manager = () => {
   } = useManagerActions();
 
   const openPickerProfile = useHarvestStore(s => s.openPickerProfile);
+  // Huerto sin bloques/filas en temporada activa: aviso con enlace a «Estructura del huerto»
+  const orchardBlockCount = useHarvestStore(s => (s.orchardBlocks ?? []).length);
+  const blocksLoading = useHarvestStore(s => s.blocksLoading);
   const { t } = useTranslation();
+  // Confirmaciones de la página (asignar fila: el modal ya se ha cerrado)
+  const { toast, showToast, hideToast } = useToast();
 
   const isDesktop = useMediaQuery('(min-width: 768px)');
 
@@ -126,7 +132,6 @@ const Manager = () => {
   }, [orchard?.id]);
 
   // Modal States
-  const [showSettings, setShowSettings] = useState(false);
   const [showBroadcast, setShowBroadcast] = useState(false);
   const [showAssignment, setShowAssignment] = useState<{ show: boolean; row: number }>({
     show: false,
@@ -213,6 +218,15 @@ const Manager = () => {
           </ComponentErrorBoundary>
         );
 
+      case 'structure':
+        return (
+          <ComponentErrorBoundary componentName="Orchard setup">
+            <Suspense fallback={<TabLoader />}>
+              <OrchardStructureView orchardId={orchard?.id} orchardName={orchard?.name} />
+            </Suspense>
+          </ComponentErrorBoundary>
+        );
+
       case 'insights':
       case 'analytics':
       case 'reports':
@@ -243,26 +257,13 @@ const Manager = () => {
   /* ── Shared Modals ──────────────────────────────────── */
   const renderModals = () => (
     <>
-      {showSettings && (
-        <DaySettingsModal
-          onClose={() => setShowSettings(false)}
-          settings={{
-            bucketRate: settings?.piece_rate,
-            targetTons: settings?.target_tons,
-          }}
-          onSave={newSettings =>
-            updateSettings({
-              piece_rate: newSettings.bucketRate,
-              target_tons: newSettings.targetTons,
-            })
-          }
-        />
-      )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
       {showBroadcast && <BroadcastModal onClose={() => setShowBroadcast(false)} />}
       {showAssignment.show && (
         <RowAssignmentModal
           initialRow={showAssignment.row}
           onClose={() => setShowAssignment({ show: false, row: 1 })}
+          onAssigned={rows => showToast(t('comms.rows_assigned', { rows: rows.join(', ') }), 'success')}
           onViewPicker={picker => {
             setShowAssignment({ show: false, row: 1 });
             openPickerProfile(picker.id);
@@ -272,9 +273,24 @@ const Manager = () => {
     </>
   );
 
+  /* ── Aviso: huerto sin filas (no se puede trabajar el mapa ni los precios por variedad) ── */
+  const renderNoRowsBanner = () => {
+    if (activeTab !== 'dashboard' || blocksLoading || orchardBlockCount > 0 || !orchard?.id) return null;
+    return (
+      <div className="mx-4 mt-4 md:mx-0 md:mt-0 md:mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" data-testid="no-rows-banner">
+        <span aria-hidden="true" className="material-symbols-outlined text-amber-600">grid_view</span>
+        <p className="flex-1 min-w-[12rem]">{t('mgr.no_rows_banner')}</p>
+        <button type="button" onClick={() => setActiveTab('structure')} className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700">
+          {t('mgr.no_rows_cta')}
+        </button>
+      </div>
+    );
+  };
+
   /* ── Broadcast FAB ──────────────────────────────────── */
   const renderBroadcastFAB = () => {
-    if (activeTab === 'map' || activeTab === 'messaging') return null;
+    // En «Estructura del huerto» tapaba los botones de los formularios
+    if (activeTab === 'map' || activeTab === 'messaging' || activeTab === 'structure') return null;
     return (
       <div className="fixed bottom-[136px] md:bottom-8 right-4 z-40">
         <button
@@ -297,6 +313,10 @@ const Manager = () => {
           setOnboardingDone(true);
           fetchGlobalData();
         }}
+        onOpenStructure={() => {
+          setOnboardingDone(true);
+          setActiveTab('structure');
+        }}
       />
     );
   }
@@ -314,6 +334,7 @@ const Manager = () => {
           accentColor="#16a34a"
         >
           <div key={activeTab} className="animate-scale-in">
+            {renderNoRowsBanner()}
             {renderContent()}
           </div>
         </DesktopLayout>
@@ -327,16 +348,17 @@ const Manager = () => {
   /* ── Mobile Layout ──────────────────────────────────── */
   return (
     <div className="flex flex-col h-full bg-background-light min-h-screen text-slate-900 pb-20">
+      {/* El avatar abre «Mi cuenta» (lo hace la propia cabecera); Ajustes del huerto sigue en su pestaña */}
       <Header
         title={t('mgr.page_title')}
         subtitle={t('mgr.page_subtitle', { orchard: orchard?.name || t('teams.no_orchard') })}
-        onProfileClick={() => setShowSettings(true)}
         onNavigateToMessaging={() => setActiveTab('messaging' as Tab)}
       />
 
       {/* Content — animate on tab switch */}
       <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto outline-none">
         <div key={activeTab} className="animate-scale-in">
+          {renderNoRowsBanner()}
           {renderContent()}
         </div>
       </main>

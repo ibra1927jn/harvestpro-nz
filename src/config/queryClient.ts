@@ -45,18 +45,18 @@ export const queryKeys = {
         alerts: (orchardId: string) => ['compliance', 'alerts', orchardId] as const,
     },
 
-    // Security
-    security: {
-        all: ['security'] as const,
-        failedAttempts: (limit: number) => ['security', 'failed', limit] as const,
-        locks: ['security', 'locks'] as const,
-    },
-
     // Pickers / Crew
     pickers: {
         all: ['pickers'] as const,
         byTeam: (teamLeaderId?: string, orchardId?: string) =>
             ['pickers', 'team', teamLeaderId, orchardId] as const,
+    },
+
+    // Ausencias (leave_requests)
+    leave: {
+        all: ['leave'] as const,
+        onDay: (orchardId: string, ymd: string) => ['leave', 'day', orchardId, ymd] as const,
+        requestedBy: (userId: string) => ['leave', 'requested-by', userId] as const,
     },
 
     // Timesheets
